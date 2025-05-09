@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Epsilon-Delta Definition of Limit</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.2/p5.min.js"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      background-color: #000000;
+      color: #ffffff;
+      overflow: hidden;
+    }
+    canvas {
+      display: block;
+    }
+    #info {
+      position: absolute;
+      top: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      text-align: center;
+      max-width: 90%;
+    }
+    #controls {
+      position: absolute;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      text-align: center;
+    }
+    input[type="range"] {
+      width: 100px; /* Narrow slider */
+      margin: 10px;
+      padding: 5px;
+      font-size: 16px;
+    }
+    label {
+      font-size: 18px;
+      margin-right: 10px;
+    }
+  </style>
+</head>
+<body>
+  <div id="info">
+    <h2>Epsilon-Delta Definition of Limit</h2>
+    <p>Function: f(x) = (x² - 4)/(x - 2). Adjust ε (slide right to shrink, left to widen). Evaluate limit at x = 2.</p>
+    <p id="statusText">Set ε to begin.</p>
+  </div>
+  <div id="controls">
+    <label for="epsilonSlider">ε: <span id="epsilonValue">0.5</span></label>
+    <input type="range" id="epsilonSlider" min="0.1" max="2" step="0.01" value="1.6">
+  </div>
+  <script>
+    let epsilon = 0.5;
+    let delta = 0;
+    let epsilonSlider;
+    let epsilonValue;
+    let statusText;
+
+    function setup() {
+      createCanvas(windowWidth, windowHeight);
+      // Initialize DOM elements
+      epsilonSlider = select('#epsilonSlider');
+      epsilonValue = select('#epsilonValue');
+      statusText = select('#statusText');
+      // Bind event handler
+      epsilonSlider.input(updateEpsilon);
+      // Initial update
+      updateEpsilon();
+    }
+
+    function windowResized() {
+      resizeCanvas(windowWidth, windowHeight);
+    }
+
+    function updateEpsilon() {
+      let sliderValue = parseFloat(epsilonSlider.value());
+      epsilon = 2.1 - sliderValue; // Invert: right (2.0) -> ε=0.1, left (0.1) -> ε=2.0
+      epsilonValue.html(epsilon.toFixed(2));
+      // For f(x) = x + 2, |f(x) - 4| = |x - 2|, so delta = epsilon
+      delta = epsilon;
+      updateStatus();
+    }
+
+    function updateStatus() {
+      statusText.html(`Limit exists: δ = ${delta.toFixed(2)} keeps f(x) within ε = ${epsilon.toFixed(2)} of L=4 (except at x=2, where f(x) is undefined).`);
+    }
+
+    function draw() {
+      background(0);
+      drawGraph();
+    }
+
+    function drawGraph() {
+      let w = windowWidth;
+      let h = windowHeight;
+      let a = 2; // x = 2
+      let L = 4; // lim x->2 f(x) = 4
+      // Coordinate system: x from 0 to 4, y from 0 to 8
+      let xMin = 0, xMax = 4, yMin = 0, yMax = 8;
+      let margin = w * 0.1;
+      let graphW = w - 2 * margin;
+      let graphH = h * 0.6;
+      let x0 = margin;
+      let y0 = h - margin;
+      // Draw axes
+      stroke(255);
+      strokeWeight(2);
+      line(x0, y0, x0 + graphW, y0); // x-axis
+      line(x0, y0, x0, y0 - graphH); // y-axis
+      // Indicate y = 4 on y-axis
+      let y4 = y0 - ((4 - yMin) / (yMax - yMin)) * graphH;
+      stroke(255);
+      strokeWeight(2);
+      line(x0 - w * 0.01, y4, x0 + w * 0.01, y4); // Tick mark
+      fill(255);
+      noStroke();
+      textAlign(RIGHT, CENTER);
+      textSize(w * 0.015);
+      text("4", x0 - w * 0.015, y4); // Label "4"
+      // Draw function f(x) = x + 2, excluding x = 2
+      stroke(0, 255, 0);
+      noFill();
+      // Left segment: x from 0 to 1.99
+      beginShape();
+      for (let x = xMin; x < 1.99; x += 0.01) {
+        let y = x + 2;
+        let px = x0 + ((x - xMin) / (xMax - xMin)) * graphW;
+        let py = y0 - ((y - yMin) / (yMax - yMin)) * graphH;
+        vertex(px, py);
+      }
+      endShape();
+      // Right segment: x from 2.01 to 4
+      beginShape();
+      for (let x = 2.01; x <= xMax; x += 0.01) {
+        let y = x + 2;
+        let px = x0 + ((x - xMin) / (xMax - xMin)) * graphW;
+        let py = y0 - ((y - yMin) / (yMax - yMin)) * graphH;
+        vertex(px, py);
+      }
+      endShape();
+      // Draw point (a, L)
+      fill(255, 0, 0);
+      noStroke();
+      let pxA = x0 + ((a - xMin) / (xMax - xMin)) * graphW;
+      let pyL = y0 - ((L - yMin) / (yMax - yMin)) * graphH;
+      ellipse(pxA, pyL, w * 0.01, w * 0.01);
+      // Draw hole at x = 2
+      noFill();
+      stroke(255, 255, 0);
+      strokeWeight(2);
+      ellipse(pxA, pyL, w * 0.015, w * 0.015);
+      // Draw epsilon band
+      stroke(255, 255, 0);
+      strokeWeight(3);
+      let yTop = y0 - (((L + epsilon) - yMin) / (yMax - yMin)) * graphH;
+      let yBottom = y0 - (((L - epsilon) - yMin) / (yMax - yMin)) * graphH;
+      line(x0, yTop, x0 + graphW, yTop);
+      line(x0, yBottom, x0 + graphW, yBottom);
+      // Draw delta band
+      stroke(0, 255, 255);
+      let xLeft = x0 + ((a - delta - xMin) / (xMax - xMin)) * graphW;
+      let xRight = x0 + ((a + delta - xMin) / (xMax - xMin)) * graphW;
+      line(xLeft, y0, xLeft, y0 - graphH);
+      line(xRight, y0, xRight, y0 - graphH);
+      // Label
+      fill(255);
+      textAlign(CENTER);
+      textSize(w * 0.015);
+      text("f(x) = (x² - 4)/(x - 2)", w / 2, h * 0.15);
+    }
+  </script>
+</body>
+</html>

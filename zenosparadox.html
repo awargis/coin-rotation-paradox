@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Zeno's Paradox Animation</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.2/p5.min.js"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      background-color: #000000;
+      color: #ffffff;
+      overflow: hidden;
+    }
+    canvas {
+      display: block;
+    }
+    #info {
+      position: absolute;
+      top: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      text-align: center;
+      max-width: 90%;
+    }
+    #controls {
+      position: absolute;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      text-align: center;
+    }
+    button {
+      padding: 15px 30px;
+      margin: 10px;
+      font-size: 18px;
+      cursor: pointer;
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+      border-radius: 5px;
+    }
+    button:hover {
+      background-color: #45a049;
+    }
+  </style>
+</head>
+<body>
+  <div id="info">
+    <h2>Zeno's Paradox: The Dichotomy</h2>
+    <p id="stepText">Click "Next Step" to move the character halfway toward the end of the room.</p>
+    <p id="distanceText">Distance to end: 1000 pixels</p>
+  </div>
+  <div id="controls">
+    <button id="nextButton">Next Step</button>
+    <button id="resetButton">Reset</button>
+  </div>
+  <script>
+    let x; // Current position of the character
+    let roomWidth; // Total width of the room
+    let startX; // Starting x-coordinate
+    let endX; // Ending x-coordinate
+    let targetX; // Target position for animation
+    let stepCount = 0; // Current step number
+    let positions = []; // Array to store visited positions
+    let distances = []; // Array to store remaining distances
+    let animating = false; // Animation state
+    let animationStartX; // Start position for animation
+    let animationProgress = 0; // Animation progress (0 to 1)
+    const animationSpeed = 0.05; // Speed of animation
+    // Color array for lines and points
+    const colors = [
+      [255, 0, 0],   // Red
+      [255, 165, 0], // Orange
+      [255, 255, 0], // Yellow
+      [0, 255, 0],   // Green
+      [0, 255, 255], // Cyan
+      [0, 0, 255],   // Blue
+      [128, 0, 128], // Purple
+      [255, 0, 255], // Magenta
+      [128, 128, 128], // Gray
+      [255, 192, 203] // Pink
+    ];
+
+    function setup() {
+      createCanvas(windowWidth, windowHeight);
+      // Calculate room dimensions (80% of window width)
+      roomWidth = windowWidth * 0.8;
+      startX = windowWidth * 0.1; // 10% margin on left
+      endX = startX + roomWidth;
+      // Initialize positions
+      x = startX;
+      targetX = startX;
+      animationStartX = startX;
+      positions = [startX];
+      distances = [roomWidth];
+      select('#nextButton').mousePressed(nextStep);
+      select('#resetButton').mousePressed(reset);
+      updateText();
+    }
+
+    function windowResized() {
+      resizeCanvas(windowWidth, windowHeight);
+      // Recalculate room dimensions
+      roomWidth = windowWidth * 0.8;
+      startX = windowWidth * 0.1;
+      endX = startX + roomWidth;
+      // Adjust positions proportionally
+      let oldRoomWidth = distances[0];
+      for (let i = 0; i < positions.length; i++) {
+        let progress = (positions[i] - startX) / oldRoomWidth;
+        positions[i] = startX + progress * roomWidth;
+      }
+      distances = [roomWidth];
+      for (let i = 1; i <= stepCount; i++) {
+        distances[i] = distances[i - 1] / 2;
+      }
+      x = positions[positions.length - 1];
+      targetX = x;
+      animationStartX = x;
+      updateText();
+    }
+
+    function draw() {
+      background(0);
+      // Draw the room (a line)
+      stroke(255);
+      strokeWeight(4);
+      let yPos = windowHeight * 0.5; // Center vertically
+      line(startX, yPos, endX, yPos);
+      // Draw start and end labels
+      fill(255);
+      textAlign(CENTER);
+      textSize(windowWidth * 0.015);
+      text("Start", startX, yPos + windowHeight * 0.05);
+      text("End", endX, yPos + windowHeight * 0.05);
+      // Draw line markers between visited points
+      for (let i = 0; i < positions.length - 1; i++) {
+        stroke(colors[i % colors.length]);
+        strokeWeight(windowWidth * 0.005);
+        line(positions[i], yPos, positions[i + 1], yPos);
+      }
+      // Draw visited points
+      for (let i = 0; i < positions.length; i++) {
+        fill(colors[i % colors.length]);
+        noStroke();
+        ellipse(positions[i], yPos, windowWidth * 0.01, windowWidth * 0.01);
+      }
+      // Draw the character
+      fill(0, 100, 255);
+      noStroke();
+      let currentX = x;
+      if (animating) {
+        animationProgress += animationSpeed;
+        if (animationProgress >= 1) {
+          animationProgress = 1;
+          animating = false;
+          x = targetX;
+        }
+        currentX = lerp(animationStartX, targetX, animationProgress);
+      }
+      ellipse(currentX, yPos, windowWidth * 0.015, windowWidth * 0.015);
+    }
+
+    function nextStep() {
+      if (!animating) {
+        if (stepCount === 0) {
+          distances[0] = roomWidth / 2;
+        } else {
+          distances[stepCount] = distances[stepCount - 1] / 2;
+        }
+        targetX = startX + (roomWidth - distances[stepCount]);
+        positions.push(targetX);
+        animationStartX = x;
+        animationProgress = 0;
+        animating = true;
+        stepCount++;
+        updateText();
+      }
+    }
+
+    function reset() {
+      x = startX;
+      targetX = startX;
+      stepCount = 0;
+      positions = [startX];
+      distances = [roomWidth];
+      animating = false;
+      animationProgress = 0;
+      updateText();
+    }
+
+    function updateText() {
+      let stepText = select('#stepText');
+      let distanceText = select('#distanceText');
+      if (stepCount === 0) {
+        stepText.html('Click "Next Step" to move the character halfway toward the end of the room.');
+        distanceText.html(`Distance to end: ${roomWidth.toFixed(0)} pixels`);
+      } else {
+        let distance = distances[stepCount - 1];
+        stepText.html(`Step ${stepCount}: Moved to halfway of the remaining distance (1/${Math.pow(2, stepCount)} of total).`);
+        distanceText.html(`Distance to end: ${distance.toFixed(2)} pixels`);
+      }
+    }
+  </script>
+</body>
+</html>
