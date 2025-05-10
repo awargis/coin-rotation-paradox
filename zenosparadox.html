@@ -1,207 +1,272 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>Zeno's Paradox Animation</title>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.2/p5.min.js"></script>
+  <meta charset="UTF-8" />
+  <title>Zeno's Paradox: Classroom Edition</title>
   <style>
     body {
-      font-family: Arial, sans-serif;
       margin: 0;
-      background-color: #000000;
-      color: #ffffff;
+      font-family: 'Segoe UI', sans-serif;
+      background-color: #000;
+      color: #fff;
       overflow: hidden;
-    }
-    canvas {
-      display: block;
     }
     #info {
       position: absolute;
-      top: 20px;
-      left: 50%;
-      transform: translateX(-50%);
+      top: 40px;
+      width: 100%;
       text-align: center;
-      max-width: 90%;
+      padding: 0 20px;
+      z-index: 10;
+      font-size: 1.2em;
+      text-shadow: 0 0 8px #000;
+    }
+    #info h2 {
+      font-size: 2em;
+      margin-bottom: 10px;
+      color: #00ffff;
     }
     #controls {
       position: absolute;
-      bottom: 20px;
-      left: 50%;
-      transform: translateX(-50%);
-      text-align: center;
+      bottom: 30px;
+      width: 100%;
+      display: flex;
+      justify-content: center;
+      gap: 20px;
+      z-index: 10;
     }
     button {
-      padding: 15px 30px;
-      margin: 10px;
-      font-size: 18px;
-      cursor: pointer;
-      background-color: #4CAF50;
-      color: white;
+      padding: 14px 28px;
+      font-size: 1.1em;
       border: none;
-      border-radius: 5px;
+      border-radius: 8px;
+      cursor: pointer;
+      background: rgba(0, 255, 200, 0.2);
+      color: #00ffff;
+      border: 1px solid #00ffff;
+      transition: background 0.3s;
     }
     button:hover {
-      background-color: #45a049;
+      background: rgba(0, 255, 200, 0.4);
+    }
+    #progressContainer {
+      position: absolute;
+      top: 120px;
+      width: 60%;
+      left: 20%;
+      height: 16px;
+      background-color: rgba(255, 255, 255, 0.1);
+      border-radius: 10px;
+      overflow: hidden;
+      z-index: 10;
+      box-shadow: 0 0 10px #00ffff;
+    }
+    #progressBar {
+      height: 100%;
+      width: 100%;
+      background-color: #00ffff;
+      transition: width 0.3s ease;
+    }
+    .character {
+      position: absolute;
+      top: 30%;
+      width: 70px;
+      height: 70px;
+      object-fit: contain;
+      z-index: 5;
+      filter: drop-shadow(0 0 12px #00ffff);
+      transition: transform 0.3s;
+    }
+    .character:hover {
+      transform: scale(1.1);
+    }
+    #startImg {
+      left: 4%;
+    }
+    #endImg {
+      right: 4%;
     }
   </style>
 </head>
 <body>
-  <div id="info">
-    <h2>Zeno's Paradox: The Dichotomy</h2>
-    <p id="stepText">Click "Next Step" to move the character halfway toward the end of the room.</p>
-    <p id="distanceText">Distance to end: 1000 pixels</p>
-  </div>
-  <div id="controls">
-    <button id="nextButton">Next Step</button>
-    <button id="resetButton">Reset</button>
-  </div>
-  <script>
-    let x; // Current position of the character
-    let roomWidth; // Total width of the room
-    let startX; // Starting x-coordinate
-    let endX; // Ending x-coordinate
-    let targetX; // Target position for animation
-    let stepCount = 0; // Current step number
-    let positions = []; // Array to store visited positions
-    let distances = []; // Array to store remaining distances
-    let animating = false; // Animation state
-    let animationStartX; // Start position for animation
-    let animationProgress = 0; // Animation progress (0 to 1)
-    const animationSpeed = 0.05; // Speed of animation
-    // Color array for lines and points
-    const colors = [
-      [255, 0, 0],   // Red
-      [255, 165, 0], // Orange
-      [255, 255, 0], // Yellow
-      [0, 255, 0],   // Green
-      [0, 255, 255], // Cyan
-      [0, 0, 255],   // Blue
-      [128, 0, 128], // Purple
-      [255, 0, 255], // Magenta
-      [128, 128, 128], // Gray
-      [255, 192, 203] // Pink
-    ];
 
-    function setup() {
-      createCanvas(windowWidth, windowHeight);
-      // Calculate room dimensions (80% of window width)
-      roomWidth = windowWidth * 0.8;
-      startX = windowWidth * 0.1; // 10% margin on left
-      endX = startX + roomWidth;
-      // Initialize positions
-      x = startX;
-      targetX = startX;
-      animationStartX = startX;
-      positions = [startX];
-      distances = [roomWidth];
-      select('#nextButton').mousePressed(nextStep);
-      select('#resetButton').mousePressed(reset);
-      updateText();
+<!-- Info Text -->
+<div id="info">
+  <h2>Zeno's Paradox: Coming coming but Nerever coming!</h2>
+  <p id="stepText">Click "Next Step" to move the character halfway toward the other side.</p>
+  <p id="distanceText">Distance to end: 1000 pixels</p>
+  <p id="totalSteps">Total steps: 0</p>
+  <p id="remainingDistance">Remaining distance: 1000 pixels</p>
+</div>
+
+<!-- Cartoon Characters -->
+<img id="startImg" class="character" src="https://cdn-icons-png.flaticon.com/512/3048/3048121.png" alt="Funny Boy">
+<img id="endImg" class="character" src="https://cdn-icons-png.flaticon.com/512/3048/3048122.png" alt="Funny Girl">
+
+<!-- Progress Bar -->
+<div id="progressContainer">
+  <div id="progressBar"></div>
+</div>
+
+<!-- Controls -->
+<div id="controls">
+  <button id="nextButton">Next Step</button>
+  <button id="resetButton">Reset</button>
+</div>
+
+<!-- Optional Background Music -->
+<audio src="https://cdn.pixabay.com/download/audio/2022/10/04/audio_d3c24b72fd.mp3?filename=dreamy-ambient-ambient-118235.mp3" autoplay loop></audio>
+
+<!-- P5.js Animation -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.2/p5.min.js"></script>
+<script>
+let startX, endX, roomWidth;
+let x, targetX;
+let animationStartX = 0;
+let positions = [];
+let distances = [];
+let stepCount = 0;
+let animating = false;
+let animationProgress = 0;
+let animationSpeed = 0.02;
+let stars = [];
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  for (let i = 0; i < 150; i++) {
+    stars.push({
+      x: random(width),
+      y: random(height),
+      size: random(1, 3),
+      speed: random(0.2, 1),
+    });
+  }
+  initRoom();
+  document.getElementById('nextButton').addEventListener('click', nextStep);
+  document.getElementById('resetButton').addEventListener('click', reset);
+  window.addEventListener('resize', handleResize);
+  updateText();
+}
+
+function initRoom() {
+  roomWidth = width * 0.8;
+  startX = width * 0.1;
+  endX = startX + roomWidth;
+  x = targetX = startX;
+  positions = [startX];
+  distances = [roomWidth];
+  stepCount = 0;
+  animating = false;
+  animationProgress = 0;
+  updateText();
+}
+
+function draw() {
+  background(10, 10, 30);
+
+  // Star field background
+  noStroke();
+  for (let s of stars) {
+    fill(255, 255, 255, 150);
+    circle(s.x, s.y, s.size);
+    s.y += s.speed;
+    if (s.y > height) {
+      s.y = 0;
+      s.x = random(width);
     }
+  }
 
-    function windowResized() {
-      resizeCanvas(windowWidth, windowHeight);
-      // Recalculate room dimensions
-      roomWidth = windowWidth * 0.8;
-      startX = windowWidth * 0.1;
-      endX = startX + roomWidth;
-      // Adjust positions proportionally
-      let oldRoomWidth = distances[0];
-      for (let i = 0; i < positions.length; i++) {
-        let progress = (positions[i] - startX) / oldRoomWidth;
-        positions[i] = startX + progress * roomWidth;
-      }
-      distances = [roomWidth];
-      for (let i = 1; i <= stepCount; i++) {
-        distances[i] = distances[i - 1] / 2;
-      }
-      x = positions[positions.length - 1];
-      targetX = x;
-      animationStartX = x;
-      updateText();
-    }
+  const yPos = height * 0.5;
 
-    function draw() {
-      background(0);
-      // Draw the room (a line)
-      stroke(255);
-      strokeWeight(4);
-      let yPos = windowHeight * 0.5; // Center vertically
-      line(startX, yPos, endX, yPos);
-      // Draw start and end labels
-      fill(255);
-      textAlign(CENTER);
-      textSize(windowWidth * 0.015);
-      text("Start", startX, yPos + windowHeight * 0.05);
-      text("End", endX, yPos + windowHeight * 0.05);
-      // Draw line markers between visited points
-      for (let i = 0; i < positions.length - 1; i++) {
-        stroke(colors[i % colors.length]);
-        strokeWeight(windowWidth * 0.005);
-        line(positions[i], yPos, positions[i + 1], yPos);
-      }
-      // Draw visited points
-      for (let i = 0; i < positions.length; i++) {
-        fill(colors[i % colors.length]);
-        noStroke();
-        ellipse(positions[i], yPos, windowWidth * 0.01, windowWidth * 0.01);
-      }
-      // Draw the character
-      fill(0, 100, 255);
-      noStroke();
-      let currentX = x;
-      if (animating) {
-        animationProgress += animationSpeed;
-        if (animationProgress >= 1) {
-          animationProgress = 1;
-          animating = false;
-          x = targetX;
-        }
-        currentX = lerp(animationStartX, targetX, animationProgress);
-      }
-      ellipse(currentX, yPos, windowWidth * 0.015, windowWidth * 0.015);
-    }
+  // Glowing line path
+  stroke(0, 255, 255, 150);
+  strokeWeight(5);
+  line(startX, yPos, endX, yPos);
 
-    function nextStep() {
-      if (!animating) {
-        if (stepCount === 0) {
-          distances[0] = roomWidth / 2;
-        } else {
-          distances[stepCount] = distances[stepCount - 1] / 2;
-        }
-        targetX = startX + (roomWidth - distances[stepCount]);
-        positions.push(targetX);
-        animationStartX = x;
-        animationProgress = 0;
-        animating = true;
-        stepCount++;
-        updateText();
-      }
-    }
+  // Trail segments
+  for (let i = 0; i < positions.length - 1; i++) {
+    stroke(0, 255, 200, 80);
+    strokeWeight(width * 0.004);
+    line(positions[i], yPos, positions[i + 1], yPos);
+  }
 
-    function reset() {
-      x = startX;
-      targetX = startX;
-      stepCount = 0;
-      positions = [startX];
-      distances = [roomWidth];
+  // Trail dots
+  for (let i = 0; i < positions.length; i++) {
+    fill(0, 255, 200);
+    noStroke();
+    ellipse(positions[i], yPos, width * 0.012);
+  }
+
+  // Animate movement
+  if (animating) {
+    animationProgress += animationSpeed;
+    if (animationProgress >= 1) {
+      animationProgress = 1;
+      x = targetX;
       animating = false;
-      animationProgress = 0;
-      updateText();
+    } else {
+      x = lerp(animationStartX, targetX, animationProgress);
     }
+  }
 
-    function updateText() {
-      let stepText = select('#stepText');
-      let distanceText = select('#distanceText');
-      if (stepCount === 0) {
-        stepText.html('Click "Next Step" to move the character halfway toward the end of the room.');
-        distanceText.html(`Distance to end: ${roomWidth.toFixed(0)} pixels`);
-      } else {
-        let distance = distances[stepCount - 1];
-        stepText.html(`Step ${stepCount}: Moved to halfway of the remaining distance (1/${Math.pow(2, stepCount)} of total).`);
-        distanceText.html(`Distance to end: ${distance.toFixed(2)} pixels`);
-      }
-    }
-  </script>
+  // Glowing current position ball
+  noStroke();
+  for (let r = 20; r > 0; r -= 5) {
+    fill(255, 80, 80, 20);
+    ellipse(x, yPos, width * 0.024 + r);
+  }
+  fill(255, 80, 80);
+  ellipse(x, yPos, width * 0.024);
+
+  // Progress bar update
+  const remaining = (stepCount > 0) ? distances[stepCount - 1] : roomWidth;
+  const progressPercent = remaining / roomWidth;
+  document.getElementById('progressBar').style.width = (progressPercent * 100) + '%';
+
+  updateText();
+}
+
+function nextStep() {
+  if (animating) return;
+  let newDist = stepCount === 0 ? roomWidth / 2 : distances[stepCount - 1] / 2;
+  animationStartX = x;
+  targetX = startX + (roomWidth - newDist);
+  animationProgress = 0;
+  animating = true;
+  positions.push(targetX);
+  distances.push(newDist);
+  stepCount++;
+}
+
+function reset() {
+  initRoom();
+}
+
+function handleResize() {
+  const oldRoomWidth = roomWidth;
+  resizeCanvas(windowWidth, windowHeight);
+  roomWidth = width * 0.8;
+  startX = width * 0.1;
+  endX = startX + roomWidth;
+  for (let i = 0; i < positions.length; i++) {
+    const progress = (positions[i] - (width - oldRoomWidth) / 2) / oldRoomWidth;
+    positions[i] = startX + progress * roomWidth;
+  }
+  x = positions[positions.length - 1];
+  targetX = x;
+  updateText();
+}
+
+function updateText() {
+  const dist = (stepCount === 0) ? roomWidth : distances[stepCount - 1];
+  document.getElementById('totalSteps').innerText = `Total steps: ${stepCount}`;
+  document.getElementById('remainingDistance').innerText = `Remaining distance: ${dist.toFixed(2)} pixels`;
+  document.getElementById('stepText').innerHTML = (stepCount === 0)
+    ? 'Click "Next Step" to move the character halfway toward the other side.'
+    : `Step ${stepCount}: Moved halfway of remaining distance (${Math.pow(0.5, stepCount)} of total).`;
+  document.getElementById('distanceText').innerHTML = `Remaining distance: ${dist.toFixed(2)} pixels`;
+}
+</script>
+
 </body>
 </html>
