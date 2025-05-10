@@ -2,148 +2,966 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Sine Wave from Unit Circle (Interactive)</title>
+  <title>Cosmic Sine Wave Explorer</title>
   <style>
-    html, body {
+    :root {
+      --primary-color: #4fc3f7;
+      --secondary-color: #ff4081;
+      --highlight-color: #ffeb3b;
+      --bg-color: #0a0a1a;
+      --text-color: #e0e0e0;
+      --axis-color: #3a3a5a;
+    }
+
+    body {
       margin: 0;
       padding: 0;
-      background: black;
+      background: var(--bg-color);
       overflow: hidden;
-      font-family: 'Segoe UI', sans-serif;
-      color: #0ff;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      color: var(--text-color);
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
     }
 
-    #angleSlider {
-      position: absolute;
-      bottom: 20px;
-      left: 50%;
-      transform: translateX(-50%);
-      width: 80%;
+    #header {
+      padding: 15px;
+      background: linear-gradient(to right, rgba(10,10,30,0.8), rgba(20,20,60,0.8));
+      text-align: center;
+      border-bottom: 1px solid var(--primary-color);
+      position: relative;
+      z-index: 10;
     }
 
-    #angleLabel {
-      position: absolute;
-      top: 20px;
-      left: 50%;
-      transform: translateX(-50%);
-      font-size: 20px;
-      color: #0ff;
-      text-shadow: 0 0 5px #0ff;
+    h1 {
+      margin: 0;
+      color: var(--primary-color);
+      text-shadow: 0 0 15px rgba(79, 195, 247, 0.7);
+      font-size: 2.2rem;
+      letter-spacing: 1px;
+    }
+
+    .formula {
+      font-family: 'Times New Roman', serif;
+      font-style: italic;
+      color: var(--highlight-color);
+      text-align: center;
+      margin: 10px 0;
+      font-size: 1.4rem;
+      text-shadow: 0 0 10px rgba(255, 235, 59, 0.5);
+    }
+
+    #controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 20px;
+      padding: 15px;
+      background: rgba(10, 10, 30, 0.7);
+      justify-content: center;
+      align-items: center;
+      position: relative;
+      z-index: 10;
+      border-bottom: 1px solid rgba(79, 195, 247, 0.3);
+    }
+
+    .control-group {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-width: 200px;
+    }
+
+    label {
+      margin-bottom: 5px;
+      font-weight: bold;
+      color: var(--primary-color);
+      text-shadow: 0 0 5px rgba(79, 195, 247, 0.5);
+    }
+
+    input[type="range"] {
+      width: 200px;
+      background: var(--axis-color);
+      height: 8px;
+      border-radius: 4px;
+      -webkit-appearance: none;
+      outline: none;
+    }
+
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: var(--primary-color);
+      cursor: pointer;
+      box-shadow: 0 0 10px rgba(79, 195, 247, 0.8);
+      transition: transform 0.2s;
+    }
+
+    input[type="range"]::-webkit-slider-thumb:hover {
+      transform: scale(1.2);
+      background: var(--highlight-color);
+    }
+
+    button {
+      background: linear-gradient(135deg, var(--primary-color), #3a8bff);
+      color: #111;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 25px;
+      cursor: pointer;
+      font-weight: bold;
+      transition: all 0.3s;
+      margin: 0 5px;
+      box-shadow: 0 0 15px rgba(79, 195, 247, 0.5);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    button:hover {
+      background: linear-gradient(135deg, var(--secondary-color), #ff6b9f);
+      transform: translateY(-2px);
+      box-shadow: 0 0 20px rgba(255, 64, 129, 0.7);
+    }
+
+    button:active {
+      transform: translateY(1px);
+    }
+
+    #value-display {
+      display: flex;
+      justify-content: space-around;
+      padding: 15px;
+      background: rgba(20, 20, 60, 0.5);
+      font-family: 'Courier New', monospace;
+      position: relative;
+      z-index: 10;
+      border-bottom: 1px solid rgba(79, 195, 247, 0.2);
+    }
+
+    .value-box {
+      background: rgba(30, 30, 70, 0.6);
+      padding: 10px 20px;
+      border-radius: 8px;
+      border-left: 3px solid var(--primary-color);
+      box-shadow: 0 0 10px rgba(79, 195, 247, 0.3);
+      transition: all 0.3s;
+    }
+
+    .value-box:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 0 15px rgba(79, 195, 247, 0.5);
+    }
+
+    #canvas-container {
+      flex: 1;
+      position: relative;
+      overflow: hidden;
     }
 
     canvas {
       display: block;
+      position: absolute;
+      top: 0;
+      left: 0;
+    }
+
+    #info-panel {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      background: rgba(10, 10, 30, 0.85);
+      padding: 20px;
+      border-radius: 12px;
+      border: 1px solid var(--primary-color);
+      max-width: 300px;
+      font-size: 14px;
+      line-height: 1.6;
+      box-shadow: 0 0 20px rgba(79, 195, 247, 0.4);
+      backdrop-filter: blur(5px);
+      transform: translateY(-20px);
+      opacity: 0;
+      transition: all 0.5s ease;
+      z-index: 20;
+    }
+
+    #info-panel.visible {
+      transform: translateY(0);
+      opacity: 1;
+    }
+
+    #info-panel h3 {
+      margin-top: 0;
+      color: var(--primary-color);
+      border-bottom: 1px solid var(--primary-color);
+      padding-bottom: 8px;
+    }
+
+    #info-panel ul {
+      padding-left: 20px;
+    }
+
+    #info-panel li {
+      margin-bottom: 10px;
+      position: relative;
+    }
+
+    #info-panel li::before {
+      content: "•";
+      color: var(--primary-color);
+      position: absolute;
+      left: -15px;
+    }
+
+    .highlight {
+      color: var(--highlight-color);
+      font-weight: bold;
+    }
+
+    .toggle-btn {
+      position: absolute;
+      top: 20px;
+      left: 20px;
+      z-index: 30;
+      background: rgba(20, 20, 60, 0.7);
+      border: 1px solid var(--primary-color);
+      color: var(--primary-color);
+      border-radius: 50%;
+      width: 40px;
+      height: 40px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      cursor: pointer;
+      transition: all 0.3s;
+      box-shadow: 0 0 10px rgba(79, 195, 247, 0.3);
+    }
+
+    .toggle-btn:hover {
+      background: var(--primary-color);
+      color: #111;
+      transform: scale(1.1);
+    }
+
+    .star {
+      position: absolute;
+      background: white;
+      border-radius: 50%;
+      animation: twinkle 3s infinite alternate;
+    }
+
+    @keyframes twinkle {
+      0% { opacity: 0.3; transform: scale(0.8); }
+      100% { opacity: 1; transform: scale(1.2); }
+    }
+
+    .shooting-star {
+      position: absolute;
+      width: 4px;
+      height: 4px;
+      background: white;
+      border-radius: 50%;
+      animation: shoot 4s linear infinite;
+      opacity: 0;
+      filter: blur(1px);
+    }
+
+    @keyframes shoot {
+      0% { transform: translate(0, 0) scale(0.5); opacity: 0; }
+      10% { opacity: 1; transform: translate(0, 0) scale(1); }
+      100% { transform: translate(800px, 400px) scale(0.2); opacity: 0; }
+    }
+
+    .nebula {
+      position: absolute;
+      border-radius: 50%;
+      filter: blur(40px);
+      opacity: 0.2;
+      mix-blend-mode: screen;
+    }
+
+    .pulse {
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0% { opacity: 0.7; transform: scale(0.98); }
+      50% { opacity: 1; transform: scale(1.02); }
+      100% { opacity: 0.7; transform: scale(0.98); }
+    }
+
+    .cosmic-ray {
+      position: absolute;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, var(--primary-color), transparent);
+      transform-origin: left center;
+      filter: blur(1px);
+      opacity: 0;
+    }
+
+    .particle {
+      position: absolute;
+      border-radius: 50%;
+      pointer-events: none;
+    }
+
+    /* Quote display styles */
+    #quote-display {
+      position: absolute;
+      bottom: 30px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(20, 20, 60, 0.7);
+      padding: 15px 25px;
+      border-radius: 30px;
+      border: 1px solid var(--primary-color);
+      max-width: 70%;
+      text-align: center;
+      box-shadow: 0 0 20px rgba(79, 195, 247, 0.4);
+      backdrop-filter: blur(5px);
+      z-index: 25;
+      transition: all 0.5s ease;
+    }
+
+    #quote-text {
+      margin: 0;
+      font-size: 1.2rem;
+      color: var(--highlight-color);
+      font-style: italic;
+      transition: opacity 0.5s ease;
+    }
+
+    #quote-author {
+      margin: 5px 0 0;
+      font-size: 0.9rem;
+      color: var(--primary-color);
+      transition: opacity 0.5s ease;
+    }
+
+    .pulse-quote {
+      animation: pulse-quote 2s infinite;
+    }
+
+    @keyframes pulse-quote {
+      0% { transform: translateX(-50%) scale(1); box-shadow: 0 0 20px rgba(79, 195, 247, 0.4); }
+      50% { transform: translateX(-50%) scale(1.03); box-shadow: 0 0 30px rgba(79, 195, 247, 0.7); }
+      100% { transform: translateX(-50%) scale(1); box-shadow: 0 0 20px rgba(79, 195, 247, 0.4); }
     }
   </style>
 </head>
 <body>
+  <div id="header">
+    <h1>COSMIC SINE WAVE EXPLORER</h1>
+    <div class="formula pulse">y = A × sin(ωx + φ)</div>
+  </div>
 
-<div id="angleLabel">Angle: 0.00 radians</div>
-<input type="range" id="angleSlider" min="0" max="628" value="0" step="1">
-<canvas id="canvas"></canvas>
+  <div id="controls">
+    <div class="control-group">
+      <label for="angleSlider">ANGLE (θ):</label>
+      <input type="range" id="angleSlider" min="0" max="628" value="0" step="1">
+    </div>
 
-<script>
-  const canvas = document.getElementById('canvas');
-  const ctx = canvas.getContext('2d');
-  const slider = document.getElementById('angleSlider');
-  const angleLabel = document.getElementById('angleLabel');
+    <div class="control-group">
+      <label for="amplitudeSlider">AMPLITUDE (A):</label>
+      <input type="range" id="amplitudeSlider" min="10" max="200" value="100" step="1">
+    </div>
 
-  // Resize canvas to fit screen
-  function resizeCanvas() {
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
-  }
-  window.addEventListener('resize', resizeCanvas);
-  resizeCanvas();
+    <div class="control-group">
+      <label for="frequencySlider">FREQUENCY (ω):</label>
+      <input type="range" id="frequencySlider" min="1" max="50" value="10" step="1">
+    </div>
 
-  const radius = 100;
-  const centerX = 150;
-  const centerY = canvas.height / 2;
+    <div class="control-group">
+      <label for="phaseSlider">PHASE SHIFT (φ):</label>
+      <input type="range" id="phaseSlider" min="0" max="628" value="0" step="1">
+    </div>
 
-  function draw(angle) {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    <div class="control-group">
+      <button id="animateBtn">▶ ANIMATE</button>
+      <button id="resetBtn">RESET</button>
+    </div>
+  </div>
 
-    // Draw axes
-    ctx.strokeStyle = '#555';
-    ctx.lineWidth = 1;
+  <div id="value-display">
+    <div class="value-box">ANGLE: <span id="angleValue">0.00</span> RAD</div>
+    <div class="value-box">AMPLITUDE: <span id="amplitudeValue">100</span></div>
+    <div class="value-box">FREQUENCY: <span id="frequencyValue">1.0</span></div>
+    <div class="value-box">PHASE: <span id="phaseValue">0.00</span> RAD</div>
+  </div>
 
-    // X axis
-    ctx.beginPath();
-    ctx.moveTo(0, centerY);
-    ctx.lineTo(canvas.width, centerY);
-    ctx.stroke();
+  <div id="canvas-container">
+    <button class="toggle-btn" id="infoToggle">ℹ</button>
+    <canvas id="mainCanvas"></canvas>
+    <canvas id="effectCanvas"></canvas>
+    
+    <div id="quote-display">
+      <p id="quote-text">"Life is like a sine wave - full of ups and downs"</p>
+      <p id="quote-author">- Mathematical Wisdom</p>
+    </div>
+    
+    <div id="info-panel">
+      <h3>SINE WAVE IN SPACE</h3>
+      <ul>
+        <li><span class="highlight">Amplitude (A)</span>: Wave height from center</li>
+        <li><span class="highlight">Frequency (ω)</span>: Waves per unit distance</li>
+        <li><span class="highlight">Phase (φ)</span>: Horizontal shift of wave</li>
+        <li>The <span class="highlight">unit circle</span> connects angles to sine values</li>
+        <li>Watch as the wave generates from circular motion</li>
+      </ul>
+      <p style="margin-top: 15px; font-style: italic; color: var(--primary-color);">
+        Tip: Adjust sliders during animation for cool effects!
+      </p>
+    </div>
+  </div>
 
-    // Y axis at unit circle center
-    ctx.beginPath();
-    ctx.moveTo(centerX, 0);
-    ctx.lineTo(centerX, canvas.height);
-    ctx.stroke();
+  <script>
+    // DOM elements
+    const mainCanvas = document.getElementById('mainCanvas');
+    const effectCanvas = document.getElementById('effectCanvas');
+    const mainCtx = mainCanvas.getContext('2d');
+    const effectCtx = effectCanvas.getContext('2d');
+    const angleSlider = document.getElementById('angleSlider');
+    const amplitudeSlider = document.getElementById('amplitudeSlider');
+    const frequencySlider = document.getElementById('frequencySlider');
+    const phaseSlider = document.getElementById('phaseSlider');
+    const animateBtn = document.getElementById('animateBtn');
+    const resetBtn = document.getElementById('resetBtn');
+    const infoToggle = document.getElementById('infoToggle');
+    const infoPanel = document.getElementById('info-panel');
+    const quoteText = document.getElementById('quote-text');
+    const quoteAuthor = document.getElementById('quote-author');
+    const quoteDisplay = document.getElementById('quote-display');
+    
+    // Value displays
+    const angleValue = document.getElementById('angleValue');
+    const amplitudeValue = document.getElementById('amplitudeValue');
+    const frequencyValue = document.getElementById('frequencyValue');
+    const phaseValue = document.getElementById('phaseValue');
 
-    // Draw unit circle
-    ctx.strokeStyle = '#0ff';
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
-    ctx.shadowColor = '#0ff';
-    ctx.shadowBlur = 10;
-    ctx.stroke();
-    ctx.shadowBlur = 0;
+    // Animation control
+    let isAnimating = false;
+    let animationId = null;
+    let lastTimestamp = 0;
+    const animationSpeed = 0.05; // radians per frame
 
-    // Moving point on circle
-    const angleRad = angle;
-    const circleX = centerX + radius * Math.cos(angleRad);
-    const circleY = centerY - radius * Math.sin(angleRad);
+    // Parameters
+    let angle = 0;
+    let amplitude = 100;
+    let frequency = 10;
+    let phase = 0;
 
-    // Draw point on circle
-    ctx.fillStyle = '#f00';
-    ctx.beginPath();
-    ctx.arc(circleX, circleY, 6, 0, Math.PI * 2);
-    ctx.shadowColor = '#f00';
-    ctx.shadowBlur = 20;
-    ctx.fill();
-    ctx.shadowBlur = 0;
+    // Cosmic effects
+    let stars = [];
+    let nebulas = [];
+    let particles = [];
+    let cosmicRays = [];
 
-    // Sine graph point
-    const graphX = centerX + angleRad * 100;
-    const graphY = centerY - radius * Math.sin(angleRad);
+    // Quotes system
+    const quotes = [
+      { text: "Life is like a sine wave - full of ups and downs", author: "Mathematical Wisdom" },
+      { text: "The lows make the highs meaningful", author: "Trigonometry Proverb" },
+      { text: "Every cycle brings new opportunities", author: "Wave Theory" },
+      { text: "Smooth curves make for interesting journeys", author: "Calculus Saying" },
+      { text: "Amplitude measures the depth of experience", author: "Physics Philosophy" },
+      { text: "Frequency determines how often we grow", author: "Engineering Insight" }
+    ];
+    let currentQuoteIndex = 0;
+    let quoteChangeInterval;
 
-    // Draw line from circle to sine
-    ctx.strokeStyle = '#888';
-    ctx.beginPath();
-    ctx.moveTo(circleX, circleY);
-    ctx.lineTo(graphX, graphY);
-    ctx.stroke();
+    // Colors
+    const colors = {
+      axis: 'rgba(90, 90, 150, 0.8)',
+      circle: 'rgba(79, 195, 247, 0.8)',
+      point: 'rgba(255, 64, 129, 0.9)',
+      sineWave: 'rgba(79, 195, 247, 0.8)',
+      projectionLine: 'rgba(150, 150, 255, 0.4)',
+      sinePoint: 'rgba(255, 235, 59, 0.9)',
+      grid: 'rgba(50, 50, 100, 0.3)',
+      text: 'rgba(224, 224, 224, 0.9)',
+      cosmicRay: 'rgba(100, 200, 255, 0.7)'
+    };
 
-    // Sine dot
-    ctx.fillStyle = '#0ff';
-    ctx.beginPath();
-    ctx.arc(graphX, graphY, 5, 0, Math.PI * 2);
-    ctx.shadowColor = '#0ff';
-    ctx.shadowBlur = 15;
-    ctx.fill();
-    ctx.shadowBlur = 0;
-
-    // Draw sine wave
-    ctx.strokeStyle = '#0ff';
-    ctx.beginPath();
-    for (let a = 0; a <= angleRad; a += 0.01) {
-      const x = centerX + a * 100;
-      const y = centerY - radius * Math.sin(a);
-      if (a === 0) ctx.moveTo(x, y);
-      else ctx.lineTo(x, y);
+    // Resize canvases
+    function resizeCanvases() {
+      const width = document.getElementById('canvas-container').clientWidth;
+      const height = document.getElementById('canvas-container').clientHeight;
+      
+      mainCanvas.width = width;
+      mainCanvas.height = height;
+      effectCanvas.width = width;
+      effectCanvas.height = height;
     }
-    ctx.stroke();
-  }
+    
+    window.addEventListener('resize', resizeCanvases);
+    resizeCanvases();
 
-  // Initial draw
-  draw(0);
+    // Create starfield
+    function createStarfield() {
+      stars = [];
+      for (let i = 0; i < 200; i++) {
+        stars.push({
+          x: Math.random() * effectCanvas.width,
+          y: Math.random() * effectCanvas.height,
+          size: Math.random() * 2,
+          opacity: Math.random() * 0.8 + 0.2,
+          speed: Math.random() * 0.2,
+          twinkleSpeed: Math.random() * 0.02 + 0.01
+        });
+      }
+    }
 
-  slider.addEventListener('input', () => {
-    const angle = parseInt(slider.value) / 100;
-    angleLabel.textContent = `Angle: ${angle.toFixed(2)} radians`;
-    draw(angle);
-  });
-</script>
+    // Create nebula effects
+    function createNebulas() {
+      nebulas = [];
+      for (let i = 0; i < 3; i++) {
+        nebulas.push({
+          x: Math.random() * effectCanvas.width,
+          y: Math.random() * effectCanvas.height,
+          radius: Math.random() * 300 + 100,
+          color: `hsl(${Math.random() * 60 + 200}, 80%, 60%)`,
+          dx: (Math.random() - 0.5) * 0.1,
+          dy: (Math.random() - 0.5) * 0.1
+        });
+      }
+    }
 
+    // Create shooting star
+    function createShootingStar() {
+      setTimeout(() => {
+        cosmicRays.push({
+          x: Math.random() * effectCanvas.width * 0.2,
+          y: Math.random() * effectCanvas.height * 0.2,
+          angle: Math.random() * Math.PI * 0.5 + Math.PI * 0.25,
+          length: Math.random() * 100 + 50,
+          speed: Math.random() * 5 + 3,
+          opacity: 0,
+          life: 100
+        });
+        
+        if (isAnimating) {
+          createShootingStar();
+        }
+      }, Math.random() * 5000 + 3000);
+    }
+
+    // Show quote with transition
+    function showQuote() {
+      // Fade out
+      quoteText.style.opacity = 0;
+      quoteAuthor.style.opacity = 0;
+      
+      setTimeout(() => {
+        currentQuoteIndex = (currentQuoteIndex + 1) % quotes.length;
+        quoteText.textContent = `"${quotes[currentQuoteIndex].text}"`;
+        quoteAuthor.textContent = `- ${quotes[currentQuoteIndex].author}`;
+        
+        // Fade in
+        quoteText.style.opacity = 1;
+        quoteAuthor.style.opacity = 1;
+        
+        // Add pulse effect temporarily
+        quoteDisplay.classList.add('pulse-quote');
+        setTimeout(() => {
+          quoteDisplay.classList.remove('pulse-quote');
+        }, 2000);
+      }, 1000);
+    }
+
+    // Draw cosmic effects
+    function drawCosmicEffects() {
+      effectCtx.clearRect(0, 0, effectCanvas.width, effectCanvas.height);
+      
+      // Draw nebulas
+      nebulas.forEach(nebula => {
+        effectCtx.fillStyle = nebula.color;
+        effectCtx.globalAlpha = 0.15;
+        effectCtx.beginPath();
+        effectCtx.arc(nebula.x, nebula.y, nebula.radius, 0, Math.PI * 2);
+        effectCtx.fill();
+        
+        // Move nebula
+        nebula.x += nebula.dx;
+        nebula.y += nebula.dy;
+        
+        // Bounce off edges
+        if (nebula.x < -nebula.radius || nebula.x > effectCanvas.width + nebula.radius) {
+          nebula.dx *= -1;
+        }
+        if (nebula.y < -nebula.radius || nebula.y > effectCanvas.height + nebula.radius) {
+          nebula.dy *= -1;
+        }
+      });
+      
+      effectCtx.globalAlpha = 1;
+      
+      // Draw stars
+      stars.forEach(star => {
+        effectCtx.fillStyle = `rgba(255, 255, 255, ${star.opacity})`;
+        effectCtx.beginPath();
+        effectCtx.arc(star.x, star.y, star.size, 0, Math.PI * 2);
+        effectCtx.fill();
+        
+        // Twinkle effect
+        star.opacity += star.twinkleSpeed;
+        if (star.opacity > 0.8 || star.opacity < 0.3) {
+          star.twinkleSpeed *= -1;
+        }
+        
+        // Parallax movement
+        star.x += star.speed;
+        if (star.x > effectCanvas.width) star.x = 0;
+      });
+      
+      // Draw cosmic rays
+      cosmicRays.forEach((ray, index) => {
+        if (ray.life <= 0) {
+          cosmicRays.splice(index, 1);
+          return;
+        }
+        
+        ray.opacity = Math.min(ray.life / 100, 0.7);
+        effectCtx.strokeStyle = `rgba(100, 200, 255, ${ray.opacity})`;
+        effectCtx.lineWidth = 1;
+        effectCtx.beginPath();
+        effectCtx.moveTo(ray.x, ray.y);
+        effectCtx.lineTo(
+          ray.x + Math.cos(ray.angle) * ray.length,
+          ray.y + Math.sin(ray.angle) * ray.length
+        );
+        effectCtx.stroke();
+        
+        ray.x += Math.cos(ray.angle) * ray.speed;
+        ray.y += Math.sin(ray.angle) * ray.speed;
+        ray.life -= 1;
+      });
+      
+      // Draw particles (from sine wave)
+      particles.forEach((particle, index) => {
+        particle.x += particle.vx;
+        particle.y += particle.vy;
+        particle.alpha -= 0.01;
+        particle.size *= 0.98;
+        
+        effectCtx.fillStyle = `rgba(${particle.color}, ${particle.alpha})`;
+        effectCtx.beginPath();
+        effectCtx.arc(particle.x, particle.y, particle.size, 0, Math.PI * 2);
+        effectCtx.fill();
+        
+        if (particle.alpha <= 0) {
+          particles.splice(index, 1);
+        }
+      });
+    }
+
+    // Create particles
+    function createParticles(x, y, color) {
+      for (let i = 0; i < 5; i++) {
+        particles.push({
+          x: x,
+          y: y,
+          size: Math.random() * 3 + 2,
+          color: color,
+          alpha: 0.8,
+          vx: (Math.random() - 0.5) * 2,
+          vy: (Math.random() - 0.5) * 2
+        });
+      }
+    }
+
+    // Draw the main visualization
+    function drawVisualization() {
+      mainCtx.clearRect(0, 0, mainCanvas.width, mainCanvas.height);
+      
+      const centerX = 150;
+      const centerY = mainCanvas.height / 2;
+      const circleRadius = amplitude;
+      const graphStartX = centerX + circleRadius + 50;
+      const graphWidth = mainCanvas.width - graphStartX - 50;
+      
+      // Draw grid
+      mainCtx.strokeStyle = colors.grid;
+      mainCtx.lineWidth = 0.5;
+      const gridSize = 20;
+      
+      // Vertical grid lines
+      for (let x = 0; x < mainCanvas.width; x += gridSize) {
+        mainCtx.beginPath();
+        mainCtx.moveTo(x, 0);
+        mainCtx.lineTo(x, mainCanvas.height);
+        mainCtx.stroke();
+      }
+      
+      // Horizontal grid lines
+      for (let y = 0; y < mainCanvas.height; y += gridSize) {
+        mainCtx.beginPath();
+        mainCtx.moveTo(0, y);
+        mainCtx.lineTo(mainCanvas.width, y);
+        mainCtx.stroke();
+      }
+
+      // Draw axes
+      mainCtx.strokeStyle = colors.axis;
+      mainCtx.lineWidth = 1.5;
+      mainCtx.shadowColor = colors.axis;
+      mainCtx.shadowBlur = 10;
+
+      // X axis (for circle)
+      mainCtx.beginPath();
+      mainCtx.moveTo(0, centerY);
+      mainCtx.lineTo(centerX + circleRadius * 1.5, centerY);
+      mainCtx.stroke();
+
+      // Y axis (for circle)
+      mainCtx.beginPath();
+      mainCtx.moveTo(centerX, centerY - circleRadius * 1.2);
+      mainCtx.lineTo(centerX, centerY + circleRadius * 1.2);
+      mainCtx.stroke();
+
+      // X axis (for graph)
+      mainCtx.beginPath();
+      mainCtx.moveTo(graphStartX, centerY);
+      mainCtx.lineTo(mainCanvas.width - 20, centerY);
+      mainCtx.stroke();
+
+      mainCtx.shadowBlur = 0;
+
+      // Draw unit circle with glow
+      mainCtx.strokeStyle = colors.circle;
+      mainCtx.lineWidth = 2;
+      mainCtx.shadowColor = colors.circle;
+      mainCtx.shadowBlur = 15;
+      mainCtx.beginPath();
+      mainCtx.arc(centerX, centerY, circleRadius, 0, Math.PI * 2);
+      mainCtx.stroke();
+      mainCtx.shadowBlur = 0;
+
+      // Draw angle line
+      mainCtx.strokeStyle = colors.circle;
+      mainCtx.lineWidth = 1;
+      mainCtx.beginPath();
+      mainCtx.moveTo(centerX, centerY);
+      mainCtx.lineTo(
+        centerX + circleRadius * Math.cos(angle),
+        centerY - circleRadius * Math.sin(angle)
+      );
+      mainCtx.stroke();
+
+      // Draw point on circle with glow
+      const circleX = centerX + circleRadius * Math.cos(angle);
+      const circleY = centerY - circleRadius * Math.sin(angle);
+      
+      mainCtx.fillStyle = colors.point;
+      mainCtx.shadowColor = colors.point;
+      mainCtx.shadowBlur = 20;
+      mainCtx.beginPath();
+      mainCtx.arc(circleX, circleY, 6, 0, Math.PI * 2);
+      mainCtx.fill();
+      mainCtx.shadowBlur = 0;
+
+      // Create particles when moving
+      if (isAnimating && Math.random() > 0.7) {
+        createParticles(circleX, circleY, '255, 64, 129');
+      }
+
+      // Draw projection line to sine wave
+      mainCtx.strokeStyle = colors.projectionLine;
+      mainCtx.setLineDash([5, 3]);
+      mainCtx.beginPath();
+      mainCtx.moveTo(circleX, circleY);
+      mainCtx.lineTo(
+        graphStartX + (angle * frequency + phase) * (graphWidth / (Math.PI * 2 * 2)),
+        circleY
+      );
+      mainCtx.stroke();
+      mainCtx.setLineDash([]);
+
+      // Draw sine wave with glow
+      mainCtx.strokeStyle = colors.sineWave;
+      mainCtx.lineWidth = 2;
+      mainCtx.shadowColor = colors.sineWave;
+      mainCtx.shadowBlur = 10;
+      mainCtx.beginPath();
+      
+      for (let a = 0; a <= angle; a += 0.05) {
+        const x = graphStartX + (a * frequency + phase) * (graphWidth / (Math.PI * 2 * 2));
+        const y = centerY - circleRadius * Math.sin(a);
+        
+        if (a === 0) {
+          mainCtx.moveTo(x, y);
+        } else {
+          mainCtx.lineTo(x, y);
+        }
+      }
+      mainCtx.stroke();
+      mainCtx.shadowBlur = 0;
+
+      // Draw current sine point with glow
+      const sineX = graphStartX + (angle * frequency + phase) * (graphWidth / (Math.PI * 2 * 2));
+      const sineY = centerY - circleRadius * Math.sin(angle);
+      
+      mainCtx.fillStyle = colors.sinePoint;
+      mainCtx.shadowColor = colors.sinePoint;
+      mainCtx.shadowBlur = 15;
+      mainCtx.beginPath();
+      mainCtx.arc(sineX, sineY, 5, 0, Math.PI * 2);
+      mainCtx.fill();
+      mainCtx.shadowBlur = 0;
+
+      // Create particles when moving
+      if (isAnimating && Math.random() > 0.7) {
+        createParticles(sineX, sineY, '255, 235, 59');
+      }
+
+      // Draw labels
+      mainCtx.fillStyle = colors.text;
+      mainCtx.font = 'bold 14px Arial';
+      mainCtx.fillText('sin(θ)', circleX + 10, circleY - 10);
+      mainCtx.fillText('θ', centerX + circleRadius * 0.7 * Math.cos(angle/2), 
+                      centerY - circleRadius * 0.7 * Math.sin(angle/2));
+      
+      // Draw angle arc
+      mainCtx.strokeStyle = colors.circle;
+      mainCtx.lineWidth = 1;
+      mainCtx.beginPath();
+      mainCtx.arc(centerX, centerY, circleRadius * 0.3, 0, angle, angle < 0);
+      mainCtx.stroke();
+    }
+
+    // Update displayed values
+    function updateValues() {
+      angleValue.textContent = angle.toFixed(2);
+      amplitudeValue.textContent = amplitude;
+      frequencyValue.textContent = (frequency / 10).toFixed(1);
+      phaseValue.textContent = (phase / 100).toFixed(2);
+    }
+
+    // Animation function
+    function animate(timestamp) {
+      if (!lastTimestamp) lastTimestamp = timestamp;
+      const deltaTime = timestamp - lastTimestamp;
+      lastTimestamp = timestamp;
+      
+      angle += animationSpeed;
+      if (angle > Math.PI * 2) angle -= Math.PI * 2;
+      
+      angleSlider.value = angle * 100;
+      updateValues();
+      drawVisualization();
+      drawCosmicEffects();
+      
+      if (isAnimating) {
+        animationId = requestAnimationFrame(animate);
+      }
+    }
+
+    // Event listeners
+    angleSlider.addEventListener('input', () => {
+      angle = parseInt(angleSlider.value) / 100;
+      updateValues();
+      drawVisualization();
+    });
+
+    amplitudeSlider.addEventListener('input', () => {
+      amplitude = parseInt(amplitudeSlider.value);
+      updateValues();
+      drawVisualization();
+    });
+
+    frequencySlider.addEventListener('input', () => {
+      frequency = parseInt(frequencySlider.value);
+      updateValues();
+      drawVisualization();
+    });
+
+    phaseSlider.addEventListener('input', () => {
+      phase = parseInt(phaseSlider.value);
+      updateValues();
+      drawVisualization();
+    });
+
+    animateBtn.addEventListener('click', () => {
+      isAnimating = !isAnimating;
+      
+      if (isAnimating) {
+        animateBtn.textContent = '❚❚ PAUSE';
+        animateBtn.style.background = 'linear-gradient(135deg, var(--secondary-color), #ff6b9f)';
+        lastTimestamp = 0;
+        animationId = requestAnimationFrame(animate);
+        createShootingStar();
+        
+        // Start quote rotation
+        if (!quoteChangeInterval) {
+          quoteChangeInterval = setInterval(showQuote, 8000);
+          quoteDisplay.classList.add('pulse-quote');
+        }
+      } else {
+        animateBtn.textContent = '▶ ANIMATE';
+        animateBtn.style.background = 'linear-gradient(135deg, var(--primary-color), #3a8bff)';
+        if (animationId) cancelAnimationFrame(animationId);
+        
+        // Stop quote rotation
+        if (quoteChangeInterval) {
+          clearInterval(quoteChangeInterval);
+          quoteChangeInterval = null;
+          quoteDisplay.classList.remove('pulse-quote');
+        }
+      }
+    });
+
+    resetBtn.addEventListener('click', () => {
+      angle = 0;
+      amplitude = 100;
+      frequency = 10;
+      phase = 0;
+      
+      angleSlider.value = 0;
+      amplitudeSlider.value = 100;
+      frequencySlider.value = 10;
+      phaseSlider.value = 0;
+      
+      if (isAnimating) {
+        isAnimating = false;
+        animateBtn.textContent = '▶ ANIMATE';
+        animateBtn.style.background = 'linear-gradient(135deg, var(--primary-color), #3a8bff)';
+        if (animationId) cancelAnimationFrame(animationId);
+      }
+      
+      // Reset quotes
+      currentQuoteIndex = 0;
+      quoteText.textContent = `"${quotes[0].text}"`;
+      quoteAuthor.textContent = `- ${quotes[0].author}`;
+      
+      if (quoteChangeInterval) {
+        clearInterval(quoteChangeInterval);
+        quoteChangeInterval = null;
+      }
+      
+      updateValues();
+      drawVisualization();
+    });
+
+    infoToggle.addEventListener('click', () => {
+      infoPanel.classList.toggle('visible');
+    });
+
+    // Initialize
+    createStarfield();
+    createNebulas();
+    updateValues();
+    drawVisualization();
+    drawCosmicEffects();
+    
+    // Show info panel briefly at start
+    setTimeout(() => {
+      infoPanel.classList.add('visible');
+      setTimeout(() => {
+        infoPanel.classList.remove('visible');
+      }, 5000);
+    }, 1000);
+  </script>
 </body>
 </html>
