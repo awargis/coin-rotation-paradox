@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Enhanced Delta-Epsilon Visualization for g(x)</title>
+  <script src="https://cdn.plot.ly/plotly-2.24.2.min.js"></script>
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: radial-gradient(circle at top left, #1b263b, #0d1b2a);
+      margin: 0;
+      padding: 30px;
+      color: #eee;
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+    .container {
+      max-width: 900px;
+      margin: auto;
+      padding: 30px;
+      background: rgba(0, 0, 0, 0.7);
+      border-radius: 15px;
+      box-shadow: 0 8px 30px rgba(0, 0, 0, 0.7);
+      backdrop-filter: blur(5px);
+      transition: transform 0.3s ease;
+    }
+    .container:hover {
+      transform: translateY(-5px);
+    }
+    h2 {
+      text-align: center;
+      color: #90e0ef;
+      margin-bottom: 20px;
+      font-size: 2em;
+      text-shadow: 0 2px 5px rgba(144, 224, 239, 0.3);
+    }
+    .slider-container {
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+      margin: 20px 0;
+      background: rgba(255, 255, 255, 0.05);
+      padding: 15px;
+      border-radius: 10px;
+    }
+    .slider-box {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    label {
+      font-weight: bold;
+      color: #caf0f8;
+      min-width: 100px;
+      position: relative;
+      cursor: help;
+    }
+    label:hover::after {
+      content: attr(data-tooltip);
+      position: absolute;
+      top: -30px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #48cae4;
+      color: #0d1b2a;
+      padding: 5px 10px;
+      border-radius: 5px;
+      font-size: 0.8em;
+      white-space: nowrap;
+      z-index: 10;
+    }
+    input[type="range"] {
+      flex-grow: 1;
+      height: 8px;
+      background: linear-gradient(to right, #00b4d8, #90e0ef);
+      border-radius: 5px;
+      -webkit-appearance: none;
+      cursor: pointer;
+      transition: background 0.3s ease;
+    }
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 20px;
+      height: 20px;
+      background: #ff6b6b;
+      border-radius: 50%;
+      box-shadow: 0 0 10px rgba(255, 107, 107, 0.5);
+      transition: transform 0.2s ease;
+    }
+    input[type="range"]::-webkit-slider-thumb:hover {
+      transform: scale(1.2);
+    }
+    .value-display {
+      font-weight: bold;
+      color: #ff6b6b;
+      min-width: 40px;
+      text-align: right;
+    }
+    #plot {
+      margin-top: 20px;
+      border-radius: 10px;
+      overflow: hidden;
+    }
+    .info-panel {
+      margin-top: 20px;
+      padding: 15px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 10px;
+      border-left: 4px solid #90e0ef;
+      font-size: 0.9em;
+      line-height: 1.5;
+      display: none;
+    }
+    .info-panel.active {
+      display: block;
+    }
+    .button-group {
+      display: flex;
+      justify-content: center;
+      gap: 15px;
+      margin-top: 20px;
+    }
+    button {
+      padding: 10px 20px;
+      background: linear-gradient(to right, #00b4d8, #90e0ef);
+      border: none;
+      border-radius: 5px;
+      color: #0d1b2a;
+      font-weight: bold;
+      cursor: pointer;
+      transition: transform 0.2s ease, background 0.3s ease;
+    }
+    button:hover {
+      transform: translateY(-3px);
+      background: linear-gradient(to right, #90e0ef, #00b4d8);
+    }
+    @media (max-width: 600px) {
+      .container {
+        padding: 15px;
+      }
+      h2 {
+        font-size: 1.5em;
+      }
+      .slider-box {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+      label {
+        min-width: auto;
+      }
+      .button-group {
+        flex-direction: column;
+      }
+      button {
+        width: 100%;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2>Enhanced Delta-Epsilon Visualization for g(x)</h2>
+    <div class="slider-container">
+      <div class="slider-box">
+        <label data-tooltip="Controls the x-range around x=2">Delta (δ): </label>
+        <input type="range" id="deltaSlider" min="0.01" max="1" step="0.01" value="0.5" />
+        <span class="value-display" id="deltaVal">0.5</span>
+      </div>
+      <div class="slider-box">
+        <label data-tooltip="Shows the y-range difference on both branches">Epsilon (ε): </label>
+        <input type="range" id="epsilonSlider" min="0.01" max="5" step="0.01" value="2.0" disabled />
+        <span class="value-display" id="epsilonVal">2.0</span>
+      </div>
+    </div>
+    <div id="plot"></div>
+    <div class="button-group">
+      <button id="toggleInfo">Show Explanation</button>
+      <button id="resetBtn">Reset Values</button>
+    </div>
+    <div id="infoPanel" class="info-panel">
+      <strong>Delta-Epsilon Definition and Limit Failure:</strong> For a limit \( \lim_{x \to a} f(x) = L \), for every \( \epsilon > 0 \), there must exist a \( \delta > 0 \) such that if \( 0 < |x - a| < \delta \), then \( |f(x) - L| < \epsilon \). Here, \( g(x) \) is discontinuous at \( x = 2 \). Notice that as \( \delta \) decreases, the epsilon regions on the left (\( g(x) = x-2 \)) and right (\( g(x) = x+2 \)) branches do not converge to a single value, showing that the limit does not exist at \( x = 2 \).
+    </div>
+  </div>
+
+  <script>
+    const deltaSlider = document.getElementById("deltaSlider");
+    const epsilonSlider = document.getElementById("epsilonSlider");
+    const deltaVal = document.getElementById("deltaVal");
+    const epsilonVal = document.getElementById("epsilonVal");
+    const toggleInfoBtn = document.getElementById("toggleInfo");
+    const infoPanel = document.getElementById("infoPanel");
+    const resetBtn = document.getElementById("resetBtn");
+
+    function g(x) {
+      if (x < 2) return x - 2;
+      if (x > 2) return x + 2;
+      return null;
+    }
+
+    function computeEpsilon(delta) {
+      const xLeft = 2 - delta;
+      const xRight = 2 + delta;
+      const yLeft = g(xLeft);  // Value on the left branch
+      const yRight = g(xRight); // Value on the right branch
+      // Epsilon is half the difference between the values on the two branches
+      return Math.abs(yRight - yLeft) / 2;
+    }
+
+    function plotGraph() {
+      const delta = parseFloat(deltaSlider.value);
+      const epsilon = computeEpsilon(delta);
+      deltaVal.textContent = delta.toFixed(2);
+      epsilonVal.textContent = epsilon.toFixed(2);
+      epsilonSlider.value = epsilon;
+
+      const xLeft = [], yLeft = [], xRight = [], yRight = [];
+      for (let i = 0; i <= 400; i++) {
+        const xi = 0 + i * 0.01;
+        const yi = g(xi);
+        if (xi < 2) {
+          xLeft.push(xi);
+          yLeft.push(yi);
+        } else if (xi > 2) {
+          xRight.push(xi);
+          yRight.push(yi);
+        }
+      }
+
+      const leftTrace = {
+        x: xLeft,
+        y: yLeft,
+        mode: 'lines',
+        name: 'g(x) = x-2 (x < 2)',
+        line: { color: '#00b4d8', width: 3 }
+      };
+
+      const rightTrace = {
+        x: xRight,
+        y: yRight,
+        mode: 'lines',
+        name: 'g(x) = x+2 (x > 2)',
+        line: { color: '#90e0ef', width: 3 }
+      };
+
+      const jump = {
+        x: [2],
+        y: [g(2.01)],
+        mode: 'markers',
+        marker: { size: 12, color: '#ff6b6b', symbol: 'x' },
+        name: 'Jump at x = 2'
+      };
+
+      // Delta region around x = 2
+      const deltaRegion = {
+        type: 'rect',
+        xref: 'x',
+        yref: 'paper',
+        x0: 2 - delta,
+        x1: 2 + delta,
+        y0: 0,
+        y1: 1,
+        fillcolor: 'rgba(255, 255, 0, 0.3)',
+        line: { width: 0 }
+      };
+
+      // Epsilon regions for both branches
+      const xLeftBoundary = 2 - delta;
+      const xRightBoundary = 2 + delta;
+      const yLeftBoundary = g(xLeftBoundary); // g(2 - delta)
+      const yRightBoundary = g(xRightBoundary); // g(2 + delta)
+
+      const epsilonRegionLeft = {
+        type: 'rect',
+        xref: 'x',
+        yref: 'y',
+        x0: xLeftBoundary - 0.1,
+        x1: xLeftBoundary + 0.1,
+        y0: yLeftBoundary - epsilon,
+        y1: yLeftBoundary + epsilon,
+        fillcolor: 'rgba(0, 255, 255, 0.3)',
+        line: { width: 0 }
+      };
+
+      const epsilonRegionRight = {
+        type: 'rect',
+        xref: 'x',
+        yref: 'y',
+        x0: xRightBoundary - 0.1,
+        x1: xRightBoundary + 0.1,
+        y0: yRightBoundary - epsilon,
+        y1: yRightBoundary + epsilon,
+        fillcolor: 'rgba(0, 255, 255, 0.3)',
+        line: { width: 0 }
+      };
+
+      const layout = {
+        paper_bgcolor: 'rgba(0,0,0,0)',
+        plot_bgcolor: 'rgba(0,0,0,0)',
+        title: {
+          text: 'g(x): x+2 if x>2, x-2 if x<2 (Discontinuous at x=2)',
+          font: { color: '#ffffff', size: 16 }
+        },
+        shapes: [deltaRegion, epsilonRegionLeft, epsilonRegionRight],
+        xaxis: {
+          title: 'x',
+          range: [0, 4],
+          color: '#ffffff',
+          gridcolor: '#444',
+          zerolinecolor: '#ffffff'
+        },
+        yaxis: {
+          title: 'g(x)',
+          range: [-4, 6],
+          color: '#ffffff',
+          gridcolor: '#444',
+          zerolinecolor: '#ffffff'
+        },
+        annotations: [
+          {
+            x: 2 - delta,
+            y: 5,
+            xref: 'x',
+            yref: 'y',
+            text: 'δ',
+            showarrow: true,
+            arrowhead: 2,
+            ax: 20,
+            ay: -30,
+            font: { color: '#ff0' }
+          },
+          {
+            x: xLeftBoundary,
+            y: yLeftBoundary + epsilon,
+            xref: 'x',
+            yref: 'y',
+            text: 'ε (left)',
+            showarrow: true,
+            arrowhead: 2,
+            ax: -20,
+            ay: -30,
+            font: { color: '#0ff' }
+          },
+          {
+            x: xRightBoundary,
+            y: yRightBoundary + epsilon,
+            xref: 'x',
+            yref: 'y',
+            text: 'ε (right)',
+            showarrow: true,
+            arrowhead: 2,
+            ax: 20,
+            ay: -30,
+            font: { color: '#0ff' }
+          }
+        ],
+        margin: { t: 50, b: 50, l: 50, r: 50 },
+        legend: {
+          font: { color: '#ffffff' },
+          bgcolor: 'rgba(0,0,0,0.5)',
+          bordercolor: '#ffffff',
+          borderwidth: 1
+        }
+      };
+
+      Plotly.newPlot("plot", [leftTrace, rightTrace, jump], layout, { responsive: true });
+    }
+
+    deltaSlider.addEventListener("input", () => {
+      plotGraph();
+    });
+
+    toggleInfoBtn.addEventListener("click", () => {
+      infoPanel.classList.toggle("active");
+      toggleInfoBtn.textContent = infoPanel.classList.contains("active") ? "Hide Explanation" : "Show Explanation";
+    });
+
+    resetBtn.addEventListener("click", () => {
+      deltaSlider.value = 0.5;
+      deltaVal.textContent = "0.5";
+      epsilonVal.textContent = "2.0";
+      plotGraph();
+    });
+
+    plotGraph();
+  </script>
+</body>
+</html>
