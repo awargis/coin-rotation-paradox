@@ -3,819 +3,653 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Enhanced Radian Visualizer with Axes</title>
+    <title>Enhanced Radian Visualizer</title>
     <style>
         body {
             margin: 0;
             padding: 20px;
-            background-color: #000;
+            background-color: #121212;
             color: #fff;
             font-family: 'Arial', sans-serif;
             display: flex;
             flex-direction: column;
-            justify-content: center;
             align-items: center;
             min-height: 100vh;
-            box-sizing: border-box;
-            background: radial-gradient(ellipse at center, #0a0e24 0%, #000000 100%);
-            overflow-x: hidden;
         }
 
-        #main-container {
+        #container {
             display: flex;
             flex-direction: column;
             align-items: center;
+            max-width: 1200px;
             width: 100%;
-            max-width: 800px;
         }
 
-        #canvas-container {
+        #visualization-container {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 20px;
+            width: 100%;
+        }
+
+        #canvas-container, #trig-container {
             position: relative;
-            width: min(85vw, 85vh, 650px);
-            margin: 0 auto 20px;
-            animation: canvasGlow 3s ease-in-out infinite;
+            width: min(45vw, 45vh, 500px);
+            height: min(45vw, 45vh, 500px);
+            margin: 20px 0;
         }
 
         canvas {
             width: 100%;
-            height: auto;
-            aspect-ratio: 1/1;
-            border-radius: 50%;
-            box-shadow: 0 0 40px rgba(0, 150, 255, 0.4);
-            background: radial-gradient(ellipse at center, #0a0e24 0%, #000000 100%);
+            height: 100%;
             display: block;
-            cursor: pointer;
-            touch-action: none;
+            background: #1a1a2e;
+            border-radius: 10px;
+            box-shadow: 0 0 30px rgba(0, 150, 255, 0.3);
         }
 
         #controls {
             width: 100%;
             max-width: 500px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 15px;
-            margin-bottom: 20px;
+            background: rgba(30, 30, 60, 0.7);
+            padding: 20px;
+            border-radius: 10px;
+            margin-top: 20px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
         }
 
         .slider-container {
-            width: 100%;
             display: flex;
             align-items: center;
             gap: 10px;
+            margin: 15px 0;
         }
 
-        #radian-slider {
+        input[type="range"] {
             flex-grow: 1;
-            -webkit-appearance: none;
-            height: 8px;
-            background: rgba(100, 100, 255, 0.3);
+            height: 10px;
+            background: linear-gradient(to right, #007cf0, #00dfd8);
             border-radius: 10px;
-            outline: none;
-            transition: background 0.3s;
-        }
-
-        #radian-slider:hover {
-            background: linear-gradient(to right, rgba(0, 200, 255, 0.3), rgba(0, 100, 200, 0.3));
-        }
-
-        #radian-slider::-webkit-slider-thumb {
             -webkit-appearance: none;
-            width: 18px;
-            height: 18px;
-            border-radius: 50%;
-            background: #00ccff;
             cursor: pointer;
-            box-shadow: 0 0 10px rgba(0, 200, 255, 0.9);
-            transition: transform 0.2s;
         }
 
-        #radian-slider::-webkit-slider-thumb:active {
-            transform: scale(1.2);
-        }
-
-        #radian-slider:focus {
-            outline: 2px solid #00ccff;
-        }
-
-        .slider-value {
-            min-width: 50px;
-            text-align: center;
-            font-size: clamp(14px, 2vw, 16px);
-            font-weight: bold;
-            color: #0ff;
-        }
-
-        .slider-tick-marks {
-            width: 100%;
-            display: flex;
-            justify-content: space-between;
-            margin-top: 5px;
-        }
-
-        .tick-mark {
-            width: 1px;
-            height: 8px;
-            background: rgba(100, 200, 255, 0.3);
-            position: relative;
-        }
-
-        .tick-label {
-            position: absolute;
-            top: 12px;
-            left: 50%;
-            transform: translateX(-50%);
-            font-size: clamp(10px, 1.5vw, 11px);
-            color: #aaf;
-            white-space: nowrap;
-        }
-
-        #info-panel {
-            position: absolute;
-            top: 20px;
-            left: 20px;
-            background: rgba(0, 20, 40, 0.8);
-            padding: 10px;
-            border-radius: 10px;
-            border: 1px solid rgba(0, 150, 255, 0.4);
-            max-width: 200px;
-            box-sizing: border-box;
-            z-index: 5;
-        }
-
-        #info-panel h2 {
-            margin-top: 0;
-            color: #0cf;
-            font-size: clamp(12px, 2vw, 14px);
-            border-bottom: 1px solid rgba(0, 150, 255, 0.3);
-            padding-bottom: 6px;
-        }
-
-        #angle-display {
-            font-size: clamp(14px, 2vw, 16px);
-            font-weight: bold;
-            color: #0ff;
-            margin: 8px 0;
-        }
-
-        #definition {
-            font-size: clamp(10px, 1.8vw, 12px);
-            line-height: 1.4;
-            color: #aaf;
-        }
-
-        .formula, #arc-length-display, #key-angle-tooltip, #point-coordinates {
-            font-size: clamp(10px, 1.8vw, 12px);
-            font-weight: bold;
-            color: #0ff;
-            margin-top: 8px;
-        }
-
-        #key-angle-tooltip {
-            color: #ff0;
-            display: none;
-        }
-
-        .control-button {
-            padding: 8px 16px;
-            background: rgba(0, 100, 200, 0.5);
-            border: 1px solid rgba(0, 150, 255, 0.3);
-            border-radius: 5px;
-            color: #fff;
-            cursor: pointer;
-            font-size: clamp(12px, 1.8vw, 14px);
-            transition: background 0.3s;
-        }
-
-        .control-button:hover {
-            background: rgba(0, 150, 255, 0.7);
-        }
-
-        .particle {
-            position: absolute;
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 22px;
+            height: 22px;
             border-radius: 50%;
-            pointer-events: none;
+            background: #00f0ff;
+            box-shadow: 0 0 10px rgba(0, 240, 255, 0.8);
             transition: transform 0.1s;
         }
 
-        #starfield {
-            position: fixed;
+        input[type="range"]::-webkit-slider-thumb:hover {
+            transform: scale(1.1);
+        }
+
+        #angle-display {
+            display: flex;
+            justify-content: space-between;
+            margin: 20px 0;
+            gap: 10px;
+        }
+
+        #angle-display div {
+            background: rgba(0, 50, 100, 0.5);
+            padding: 12px;
+            border-radius: 8px;
+            flex: 1;
+            text-align: center;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+        }
+
+        #angle-display span {
+            font-weight: bold;
+            color: #00f0ff;
+            font-size: 1.1em;
+        }
+
+        .button-group {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-top: 15px;
+            flex-wrap: wrap;
+        }
+
+        button {
+            padding: 10px 18px;
+            background: linear-gradient(to right, #007cf0, #00dfd8);
+            border: none;
+            border-radius: 6px;
+            color: white;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.2s;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+        }
+
+        button:hover {
+            opacity: 0.9;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        .reference-markers, .angle-scale {
+            position: absolute;
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
-            z-index: -1;
+            pointer-events: none;
         }
 
-        @keyframes canvasGlow {
-            0%, 100% { box-shadow: 0 0 40px rgba(0, 150, 255, 0.4); }
-            50% { box-shadow: 0 0 60px rgba(0, 150, 255, 0.6); }
+        .reference-label {
+            position: absolute;
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 0.9em;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 50, 100, 0.7);
+            padding: 3px 6px;
+            border-radius: 4px;
         }
 
-        @media (max-width: 600px) {
-            body {
-                padding: 15px;
+        .angle-tick {
+            position: absolute;
+            width: 2px;
+            height: 10px;
+            background: rgba(255, 255, 255, 0.3);
+            transform-origin: bottom center;
+        }
+
+        .angle-tick.major {
+            height: 15px;
+            background: rgba(255, 255, 255, 0.6);
+        }
+
+        #info-panel {
+            margin-top: 20px;
+            padding: 15px;
+            background: rgba(0, 30, 60, 0.5);
+            border-radius: 8px;
+            border-left: 4px solid #00f0ff;
+            max-width: 500px;
+        }
+
+        @media (max-width: 800px) {
+            #visualization-container {
+                flex-direction: column;
+                align-items: center;
             }
-            #canvas-container {
-                width: min(85vw, 85vh, 400px);
+
+            #canvas-container, #trig-container {
+                width: min(90vw, 90vh, 500px);
+                height: min(90vw, 90vh, 500px);
             }
-            .slider-value {
-                min-width: 40px;
+
+            #angle-display {
+                flex-direction: column;
             }
-            #radian-slider::-webkit-slider-thumb {
-                width: 16px;
-                height: 16px;
+
+            .button-group {
+                flex-direction: column;
+                align-items: center;
             }
-            #info-panel {
-                max-width: 180px;
-                padding: 8px;
-                left: 50%;
-                transform: translateX(-50%);
-            }
-            .control-button {
-                padding: 6px 12px;
-                font-size: clamp(10px, 1.5vw, 12px);
+
+            button {
+                width: 100%;
             }
         }
     </style>
 </head>
 <body>
-    <div id="starfield"></div>
-    <div id="main-container">
-        <div id="canvas-container">
-            <canvas id="radianCanvas" aria-label="Interactive radian visualization with coordinate axes"></canvas>
+    <div id="container">
+        <h1>Enhanced Radian Visualizer</h1>
+        <p>Explore angles, radians, and trigonometric relationships interactively</p>
+        
+        <div id="visualization-container">
+            <div id="canvas-container">
+                <canvas id="radianCanvas"></canvas>
+                <div id="reference-markers" class="reference-markers"></div>
+                <div id="angle-scale" class="angle-scale"></div>
+            </div>
+            <div id="trig-container">
+                <canvas id="trigCanvas"></canvas>
+            </div>
         </div>
         
         <div id="controls">
             <div class="slider-container">
-                <span class="slider-value">0</span>
-                <input type="range" id="radian-slider" min="0" max="6" step="0.1" value="0" 
-                    aria-label="Radian angle slider" aria-valuemin="0" aria-valuemax="6" aria-valuenow="0">
-                <span class="slider-value">2π</span>
+                <span>0</span>
+                <input type="range" id="radian-slider" min="0" max="6.28" step="0.01" value="0">
+                <span>2π</span>
             </div>
             
-            <div class="slider-tick-marks">
-                <div class="tick-mark"><span class="tick-label">0</span></div>
-                <div class="tick-mark"><span class="tick-label">1</span></div>
-                <div class="tick-mark"><span class="tick-label">2</span></div>
-                <div class="tick-mark"><span class="tick-label">3</span></div>
-                <div class="tick-mark"><span class="tick-label">π</span></div>
-                <div class="tick-mark"><span class="tick-label">4</span></div>
-                <div class="tick-mark"><span class="tick-label">5</span></div>
-                <div class="tick-mark"><span class="tick-label">6</span></div>
+            <div id="angle-display">
+                <div>
+                    <div>Angle</div>
+                    <span id="angle-rad">0.00</span> rad
+                </div>
+                <div>
+                    <div>Degrees</div>
+                    <span id="angle-deg">0.00</span>°
+                </div>
+                <div>
+                    <div>Arc Length</div>
+                    <span id="arc-length">0.00</span> r
+                </div>
+                <div>
+                    <div>Sin(θ)</div>
+                    <span id="sin-value">0.00</span>
+                </div>
+                <div>
+                    <div>Cos(θ)</div>
+                    <span id="cos-value">0.00</span>
+                </div>
             </div>
-            <div style="display: flex; gap: 10px;">
-                <button id="degree-toggle" class="control-button">Toggle Degrees</button>
-                <button id="reset-btn" class="control-button">Reset</button>
+            
+            <div class="button-group">
+                <button id="show-reference">Show Reference Angles</button>
+                <button id="toggle-scale">Toggle Angle Scale</button>
+                <button id="animate-btn">Start Animation</button>
+                <button id="reset-btn">Reset to 0</button>
             </div>
-        </div>
-        
-        <div id="info-panel" role="region" aria-label="Radian information">
-            <span class="sr-only">Radian visualization information including angle and coordinates</span>
-            <h2>RADIAN DEFINITION</h2>
-            <div id="angle-display">0.00 rad (0.00°)</div>
-            <div id="definition">
-                1 radian is the angle subtended by an arc whose length equals the radius of the circle.
-                <br><br>
-                <div class="formula">s = rθ</div> where:<br>
-                • s = arc length<br>
-                • r = radius<br>
-                • θ = angle in radians
-                <div id="arc-length-display">Arc Length: s = rθ (θ = 0.00 rad)</div>
-                <div id="point-coordinates">Point: (x, y) = (0.00, 0.00)</div>
-                <div id="key-angle-tooltip"></div>
+            
+            <div id="info-panel">
+                <strong>Definition:</strong> 1 radian is the angle subtended by an arc whose length equals the radius (r).
+                <div style="margin: 8px 0;"><strong>Key Formulas:</strong></div>
+                <ul style="margin: 0; padding-left: 20px;">
+                    <li>s = rθ (arc length)</li>
+                    <li>sin²(θ) + cos²(θ) = 1</li>
+                    <li>tan(θ) = sin(θ)/cos(θ)</li>
+                </ul>
             </div>
         </div>
     </div>
 
     <script>
-        // Screen reader only styles
-        const srStyle = document.createElement('style');
-        srStyle.textContent = `.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); border: 0; }`;
-        document.head.appendChild(srStyle);
-
-        // Create starfield background with layers and parallax
-        function createStarfield() {
-            const starfield = document.getElementById('starfield');
-            const starConfigs = [
-                { count: 60, size: 1.5, speed: 15, class: 'small-star' },
-                { count: 20, size: 3, speed: 25, class: 'large-star' }
-            ];
-            const colors = ['#aaf', '#fff', '#0ff'];
-            
-            starConfigs.forEach(config => {
-                for (let i = 0; i < config.count; i++) {
-                    const star = document.createElement('div');
-                    star.className = `particle ${config.class}`;
-                    const size = Math.random() * config.size + 0.5;
-                    const opacity = Math.random() * 0.5 + 0.3;
-                    const x = Math.random() * 100;
-                    const y = Math.random() * 100;
-                    const duration = Math.random() * config.speed + 10;
-                    const color = colors[Math.floor(Math.random() * colors.length)];
-                    
-                    star.style.width = `${size}px`;
-                    star.style.height = `${size}px`;
-                    star.style.left = `${x}%`;
-                    star.style.top = `${y}%`;
-                    star.style.opacity = opacity;
-                    star.style.background = color;
-                    star.style.animation = `twinkle ${duration}s infinite alternate`;
-                    
-                    starfield.appendChild(star);
-                }
-            });
-            
-            const style = document.createElement('style');
-            style.textContent = `
-                @keyframes twinkle {
-                    0% { opacity: 0.3; }
-                    100% { opacity: 0.8; }
-                }
-            `;
-            document.head.appendChild(style);
-
-            if (window.innerWidth > 600) {
-                document.addEventListener('mousemove', (e) => {
-                    const moveX = (e.clientX / window.innerWidth - 0.5) * 10;
-                    const moveY = (e.clientY / window.innerHeight - 0.5) * 10;
-                    document.querySelectorAll('.small-star').forEach(star => {
-                        star.style.transform = `translate(${moveX * 0.5}px, ${moveY * 0.5}px)`;
-                    });
-                    document.querySelectorAll('.large-star').forEach(star => {
-                        star.style.transform = `translate(${moveX}px, ${moveY}px)`;
-                    });
-                });
-            }
-        }
-
-        // Main Radian Visualizer
-        class RadianVisualizer {
-            // Constants
-            static MAX_ANGLE = 6;
-            static EASING_FACTOR = 0.1;
-            static KEY_ANGLES = {
-                1: '1 rad',
-                [Math.PI / 2]: 'π/2 rad',
-                [Math.PI]: 'π rad',
-                [2 * Math.PI]: '2π rad'
-            };
-            static TOLERANCE_RADIUS = 20;
-            static AXIS_OPACITY = 0.3;
-            static TICK_SIZE = 5;
-
-            /**
-             * @param {HTMLCanvasElement} canvas - The canvas element for visualization
-             */
-            constructor(canvas) {
-                if (!canvas.getContext) {
-                    console.error('Canvas not supported');
-                    return;
-                }
-                this.canvas = canvas;
-                this.ctx = canvas.getContext('2d');
-                this.resizeCanvas();
-                this.center = { x: this.canvas.width / 2, y: this.canvas.height / 2 };
-                this.radius = Math.min(this.canvas.width, this.canvas.height) * 0.4;
-                this.currentAngle = 0;
-                this.targetAngle = 0;
-                this.animationId = null;
-                this.showDegrees = false;
-                this.trailParticles = [];
-                this.lastFrameTime = performance.now();
-                this.slider = document.getElementById('radian-slider');
-                this.sliderValues = document.querySelectorAll('.slider-value');
-                this.debounceTimeout = null;
-                this.previewAngle = null;
+        class EnhancedRadianVisualizer {
+            constructor(radianCanvas, trigCanvas) {
+                this.radianCanvas = radianCanvas;
+                this.trigCanvas = trigCanvas;
+                this.rctx = radianCanvas.getContext('2d');
+                this.tctx = trigCanvas.getContext('2d');
+                this.resizeCanvases();
                 
-                this.init();
-            }
-
-            /** Resize the canvas based on container size */
-            resizeCanvas() {
-                const container = document.getElementById('canvas-container');
-                const size = Math.min(container.offsetWidth, window.innerHeight * 0.7, 650);
-                this.canvas.width = size;
-                this.canvas.height = size;
-                this.center = { x: this.canvas.width / 2, y: this.canvas.height / 2 };
-                this.radius = size * 0.4;
-            }
-
-            /** Initialize event listeners and starfield */
-            init() {
-                this.setupEventListeners();
-                createStarfield();
-                this.animate();
-                window.addEventListener('resize', () => {
-                    this.resizeCanvas();
-                    this.draw();
-                });
-                window.addEventListener('orientationchange', () => {
-                    setTimeout(() => this.resizeCanvas(), 100);
-                });
-            }
-
-            /** Set up all event listeners */
-            setupEventListeners() {
-                this.setupSlider();
-                this.setupCanvas();
+                // Core properties
+                this.center = { x: this.radianCanvas.width/2, y: this.radianCanvas.height/2 };
+                this.radius = Math.min(this.radianCanvas.width, this.radianCanvas.height) * 0.4;
+                this.currentAngle = 0;
+                this.showReferenceAngles = true;
+                this.showAngleScale = true;
+                this.isAnimating = false;
+                this.angleHistory = [];
+                this.maxHistoryPoints = 200;
+                
+                // Initialize
                 this.setupControls();
+                this.createReferenceMarkers();
+                this.createAngleScale();
+                this.animate();
             }
 
-            /** Configure slider events with debouncing */
-            setupSlider() {
-                this.slider.addEventListener('input', (e) => {
-                    clearTimeout(this.debounceTimeout);
-                    this.debounceTimeout = setTimeout(() => {
-                        const value = parseFloat(e.target.value);
-                        this.targetAngle = value;
-                        this.previewAngle = value;
-                        this.slider.value = value;
-                        this.slider.setAttribute('aria-valuenow', value.toFixed(1));
-                        this.updateSliderDisplay();
-                        this.animate();
-                    }, 50);
-                });
+            resizeCanvases() {
+                const container = document.getElementById('canvas-container');
+                const size = Math.min(container.offsetWidth, container.offsetHeight);
+                this.radianCanvas.width = size;
+                this.radianCanvas.height = size;
+                this.trigCanvas.width = size;
+                this.trigCanvas.height = size;
+                this.center = { x: size/2, y: size/2 };
+                this.radius = size * 0.4;
+                this.createAngleScale();
             }
 
-            /** Configure canvas click and touch events */
-            setupCanvas() {
-                const handleAngleSet = (x, y) => {
-                    const dx = x - this.center.x;
-                    const dy = -(y - this.center.y);
-                    const distance = Math.sqrt(dx * dx + dy * dy);
-                    if (Math.abs(distance - this.radius) > RadianVisualizer.TOLERANCE_RADIUS) return;
-                    let angle = Math.atan2(dy, dx);
-                    if (angle < 0) angle += 2 * Math.PI;
-                    angle = Math.min(Math.max(angle, 0), RadianVisualizer.MAX_ANGLE);
-                    this.targetAngle = angle;
-                    this.slider.value = angle;
-                    this.slider.setAttribute('aria-valuenow', angle.toFixed(1));
-                    this.updateSliderDisplay();
-                    this.animate();
-                };
-
-                this.canvas.addEventListener('click', (e) => {
-                    const rect = this.canvas.getBoundingClientRect();
-                    handleAngleSet(e.clientX - rect.left, e.clientY - rect.top);
-                });
-
-                let touchStartAngle = 0;
-                this.canvas.addEventListener('touchstart', (e) => {
-                    const rect = this.canvas.getBoundingClientRect();
-                    const touch = e.touches[0];
-                    const x = touch.clientX - rect.left;
-                    const y = touch.clientY - rect.top;
-                    const dx = x - this.center.x;
-                    const dy = -(y - this.center.y);
-                    touchStartAngle = Math.atan2(dy, dx);
-                    if (touchStartAngle < 0) touchStartAngle += 2 * Math.PI;
-                });
-
-                this.canvas.addEventListener('touchmove', (e) => {
-                    e.preventDefault();
-                    const rect = this.canvas.getBoundingClientRect();
-                    const touch = e.touches[0];
-                    const x = touch.clientX - rect.left;
-                    const y = touch.clientY - rect.top;
-                    const dx = x - this.center.x;
-                    const dy = -(y - this.center.y);
-                    let angle = Math.atan2(dy, dx);
-                    if (angle < 0) angle += 2 * Math.PI;
-                    angle = Math.min(Math.max(angle, 0), RadianVisualizer.MAX_ANGLE);
-                    this.targetAngle = angle;
-                    this.previewAngle = angle;
-                    this.slider.value = angle;
-                    this.slider.setAttribute('aria-valuenow', angle.toFixed(1));
-                    this.updateSliderDisplay();
-                    this.animate();
-                });
-            }
-
-            /** Configure control buttons and keyboard navigation */
             setupControls() {
-                document.getElementById('degree-toggle').addEventListener('click', () => {
-                    this.showDegrees = !this.showDegrees;
-                    document.getElementById('degree-toggle').textContent = `Toggle ${this.showDegrees ? 'Radians' : 'Degrees'}`;
-                    this.updateInfoDisplay();
+                this.slider = document.getElementById('radian-slider');
+                this.slider.addEventListener('input', (e) => {
+                    this.currentAngle = parseFloat(e.target.value);
+                    this.isAnimating = false;
+                    document.getElementById('animate-btn').textContent = 'Start Animation';
+                    this.updateDisplays();
+                });
+
+                document.getElementById('show-reference').addEventListener('click', () => {
+                    this.showReferenceAngles = !this.showReferenceAngles;
+                    this.drawReferenceMarkers();
+                    document.getElementById('show-reference').textContent = 
+                        this.showReferenceAngles ? 'Hide Reference Angles' : 'Show Reference Angles';
+                });
+
+                document.getElementById('toggle-scale').addEventListener('click', () => {
+                    this.showAngleScale = !this.showAngleScale;
+                    document.getElementById('angle-scale').style.display = 
+                        this.showAngleScale ? 'block' : 'none';
+                    document.getElementById('toggle-scale').textContent = 
+                        this.showAngleScale ? 'Hide Angle Scale' : 'Show Angle Scale';
+                });
+
+                document.getElementById('animate-btn').addEventListener('click', () => {
+                    this.isAnimating = !this.isAnimating;
+                    document.getElementById('animate-btn').textContent = 
+                        this.isAnimating ? 'Stop Animation' : 'Start Animation';
                 });
 
                 document.getElementById('reset-btn').addEventListener('click', () => {
-                    this.targetAngle = 0;
+                    this.currentAngle = 0;
+                    this.isAnimating = false;
                     this.slider.value = 0;
-                    this.slider.setAttribute('aria-valuenow', '0');
-                    this.updateSliderDisplay();
-                    this.animate();
+                    this.angleHistory = [];
+                    document.getElementById('animate-btn').textContent = 'Start Animation';
+                    this.updateDisplays();
                 });
 
-                document.addEventListener('keydown', (e) => {
-                    if (e.target === this.slider) {
-                        switch (e.key) {
-                            case 'ArrowLeft':
-                                e.preventDefault();
-                                this.slider.value = Math.max(0, parseFloat(this.slider.value) - 1);
-                                this.targetAngle = parseFloat(this.slider.value);
-                                this.slider.setAttribute('aria-valuenow', this.targetAngle.toFixed(1));
-                                this.updateSliderDisplay();
-                                this.animate();
-                                break;
-                            case 'ArrowRight':
-                                e.preventDefault();
-                                this.slider.value = Math.min(RadianVisualizer.MAX_ANGLE, parseFloat(this.slider.value) + 1);
-                                this.targetAngle = parseFloat(this.slider.value);
-                                this.slider.setAttribute('aria-valuenow', this.targetAngle.toFixed(1));
-                                this.updateSliderDisplay();
-                                this.animate();
-                                break;
-                            case 'Enter':
-                                this.animate();
-                                break;
-                        }
-                    }
+                // Add click interaction for canvas
+                this.radianCanvas.addEventListener('click', (e) => {
+                    const rect = this.radianCanvas.getBoundingClientRect();
+                    const x = e.clientX - rect.left - this.center.x;
+                    const y = -(e.clientY - rect.top - this.center.y);
+                    this.currentAngle = Math.atan2(y, x);
+                    if (this.currentAngle < 0) this.currentAngle += 2 * Math.PI;
+                    this.slider.value = this.currentAngle;
+                    this.isAnimating = false;
+                    document.getElementById('animate-btn').textContent = 'Start Animation';
+                    this.updateDisplays();
                 });
             }
 
-            /** Update slider display labels */
-            updateSliderDisplay() {
-                this.sliderValues[0].textContent = "0";
-                this.sliderValues[1].textContent = "2π";
-                if (Math.round(this.slider.value) === 3) {
-                    this.sliderValues[1].textContent = "π";
-                }
-            }
-
-            /**
-             * Easing function for smooth transitions
-             * @param {number} t - Progress (0 to 1)
-             * @returns {number} Eased value
-             */
-            easeInOutQuad(t) {
-                return t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
-            }
-
-            /** Animate angle with easing and frame rate control */
-            animateToAngle() {
-                const now = performance.now();
-                const deltaTime = (now - this.lastFrameTime) / 16.67;
-                this.lastFrameTime = now;
-
-                const diff = this.targetAngle - this.currentAngle;
-                if (Math.abs(diff) > 0.01) {
-                    const t = Math.min(1, RadianVisualizer.EASING_FACTOR * deltaTime);
-                    this.currentAngle += diff * this.easeInOutQuad(t);
-                    this.draw();
-                    this.updateInfoDisplay();
-                    this.animationId = requestAnimationFrame(() => this.animateToAngle());
-                } else {
-                    this.currentAngle = this.targetAngle;
-                    this.previewAngle = null;
-                    this.draw();
-                    this.updateInfoDisplay();
-                }
-            }
-
-            /** Update info panel displays with coordinates */
-            updateInfoDisplay() {
-                const degrees = this.currentAngle * 180 / Math.PI;
-                const angleText = this.showDegrees 
-                    ? `${degrees.toFixed(2)}°`
-                    : `${this.currentAngle.toFixed(2)} rad (${degrees.toFixed(2)}°)`;
-                document.getElementById('angle-display').textContent = angleText;
-                document.getElementById('arc-length-display').textContent = 
-                    `Arc Length: s = rθ (θ = ${this.currentAngle.toFixed(2)} rad)`;
-                const x = Math.cos(this.currentAngle).toFixed(2);
-                const y = Math.sin(this.currentAngle).toFixed(2);
-                document.getElementById('point-coordinates').textContent = 
-                    `Point: (x, y) = (${x}, ${y})`;
-
-                let keyAngleText = '';
-                for (const [angle, label] of Object.entries(RadianVisualizer.KEY_ANGLES)) {
-                    if (Math.abs(this.currentAngle - angle) < 0.05) {
-                        keyAngleText = `Key Angle: ${label}`;
-                        break;
+            createReferenceMarkers() {
+                const markers = [
+                    { angle: 0, label: '0' },
+                    { angle: Math.PI/6, label: 'π/6' },
+                    { angle: Math.PI/4, label: 'π/4' },
+                    { angle: Math.PI/3, label: 'π/3' },
+                    { angle: Math.PI/2, label: 'π/2' },
+                    { angle: 2*Math.PI/3, label: '2π/3' },
+                    { angle: 3*Math.PI/4, label: '3π/4' },
+                    { angle: 5*Math.PI/6, label: '5π/6' },
+                    { angle: Math.PI, label: 'π' },
+                    { angle: 7*Math.PI/6, label: '7π/6' },
+                    { angle: 5*Math.PI/4, label: '5π/4' },
+                    { angle: 4*Math.PI/3, label: '4π/3' },
+                    { angle: 3*Math.PI/2, label: '3π/2' },
+                    { angle: 5*Math.PI/3, label: '5π/3' },
+                    { angle: 7*Math.PI/4, label: '7π/4' },
+                    { angle: 11*Math.PI/6, label: '11π/6' },
+                    { angle: 2*Math.PI, label: '2π' }
+                ];
+                
+                const container = document.getElementById('reference-markers');
+                container.innerHTML = '';
+                
+                markers.forEach(marker => {
+                    const x = this.center.x + (this.radius + 25) * Math.cos(marker.angle);
+                    const y = this.center.y - (this.radius + 25) * Math.sin(marker.angle);
+                    
+                    const el = document.createElement('div');
+                    el.className = 'reference-label';
+                    el.textContent = marker.label;
+                    el.style.left = `${x}px`;
+                    el.style.top = `${y}px`;
+                    el.style.display = this.showReferenceAngles ? 'block' : 'none';
+                    
+                    if (['0', 'π/2', 'π', '3π/2', '2π'].includes(marker.label)) {
+                        el.style.background = 'rgba(0, 150, 255, 0.7)';
+                        el.style.fontWeight = 'bold';
                     }
-                }
-                const tooltip = document.getElementById('key-angle-tooltip');
-                tooltip.textContent = keyAngleText;
-                tooltip.style.display = keyAngleText ? 'block' : 'none';
-            }
-
-            /** Draw the entire visualization */
-            draw() {
-                if (!this.ctx) return;
-                try {
-                    this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-                    this.drawAxes();
-                    this.drawCosmicCircle();
-                    this.drawAngle();
-                    this.drawRadius();
-                    this.drawPositionMarker();
-                    this.drawTrailParticles();
-                    if (this.previewAngle !== null) {
-                        this.drawPreviewArc();
-                    }
-                } catch (error) {
-                    console.error('Draw error:', error);
-                }
-            }
-
-            /** Draw x and y coordinate axes */
-            drawAxes() {
-                if (!this.ctx) return;
-                this.ctx.beginPath();
-                this.ctx.setLineDash([5, 5]);
-                this.ctx.strokeStyle = `rgba(0, 200, 255, ${RadianVisualizer.AXIS_OPACITY})`;
-                this.ctx.lineWidth = 1;
-
-                // X-axis
-                this.ctx.moveTo(this.center.x - this.radius * 1.2, this.center.y);
-                this.ctx.lineTo(this.center.x + this.radius * 1.2, this.center.y);
-
-                // Y-axis
-                this.ctx.moveTo(this.center.x, this.center.y - this.radius * 1.2);
-                this.ctx.lineTo(this.center.x, this.center.y + this.radius * 1.2);
-
-                this.ctx.stroke();
-                this.ctx.setLineDash([]);
-
-                // Ticks at -1, 0, 1
-                const ticks = [-1, 0, 1];
-                ticks.forEach(t => {
-                    if (t !== 0) { // Skip center to avoid overdraw
-                        // X-axis ticks
-                        this.ctx.beginPath();
-                        const x = this.center.x + t * this.radius;
-                        this.ctx.moveTo(x, this.center.y - RadianVisualizer.TICK_SIZE);
-                        this.ctx.lineTo(x, this.center.y + RadianVisualizer.TICK_SIZE);
-                        this.ctx.stroke();
-
-                        // Y-axis ticks
-                        this.ctx.beginPath();
-                        const y = this.center.y - t * this.radius;
-                        this.ctx.moveTo(this.center.x - RadianVisualizer.TICK_SIZE, y);
-                        this.ctx.lineTo(this.center.x + RadianVisualizer.TICK_SIZE, y);
-                        this.ctx.stroke();
-                    }
+                    
+                    container.appendChild(el);
                 });
             }
 
-            /** Draw the cosmic circle with dynamic effects */
-            drawCosmicCircle() {
-                if (!this.ctx) return;
-                const glowOpacity = 0.2 + 0.1 * Math.sin(Date.now() * 0.001);
-                const gradient = this.ctx.createRadialGradient(
-                    this.center.x, this.center.y, this.radius * 0.9,
-                    this.center.x, this.center.y, this.radius * 1.1
+            createAngleScale() {
+                const container = document.getElementById('angle-scale');
+                container.innerHTML = '';
+                
+                for (let i = 0; i < 24; i++) {
+                    const angle = i * Math.PI/12;
+                    const isMajor = i % 3 === 0;
+                    
+                    const tick = document.createElement('div');
+                    tick.className = `angle-tick ${isMajor ? 'major' : ''}`;
+                    
+                    const x = this.center.x + this.radius * Math.cos(angle);
+                    const y = this.center.y - this.radius * Math.sin(angle);
+                    
+                    tick.style.left = `${x}px`;
+                    tick.style.top = `${y}px`;
+                    tick.style.transform = `rotate(${-angle}rad) translateY(-${this.radius}px)`;
+                    
+                    container.appendChild(tick);
+                }
+            }
+
+            drawReferenceMarkers() {
+                const labels = document.querySelectorAll('.reference-label');
+                labels.forEach(label => {
+                    label.style.display = this.showReferenceAngles ? 'block' : 'none';
+                });
+            }
+
+            updateDisplays() {
+                document.getElementById('angle-rad').textContent = this.currentAngle.toFixed(2);
+                document.getElementById('angle-deg').textContent = (this.currentAngle * 180/Math.PI).toFixed(2);
+                document.getElementById('arc-length').textContent = this.currentAngle.toFixed(2);
+                document.getElementById('sin-value').textContent = Math.sin(this.currentAngle).toFixed(2);
+                document.getElementById('cos-value').textContent = Math.cos(this.currentAngle).toFixed(2);
+            }
+
+            drawUnitCircle() {
+                this.rctx.clearRect(0, 0, this.radianCanvas.width, this.radianCanvas.height);
+                
+                this.drawAxes();
+                
+                this.rctx.beginPath();
+                this.rctx.arc(this.center.x, this.center.y, this.radius, 0, Math.PI * 2);
+                this.rctx.strokeStyle = 'rgba(0, 150, 255, 0.5)';
+                this.rctx.lineWidth = 2;
+                this.rctx.stroke();
+                
+                const gradient = this.rctx.createLinearGradient(
+                    this.center.x, this.center.y,
+                    this.center.x + this.radius * Math.cos(this.currentAngle),
+                    this.center.y - this.radius * Math.sin(this.currentAngle)
                 );
-                gradient.addColorStop(0, 'rgba(0, 100, 255, 0)');
-                gradient.addColorStop(1, `rgba(0, 100, 255, ${glowOpacity})`);
+                gradient.addColorStop(0, '#00f0ff');
+                gradient.addColorStop(1, '#ff3366');
                 
-                this.ctx.beginPath();
-                this.ctx.arc(this.center.x, this.center.y, this.radius * 1.1, 0, Math.PI * 2);
-                this.ctx.fillStyle = gradient;
-                this.ctx.fill();
+                this.rctx.beginPath();
+                this.rctx.arc(this.center.x, this.center.y, this.radius, 0, this.currentAngle);
+                this.rctx.strokeStyle = gradient;
+                this.rctx.lineWidth = 4;
+                this.rctx.stroke();
                 
-                this.ctx.beginPath();
-                this.ctx.arc(this.center.x, this.center.y, this.radius, 0, Math.PI * 2);
-                this.ctx.strokeStyle = 'rgba(0, 150, 255, 0.4)';
-                this.ctx.lineWidth = 2;
-                this.ctx.stroke();
-                
-                const centerSize = 4 + 1 * Math.sin(Date.now() * 0.005);
-                this.ctx.beginPath();
-                this.ctx.arc(this.center.x, this.center.y, centerSize, 0, Math.PI * 2);
-                this.ctx.fillStyle = 'rgba(0, 200, 255, 0.9)';
-                this.ctx.shadowBlur = 10;
-                this.ctx.shadowColor = 'rgba(0, 200, 255, 0.9)';
-                this.ctx.fill();
-                this.ctx.shadowBlur = 0;
-            }
-
-            /** Draw the angle arc with glow */
-            drawAngle() {
-                if (!this.ctx || this.currentAngle <= 0) return;
-                let strokeStyle = 'rgba(0, 255, 255, 0.7)';
-                let shadowColor = 'rgba(0, 255, 255, 0.5)';
-                for (const [angle, label] of Object.entries(RadianVisualizer.KEY_ANGLES)) {
-                    if (Math.abs(this.currentAngle - angle) < 0.05) {
-                        strokeStyle = angle == 1 ? 'rgba(255, 100, 100, 0.7)' :
-                                     angle == Math.PI / 2 ? 'rgba(100, 255, 100, 0.7)' :
-                                     angle == Math.PI ? 'rgba(255, 255, 100, 0.7)' :
-                                     'rgba(200, 100, 255, 0.7)';
-                        shadowColor = angle == 1 ? 'rgba(255, 100, 100, 0.5)' :
-                                     angle == Math.PI / 2 ? 'rgba(100, 255, 100, 0.5)' :
-                                     angle == Math.PI ? 'rgba(255, 255, 100, 0.5)' :
-                                     'rgba(200, 100, 255, 0.5)';
-                        break;
-                    }
-                }
-                
-                this.ctx.beginPath();
-                this.ctx.arc(this.center.x, this.center.y, this.radius, 0, this.currentAngle);
-                this.ctx.strokeStyle = strokeStyle;
-                this.ctx.lineWidth = 3;
-                this.ctx.shadowBlur = 8;
-                this.ctx.shadowColor = shadowColor;
-                this.ctx.stroke();
-                this.ctx.shadowBlur = 0;
-            }
-
-            /** Draw the radius line */
-            drawRadius() {
-                if (!this.ctx) return;
                 const endX = this.center.x + this.radius * Math.cos(this.currentAngle);
                 const endY = this.center.y - this.radius * Math.sin(this.currentAngle);
+                this.rctx.beginPath();
+                this.rctx.moveTo(this.center.x, this.center.y);
+                this.rctx.lineTo(endX, endY);
+                this.rctx.strokeStyle = 'rgba(0, 200, 255, 0.7)';
+                this.rctx.lineWidth = 2;
+                this.rctx.stroke();
                 
-                this.ctx.beginPath();
-                this.ctx.moveTo(this.center.x, this.center.y);
-                this.ctx.lineTo(endX, endY);
-                this.ctx.strokeStyle = 'rgba(0, 200, 255, 0.5)';
-                this.ctx.lineWidth = 1;
-                this.ctx.stroke();
-            }
-
-            /** Draw the position marker with enhanced particles */
-            drawPositionMarker() {
-                if (!this.ctx || this.currentAngle <= 0) return;
-                const x = this.center.x + this.radius * Math.cos(this.currentAngle);
-                const y = this.center.y - this.radius * Math.sin(this.currentAngle);
+                // Draw sine and cosine projections
+                this.rctx.beginPath();
+                this.rctx.moveTo(endX, endY);
+                this.rctx.lineTo(endX, this.center.y);
+                this.rctx.strokeStyle = '#00ff00';
+                this.rctx.stroke();
                 
-                if (Math.abs(this.targetAngle - this.currentAngle) > 0.01) {
-                    this.trailParticles.push({
-                        x, y,
-                        size: Math.random() * 5 + 2,
-                        opacity: 1,
-                        life: 50,
-                        color: `rgba(${255 - Math.random() * 50}, ${100 - Math.random() * 50}, 100, 1)`
-                    });
-                    if (this.trailParticles.length > 20) {
-                        this.trailParticles.shift();
-                    }
+                this.rctx.beginPath();
+                this.rctx.moveTo(endX, endY);
+                this.rctx.lineTo(this.center.x, endY);
+                this.rctx.strokeStyle = '#ff0000';
+                this.rctx.stroke();
+                
+                this.rctx.beginPath();
+                this.rctx.arc(endX, endY, 8, 0, Math.PI * 2);
+                const markerGradient = this.rctx.createRadialGradient(
+                    endX, endY, 0,
+                    endX, endY, 8
+                );
+                markerGradient.addColorStop(0, '#ff3366');
+                markerGradient.addColorStop(1, 'rgba(255, 51, 102, 0.3)');
+                this.rctx.fillStyle = markerGradient;
+                this.rctx.shadowBlur = 15;
+                this.rctx.shadowColor = '#ff3366';
+                this.rctx.fill();
+                this.rctx.shadowBlur = 0;
+                
+                if (this.currentAngle > 0.2) {
+                    const midAngle = this.currentAngle / 2;
+                    const textRadius = this.radius * 0.7;
+                    const textX = this.center.x + textRadius * Math.cos(midAngle);
+                    const textY = this.center.y - textRadius * Math.sin(midAngle);
+                    
+                    this.rctx.fillStyle = '#00f0ff';
+                    this.rctx.font = 'bold 14px Arial';
+                    this.rctx.textAlign = 'center';
+                    this.rctx.fillText(`${this.currentAngle.toFixed(2)} rad`, textX, textY);
                 }
                 
-                const pulseSize = 6 + 2 * Math.sin(Date.now() * 0.01);
-                this.ctx.beginPath();
-                this.ctx.arc(x, y, pulseSize, 0, Math.PI * 2);
-                this.ctx.fillStyle = 'rgba(255, 50, 50, 0.9)';
-                this.ctx.shadowBlur = 15;
-                this.ctx.shadowColor = 'rgba(255, 50, 50, 0.7)';
-                this.ctx.fill();
-                this.ctx.shadowBlur = 0;
+                this.rctx.fillStyle = 'white';
+                this.rctx.font = '14px Arial';
+                this.rctx.textAlign = 'left';
+                this.rctx.fillText(
+                    `(cos θ, sin θ) = (${Math.cos(this.currentAngle).toFixed(2)}, ${Math.sin(this.currentAngle).toFixed(2)})`,
+                    this.center.x - this.radius, this.center.y + this.radius + 30
+                );
+                
+                this.rctx.fillText(
+                    `Radius (r) = 1 unit | Arc length (s) = ${this.currentAngle.toFixed(2)} units`,
+                    this.center.x - this.radius, this.center.y + this.radius + 50
+                );
             }
 
-            /** Draw trail particles */
-            drawTrailParticles() {
-                if (!this.ctx) return;
-                for (let i = this.trailParticles.length - 1; i >= 0; i--) {
-                    const p = this.trailParticles[i];
-                    p.life -= 2;
-                    p.opacity = p.life / 50;
-                    p.size *= 0.98;
-                    
-                    if (p.life <= 0) {
-                        this.trailParticles.splice(i, 1);
-                        continue;
-                    }
-                    
-                    this.ctx.beginPath();
-                    this.ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
-                    this.ctx.fillStyle = p.color.replace('1)', `${p.opacity})`);
-                    this.ctx.fill();
+            drawTrigFunctions() {
+                this.tctx.clearRect(0, 0, this.trigCanvas.width, this.trigCanvas.height);
+                
+                // Draw axes
+                this.tctx.beginPath();
+                this.tctx.moveTo(0, this.trigCanvas.height/2);
+                this.tctx.lineTo(this.trigCanvas.width, this.trigCanvas.height/2);
+                this.tctx.moveTo(this.trigCanvas.width/4, 0);
+                this.tctx.lineTo(this.trigCanvas.width/4, this.trigCanvas.height);
+                this.tctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+                this.tctx.lineWidth = 1;
+                this.tctx.stroke();
+                
+                // Draw sine wave
+                this.tctx.beginPath();
+                for (let x = 0; x < this.trigCanvas.width; x++) {
+                    const angle = (x / this.trigCanvas.width) * 2 * Math.PI + this.currentAngle;
+                    const y = this.trigCanvas.height/2 - Math.sin(angle) * (this.trigCanvas.height/4);
+                    if (x === 0) this.tctx.moveTo(x, y);
+                    else this.tctx.lineTo(x, y);
                 }
+                this.tctx.strokeStyle = '#00ff00';
+                this.tctx.lineWidth = 2;
+                this.tctx.stroke();
+                
+                // Draw cosine wave
+                this.tctx.beginPath();
+                for (let x = 0; x < this.trigCanvas.width; x++) {
+                    const angle = (x / this.trigCanvas.width) * 2 * Math.PI + this.currentAngle;
+                    const y = this.trigCanvas.height/2 - Math.cos(angle) * (this.trigCanvas.height/4);
+                    if (x === 0) this.tctx.moveTo(x, y);
+                    else this.tctx.lineTo(x, y);
+                }
+                this.tctx.strokeStyle = '#ff0000';
+                this.tctx.lineWidth = 2;
+                this.tctx.stroke();
+                
+                // Draw current position
+                const currentX = this.trigCanvas.width/4;
+                const sinY = this.trigCanvas.height/2 - Math.sin(this.currentAngle) * (this.trigCanvas.height/4);
+                const cosY = this.trigCanvas.height/2 - Math.cos(this.currentAngle) * (this.trigCanvas.height/4);
+                
+                this.tctx.beginPath();
+                this.tctx.arc(currentX, sinY, 5, 0, Math.PI * 2);
+                this.tctx.fillStyle = '#00ff00';
+                this.tctx.fill();
+                
+                this.tctx.beginPath();
+                this.tctx.arc(currentX, cosY, 5, 0, Math.PI * 2);
+                this.tctx.fillStyle = '#ff0000';
+                this.tctx.fill();
+                
+                // Draw labels
+                this.tctx.fillStyle = 'white';
+                this.tctx.font = '12px Arial';
+                this.tctx.textAlign = 'right';
+                this.tctx.fillText('sin(θ)', this.trigCanvas.width - 10, sinY);
+                this.tctx.fillText('cos(θ)', this.trigCanvas.width - 10, cosY);
             }
 
-            /** Draw preview arc during slider drag */
-            drawPreviewArc() {
-                if (!this.ctx || this.previewAngle <= 0) return;
-                this.ctx.beginPath();
-                this.ctx.arc(this.center.x, this.center.y, this.radius, 0, this.previewAngle);
-                this.ctx.strokeStyle = 'rgba(0, 255, 255, 0.3)';
-                this.ctx.lineWidth = 2;
-                this.ctx.stroke();
+            drawAxes() {
+                this.rctx.beginPath();
+                this.rctx.moveTo(this.center.x - this.radius * 1.2, this.center.y);
+                this.rctx.lineTo(this.center.x + this.radius * 1.2, this.center.y);
+                this.rctx.moveTo(this.center.x, this.center.y - this.radius * 1.2);
+                this.rctx.lineTo(this.center.x, this.center.y + this.radius * 1.2);
+                this.rctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+                this.rctx.lineWidth = 1;
+                this.rctx.stroke();
+                
+                this.rctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+                this.rctx.font = '12px Arial';
+                this.rctx.textAlign = 'center';
+                this.rctx.fillText('x', this.center.x + this.radius * 1.15, this.center.y + 15);
+                this.rctx.textAlign = 'left';
+                this.rctx.fillText('y', this.center.x + 5, this.center.y - this.radius * 1.15);
+                
+                [-1, 0, 1].forEach(t => {
+                    if (t !== 0) {
+                        const x = this.center.x + t * this.radius;
+                        this.rctx.beginPath();
+                        this.rctx.moveTo(x, this.center.y - 5);
+                        this.rctx.lineTo(x, this.center.y + 5);
+                        this.rctx.stroke();
+                        
+                        const y = this.center.y - t * this.radius;
+                        this.rctx.beginPath();
+                        this.rctx.moveTo(this.center.x - 5, y);
+                        this.rctx.lineTo(this.center.x + 5, y);
+                        this.rctx.stroke();
+                    }
+                });
             }
 
-            /** Start animation */
             animate() {
-                if (this.animationId) {
-                    cancelAnimationFrame(this.animationId);
+                if (this.isAnimating) {
+                    this.currentAngle += 0.02;
+                    if (this.currentAngle > 2 * Math.PI) this.currentAngle -= 2 * Math.PI;
+                    this.slider.value = this.currentAngle;
+                    this.updateDisplays();
                 }
-                this.lastFrameTime = performance.now();
-                this.animateToAngle();
+
+                this.drawUnitCircle();
+                this.drawTrigFunctions();
+                requestAnimationFrame(() => this.animate());
             }
         }
 
-        // Initialize when loaded
         window.addEventListener('load', () => {
-            const canvas = document.getElementById('radianCanvas');
-            const visualizer = new RadianVisualizer(canvas);
-            
-            setTimeout(() => {
-                visualizer.slider.value = 1;
-                visualizer.slider.setAttribute('aria-valuenow', '1');
-                visualizer.targetAngle = 1;
-                visualizer.updateSliderDisplay();
-                visualizer.animate();
-            }, 500);
+            const radianCanvas = document.getElementById('radianCanvas');
+            const trigCanvas = document.getElementById('trigCanvas');
+            new EnhancedRadianVisualizer(radianCanvas, trigCanvas);
+        });
+
+        window.addEventListener('resize', () => {
+            const radianCanvas = document.getElementById('radianCanvas');
+            const trigCanvas = document.getElementById('trigCanvas');
+            new EnhancedRadianVisualizer(radianCanvas, trigCanvas);
         });
     </script>
 </body>
