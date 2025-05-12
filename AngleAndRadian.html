@@ -1,0 +1,784 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Cinematic Arc Length & Radian Visualizer</title>
+  <style>
+    :root {
+      --primary-color: #00e5ff;
+      --secondary-color: #0077b6;
+      --accent-color: #ffca28;
+      --dark-color: #0d1b2a;
+      --light-color: #e0f7fa;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin: 0;
+      padding: 10px;
+      color: #fff;
+      min-height: 100vh;
+      background: #0d1b2a;
+      overflow-y: auto;
+      position: relative;
+    }
+
+    #background-canvas {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: -1;
+    }
+
+    h2 {
+      margin: 10px 0;
+      text-shadow: 0 0 10px var(--primary-color);
+      color: var(--primary-color);
+      font-size: clamp(1.5rem, 4vw, 2rem);
+      background: rgba(0,0,0,0.5);
+      padding: 10px 20px;
+      border-radius: 10px;
+      backdrop-filter: blur(10px);
+      box-shadow: 0 0 15px rgba(0,229,255,0.3);
+      text-align: center;
+    }
+
+    #canvas-container {
+      position: relative;
+      width: clamp(250px, 90vw, 400px);
+      height: clamp(250px, 90vw, 400px);
+      margin: 10px 0;
+      border-radius: 50%;
+      box-shadow: 0 0 30px rgba(0,229,255,0.5), inset 0 0 15px rgba(0,229,255,0.2);
+      background: radial-gradient(circle, rgba(0,229,255,0.1), transparent);
+      overflow: hidden;
+      border: 2px solid rgba(0,229,255,0.3);
+    }
+
+    canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    .controls {
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+      margin: 10px 0;
+      background: rgba(0,0,0,0.5);
+      padding: 15px;
+      border-radius: 10px;
+      backdrop-filter: blur(10px);
+      box-shadow: 0 0 15px rgba(0,229,255,0.3);
+      width: clamp(250px, 90vw, 400px);
+    }
+
+    .control-group {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      width: 100%;
+      padding: 5px;
+      border-radius: 8px;
+      background: rgba(255,255,255,0.05);
+    }
+
+    .slider-label {
+      font-weight: bold;
+      margin-bottom: 5px;
+      font-size: clamp(0.9rem, 2.5vw, 1rem);
+      color: var(--primary-color);
+      text-shadow: 0 0 5px var(--primary-color);
+    }
+
+    input[type=range] {
+      -webkit-appearance: none;
+      width: 100%;
+      height: 6px;
+      border-radius: 5px;
+      background: linear-gradient(to right, var(--primary-color), var(--accent-color));
+      outline: none;
+      margin: 0 0 10px 0;
+    }
+
+    input[type=range]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: #fff;
+      cursor: pointer;
+      box-shadow: 0 0 10px var(--primary-color), 0 0 15px var(--accent-color);
+      transition: all 0.2s ease;
+    }
+
+    input[type=range]::-webkit-slider-thumb:hover {
+      transform: scale(1.2);
+      box-shadow: 0 0 15px var(--primary-color), 0 0 20px var(--accent-color);
+    }
+
+    .toggle-container {
+      margin: 10px 0;
+      background: rgba(0,0,0,0.5);
+      padding: 8px 15px;
+      border-radius: 8px;
+      backdrop-filter: blur(10px);
+      box-shadow: 0 0 10px rgba(0,229,255,0.3);
+    }
+
+    .switch {
+      position: relative;
+      display: inline-block;
+      width: 50px;
+      height: 28px;
+      margin-left: 8px;
+    }
+
+    .switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+
+    .slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: #ccc;
+      transition: .4s;
+      border-radius: 28px;
+      box-shadow: inset 0 0 8px rgba(0,0,0,0.5);
+    }
+
+    .slider:before {
+      position: absolute;
+      content: "";
+      height: 22px;
+      width: 22px;
+      left: 3px;
+      bottom: 3px;
+      background-color: #fff;
+      transition: .4s;
+      border-radius: 50%;
+      box-shadow: 0 0 8px var(--primary-color);
+    }
+
+    input:checked + .slider {
+      background-color: var(--primary-color);
+    }
+
+    input:checked + .slider:before {
+      transform: translateX(22px);
+    }
+
+    #info {
+      width: clamp(250px, 90vw, 400px);
+      font-size: clamp(0.8rem, 2vw, 0.9rem);
+      line-height: 1.5;
+      text-align: center;
+      background: rgba(0,0,0,0.5);
+      padding: 15px;
+      border-radius: 10px;
+      backdrop-filter: blur(10px);
+      box-shadow: 0 0 15px rgba(0,229,255,0.3);
+      margin: 10px 0;
+      animation: infoPulse 3s infinite;
+    }
+
+    #info strong {
+      color: var(--accent-color);
+      text-shadow: 0 0 5px var(--accent-color);
+    }
+
+    .button-container {
+      margin: 10px 0;
+    }
+
+    button {
+      padding: 8px 25px;
+      background: var(--primary-color);
+      color: #000;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: clamp(0.9rem, 2.5vw, 1rem);
+      box-shadow: 0 0 10px var(--primary-color);
+      transition: all 0.3s;
+    }
+
+    button:hover {
+      background: var(--accent-color);
+      box-shadow: 0 0 15px var(--accent-color);
+      color: #fff;
+    }
+
+    .tooltip {
+      position: fixed;
+      background: var(--primary-color);
+      color: #000;
+      padding: 5px 10px;
+      border-radius: 5px;
+      font-size: clamp(0.7rem, 1.8vw, 0.8rem);
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.3s;
+      box-shadow: 0 0 8px var(--primary-color);
+      z-index: 10;
+    }
+
+    @keyframes infoPulse {
+      0% { box-shadow: 0 0 10px rgba(0,229,255,0.3); }
+      50% { box-shadow: 0 0 20px rgba(0,229,255,0.6); }
+      100% { box-shadow: 0 0 10px rgba(0,229,255,0.3); }
+    }
+
+    @keyframes arcGlow {
+      0% { filter: drop-shadow(0 0 5px var(--accent-color)); }
+      50% { filter: drop-shadow(0 0 15px var(--accent-color)); }
+      100% { filter: drop-shadow(0 0 5px var(--accent-color)); }
+    }
+
+    @media (max-width: 400px) {
+      body {
+        padding: 5px;
+      }
+      .controls {
+        gap: 10px;
+        padding: 10px;
+      }
+      .toggle-container {
+        padding: 5px 10px;
+      }
+      button {
+        padding: 6px 20px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <canvas id="background-canvas"></canvas>
+
+  <h2>Cinematic Arc Length & Angle Visualizer</h2>
+
+  <div class="toggle-container">
+    <label>
+      <span style="margin-right: 8px; font-size: clamp(0.9rem, 2.5vw, 1rem);">Angle Unit:</span>
+      <label class="switch">
+        <input type="checkbox" id="toggleDeg" checked>
+        <span class="slider"></span>
+      </label>
+      <span id="unitLabel" style="margin-left: 8px; font-size: clamp(0.9rem, 2.5vw, 1rem);">Degrees</span>
+    </label>
+  </div>
+
+  <div id="canvas-container">
+    <canvas id="arcCanvas"></canvas>
+  </div>
+
+  <div class="controls">
+    <div class="control-group">
+      <div class="slider-label">Arc Length (s): <span id="sVal">50</span> units</div>
+      <input type="range" id="arcSlider" min="10" max="628" value="50" step="1" />
+      <div class="slider-label">Animation Speed: <span id="speedVal">5</span></div>
+      <input type="range" id="speedSlider" min="1" max="10" value="5" step="1" />
+    </div>
+    <div class="control-group">
+      <div class="slider-label">Radius (r): <span id="rVal">100</span> units</div>
+      <input type="range" id="radiusSlider" min="50" max="200" value="100" step="1" />
+      <div class="slider-label">Arc Thickness: <span id="thicknessVal">6</span></div>
+      <input type="range" id="thicknessSlider" min="2" max="15" value="6" step="1" />
+    </div>
+  </div>
+
+  <div class="button-container">
+    <button id="resetBtn">Reset</button>
+  </div>
+
+  <div id="info">
+    <p id="angleInfo">θ = s / r = 50 / 100 = <strong>0.50 radians</strong></p>
+    <p id="sectorArea">Sector Area = <strong>1250.00</strong> units²</p>
+    <p id="circumferenceInfo">Circumference: <strong>628.32</strong> units (2πr)</p>
+    <p id="arcRatio">Arc ratio: <strong>7.96%</strong> of circumference</p>
+    <p><strong>Arc Length (s):</strong> Length along the circle's edge. <em>s = r × θ</em></p>
+    <p><strong>Radian (θ):</strong> Angle where arc length equals radius. <em>θ = s / r</em></p>
+    <p><strong>Sector Area:</strong> Area of the circle's slice. <em>A = ½ × r² × θ</em></p>
+  </div>
+
+  <div class="tooltip" id="tooltip"></div>
+
+<script>
+// DOM elements
+const bgCanvas = document.getElementById('background-canvas');
+const bgCtx = bgCanvas.getContext('2d');
+const canvas = document.getElementById('arcCanvas');
+const ctx = canvas.getContext('2d');
+const sRange = document.getElementById('arcSlider');
+const rRange = document.getElementById('radiusSlider');
+const speedRange = document.getElementById('speedSlider');
+const thicknessRange = document.getElementById('thicknessSlider');
+const sVal = document.getElementById('sVal');
+const rVal = document.getElementById('rVal');
+const speedVal = document.getElementById('speedVal');
+const thicknessVal = document.getElementById('thicknessVal');
+const toggleDeg = document.getElementById('toggleDeg');
+const unitLabel = document.getElementById('unitLabel');
+const angleInfo = document.getElementById('angleInfo');
+const sectorArea = document.getElementById('sectorArea');
+const circumferenceInfo = document.getElementById('circumferenceInfo');
+const arcRatio = document.getElementById('arcRatio');
+const resetBtn = document.getElementById('resetBtn');
+const tooltip = document.getElementById('tooltip');
+
+// State variables
+let canvasSize = Math.min(window.innerWidth * 0.9, 400);
+let centerX, centerY;
+let s = parseFloat(sRange.value);
+let r = parseFloat(rRange.value);
+let animationSpeed = parseFloat(speedRange.value);
+let arcThickness = parseFloat(thicknessRange.value);
+let currentEnd = 0;
+let targetEnd = 0;
+let animationProgress = 0;
+let isAnimating = false;
+let animationFrameId = null;
+let isDragging = false;
+
+// Background animation
+const particles = [];
+function initBackground() {
+  bgCanvas.width = window.innerWidth;
+  bgCanvas.height = window.innerHeight;
+  particles.length = 0;
+  const particleCount = window.innerWidth < 400 ? 30 : window.innerWidth < 600 ? 50 : 80;
+  for (let i = 0; i < particleCount; i++) {
+    particles.push({
+      x: Math.random() * bgCanvas.width,
+      y: Math.random() * bgCanvas.height,
+      radius: Math.random() * 2 + 1,
+      vx: (Math.random() - 0.5) * 0.2,
+      vy: (Math.random() - 0.5) * 0.2,
+      alpha: Math.random() * 0.4 + 0.2
+    });
+  }
+}
+
+function drawBackground() {
+  bgCtx.clearRect(0, 0, bgCanvas.width, bgCanvas.height);
+  const gradient = bgCtx.createRadialGradient(bgCanvas.width / 2, bgCanvas.height / 2, 0, bgCanvas.width / 2, bgCanvas.height / 2, Math.max(bgCanvas.width, bgCanvas.height));
+  gradient.addColorStop(0, '#0d1b2a');
+  gradient.addColorStop(0.5, '#1b263b');
+  gradient.addColorStop(1, '#0d1b2a');
+  bgCtx.fillStyle = gradient;
+  bgCtx.fillRect(0, 0, bgCanvas.width, bgCanvas.height);
+
+  particles.forEach(p => {
+    p.x += p.vx;
+    p.y += p.vy;
+    if (p.x < 0 || p.x > bgCanvas.width) p.vx *= -1;
+    if (p.y < 0 || p.y > bgCanvas.height) p.vy *= -1;
+
+    bgCtx.beginPath();
+    bgCtx.arc(p.x, p.y, p.radius, 0, 2 * Math.PI);
+    bgCtx.fillStyle = `rgba(0,229,255,${p.alpha})`;
+    bgCtx.fill();
+  });
+
+  bgCtx.fillStyle = 'rgba(0,229,255,0.05)';
+  bgCtx.beginPath();
+  bgCtx.arc(bgCanvas.width / 2, bgCanvas.height / 2, 150, 0, 2 * Math.PI);
+  bgCtx.fill();
+
+  requestAnimationFrame(drawBackground);
+}
+
+// Utility functions
+function polarToCartesian(r, angleRad) {
+  return {
+    x: centerX + r * Math.cos(angleRad),
+    y: centerY + r * Math.sin(angleRad)
+  };
+}
+
+function easeOut(t) {
+  return t * (2 - t);
+}
+
+// Set canvas size
+function setCanvasSize() {
+  canvasSize = Math.min(window.innerWidth * 0.9, window.innerHeight * 0.5, 400);
+  if (window.innerWidth < 400) {
+    canvasSize = Math.min(window.innerWidth * 0.9, 300);
+  }
+  canvas.width = canvasSize;
+  canvas.height = canvasSize;
+  centerX = canvasSize / 2;
+  centerY = canvasSize / 2;
+  console.log('Canvas size set:', canvasSize);
+  draw(); // Redraw immediately after resizing
+}
+
+// Draw holographic grid
+function drawGrid() {
+  const gridSize = canvasSize / 20;
+  ctx.strokeStyle = 'rgba(0,229,255,0.1)';
+  ctx.lineWidth = canvasSize / 500;
+  const time = performance.now() * 0.001;
+
+  for (let x = 0; x <= canvasSize; x += gridSize) {
+    ctx.beginPath();
+    ctx.moveTo(x, 0);
+    ctx.lineTo(x, canvasSize);
+    ctx.stroke();
+  }
+
+  for (let y = 0; y <= canvasSize; y += gridSize) {
+    ctx.beginPath();
+    ctx.moveTo(0, y);
+    ctx.lineTo(canvasSize, y);
+    ctx.stroke();
+  }
+
+  ctx.strokeStyle = `rgba(0,229,255,${0.2 + Math.sin(time) * 0.1})`;
+  ctx.lineWidth = canvasSize / 250;
+  ctx.beginPath();
+  ctx.moveTo(centerX, 0);
+  ctx.lineTo(centerX, canvasSize);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(0, centerY);
+  ctx.lineTo(canvasSize, centerY);
+  ctx.stroke();
+}
+
+// Draw degree markers
+function drawDegreeMarkers() {
+  const scale = canvasSize / 400;
+  for (let deg = 0; deg < 360; deg += 30) {
+    const rad = deg * Math.PI / 180;
+    const inner = polarToCartesian(r, rad);
+    const outer = polarToCartesian(r + 12 * scale, rad);
+    ctx.beginPath();
+    ctx.moveTo(inner.x, inner.y);
+    ctx.lineTo(outer.x, outer.y);
+    ctx.strokeStyle = 'rgba(0,229,255,0.3)';
+    ctx.lineWidth = scale;
+    ctx.stroke();
+    if (deg % 90 === 0) {
+      const label = polarToCartesian(r + 25 * scale, rad);
+      ctx.font = `${10 * scale}px Arial`;
+      ctx.fillStyle = 'rgba(0,229,255,0.7)';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(`${deg}°`, label.x, label.y);
+    }
+  }
+}
+
+// Animate arc
+function animateArc(toAngle) {
+  if (animationFrameId) {
+    cancelAnimationFrame(animationFrameId);
+  }
+
+  isAnimating = true;
+  animationProgress = 0;
+  const fromAngle = currentEnd;
+  const delta = toAngle - fromAngle;
+  const speedFactor = animationSpeed / 5;
+
+  function animate() {
+    if (animationProgress < 1) {
+      animationProgress += (0.02 * speedFactor);
+      const easedProgress = easeOut(animationProgress);
+      currentEnd = fromAngle + delta * easedProgress;
+      draw();
+      console.log('Animating:', { progress: animationProgress, currentEnd });
+      animationFrameId = requestAnimationFrame(animate);
+    } else {
+      currentEnd = toAngle;
+      isAnimating = false;
+      draw();
+      console.log('Animation complete:', { currentEnd });
+    }
+  }
+  animate();
+}
+
+// Draw canvas
+function draw() {
+  if (!ctx) {
+    console.error('Canvas context not available');
+    return;
+  }
+
+  ctx.clearRect(0, 0, canvasSize, canvasSize);
+  console.log('Drawing canvas:', { width: canvas.width, height: canvas.height });
+
+  drawGrid();
+  ctx.beginPath();
+  ctx.arc(centerX, centerY, r, 0, 2 * Math.PI);
+  ctx.strokeStyle = 'rgba(0,229,255,0.3)';
+  ctx.lineWidth = canvasSize / 250;
+  ctx.shadowColor = 'rgba(0,229,255,0.5)';
+  ctx.shadowBlur = 15 * (canvasSize / 400);
+  ctx.stroke();
+  ctx.shadowBlur = 0;
+
+  drawDegreeMarkers();
+
+  const scale = canvasSize / 400;
+  const gradient = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, r);
+  gradient.addColorStop(0, 'rgba(0,229,255,0.4)');
+  gradient.addColorStop(0.5, 'rgba(0,229,255,0.2)');
+  gradient.addColorStop(1, 'rgba(0,229,255,0)');
+  ctx.fillStyle = gradient;
+  ctx.beginPath();
+  ctx.moveTo(centerX, centerY);
+  ctx.lineTo(polarToCartesian(r, 0).x, polarToCartesian(r, 0).y);
+  ctx.arc(centerX, centerY, r, 0, currentEnd, false);
+  ctx.closePath();
+  ctx.fill();
+
+  ctx.save();
+  ctx.shadowColor = 'rgba(0,229,255,0.8)';
+  ctx.shadowBlur = 12 * scale;
+  ctx.lineWidth = 2.5 * scale;
+  ctx.strokeStyle = 'rgba(255,255,255,0.9)';
+  ctx.beginPath();
+  ctx.moveTo(centerX, centerY);
+  ctx.lineTo(polarToCartesian(r, 0).x, polarToCartesian(r, 0).y);
+  ctx.moveTo(centerX, centerY);
+  ctx.lineTo(polarToCartesian(r, currentEnd).x, polarToCartesian(r, currentEnd).y);
+  ctx.stroke();
+  ctx.restore();
+
+  ctx.save();
+  ctx.strokeStyle = 'rgba(255,202,40,0.9)';
+  ctx.lineWidth = arcThickness * scale;
+  ctx.shadowColor = 'rgba(255,202,40,0.8)';
+  ctx.shadowBlur = 15 * scale;
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.arc(centerX, centerY, r, 0, currentEnd, false);
+  ctx.stroke();
+  ctx.restore();
+
+  const midAngle = currentEnd / 2;
+  const labelRadius = r * 0.6;
+  const labelPos = polarToCartesian(labelRadius, midAngle);
+  ctx.save();
+  ctx.translate(labelPos.x, labelPos.y);
+  ctx.rotate(midAngle);
+  ctx.font = `${16 * scale}px Arial`;
+  ctx.fillStyle = 'white';
+  ctx.shadowColor = 'rgba(0,229,255,0.8)';
+  ctx.shadowBlur = 8 * scale;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('θ', 0, 0);
+  ctx.restore();
+
+  const arcLabelPos = polarToCartesian(r + 30 * scale, currentEnd / 2);
+  ctx.save();
+  ctx.font = `${12 * scale}px Arial`;
+  ctx.fillStyle = 'white';
+  ctx.shadowColor = 'rgba(255,202,40,0.5)';
+  ctx.shadowBlur = 4 * scale;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(`s = ${s}`, arcLabelPos.x, arcLabelPos.y);
+  ctx.restore();
+
+  const startPoint = polarToCartesian(r, 0);
+  const radiusLabelPos = {
+    x: centerX + (startPoint.x - centerX) / 2,
+    y: centerY + (startPoint.y - centerY) / 2
+  };
+  ctx.save();
+  ctx.font = `${12 * scale}px Arial`;
+  ctx.fillStyle = 'white';
+  ctx.shadowColor = 'rgba(0,229,255,0.5)';
+  ctx.shadowBlur = 4 * scale;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(`r = ${r}`, radiusLabelPos.x, radiusLabelPos.y);
+  ctx.restore();
+}
+
+// Update visualization
+function update() {
+  s = parseFloat(sRange.value);
+  r = parseFloat(rRange.value);
+  animationSpeed = parseFloat(speedRange.value);
+  arcThickness = parseFloat(thicknessRange.value);
+
+  sVal.textContent = s;
+  rVal.textContent = r;
+  speedVal.textContent = animationSpeed;
+  thicknessVal.textContent = arcThickness;
+
+  targetEnd = s / r;
+  const fullCircumference = 2 * Math.PI * r;
+  const circumferencePercentage = (s / fullCircumference) * 100;
+
+  const angleDisplay = toggleDeg.checked
+    ? `${(targetEnd * 180 / Math.PI).toFixed(1)}°`
+    : `${targetEnd.toFixed(2)} rad`;
+
+  if (!isAnimating) {
+    animateArc(targetEnd);
+  }
+
+  angleInfo.innerHTML = `θ = s / r = ${s} / ${r} = <strong>${angleDisplay}</strong>`;
+  const area = 0.5 * r * r * targetEnd;
+  sectorArea.innerHTML = `Sector Area = <strong>${area.toFixed(2)}</strong> units²`;
+  circumferenceInfo.innerHTML = `Circumference: <strong>${fullCircumference.toFixed(2)}</strong> units (2πr)`;
+  arcRatio.innerHTML = `Arc ratio: <strong>${circumferencePercentage.toFixed(2)}%</strong> of circumference`;
+}
+
+// Click-and-drag interaction
+canvas.addEventListener('mousedown', (e) => {
+  isDragging = true;
+  updateAngleFromMouse(e);
+});
+canvas.addEventListener('mousemove', (e) => {
+  if (isDragging) updateAngleFromMouse(e);
+});
+canvas.addEventListener('mouseup', () => isDragging = false);
+canvas.addEventListener('mouseleave', () => isDragging = false);
+
+// Touch support
+canvas.addEventListener('touchstart', (e) => {
+  e.preventDefault();
+  isDragging = true;
+  updateAngleFromTouch(e);
+});
+canvas.addEventListener('touchmove', (e) => {
+  e.preventDefault();
+  if (isDragging) updateAngleFromTouch(e);
+});
+canvas.addEventListener('touchend', () => isDragging = false);
+canvas.addEventListener('touchcancel', () => isDragging = false);
+
+function updateAngleFromMouse(e) {
+  const rect = canvas.getBoundingClientRect();
+  const x = e.clientX - rect.left - centerX;
+  const y = e.clientY - rect.top - centerY;
+  let angle = Math.atan2(y, x);
+  if (angle < 0) angle += 2 * Math.PI;
+  const newS = angle * r;
+  if (newS >= 10 && newS <= 628) {
+    sRange.value = newS;
+    update();
+  }
+}
+
+function updateAngleFromTouch(e) {
+  const rect = canvas.getBoundingClientRect();
+  const touch = e.touches[0];
+  const x = touch.clientX - rect.left - centerX;
+  const y = touch.clientY - rect.top - centerY;
+  let angle = Math.atan2(y, x);
+  if (angle < 0) angle += 2 * Math.PI;
+  const newS = angle * r;
+  if (newS >= 10 && newS <= 628) {
+    sRange.value = newS;
+    update();
+  }
+}
+
+// Reset
+function reset() {
+  sRange.value = 50;
+  rRange.value = 100;
+  speedRange.value = 5;
+  thicknessRange.value = 6;
+  toggleDeg.checked = false;
+  unitLabel.textContent = 'Radians';
+  update();
+}
+
+// Tooltips
+function showTooltip(e, text) {
+  tooltip.textContent = text;
+  let x = e.pageX + 10;
+  let y = e.pageY + 10;
+  const tooltipRect = tooltip.getBoundingClientRect();
+  if (x + tooltipRect.width > window.innerWidth) {
+    x = e.pageX - tooltipRect.width - 10;
+  }
+  if (y + tooltipRect.height > window.innerHeight) {
+    y = e.pageY - tooltipRect.height - 10;
+  }
+  tooltip.style.left = `${x}px`;
+  tooltip.style.top = `${y}px`;
+  tooltip.style.opacity = '1';
+}
+
+function hideTooltip() {
+  tooltip.style.opacity = '0';
+}
+
+// Event listeners
+sRange.addEventListener('input', update);
+rRange.addEventListener('input', update);
+speedRange.addEventListener('input', update);
+thicknessRange.addEventListener('input', update);
+toggleDeg.addEventListener('change', () => {
+  unitLabel.textContent = toggleDeg.checked ? 'Degrees' : 'Radians';
+  update();
+});
+resetBtn.addEventListener('click', reset);
+
+sRange.addEventListener('mouseover', (e) => showTooltip(e, 'Adjust the arc length (s) along the circle'));
+sRange.addEventListener('mouseout', hideTooltip);
+rRange.addEventListener('mouseover', (e) => showTooltip(e, 'Change the radius (r) of the circle'));
+rRange.addEventListener('mouseout', hideTooltip);
+speedRange.addEventListener('mouseover', (e) => showTooltip(e, 'Control the speed of animations'));
+speedRange.addEventListener('mouseout', hideTooltip);
+thicknessRange.addEventListener('mouseover', (e) => showTooltip(e, 'Adjust the thickness of the arc'));
+thicknessRange.addEventListener('mouseout', hideTooltip);
+canvas.addEventListener('mouseover', (e) => showTooltip(e, 'Click or tap and drag to adjust the angle'));
+canvas.addEventListener('mouseout', hideTooltip);
+
+// Initialize
+function initialize() {
+  setCanvasSize();
+  initBackground();
+  drawBackground();
+  update();
+  // Fallback redraw after 500ms to ensure visibility
+  setTimeout(() => {
+    if (!isAnimating) {
+      console.log('Forcing redraw');
+      draw();
+    }
+  }, 500);
+}
+
+// Handle window resize
+window.addEventListener('resize', () => {
+  setCanvasSize();
+  initBackground();
+  draw();
+});
+
+// Start initialization
+document.addEventListener('DOMContentLoaded', initialize);
+</script>
+</body>
+</html>
