@@ -1,0 +1,778 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Interactive Exploration: y = 1 / (x² - 3x + 2)</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --primary: #00ffff;
+      --secondary: #ff7f00;
+      --accent: #e63946;
+      --dark-bg: #0a0a1a;
+      --darker-bg: #05050f;
+      --light-bg: #f8f9fa;
+      --light-text: #f8f9fa;
+      --dark-text: #212529;
+      --graph-bg: #0a0a1a;
+    }
+
+    body {
+      margin: 0;
+      font-family: 'Poppins', sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: start;
+      min-height: 100vh;
+      padding: 20px;
+      transition: background 0.5s, color 0.5s;
+    }
+    body.dark {
+      background: var(--dark-bg);
+      color: var(--light-text);
+    }
+    body.light {
+      background: var(--light-bg);
+      color: var(--dark-text);
+    }
+    #particles-js {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: -1;
+    }
+    .container {
+      max-width: 900px;
+      width: 100%;
+    }
+    h1 {
+      text-align: center;
+      margin-bottom: 5px;
+      font-weight: 600;
+      background: linear-gradient(to right, var(--primary), var(--secondary));
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+    }
+    .subtitle {
+      text-align: center;
+      margin: 0 0 20px;
+      font-weight: 300;
+      opacity: 0.9;
+    }
+    .tabs {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 15px;
+      margin-bottom: 15px;
+      align-items: center;
+      justify-content: flex-start;
+    }
+    .tab {
+      background: rgba(255,255,255,0.1);
+      border-radius: 10px;
+      padding: 10px 15px;
+      transition: all 0.3s ease;
+      backdrop-filter: blur(10px);
+    }
+    body.light .tab {
+      background: rgba(0,0,0,0.1);
+    }
+    .tab:hover {
+      background: rgba(255,255,255,0.15);
+      transform: translateY(-2px);
+      box-shadow: 0 8px 20px rgba(0,0,0,0.3);
+    }
+    .equation {
+      font-family: 'Courier New', monospace;
+      font-size: 18px;
+    }
+    .control-group {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    #graph-container {
+      background: var(--graph-bg);
+      border-radius: 20px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.7), inset 0 0 20px rgba(255,255,255,0.05);
+      backdrop-filter: blur(5px);
+      padding: 20px;
+      position: relative;
+      overflow: hidden;
+      transition: background 0.5s;
+    }
+    #graph-container::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: radial-gradient(circle at 20% 20%, rgba(0, 255, 255, 0.1) 0%, transparent 50%),
+                  radial-gradient(circle at 80% 80%, rgba(255, 127, 0, 0.1) 0%, transparent 50%);
+      z-index: 0;
+      pointer-events: none;
+    }
+    body.light #graph-container {
+      background: var(--light-bg);
+    }
+    body.light #graph-container::before {
+      background: none;
+    }
+    #graph {
+      width: 100%;
+      height: 600px;
+      position: relative;
+      z-index: 1;
+    }
+    .axis {
+      stroke: #aaaaaa;
+      stroke-width: 1.5;
+    }
+    .f-curve {
+      stroke: url(#f-curve-gradient);
+      stroke-width: 4;
+      fill: none;
+      stroke-linecap: round;
+      filter: drop-shadow(0 0 10px var(--primary));
+    }
+    .reciprocal-curve {
+      stroke: url(#reciprocal-curve-gradient);
+      stroke-width: 4;
+      fill: none;
+      stroke-linecap: round;
+      filter: drop-shadow( moving point on the x-axis which connect the red point on the graph which explain the real variation. Put Adjust x-value: tab, and Exploring tab on the some what above left to the graph.  Rest everything is fine 0 10px var(--secondary));
+    }
+    .asymptote {
+      stroke: var(--accent);
+      stroke-dasharray: 8 5;
+      stroke-width: 1.5;
+      animation: pulse 2s infinite;
+      filter: drop-shadow(0 0 5px var(--accent));
+    }
+    @keyframes pulse {
+      0% { stroke-opacity: 0.8; }
+      50% { stroke-opacity: 0.4; }
+      100% { stroke-opacity: 0.8; }
+    }
+    .dot {
+      fill: var(--accent);
+      stroke: white;
+      stroke-width: 2;
+      filter: drop-shadow(0 0 8px rgba(230, 57, 70, 0.8));
+    }
+    .dot-halo {
+      fill: rgba(230, 57, 70, 0.2);
+      stroke: none;
+    }
+    .x-point {
+      fill: var(--accent);
+      stroke: white;
+      stroke-width: 1.5;
+      filter: drop-shadow(0 0 6px rgba(230, 57, 70, 0.8));
+    }
+    .x-connection-line {
+      stroke: var(--accent);
+      stroke-width: 1.5;
+      stroke-dasharray: 5 5;
+      filter: drop-shadow(0 0 4px rgba(230, 57, 70, 0.5));
+    }
+    .connection-line {
+      stroke: #aaaaaa;
+      stroke-width: 1;
+      stroke-dasharray: 5 5;
+    }
+    .label {
+      font-size: 16px;
+      font-weight: bold;
+      fill: #ffffff;
+      text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+      transition: opacity 0.3s;
+    }
+    .function-label {
+      font-size: 14px;
+      font-weight: 600;
+      fill: #ffffff;
+      font-family: 'Courier New', monospace;
+    }
+    .info-panel {
+      margin-top: 20px;
+      padding: 15px 20px;
+      background: rgba(255,255,255,0.1);
+      border-radius: 15px;
+      box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+      border-left: 4px solid var(--primary);
+      backdrop-filter: blur(10px);
+      transition: all 0.3s ease;
+    }
+    body.light .info-panel {
+      background: rgba(0,0,0,0.1);
+    }
+    .info-panel:hover {
+      background: rgba(255,255,255,0.15);
+      transform: translateY(-2px);
+      box-shadow: 0 8px 20px rgba(0,0,0,0.3);
+    }
+    .value-display {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 10px;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+    .value-item {
+      background: rgba(0,0,0,0.2);
+      padding: 8px 12px;
+      border-radius: 8px;
+      min-width: 120px;
+      flex-grow: 1;
+    }
+    .value-title {
+      font-size: 14px;
+      opacity: 0.8;
+      margin-bottom: 3px;
+    }
+    .value {
+      font-size: 16px;
+      font-weight: 500;
+    }
+    .controls {
+      margin-top: 20px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 15px;
+      align-items: center;
+      justify-content: center;
+    }
+    label {
+      font-size: 14px;
+      font-weight: 500;
+    }
+    input[type="range"] {
+      width: 200px;
+      height: 8px;
+      -webkit-appearance: none;
+      background: linear-gradient(to right, var(--primary) 0%, var(--primary) 50%, rgba(255,255,255,0.2) 50%, rgba(255,255,255,0.2) 100%);
+      background-size: 200px 8px;
+      border-radius: 10px;
+      outline: none;
+    }
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 20px;
+      height: 20px;
+      background: var(--primary);
+      border-radius: 50%;
+      cursor: pointer;
+      box-shadow: 0 0 10px var(--primary);
+      transition: all 0.2s;
+    }
+    input[type="range"]::-webkit-slider-thumb:hover {
+      transform: scale(1.2);
+      background: var(--accent);
+    }
+    input[type="number"] {
+      width: 80px;
+      padding: 5px;
+      border-radius: 8px;
+      border: none;
+      background: rgba(255,255,255,0.2);
+      color: var(--light-text);
+    }
+    body.light input[type="number"] {
+      color: var(--dark-text);
+    }
+    .btn {
+      padding: 8px 16px;
+      background: linear-gradient(to right, var(--primary), #3d8fd9);
+      border: none;
+      border-radius: 8px;
+      color: white;
+      font-weight: 500;
+      cursor: pointer;
+      position: relative;
+      overflow: hidden;
+    }
+    .btn::after {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 0;
+      height: 0;
+      background: rgba(255,255,255,0.3);
+      border-radius: 50%;
+      transform: translate(-50%,-50%);
+      transition: width 0.3s, height 0.3s;
+    }
+    .btn:active::after {
+      width: 100px;
+      height: 100px;
+    }
+    .btn-secondary {
+      background: linear-gradient(to right, #6c757d, #5a6268);
+    }
+    .theme-toggle {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+    .theme-icon {
+      transition: transform 0.3s;
+    }
+    .theme-icon.sun {
+      transform: rotate(0deg);
+    }
+    .theme-icon.moon {
+      transform: rotate(180deg);
+    }
+    .tooltip {
+      background: rgba(0,0,0,0.8);
+      border: 1px solid var(--primary);
+      border-radius: 6px;
+      padding: 8px 12px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+    }
+    .tooltip::after {
+      content: '';
+      position: absolute;
+      top: 100%;
+      left: 50%;
+      margin-left: -5px;
+      border: 5px solid transparent;
+      border-top-color: var(--primary);
+    }
+    .sidebar {
+      position: fixed;
+      right: 20px;
+      top: 20px;
+      width: 250px;
+      background: rgba(0,0,0,0.7);
+      padding: 15px;
+      border-radius: 10px;
+      font-size: 0.9em;
+      max-height: 80vh;
+      overflow-y: auto;
+      backdrop-filter: blur(10px);
+      display: none;
+    }
+    body.light .sidebar {
+      background: rgba(255,255,255,0.9);
+      color: var(--dark-text);
+    }
+    @media (max-width: 768px) {
+      #graph {
+        height: 500px;
+      }
+      .tabs {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+      .sidebar {
+        width: 100%;
+        position: relative;
+        right: 0;
+      }
+    }
+    .loading {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%,-50%);
+      border: 4px solid var(--primary);
+      border-top-color: transparent;
+      border-radius: 50%;
+      width: 40px;
+      height: 40px;
+      animation: spin 1s linear infinite;
+      z-index: 100;
+    }
+    @keyframes spin {
+      0% { transform: translate(-50%,-50%) rotate(0deg); }
+      100% { transform: translate(-50%,-50%) rotate(360deg); }
+    }
+  </style>
+</head>
+<body class="dark">
+  <div id="particles-js"></div>
+  <div class="container">
+    <h1>Interactive Exploration of Reciprocal Functions</h1>
+    <p class="subtitle"> Graph of (x) = x² - 3x + 2 and its reciprocal y = 1/f(x)</p>
+    <div class="tabs">
+      <div class="tab equation" id="equationLabel">Exploring: <strong>y = 1 / (x² - 3x + 2)</strong></div>
+      <div class="tab control-group">
+        <label for="slider">Adjust x-value:</label>
+        <input type="range" id="slider" min="-3" max="4" step="0.01" value="0" aria-label="Adjust x value">
+        <input type="number" id="xInput" step="0.01" value="0" aria-label="Enter x value">
+      </div>
+    </div>
+    <div id="graph-container">
+      <div class="loading" id="loading"></div>
+      <svg id="graph" viewBox="0 0 800 600" preserveAspectRatio="xMidYMid meet">
+        <defs>
+          <linearGradient id="f-curve-gradient" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" style="stop-color:#00ffff;stop-opacity:1" />
+            <stop offset="100%" style="stop-color:#66ffff;stop-opacity:1" />
+          </linearGradient>
+          <linearGradient id="reciprocal-curve-gradient" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" style="stop-color:#ff7f00;stop-opacity:1" />
+            <stop offset="100%" style="stop-color:#ffaa5c;stop-opacity:1" />
+          </linearGradient>
+        </defs>
+      </svg>
+    </div>
+    <div class="info-panel">
+      <div class="value-display">
+        <div class="value-item"><div class="value-title">x-value</div><div class="value" id="xValue">0.00</div></div>
+        <div class="value-item"><div class="value-title">f(x) = x² - 3x + 2</div><div class="value" id="fxValue">0.00</div></div>
+        <div class="value-item"><div class="value-title">y = 1/f(x)</div><div class="value" id="yValue">0.00</div></div>
+      </div>
+    </div>
+    <div class="controls">
+      <button id="animateBtn" class="btn" aria-label="Toggle animation">Animate</button>
+      <button id="resetBtn" class="btn btn-secondary" aria-label="Reset view">Reset</button>
+      <button class="btn" onclick="toggleCurve('f-curve')" aria-label="Toggle f(x) curve">Toggle f(x)</button>
+      <button class="btn" onclick="toggleCurve('reciprocal-curve')" aria-label="Toggle y curve">Toggle y</button>
+      <button class="btn" onclick="showExplanation()" aria-label="Show explanation">Explain</button>
+      <button class="btn theme-toggle" onclick="toggleTheme()" aria-label="Toggle theme">
+        <svg class="theme-icon sun" width="20" height="20" viewBox="0 0 24 24">
+          <path fill="white" d="M12 2a1 1 0 0 1 1 1v2a1 1 0 0 1-2 0V3a1 1 0 0 1 1-1zm0 16a1 1 0 0 1 1 1v2a1 1 0 0 1-2 0v-2a1 1 0 0 1 1-1zM5.64 5.64a1 1 0 0 1 1.41 0l1.42 1.42a1 1 0 1 1-1.41 1.41L5.64 7.05a1 1 0 0 1 0-1.41zm12.73 12.73a1 1 0 0 1 0 1.41l-1.42 1.42a1 1 0 1 1-1.41-1.41l1.42-1.42a1 1 0 0 1 1.41 0zM3 12a1 1 0 0 1-1-1H0a1 1 0 0 1 2 0h1a1 1 0 0 1-1 1zm20 0a1 1 0 0 1-1-1h-2a1 1 0 0 1 2 0h1a1 1 0 0 1-1 1zm-5.64 5.64a1 1 0 0 1-1.41 0l-1.42-1.42a1 1 0 1 1 1.41-1.41l1.42 1.42a1 1 0 0 1 0 1.41zM7.05 5.64a1 1 0 0 1 0-1.41l1.42-1.42a1 1 0 1 1 1.41 1.41L7.05 5.64a1 1 0 0 1-1.41 0zM12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8z"/>
+        </svg>
+        Toggle Theme
+      </button>
+    </div>
+    <div class="sidebar" id="explanation">
+      <h3>Function Analysis</h3>
+      <p><strong>Function:</strong> y = 1 / (x² - 3x + 2)</p>
+      <p><strong>Denominator:</strong> f(x) = x² - 3x + 2 = (x-1)(x-2)</p>
+      <p><strong>Domain:</strong> All real numbers except x = 1, x = 2 (vertical asymptotes).</p>
+      <p><strong>Asymptotes:</strong> Vertical at x = 1, x = 2; horizontal at y = 0.</p>
+      <p><strong>Intercepts:</strong> No x-intercepts; y-intercept at (0, 0.5).</p>
+      <p><strong>Behavior:</strong> As x approaches 1 or 2, y approaches ±∞. As |x| → ∞, y → 0.</p>
+    </div>
+    <div class="tooltip" id="tooltip"></div>
+  </div>
+
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/particles.js@2.0.0/particles.min.js"></script>
+  <script>
+    // Particle Background (Stars and Nebula-like Particles)
+    particlesJS("particles-js", {
+      particles: {
+        number: { value: 80, density: { enable: true, value_area: 800 } },
+        color: { value: ["#ffffff", "#00ffff", "#ff7f00"] },
+        shape: { type: "circle" },
+        opacity: { value: 0.5, random: true, anim: { enable: true, speed: 0.5, opacity_min: 0.2 } },
+        size: { value: 2, random: true, anim: { enable: true, speed: 2, size_min: 0.5 } },
+        line_linked: { enable: false },
+        move: { enable: true, speed: 0.3, direction: "none", random: true }
+      },
+      interactivity: { enable: false }
+    });
+
+    // Graph Setup
+    const svg = d3.select("#graph");
+    const width = 800, height = 600;
+    const margin = { top: 20, right: 20, bottom: 20, left: 20 };
+    const innerWidth = width - margin.left - margin.right;
+    const innerHeight = height - margin.top - margin.bottom;
+    const g = svg.append("g").attr("transform", `translate(${margin.left},${margin.top})`);
+
+    // Scales
+    const xScale = d3.scaleLinear().domain([-3, 4]).range([0, innerWidth]);
+    const yScale = d3.scaleLinear().domain([-10, 5]).range([innerHeight, 0]);
+
+    // Axes
+    const xAxis = d3.axisBottom(xScale).ticks(8);
+    const yAxis = d3.axisLeft(yScale).ticks(15);
+    g.append("g")
+      .attr("class", "axis")
+      .attr("transform", `translate(0,${yScale(0)})`)
+      .call(xAxis)
+      .append("text")
+      .attr("x", innerWidth)
+      .attr("y", -10)
+      .attr("fill", "#ffffff")
+      .text("x");
+    g.append("g")
+      .attr("class", "axis")
+      .attr("transform", `translate(${xScale(0)},0)`)
+      .call(yAxis)
+      .append("text")
+      .attr("x", 10)
+      .attr("y", -10)
+      .attr("fill", "#ffffff")
+      .text("y");
+
+    // Functions
+    const f = x => x * x - 3 * x + 2;
+    const y = x => {
+      const fx = f(x);
+      return Math.abs(fx) < 0.001 ? null : 1 / fx;
+    };
+
+    // Data
+    const data = d3.range(-3, 4.01, 0.01).flatMap(x => {
+      const yVal = y(x);
+      return yVal !== null ? [{ x, y: f(x), type: "f" }, { x, y: yVal, type: "y" }] : [];
+    });
+
+    // Curves
+    const lineF = d3.line().x(d => xScale(d.x)).y(d => yScale(d.y));
+    const lineY = d3.line()
+      .x(d => xScale(d.x))
+      .y(d => yScale(d.y))
+      .defined(d => d.y !== null && Math.abs(d.y) < 50);
+
+    g.append("path")
+      .datum(data.filter(d => d.type === "f"))
+      .attr("class", "f-curve")
+      .attr("d", lineF)
+      .style("stroke-dasharray", function() { return this.getTotalLength(); })
+      .style("stroke-dashoffset", function() { return this.getTotalLength(); })
+      .transition()
+      .duration(2000)
+      .ease(d3.easeSin)
+      .style("stroke-dashoffset", 0);
+
+    g.append("path")
+      .datum(data.filter(d => d.type === "y"))
+      .attr("class", "reciprocal-curve")
+      .attr("d", lineY)
+      .style("stroke-dasharray", function() { return this.getTotalLength(); })
+      .style("stroke-dashoffset", function() { return this.getTotalLength(); })
+      .transition()
+      .duration(2000)
+      .ease(d3.easeSin)
+      .style("stroke-dashoffset", 0);
+
+    // Asymptotes
+    g.append("line")
+      .attr("class", "asymptote")
+      .attr("x1", xScale(1)).attr("y1", 0)
+      .attr("x2", xScale(1)).attr("y2", innerHeight);
+    g.append("line")
+      .attr("class", "asymptote")
+      .attr("x1", xScale(2)).attr("y1", 0)
+      .attr("x2", xScale(2)).attr("y2", innerHeight);
+    g.append("line")
+      .attr("class", "asymptote")
+      .attr("x1", 0).attr("y1", yScale(0))
+      .attr("x2", innerWidth).attr("y2", yScale(0));
+
+    // Function Labels
+    g.append("text")
+      .attr("class", "function-label")
+      .attr("x", xScale(3.5))
+      .attr("y", yScale(f(3.5) + 0.5))
+      .text("y= f(x) ");
+    g.append("text")
+      .attr("class", "function-label")
+      .attr("x", xScale(-2))
+      .attr("y", yScale(y(-2) - 0.5))
+      .text("y = 1/f(x)");
+
+    // Dot, Halo, X-Point, and Connection Lines
+    const dot = g.append("circle").attr("class", "dot").attr("r", 8);
+    const halo = g.append("circle").attr("class", "dot-halo").attr("r", 15);
+    const xPoint = g.append("circle").attr("class", "x-point").attr("r", 6);
+    const xConnectionLine = g.append("line").attr("class", "x-connection-line");
+    const xLine = g.append("line").attr("class", "connection-line");
+    const yLine = g.append("line").attr("class", "connection-line");
+    const fxLine = g.append("line").attr("class", "connection-line");
+
+    // Update Dot and X-Point
+    function updateDot(x) {
+      const fx = f(x);
+      const yVal = y(x);
+      if (yVal !== null && Math.abs(yVal) < 50) {
+        dot.attr("cx", xScale(x)).attr("cy", yScale(yVal));
+        halo.attr("cx", xScale(x)).attr("cy", yScale(yVal));
+        xPoint.attr("cx", xScale(x)).attr("cy", yScale(0));
+        xConnectionLine
+          .attr("x1", xScale(x)).attr("y1", yScale(yVal))
+          .attr("x2", xScale(x)).attr("y2", yScale(0));
+        xLine.attr("x1", xScale(x)).attr("y1", yScale(yVal)).attr("x2", xScale(x)).attr("y2", yScale(0));
+        yLine.attr("x1", xScale(x)).attr("y1", yScale(yVal)).attr("x2", xScale(0)).attr("y2", yScale(yVal));
+        fxLine.attr("x1", xScale(x)).attr("y1", yScale(0)).attr("x2", xScale(x)).attr("y2", yScale(fx));
+        dot.style("display", "block");
+        halo.style("display", "block");
+        xPoint.style("display", "block");
+        xConnectionLine.style("display", "block");
+        xLine.style("display", "block");
+        yLine.style("display", "block");
+        fxLine.style("display", "block");
+        d3.select("#xValue").text(x.toFixed(2));
+        d3.select("#fxValue").text(fx.toFixed(2));
+        d3.select("#yValue").text(yVal.toFixed(2));
+        d3.select("#xInput").property("value", x.toFixed(2));
+      } else {
+        dot.style("display", "none");
+        halo.style("display", "none");
+        xPoint.style("display", "none");
+        xConnectionLine.style("display", "none");
+        xLine.style("display", "none");
+        yLine.style("display", "none");
+        fxLine.style("display", "none");
+        d3.select("#xValue").text(x.toFixed(2));
+        d3.select("#fxValue").text(fx.toFixed(2));
+        d3.select("#yValue").text("undefined");
+        d3.select("#xInput").property("value", x.toFixed(2));
+      }
+    }
+
+    // Slider and Input
+    const slider = d3.select("#slider");
+    const xInput = d3.select("#xInput");
+    slider.on("input", function() {
+      xInput.property("value", this.value);
+      updateDot(+this.value);
+    });
+    xInput.on("input", function() {
+      const val = Math.max(-3, Math.min(4, +this.value));
+      slider.property("value", val);
+      updateDot(val);
+    });
+
+    // Animation
+    let animationId = null;
+    d3.select("#animateBtn").on("click", () => {
+      if (animationId) {
+        cancelAnimationFrame(animationId);
+        animationId = null;
+        d3.select("#animateBtn").text("Animate");
+        return;
+      }
+      d3.select("#animateBtn").text("Stop");
+      const startTime = performance.now();
+      const duration = 10000;
+      function animate(now) {
+        const elapsed = now - startTime;
+        const progress = Math.min(elapsed / duration, 1);
+        const x = -3 + progress * 7;
+        slider.property("value", x);
+        xInput.property("value", x.toFixed(2));
+        updateDot(x);
+        if (progress < 1) {
+          animationId = requestAnimationFrame(animate);
+        } else {
+          animationId = null;
+          d3.select("#animateBtn").text("Animate");
+        }
+      }
+      animationId = requestAnimationFrame(animate);
+    });
+
+    // Reset
+    d3.select("#resetBtn").on("click", () => {
+      if (animationId) {
+        cancelAnimationFrame(animationId);
+        animationId = null;
+        d3.select("#animateBtn").text("Animate");
+      }
+      slider.property("value", 0);
+      xInput.property("value", 0);
+      updateDot(0);
+      svg.call(zoom.transform, d3.zoomIdentity);
+    });
+
+    // Zoom
+    const zoom = d3.zoom()
+      .scaleExtent([0.5, 5])
+      .on("zoom", (event) => {
+        g.attr("transform", event.transform);
+      });
+    svg.call(zoom);
+
+    // Drag
+    svg.on("mousedown", startDrag);
+    svg.on("touchstart", (event) => startDrag(event.touches[0]));
+    function startDrag(event) {
+      const rect = svg.node().getBoundingClientRect();
+      const x = xScale.invert((event.clientX - rect.left) / (d3.zoomTransform(svg.node()).k || 1));
+      slider.property("value", x);
+      xInput.property("value", x.toFixed(2));
+      updateDot(x);
+      svg.on("mousemove", onDrag);
+      svg.on("mouseup", stopDrag);
+      svg.on("touchmove", onTouch);
+      svg.on("touchend", stopDrag);
+    }
+    function onDrag(event) {
+      const rect = svg.node().getBoundingClientRect();
+      const x = xScale.invert((event.clientX - rect.left) / (d3.zoomTransform(svg.node()).k || 1));
+      slider.property("value", x);
+      xInput.property("value", x.toFixed(2));
+      updateDot(x);
+    }
+    function onTouch(event) {
+      const rect = svg.node().getBoundingClientRect();
+      const x = xScale.invert((event.touches[0].clientX - rect.left) / (d3.zoomTransform(svg.node()).k || 1));
+      slider.property("value", x);
+      xInput.property("value", x.toFixed(2));
+      updateDot(x);
+    }
+    function stopDrag() {
+      svg.on("mousemove", null);
+      svg.on("mouseup", null);
+      svg.on("touchmove", null);
+      svg.on("touchend", null);
+    }
+
+    // Tooltip
+    svg.on("mousemove", (event) => {
+      const rect = svg.node().getBoundingClientRect();
+      const x = xScale.invert((event.clientX - rect.left) / (d3.zoomTransform(svg.node()).k || 1));
+      const yVal = y(x);
+      if (yVal !== null && Math.abs(yVal) < 50) {
+        d3.select("#tooltip")
+          .style("opacity", 1)
+          .style("left", `${event.clientX + 10}px`)
+          .style("top", `${event.clientY + 10}px`)
+          .text(`x: ${x.toFixed(2)}, y: ${yVal.toFixed(2)}`);
+      } else {
+        d3.select("#tooltip").style("opacity", 0);
+      }
+    });
+    svg.on("mouseleave", () => d3.select("#tooltip").style("opacity", 0));
+
+    // Toggle Curves
+    window.toggleCurve = function(className) {
+      const path = g.select(`.${className}`);
+      path.style("display", path.style("display") === "none" ? "block" : "none");
+    };
+
+    // Explanation Sidebar
+    window.showExplanation = function() {
+      const sidebar = d3.select("#explanation");
+      sidebar.style("display", sidebar.style("display") === "none" ? "block" : "none");
+    };
+
+    // Theme Toggle
+    window.toggleTheme = function() {
+      document.body.className = document.body.className === "dark" ? "light" : "dark";
+      const icon = document.querySelector(".theme-icon");
+      icon.classList.toggle("sun");
+      icon.classList.toggle("moon");
+      localStorage.setItem("theme", document.body.className);
+    };
+    if (localStorage.getItem("theme")) {
+      document.body.className = localStorage.getItem("theme");
+      const icon = document.querySelector(".theme-icon");
+      icon.classList.toggle("sun", document.body.className === "light");
+      icon.classList.toggle("moon", document.body.className === "dark");
+    }
+
+    // Loading Animation
+    setTimeout(() => d3.select("#loading").remove(), 2000);
+
+    // Initialize
+    updateDot(0);
+  </script>
+</body>
+</html>

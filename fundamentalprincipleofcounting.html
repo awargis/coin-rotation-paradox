@@ -1,0 +1,794 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cosmic Journey from Kashi (Enhanced)</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.2/p5.min.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body {
+      margin: 0;
+      background: #000;
+      color: #fff;
+      font-family: 'Segoe UI', sans-serif;
+      overflow-x: hidden;
+    }
+    .tooltip {
+      position: relative;
+      cursor: pointer;
+    }
+    .tooltip:hover::after {
+      content: attr(data-tooltip);
+      position: absolute;
+      bottom: 100%;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #6c63ff;
+      color: #fff;
+      padding: 0.5rem;
+      border-radius: 5px;
+      font-size: 0.8rem;
+      white-space: nowrap;
+      z-index: 10;
+    }
+    .checkbox-label {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin-bottom: 0.5rem;
+      transition: all 0.3s;
+    }
+    .checkbox-label:hover {
+      transform: translateX(5px);
+    }
+    #canvas-container {
+      overflow: hidden;
+      border-radius: 10px;
+      box-shadow: 0 0 20px rgba(106, 90, 205, 0.6);
+    }
+    .glow {
+      text-shadow: 0 0 10px #6c63ff;
+    }
+    .particle {
+      position: absolute;
+      border-radius: 50%;
+      pointer-events: none;
+    }
+  </style>
+</head>
+<body class="flex flex-col items-center min-h-screen p-4">
+  <div class="bg-gray-900 bg-opacity-90 p-6 rounded-lg shadow-lg w-full max-w-6xl">
+    <h1 class="text-4xl font-bold text-center mb-2 text-yellow-300 glow">🪐 Fundamental Principle Of Counting</h1>
+    <p class="text-center mb-4 text-lg text-blue-200">Explore the 30 cosmic paths through sacred knowledge</p>
+    
+    <div class="flex flex-col lg:flex-row gap-6">
+      <!-- Control Panel -->
+      <div class="w-full lg:w-1/3 bg-gray-800 p-4 rounded-lg border border-blue-400">
+        <h2 class="text-xl font-semibold mb-4 text-blue-300">🚀 Navigation Controls</h2>
+        
+        <!-- Path Selectors -->
+        <div class="mb-4 bg-gray-700 p-3 rounded-lg">
+          <div class="flex justify-between items-center mb-2">
+            <p class="font-medium text-purple-200">Kashi to Sarnath (6 Paths):</p>
+            <div class="flex gap-2">
+              <button id="select-all-kashi" class="bg-blue-600 hover:bg-blue-700 text-white px-2 py-1 rounded text-sm">All</button>
+              <button id="deselect-all-kashi" class="bg-blue-600 hover:bg-blue-700 text-white px-2 py-1 rounded text-sm">None</button>
+            </div>
+          </div>
+          <div id="kashi-to-sarnath" class="grid grid-cols-2 gap-2"></div>
+        </div>
+
+        <div class="mb-4 bg-gray-700 p-3 rounded-lg">
+          <div class="flex justify-between items-center mb-2">
+            <p class="font-medium text-green-200">Sarnath to Gyan (5 Paths):</p>
+            <div class="flex gap-2">
+              <button id="select-all-sarnath" class="bg-green-600 hover:bg-green-700 text-white px-2 py-1 rounded text-sm">All</button>
+              <button id="deselect-all-sarnath" class="bg-green-600 hover:bg-green-700 text-white px-2 py-1 rounded text-sm">None</button>
+            </div>
+          </div>
+          <div id="sarnath-to-gyan" class="grid grid-cols-2 gap-2"></div>
+        </div>
+
+        <!-- Game Controls -->
+        <div class="mb-4 bg-gray-700 p-3 rounded-lg">
+          <h3 class="font-medium text-yellow-200 mb-2">⏱ Journey Timeline</h3>
+          <div class="flex items-center gap-2 mb-2">
+            <button id="play-pause" class="bg-purple-600 hover:bg-purple-700 text-white px-3 py-1 rounded">⏵ Play</button>
+            <input id="speed-slider" type="range" min="0.5" max="3" step="0.5" value="1" class="w-full">
+            <span id="speed-value" class="text-sm">1x</span>
+          </div>
+          <button id="spawn-traveler" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-1 rounded mb-2">
+            + Add Traveler
+          </button>
+        </div>
+
+        <!-- Challenge -->
+        <div class="mb-4 bg-gray-700 p-3 rounded-lg">
+          <h3 class="font-medium text-red-200 mb-2">🏆 Challenge</h3>
+          <button id="shortest-path-btn" class="w-full bg-red-600 hover:bg-red-700 text-white py-1 rounded">
+            Find Shortest Path
+          </button>
+          <p id="challenge-feedback" class="text-xs mt-2 text-gray-300 hidden"></p>
+        </div>
+
+        <div class="flex gap-2">
+          <button id="reset" class="flex-1 bg-red-600 hover:bg-red-700 text-white py-2 rounded">
+            ↻ Reset
+          </button>
+          <button id="export-btn" class="flex-1 bg-gray-600 hover:bg-gray-700 text-white py-2 rounded">
+            📷 Export
+          </button>
+        </div>
+      </div>
+
+      <!-- Main Canvas -->
+      <div class="w-full lg:w-2/3 relative">
+        <div id="canvas-container" class="relative h-[400px] lg:h-[500px] bg-black rounded-lg">
+          <!-- Canvas will be inserted here by p5.js -->
+        </div>
+        <div id="zoom-controls" class="absolute bottom-4 right-4 flex gap-2">
+          <button id="zoom-in" class="bg-gray-800 hover:bg-gray-700 text-white w-8 h-8 rounded-full">+</button>
+          <button id="zoom-out" class="bg-gray-800 hover:bg-gray-700 text-white w-8 h-8 rounded-full">−</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Info Panels -->
+    <div class="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div id="results" class="bg-gray-800 p-4 rounded-lg border-l-4 border-blue-500">
+        <h3 class="font-bold text-blue-300 mb-2">🧮 Combinatorics</h3>
+        <p id="combination-formula" class="text-sm">
+          <span id="kashi-count">0</span> (Kashi→Sarnath) × <span id="sarnath-count">0</span> (Sarnath→Gyan) = 
+          <span id="total-combinations" class="font-bold text-yellow-300">0</span> possible journeys
+        </p>
+        <div id="path-details" class="mt-2 text-xs text-gray-300"></div>
+      </div>
+
+      <div id="history-panel" class="bg-gray-800 p-4 rounded-lg border-l-4 border-purple-500">
+        <h3 class="font-bold text-purple-300 mb-2">📜 Historical Context</h3>
+        <p id="history-text" class="text-sm">Select a path to learn its significance...</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Particle container (for visual effects) -->
+  <div id="particle-container"></div>
+
+  <script>
+    // ====================
+    // Enhanced Configuration
+    // ====================
+    const kashiPaths = 6;
+    const sarnathPaths = 5;
+    const pathColorsKashi = ['#FF6B6B', '#FFD700', '#4ECDC4', '#FF69B4', '#96CEB4', '#45B7D1'];
+    const pathColorsSarnath = ['#A3E4D7', '#F9E79F', '#F5B7B1', '#D7BDE2', '#A9CCE3'];
+    
+    // Historical context data
+    const pathDescriptions = {
+      kashi: [
+        "Path of the Ganges: Represents the flow of divine knowledge",
+        "Path of Shiva: The destroyer of ignorance",
+        "Path of the Yogis: Meditation and self-realization",
+        "Path of the Vedas: Ancient scriptural wisdom",
+        "Path of the Saints: Devotional love and surrender",
+        "Path of the Philosophers: Logical inquiry into truth"
+      ],
+      sarnath: [
+        "Dharma Chakra Path: Buddha's first teaching on the Four Noble Truths",
+        "Sangha Path: The community of practitioners",
+        "Bodhi Path: The awakening to enlightenment",
+        "Compassion Path: Loving-kindness to all beings",
+        "Wisdom Path: Insight into the nature of reality"
+      ]
+    };
+
+    // Challenge mode data (imaginary light-year distances)
+    const pathDistances = {
+      kashi: [12, 8, 15, 10, 18, 9],  // Kashi to Sarnath distances
+      sarnath: [7, 5, 9, 6, 8]         // Sarnath to Gyan distances
+    };
+
+    // ====================
+    // State Management
+    // ====================
+    let state = {
+      kashiToSarnathActive: Array(kashiPaths).fill(false),
+      sarnathToGyanActive: Array(sarnathPaths).fill(false),
+      travelers: [],
+      stars: [],
+      activeRoutes: [],
+      dashOffset: 0,
+      isPlaying: false,
+      animationSpeed: 1,
+      zoomLevel: 1,
+      panOffset: { x: 0, y: 0 },
+      isDragging: false,
+      dragStart: { x: 0, y: 0 },
+      hoveredPath: null,
+      challengeMode: false,
+      particles: []
+    };
+
+    // ====================
+    // DOM Elements
+    // ====================
+    const elements = {
+      kashiToSarnathDiv: document.getElementById('kashi-to-sarnath'),
+      sarnathToGyanDiv: document.getElementById('sarnath-to-gyan'),
+      resultsDiv: document.getElementById('results'),
+      combinationFormula: document.getElementById('combination-formula'),
+      kashiCount: document.getElementById('kashi-count'),
+      sarnathCount: document.getElementById('sarnath-count'),
+      totalCombinations: document.getElementById('total-combinations'),
+      pathDetails: document.getElementById('path-details'),
+      historyText: document.getElementById('history-text'),
+      playPauseBtn: document.getElementById('play-pause'),
+      speedSlider: document.getElementById('speed-slider'),
+      speedValue: document.getElementById('speed-value'),
+      spawnTravelerBtn: document.getElementById('spawn-traveler'),
+      shortestPathBtn: document.getElementById('shortest-path-btn'),
+      challengeFeedback: document.getElementById('challenge-feedback'),
+      exportBtn: document.getElementById('export-btn'),
+      zoomInBtn: document.getElementById('zoom-in'),
+      zoomOutBtn: document.getElementById('zoom-out'),
+      particleContainer: document.getElementById('particle-container')
+    };
+
+    // ====================
+    // Initialization
+    // ====================
+    function initialize() {
+      createCheckboxes();
+      setupEventListeners();
+      updateResults();
+    }
+
+    function createCheckboxes() {
+      // Kashi to Sarnath paths
+      elements.kashiToSarnathDiv.innerHTML = '';
+      for (let i = 0; i < kashiPaths; i++) {
+        const div = document.createElement('div');
+        div.className = 'checkbox-label tooltip';
+        div.setAttribute('data-tooltip', pathDescriptions.kashi[i]);
+        
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.id = `kashi-path-${i + 1}`;
+        checkbox.onchange = () => {
+          state.kashiToSarnathActive[i] = checkbox.checked;
+          updateResults();
+          if (checkbox.checked) {
+            createParticlesForPath('kashi', i);
+          }
+        };
+        checkbox.onmouseenter = () => { state.hoveredPath = { type: 'kashi', index: i }; };
+        checkbox.onmouseleave = () => { state.hoveredPath = null; };
+        
+        const label = document.createElement('label');
+        label.htmlFor = `kashi-path-${i + 1}`;
+        label.textContent = `Path ${i + 1}`;
+        label.style.color = pathColorsKashi[i];
+        
+        div.appendChild(checkbox);
+        div.appendChild(label);
+        elements.kashiToSarnathDiv.appendChild(div);
+      }
+
+      // Sarnath to Gyan paths
+      elements.sarnathToGyanDiv.innerHTML = '';
+      for (let i = 0; i < sarnathPaths; i++) {
+        const div = document.createElement('div');
+        div.className = 'checkbox-label tooltip';
+        div.setAttribute('data-tooltip', pathDescriptions.sarnath[i]);
+        
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.id = `sarnath-path-${i + 1}`;
+        checkbox.onchange = () => {
+          state.sarnathToGyanActive[i] = checkbox.checked;
+          updateResults();
+          if (checkbox.checked) {
+            createParticlesForPath('sarnath', i);
+          }
+        };
+        checkbox.onmouseenter = () => { state.hoveredPath = { type: 'sarnath', index: i }; };
+        checkbox.onmouseleave = () => { state.hoveredPath = null; };
+        
+        const label = document.createElement('label');
+        label.htmlFor = `sarnath-path-${i + 1}`;
+        label.textContent = `Path ${i + 1}`;
+        label.style.color = pathColorsSarnath[i];
+        
+        div.appendChild(checkbox);
+        div.appendChild(label);
+        elements.sarnathToGyanDiv.appendChild(div);
+      }
+    }
+
+    function setupEventListeners() {
+      // Control buttons
+      document.getElementById('select-all-kashi').onclick = () => toggleAllPaths('kashi', true);
+      document.getElementById('deselect-all-kashi').onclick = () => toggleAllPaths('kashi', false);
+      document.getElementById('select-all-sarnath').onclick = () => toggleAllPaths('sarnath', true);
+      document.getElementById('deselect-all-sarnath').onclick = () => toggleAllPaths('sarnath', false);
+      document.getElementById('reset').onclick = resetAll;
+
+      // Animation controls
+      elements.playPauseBtn.onclick = togglePlayPause;
+      elements.speedSlider.oninput = updateSpeed;
+      elements.spawnTravelerBtn.onclick = spawnNewTraveler;
+
+      // Challenge mode
+      elements.shortestPathBtn.onclick = startShortestPathChallenge;
+
+      // Export
+      elements.exportBtn.onclick = exportCanvas;
+
+      // Zoom/pan
+      elements.zoomInBtn.onclick = () => updateZoom(0.1);
+      elements.zoomOutBtn.onclick = () => updateZoom(-0.1);
+    }
+
+    // ====================
+    // Core Functions
+    // ====================
+    function updateResults() {
+      const kashiCount = state.kashiToSarnathActive.filter(x => x).length;
+      const sarnathCount = state.sarnathToGyanActive.filter(x => x).length;
+      const totalCombinations = kashiCount * sarnathCount;
+
+      // Update counters
+      elements.kashiCount.textContent = kashiCount;
+      elements.sarnathCount.textContent = sarnathCount;
+      elements.totalCombinations.textContent = totalCombinations;
+
+      // Update active routes
+      state.activeRoutes = [];
+      state.kashiToSarnathActive.forEach((kActive, kIndex) => {
+        if (kActive) {
+          state.sarnathToGyanActive.forEach((sActive, sIndex) => {
+            if (sActive) {
+              state.activeRoutes.push({
+                kashiPath: kIndex,
+                sarnathPath: sIndex,
+                distance: pathDistances.kashi[kIndex] + pathDistances.sarnath[sIndex]
+              });
+            }
+          });
+        }
+      });
+
+      // Update path details
+      updatePathDetails();
+    }
+
+    function updatePathDetails() {
+      if (state.activeRoutes.length === 0) {
+        elements.pathDetails.innerHTML = 'No paths selected';
+        elements.historyText.textContent = 'Select a path to learn its significance...';
+        return;
+      }
+
+      // Show selected paths
+      let details = '';
+      state.activeRoutes.forEach((route, i) => {
+        details += `Journey ${i + 1}: Kashi Path ${route.kashiPath + 1} → Sarnath Path ${route.sarnathPath + 1}`;
+        if (state.challengeMode) details += ` (${route.distance} light-years)`;
+        details += '<br>';
+      });
+      elements.pathDetails.innerHTML = details;
+
+      // Show historical context for first selected path
+      const firstRoute = state.activeRoutes[0];
+      elements.historyText.innerHTML = `
+        <strong>Kashi Path ${firstRoute.kashiPath + 1}:</strong> ${pathDescriptions.kashi[firstRoute.kashiPath]}<br>
+        <strong>Sarnath Path ${firstRoute.sarnathPath + 1}:</strong> ${pathDescriptions.sarnath[firstRoute.sarnathPath]}
+      `;
+    }
+
+    // ====================
+    // Animation Controls
+    // ====================
+    function togglePlayPause() {
+      state.isPlaying = !state.isPlaying;
+      elements.playPauseBtn.textContent = state.isPlaying ? '⏸ Pause' : '⏵ Play';
+      
+      if (state.isPlaying && state.travelers.length === 0) {
+        spawnNewTraveler();
+      }
+    }
+
+    function updateSpeed() {
+      state.animationSpeed = parseFloat(elements.speedSlider.value);
+      elements.speedValue.textContent = `${state.animationSpeed}x`;
+    }
+
+    function spawnNewTraveler() {
+      if (state.activeRoutes.length === 0) return;
+      
+      const newTraveler = {
+        id: Date.now(),
+        routeIndex: Math.floor(Math.random() * state.activeRoutes.length),
+        progress: 0,
+        position: { x: 0, y: 0 },
+        color: color(random(255), random(255), random(255))
+      };
+      
+      state.travelers.push(newTraveler);
+      createParticlesAroundTraveler(newTraveler);
+    }
+
+    // ====================
+    // Challenge Mode
+    // ====================
+    function startShortestPathChallenge() {
+      state.challengeMode = !state.challengeMode;
+      
+      if (state.challengeMode) {
+        elements.shortestPathBtn.classList.add('bg-yellow-600');
+        elements.shortestPathBtn.textContent = 'Exit Challenge';
+        elements.challengeFeedback.classList.remove('hidden');
+        elements.challengeFeedback.textContent = 'Find the combination with the shortest total distance!';
+        updatePathDetails();
+      } else {
+        elements.shortestPathBtn.classList.remove('bg-yellow-600');
+        elements.shortestPathBtn.textContent = 'Find Shortest Path';
+        elements.challengeFeedback.classList.add('hidden');
+        updatePathDetails();
+      }
+    }
+
+    // ====================
+    // Visual Effects
+    // ====================
+    function createParticlesForPath(type, index) {
+      // Create particles when a path is activated
+      for (let i = 0; i < 20; i++) {
+        state.particles.push({
+          x: type === 'kashi' ? 100 : 300,
+          y: 200,
+          color: type === 'kashi' ? pathColorsKashi[index] : pathColorsSarnath[index],
+          size: random(2, 5),
+          life: random(30, 60),
+          velocity: {
+            x: random(-2, 2),
+            y: random(-2, 2)
+          }
+        });
+      }
+    }
+
+    function createParticlesAroundTraveler(traveler) {
+      // Create a particle trail
+      for (let i = 0; i < 10; i++) {
+        state.particles.push({
+          x: traveler.position.x,
+          y: traveler.position.y,
+          color: traveler.color,
+          size: random(2, 4),
+          life: random(20, 40),
+          velocity: {
+            x: random(-1, 1),
+            y: random(-1, 1)
+          }
+        });
+      }
+    }
+
+    // ====================
+    // Canvas Operations
+    // ====================
+    function updateZoom(amount) {
+      state.zoomLevel = constrain(state.zoomLevel + amount, 0.5, 3);
+    }
+
+    function exportCanvas() {
+      // In a real implementation, this would save the canvas as an image
+      alert('Export functionality would save the current visualization as an image');
+    }
+
+    // ====================
+    // Utility Functions
+    // ====================
+    function toggleAllPaths(type, enable) {
+      if (type === 'kashi') {
+        state.kashiToSarnathActive.fill(enable);
+        document.querySelectorAll('#kashi-to-sarnath input').forEach((cb, i) => {
+          cb.checked = enable;
+          if (enable) createParticlesForPath('kashi', i);
+        });
+      } else {
+        state.sarnathToGyanActive.fill(enable);
+        document.querySelectorAll('#sarnath-to-gyan input').forEach((cb, i) => {
+          cb.checked = enable;
+          if (enable) createParticlesForPath('sarnath', i);
+        });
+      }
+      updateResults();
+    }
+
+    function resetAll() {
+      state.kashiToSarnathActive.fill(false);
+      state.sarnathToGyanActive.fill(false);
+      state.travelers = [];
+      state.isPlaying = false;
+      state.challengeMode = false;
+      
+      document.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = false);
+      elements.playPauseBtn.textContent = '⏵ Play';
+      elements.shortestPathBtn.classList.remove('bg-yellow-600');
+      elements.shortestPathBtn.textContent = 'Find Shortest Path';
+      elements.challengeFeedback.classList.add('hidden');
+      
+      updateResults();
+    }
+
+    // ====================
+    // p5.js Sketch
+    // ====================
+    function setup() {
+      const canvas = createCanvas(800, 500);
+      canvas.parent('canvas-container');
+      
+      // Initialize stars
+      for (let i = 0; i < 200; i++) {
+        state.stars.push({
+          x: random(width),
+          y: random(height),
+          size: random(1, 3),
+          speed: random(0.1, 0.5),
+          layer: floor(random(1, 4)) // For parallax effect
+        });
+      }
+      
+      // Set up mouse events for panning
+      canvas.mousePressed(() => {
+        state.isDragging = true;
+        state.dragStart = { x: mouseX, y: mouseY };
+      });
+      
+      canvas.mouseReleased(() => {
+        state.isDragging = false;
+      });
+    }
+
+    function draw() {
+      background(0);
+      
+      // Apply zoom and pan transformations
+      translate(width/2, height/2);
+      scale(state.zoomLevel);
+      translate(-width/2 + state.panOffset.x, -height/2 + state.panOffset.y);
+      
+      // Handle panning
+      if (state.isDragging) {
+        state.panOffset.x += mouseX - state.dragStart.x;
+        state.panOffset.y += mouseY - state.dragStart.y;
+        state.dragStart = { x: mouseX, y: mouseY };
+      }
+      
+      // Draw stars with parallax
+      drawStars();
+      
+      // Draw paths
+      drawAllPaths();
+      
+      // Update and draw travelers
+      if (state.isPlaying) {
+        updateTravelers();
+      }
+      
+      // Draw planets
+      drawPlanets();
+      
+      // Update and draw particles
+      updateParticles();
+    }
+
+    function drawStars() {
+      for (let star of state.stars) {
+        // Parallax effect based on zoom level
+        const parallaxFactor = star.layer * 0.3;
+        const x = star.x + (state.panOffset.x * parallaxFactor);
+        const y = star.y + (state.panOffset.y * parallaxFactor);
+        
+        fill(255, 255, 255, map(star.layer, 1, 3, 100, 200));
+        noStroke();
+        ellipse(x, y, star.size);
+        
+        // Move stars (faster for closer layers)
+        star.y += star.speed * star.layer;
+        if (star.y > height) star.y = 0;
+      }
+    }
+
+    function drawAllPaths() {
+      // Update dash animation
+      state.dashOffset -= 0.5 * state.animationSpeed;
+      if (state.dashOffset < -20) state.dashOffset = 0;
+      
+      // Draw Kashi to Sarnath paths
+      state.kashiToSarnathActive.forEach((active, i) => {
+        if (active) {
+          const offset = (i - 2.5) * 25;
+          const sign = i < 3 ? -1 : 1;
+          drawPath(
+            100, 200, 
+            200, 200 + sign * 100 + offset, 
+            300, 200, 
+            pathColorsKashi[i], 
+            state.hoveredPath?.type === 'kashi' && state.hoveredPath.index === i
+          );
+        }
+      });
+      
+      // Draw Sarnath to Gyan paths
+      state.sarnathToGyanActive.forEach((active, i) => {
+        if (active) {
+          const offset = (i - 2) * 25;
+          const sign = i < 2.5 ? -1 : 1;
+          drawPath(
+            300, 200, 
+            400, 200 + sign * 100 + offset, 
+            500, 200, 
+            pathColorsSarnath[i],
+            state.hoveredPath?.type === 'sarnath' && state.hoveredPath.index === i
+          );
+        }
+      });
+    }
+
+    function drawPath(x1, y1, cx, cy, x2, y2, color, isHighlighted) {
+      // Glow effect for highlighted paths
+      if (isHighlighted) {
+        drawingContext.shadowBlur = 20;
+        drawingContext.shadowColor = color;
+      }
+      
+      stroke(color);
+      strokeWeight(isHighlighted ? 6 : 4);
+      drawingContext.setLineDash([10, 10]);
+      drawingContext.lineDashOffset = state.dashOffset;
+      noFill();
+      bezier(x1, y1, cx, cy, cx, cy, x2, y2);
+      
+      // Reset effects
+      drawingContext.shadowBlur = 0;
+      drawingContext.setLineDash([]);
+    }
+
+    function drawPlanets() {
+      // Pulsing effect
+      const pulse = 1 + 0.05 * sin(frameCount * 0.05);
+      
+      // Kashi (red planet)
+      fill('#FF6B6B');
+      drawingContext.shadowBlur = 30;
+      drawingContext.shadowColor = '#FF6B6B';
+      ellipse(100, 200, 60 * pulse, 60 * pulse);
+      
+      // Sarnath (blue planet)
+      fill('#4ECDC4');
+      drawingContext.shadowBlur = 30;
+      drawingContext.shadowColor = '#4ECDC4';
+      ellipse(300, 200, 60 * pulse, 60 * pulse);
+      
+      // Gyan Mandal (gold planet with ring)
+      fill('#FFD700');
+      drawingContext.shadowBlur = 30;
+      drawingContext.shadowColor = '#FFD700';
+      ellipse(500, 200, 60 * pulse, 60 * pulse);
+      
+      // Ring around Gyan Mandal
+      noFill();
+      stroke(200, 200, 100, 150);
+      strokeWeight(3);
+      ellipse(500, 200, 90, 30);
+      
+      // Reset shadow
+      drawingContext.shadowBlur = 0;
+      
+      // Labels
+      fill(255);
+      noStroke();
+      textSize(16);
+      textAlign(CENTER, CENTER);
+      text('🔱 Kashi', 100, 280);
+      text('🌀 Sarnath', 300, 280);
+      text('✨ Gyan Mandal', 500, 280);
+    }
+
+    function updateTravelers() {
+      for (let i = state.travelers.length - 1; i >= 0; i--) {
+        const traveler = state.travelers[i];
+        const route = state.activeRoutes[traveler.routeIndex];
+        
+        // Update progress
+        traveler.progress += 0.005 * state.animationSpeed;
+        
+        if (traveler.progress >= 2) {
+          // Journey complete
+          state.travelers.splice(i, 1);
+          if (state.travelers.length === 0 && state.isPlaying) {
+            // Start a new traveler if animation is still playing
+            spawnNewTraveler();
+          }
+          continue;
+        }
+        
+        // Calculate position
+        if (traveler.progress < 1) {
+          // First leg (Kashi to Sarnath)
+          const kIndex = route.kashiPath;
+          const offset = (kIndex - 2.5) * 25;
+          const sign = kIndex < 3 ? -1 : 1;
+          const pos = getBezierPoint(
+            traveler.progress,
+            100, 200,
+            200, 200 + sign * 100 + offset,
+            300, 200
+          );
+          traveler.position = pos;
+        } else {
+          // Second leg (Sarnath to Gyan)
+          const sIndex = route.sarnathPath;
+          const offset = (sIndex - 2) * 25;
+          const sign = sIndex < 2.5 ? -1 : 1;
+          const pos = getBezierPoint(
+            traveler.progress - 1,
+            300, 200,
+            400, 200 + sign * 100 + offset,
+            500, 200
+          );
+          traveler.position = pos;
+        }
+        
+        // Draw traveler
+        fill(traveler.color);
+        noStroke();
+        drawingContext.shadowBlur = 15;
+        drawingContext.shadowColor = traveler.color;
+        ellipse(traveler.position.x, traveler.position.y, 20, 20);
+        drawingContext.shadowBlur = 0;
+        
+        // Create particles periodically
+        if (frameCount % 5 === 0) {
+          createParticlesAroundTraveler(traveler);
+        }
+      }
+    }
+
+    function updateParticles() {
+      for (let i = state.particles.length - 1; i >= 0; i--) {
+        const p = state.particles[i];
+        
+        // Update position
+        p.x += p.velocity.x;
+        p.y += p.velocity.y;
+        p.life--;
+        
+        // Draw particle
+        fill(p.color);
+        noStroke();
+        ellipse(p.x, p.y, p.size);
+        
+        // Remove dead particles
+        if (p.life <= 0) {
+          state.particles.splice(i, 1);
+        }
+      }
+    }
+
+    function getBezierPoint(t, x1, y1, cx, cy, x2, y2) {
+      const u = 1 - t;
+      const x = u * u * x1 + 2 * u * t * cx + t * t * x2;
+      const y = u * u * y1 + 2 * u * t * cy + t * t * y2;
+      return { x, y };
+    }
+
+    // Initialize everything when the page loads
+    window.onload = initialize;
+  </script>
+</body>
+</html>
