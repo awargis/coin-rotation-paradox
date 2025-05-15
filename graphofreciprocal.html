@@ -30,7 +30,7 @@
       transition: background 0.5s, color 0.5s;
     }
     body.dark {
-      background: var(--dark-bg);
+      background: linear-gradient(to bottom, #000033, #0a0a1a); /* Realistic night sky gradient */
       color: var(--light-text);
     }
     body.light {
@@ -43,7 +43,27 @@
       left: 0;
       width: 100%;
       height: 100%;
-      z-index: -1;
+      z-index: -2; /* Behind falling stars */
+    }
+    .falling-star {
+      position: absolute;
+      background: linear-gradient(to bottom, rgba(255,255,255,0.8), rgba(255,255,255,0));
+      width: 2px;
+      height: 20px;
+      border-radius: 2px;
+      z-index: -1; /* Behind graph, above particles */
+      pointer-events: none;
+      animation: fall linear forwards;
+    }
+    @keyframes fall {
+      0% {
+        opacity: 1;
+        transform: translate(0, 0) rotate(45deg);
+      }
+      100% {
+        opacity: 0;
+        transform: translate(200px, 300px) rotate(45deg);
+      }
     }
     .container {
       max-width: 900px;
@@ -63,6 +83,58 @@
       margin: 0 0 20px;
       font-weight: 300;
       opacity: 0.9;
+    }
+    .quote-banner {
+      width: 100%;
+      display: flex;
+      justify-content: center;
+      margin-bottom: 15px;
+    }
+    .quote {
+      background: rgba(255,255,255,0.1);
+      border-radius: 10px;
+      padding: 10px 20px;
+      font-size: 16px;
+      font-style: italic;
+      text-align: center;
+      color: #ffffff;
+      background: linear-gradient(to right, var(--primary), var(--secondary));
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+      backdrop-filter: blur(10px);
+      box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+      transition: opacity 0.5s ease;
+      max-width: 600px;
+    }
+    body.light .quote {
+      background: rgba(0,0,0,0.1);
+    }
+    .quote.fade {
+      opacity: 0;
+    }
+    @keyframes twinkle {
+      0% { opacity: 0.5; }
+      50% { opacity: 1; }
+      100% { opacity: 0.5; }
+    }
+    .quote::before {
+      content: '✨';
+      position: absolute;
+      left: 10px;
+      top: 50%;
+      transform: translateY(-50%);
+      font-size: 14px;
+      animation: twinkle 2s infinite;
+    }
+    .quote::after {
+      content: '✨';
+      position: absolute;
+      right: 10px;
+      top: 50%;
+      transform: translateY(-50%);
+      font-size: 14px;
+      animation: twinkle 3s infinite;
     }
     .tabs {
       display: flex;
@@ -104,7 +176,8 @@
       padding: 20px;
       position: relative;
       overflow: hidden;
-      transition: background 0.5s;
+      transition: background 0.5s, transform 0.2s;
+      transform: perspective(1000px) rotateX(0deg) rotateY(0deg); /* Parallax base */
     }
     #graph-container::before {
       content: '';
@@ -113,8 +186,9 @@
       left: 0;
       width: 100%;
       height: 100%;
-      background: radial-gradient(circle at 20% 20%, rgba(0, 255, 255, 0.1) 0%, transparent 50%),
-                  radial-gradient(circle at 80% 80%, rgba(255, 127, 0, 0.1) 0%, transparent 50%);
+      background: radial-gradient(circle at 10% 10%, rgba(0, 255, 255, 0.15) 0%, transparent 40%),
+                  radial-gradient(circle at 90% 90%, rgba(255, 127, 0, 0.15) 0%, transparent 40%),
+                  radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.1) 0%, transparent 50%); /* Layered nebula */
       z-index: 0;
       pointer-events: none;
     }
@@ -146,7 +220,7 @@
       stroke-width: 4;
       fill: none;
       stroke-linecap: round;
-      filter: drop-shadow( moving point on the x-axis which connect the red point on the graph which explain the real variation. Put Adjust x-value: tab, and Exploring tab on the some what above left to the graph.  Rest everything is fine 0 10px var(--secondary));
+      filter: drop-shadow(0 0 10px var(--secondary));
     }
     .asymptote {
       stroke: var(--accent);
@@ -402,7 +476,10 @@
   <div id="particles-js"></div>
   <div class="container">
     <h1>Interactive Exploration of Reciprocal Functions</h1>
-    <p class="subtitle"> Graph of (x) = x² - 3x + 2 and its reciprocal y = 1/f(x)</p>
+    <p class="subtitle">Visualizing the relationship between f(x) = x² - 3x + 2 and its reciprocal y = 1/f(x)</p>
+    <div class="quote-banner">
+      <div class="quote" id="quoteDisplay">Mathematics is the music of reason. — James Joseph Sylvester</div>
+    </div>
     <div class="tabs">
       <div class="tab equation" id="equationLabel">Exploring: <strong>y = 1 / (x² - 3x + 2)</strong></div>
       <div class="tab control-group">
@@ -461,19 +538,66 @@
   <script src="https://d3js.org/d3.v7.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/particles.js@2.0.0/particles.min.js"></script>
   <script>
-    // Particle Background (Stars and Nebula-like Particles)
+    // Particle Background (Enhanced Stars)
     particlesJS("particles-js", {
       particles: {
-        number: { value: 80, density: { enable: true, value_area: 800 } },
-        color: { value: ["#ffffff", "#00ffff", "#ff7f00"] },
+        number: { value: 100, density: { enable: true, value_area: 800 } },
+        color: { value: ["#ffffff", "#e6faff", "#fff5e6"] }, /* Varied star colors */
         shape: { type: "circle" },
-        opacity: { value: 0.5, random: true, anim: { enable: true, speed: 0.5, opacity_min: 0.2 } },
-        size: { value: 2, random: true, anim: { enable: true, speed: 2, size_min: 0.5 } },
+        opacity: { value: 0.7, random: true, anim: { enable: true, speed: 0.5, opacity_min: 0.3 } },
+        size: { value: 3, random: true, anim: { enable: true, speed: 1, size_min: 0.5 } },
         line_linked: { enable: false },
-        move: { enable: true, speed: 0.3, direction: "none", random: true }
+        move: { enable: true, speed: 0.2, direction: "none", random: true }
       },
       interactivity: { enable: false }
     });
+
+    // Falling Stars
+    function createFallingStar() {
+      const star = document.createElement("div");
+      star.className = "falling-star";
+      const startX = Math.random() * window.innerWidth;
+      const startY = -20;
+      star.style.left = `${startX}px`;
+      star.style.top = `${startY}px`;
+      star.style.animationDuration = `${Math.random() * 2 + 1}s`; /* 1-3s duration */
+      star.style.width = `${Math.random() * 2 + 1}px`; /* 1-3px width */
+      star.style.height = `${Math.random() * 20 + 10}px`; /* 10-30px height */
+      document.body.appendChild(star);
+      star.addEventListener("animationend", () => star.remove());
+    }
+    setInterval(createFallingStar, 2000); /* New star every 2s */
+
+    // Parallax Effect for Graph Container
+    const graphContainer = document.querySelector("#graph-container");
+    document.addEventListener("mousemove", (e) => {
+      const rect = graphContainer.getBoundingClientRect();
+      const centerX = rect.left + rect.width / 2;
+      const centerY = rect.top + rect.height / 2;
+      const moveX = (e.clientX - centerX) / 100;
+      const moveY = (e.clientY - centerY) / 100;
+      graphContainer.style.transform = `perspective(1000px) rotateX(${moveY / 2}deg) rotateY(${moveX / 2}deg)`;
+    });
+
+    // Quote Rotation
+    const quotes = [
+      "Mathematics is the music of reason. — James Joseph Sylvester",
+      "The essence of mathematics lies in its freedom. — Georg Cantor",
+      "Do not worry about your difficulties in mathematics. I can assure you mine are still greater. — Albert Einstein",
+      "Mathematics is not about numbers, equations, computations, or algorithms: it is about understanding. — William Paul Thurston",
+      "In mathematics, the art of asking questions is more valuable than solving problems. — Georg Cantor"
+    ];
+    let currentQuoteIndex = 0;
+    const quoteDisplay = d3.select("#quoteDisplay");
+    function rotateQuote() {
+      quoteDisplay.classed("fade", true);
+      setTimeout(() => {
+        currentQuoteIndex = (currentQuoteIndex + 1) % quotes.length;
+        quoteDisplay.text(quotes[currentQuoteIndex]);
+        quoteDisplay.classed("fade", false);
+      }, 500);
+    }
+    setInterval(rotateQuote, 10000);
 
     // Graph Setup
     const svg = d3.select("#graph");
@@ -570,7 +694,7 @@
       .attr("class", "function-label")
       .attr("x", xScale(3.5))
       .attr("y", yScale(f(3.5) + 0.5))
-      .text("y= f(x) ");
+      .text("f(x) = x² - 3x + 2");
     g.append("text")
       .attr("class", "function-label")
       .attr("x", xScale(-2))
