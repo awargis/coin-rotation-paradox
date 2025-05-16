@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Zeno's Paradox: Infinite Halving of a Room</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.2/p5.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Exo+2:wght@400;700;900&display=swap" rel="stylesheet">
+  <style>
+    /* Tailwind utilities */
+    .text-4xl { font-size: 2.25rem; line-height: 2.5rem; }
+    .mb-6 { margin-bottom: 1.5rem; }
+    .flex { display: flex; }
+    .gap-5 { gap: 1.25rem; }
+    .items-center { align-items: center; }
+    .mt-5 { margin-top: 1.25rem; }
+    .w-full { width: 100%; }
+    .max-w-\[600px\] { max-width: 600px; }
+    .justify-center { justify-content: center; }
+
+    /* Original custom styles */
+    body {
+      font-family: 'Exo 2', sans-serif;
+      background: #000000;
+      margin: 0;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      overflow: hidden;
+      user-select: none;
+    }
+    h1 {
+      font-weight: 900;
+      color: #e0e7ff;
+      text-shadow: 0 0 15px rgba(0, 212, 255, 1);
+      animation: glow-title 2s infinite;
+      text-align: center;
+    }
+    #canvas-container {
+      width: 100%;
+      max-width: 600px;
+      background: linear-gradient(135deg, #2a2a3a, #0a0a14);
+      border: 4px solid #00D4FF;
+      border-radius: 16px;
+      box-shadow: 0 0 30px rgba(0, 212, 255, 0.7);
+      position: relative;
+      overflow: hidden;
+    }
+    #canvas-container::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: radial-gradient(circle at center, transparent 50%, rgba(0, 0, 0, 0.7) 100%);
+      pointer-events: none;
+    }
+    #canvas-container::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(transparent, rgba(0, 212, 255, 0.1) 50%, transparent);
+      animation: scanline 6s linear infinite;
+    }
+    #room {
+      position: relative;
+      width: 600px;
+      height: 60px;
+      background: linear-gradient(to right, #00D4FF, #3B82F6);
+      border-radius: 8px;
+      box-shadow: 0 0 15px rgba(0, 212, 255, 0.7);
+      margin: 20px 0;
+      z-index: 1;
+      overflow: hidden;
+    }
+    #room::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+      animation: shimmer 3s infinite;
+    }
+    .plane {
+      position: absolute;
+      top: 0;
+      width: 3px;
+      height: 60px;
+      opacity: 0;
+      animation: fadeIn 1s forwards;
+      box-shadow: 0 0 10px;
+      z-index: 5;
+    }
+    #runner {
+      position: absolute;
+      top: 15px;
+      width: 30px;
+      height: 30px;
+      background: #D81B60;
+      border-radius: 50%;
+      box-shadow: 0 0 15px #D81B60;
+      left: 0;
+      transition: left 1.1s cubic-bezier(0.25, 0.1, 0.25, 1);
+      z-index: 10;
+    }
+    #label, #sum, #explanation, #series {
+      font-size: 18px;
+      color: #B388FF;
+      text-shadow: 0 0 10px rgba(179, 136, 255, 0.9);
+      margin: 10px 0;
+      min-height: 24px;
+      text-align: center;
+      width: 100%;
+      max-width: 600px;
+      font-weight: 700;
+    }
+    #sum, #series {
+      color: #FFD700;
+      text-shadow: 0 0 10px rgba(255, 215, 0, 0.9);
+    }
+    #controls {
+      margin-top: 20px;
+      display: flex;
+      gap: 20px;
+      align-items: center;
+      width: 100%;
+      max-width: 600px;
+      justify-content: center;
+      color: #e0e7ff;
+    }
+    button {
+      padding: 8px 15px;
+      background: linear-gradient(45deg, #3B82F6, #00D4FF);
+      color: #e0e7ff;
+      border: 2px solid #00D4FF;
+      border-radius: 6px;
+      font-size: 16px;
+      font-weight: 700;
+      cursor: pointer;
+      box-shadow: 0 0 15px rgba(0, 212, 255, 0.8);
+      transition: transform 0.2s, box-shadow 0.3s;
+      position: relative;
+      overflow: hidden;
+    }
+    button:hover {
+      transform: scale(1.1);
+      box-shadow: 0 0 25px rgba(0, 212, 255, 1);
+    }
+    button::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
+      transition: left 0.5s;
+    }
+    button:hover::after {
+      left: 100%;
+    }
+    input[type="range"] {
+      width: 150px;
+      height: 10px;
+      background: linear-gradient(to right, #1a1a2e, #22C55E);
+      border-radius: 5px;
+      accent-color: #22C55E;
+      box-shadow: 0 0 15px rgba(34, 197, 94, 0.9);
+    }
+    input[type="range"]:hover {
+      box-shadow: 0 0 20px rgba(34, 197, 94, 1);
+    }
+    @keyframes fadeIn {
+      to { opacity: 1; }
+    }
+    @keyframes glow-title {
+      0% { text-shadow: 0 0 15px rgba(0, 212, 255, 1); }
+      50% { text-shadow: 0 0 25px rgba(0, 212, 255, 1); }
+      100% { text-shadow: 0 0 15px rgba(0, 212, 255, 1); }
+    }
+    @keyframes shimmer {
+      0% { transform: translateX(-100%); }
+      100% { transform: translateX(100%); }
+    }
+    @keyframes scanline {
+      0% { transform: translateY(-100%); }
+      100% { transform: translateY(100%); }
+    }
+  </style>
+</head>
+<body>
+  <h1 class="text-4xl mb-6">Zeno's Paradox: Infinite Halving of a Room</h1>
+  <div id="canvas-container">
+    <canvas id="p5-canvas"></canvas>
+    <div id="room">
+      <div id="runner" title="Runner"></div>
+    </div>
+  </div>
+  <div id="label">Starting with 1 meter</div>
+  <div id="sum">Distance covered: 0.00000 m</div>
+  <div id="series"></div>
+  <div id="explanation">The runner must cross a 1-meter room by reaching the halfway point first...</div>
+  <div id="controls" class="flex gap-5 items-center mt-5 w-full max-w-[600px] justify-center">
+    <button id="playPauseBtn">Pause</button>
+    <label for="speedRange">Speed: </label>
+    <input type="range" id="speedRange" min="0.5" max="3" step="0.1" value="1">
+    <span id="speedValue">1.0x</span>
+  </div>
+
+  <script>
+    // p5.js setup for cosmic background
+    let stars = [];
+    let nebulae = [];
+    let particles = [];
+
+    function setup() {
+      let canvas = createCanvas(600, 100);
+      canvas.parent('p5-canvas');
+      canvas.style('position', 'absolute');
+      canvas.style('top', '0');
+      canvas.style('left', '0');
+      canvas.style('z-index', '0');
+      textFont('Exo 2');
+      // Initialize stars
+      for (let i = 0; i < 150; i++) {
+        stars.push({
+          x: random(width),
+          y: random(height),
+          size: random(1, 5),
+          alpha: random(100, 255),
+          depth: random(0.2, 1),
+          twinkle: random(0.05, 0.1)
+        });
+      }
+      // Initialize nebulae
+      for (let i = 0; i < 6; i++) {
+        nebulae.push({
+          x: random(width * 0.2, width * 0.8),
+          y: random(height * 0.2, height * 0.8),
+          size: random(80, 150),
+          color: [color(46, 26, 71, 50), color(0, 212, 255, 50), color(216, 27, 96, 50), color(179, 136, 255, 50)][floor(random(4))],
+          offset: random(TWO_PI)
+        });
+      }
+    }
+
+    function draw() {
+      clear();
+      // Draw nebulae
+      for (let nebula of nebulae) {
+        drawingContext.filter = 'blur(20px)';
+        let alpha = 50 + 20 * sin(frameCount * 0.02 + nebula.offset);
+        fill(red(nebula.color), green(nebula.color), blue(nebula.color), alpha);
+        noStroke();
+        ellipse(nebula.x + 10 * sin(frameCount * 0.01 + nebula.offset), nebula.y + 10 * cos(frameCount * 0.01 + nebula.offset), nebula.size, nebula.size);
+        drawingContext.filter = 'none';
+      }
+      // Draw stars
+      let offsetX = 10 * sin(frameCount * 0.01);
+      let offsetY = 10 * cos(frameCount * 0.01);
+      for (let star of stars) {
+        let px = star.x + offsetX * star.depth;
+        let py = star.y + offsetY * star.depth;
+        fill(255, 255, 255, star.alpha + 50 * sin(frameCount * star.twinkle));
+        noStroke();
+        ellipse(px, py, star.size, star.size);
+      }
+      // Draw particles
+      for (let i = particles.length - 1; i >= 0; i--) {
+        let p = particles[i];
+        p.x += p.vx;
+        p.y += p.vy;
+        p.alpha -= 5;
+        if (p.alpha <= 0) {
+          particles.splice(i, 1);
+          continue;
+        }
+        fill(p.color, p.alpha);
+        noStroke();
+        ellipse(p.x, p.y, 3, 3);
+      }
+    }
+
+    // DOM and animation logic
+    const room = document.getElementById('room');
+    const label = document.getElementById('label');
+    const sumDisplay = document.getElementById('sum');
+    const seriesDisplay = document.getElementById('series');
+    const explanation = document.getElementById('explanation');
+    const runner = document.getElementById('runner');
+    const playPauseBtn = document.getElementById('playPauseBtn');
+    const speedRange = document.getElementById('speedRange');
+    const speedValue = document.getElementById('speedValue');
+
+    const roomWidth = room.clientWidth;
+    let segments = [[0, 1]];
+    let step = 0;
+    const maxSteps = 20;
+    const planeColors = ['#22C55E', '#D81B60', '#FFD700', '#B388FF'];
+    let totalDistanceCovered = 0;
+    let isPaused = false;
+    let animationSpeed = 1;
+    let prevMid = 0;
+    const explanations = [
+      "The runner must cross a 1-meter room by reaching the halfway point first...",
+      "Then the halfway point of the remaining distance...",
+      "And the halfway point of the next segment...",
+      "This continues infinitely, dividing the remaining distance in half...",
+      "The paradox: infinite steps in a finite 1-meter distance!",
+      "The distances sum as 1/2 + 1/4 + 1/8 + ... = 1 m.",
+      "Motion is possible as the infinite sum converges to 1 m."
+    ];
+
+    function wait(ms) {
+      return new Promise(resolve => setTimeout(resolve, ms));
+    }
+
+    async function addNextPlane() {
+      if (step >= maxSteps) {
+        label.textContent = "Infinite subdivisions approach 1 meter...";
+        explanation.textContent = "The runner nears the end, with the sum of infinite steps equaling 1 meter.";
+        seriesDisplay.textContent = "Series: 1/2 + 1/4 + 1/8 + ... = 1 m";
+        return;
+      }
+      if (isPaused) {
+        await wait(200);
+        return addNextPlane();
+      }
+
+      let [start, end] = segments.shift();
+      let mid = (start + end) / 2;
+
+      // Create plane
+      const plane = document.createElement('div');
+      plane.className = 'plane';
+      plane.style.left = (mid * roomWidth) + 'px';
+      const planeColor = planeColors[step % planeColors.length];
+      plane.style.backgroundColor = planeColor;
+      plane.style.boxShadow = `0 0 10px ${planeColor}`;
+      room.appendChild(plane);
+
+      // Plane animation
+      plane.style.animation = `fadeIn ${1 / animationSpeed}s forwards`;
+
+      // Plane particles
+      for (let i = 0; i < 10; i++) {
+        particles.push({
+          x: mid * roomWidth,
+          y: 50,
+          vx: random(-1, 1),
+          vy: random(-1, 1),
+          alpha: 200,
+          color: color(red(planeColor), green(planeColor), blue(planeColor))
+        });
+      }
+
+      // Update label
+      let segmentLength = end - start;
+      label.textContent = `Dividing segment of ${segmentLength.toFixed(5)} m at ${mid.toFixed(5)} m`;
+
+      // Move runner
+      const targetLeft = mid * roomWidth - runner.clientWidth / 2;
+      runner.style.transitionDuration = `${1.1 / animationSpeed}s`;
+      runner.style.left = targetLeft + 'px';
+
+      // Runner particles
+      for (let i = 0; i < 5; i++) {
+        particles.push({
+          x: targetLeft + 15,
+          y: 50,
+          vx: random(-0.5, 0.5),
+          vy: random(-0.5, 0.5),
+          alpha: 200,
+          color: color(216, 27, 96)
+        });
+      }
+
+      // Update distance
+      if (step === 0) {
+        totalDistanceCovered = mid;
+      } else {
+        totalDistanceCovered += mid - prevMid;
+      }
+      sumDisplay.textContent = `Distance covered: ${totalDistanceCovered.toFixed(5)} m`;
+
+      // Update series
+      if (step >= 5) {
+        let seriesTerms = Array.from({ length: Math.min(step + 1, 10) }, (_, i) => `1/${Math.pow(2, i + 1)}`).join(' + ');
+        if (step >= 10) seriesTerms += ' + ...';
+        seriesDisplay.textContent = `Series: ${seriesTerms} = ${totalDistanceCovered.toFixed(5)} m`;
+      }
+
+      // Update explanation
+      explanation.textContent = explanations[step % explanations.length];
+
+      step++;
+      prevMid = mid;
+      segments = [[mid, end]];
+
+      await wait(1800 / animationSpeed);
+      addNextPlane();
+    }
+
+    // Start animation
+    setTimeout(addNextPlane, 1000);
+
+    // Play/Pause
+    playPauseBtn.onclick = () => {
+      isPaused = !isPaused;
+      playPauseBtn.textContent = isPaused ? 'Play' : 'Pause';
+      if (!isPaused) addNextPlane();
+      // Button particles
+      for (let i = 0; i < 10; i++) {
+        particles.push({
+          x: 300,
+          y: 120,
+          vx: random(-1, 1),
+          vy: random(-1, 0),
+          alpha: 200,
+          color: color(0, 212, 255)
+        });
+      }
+    };
+
+    // Speed control
+    speedRange.oninput = () => {
+      animationSpeed = parseFloat(speedRange.value);
+      speedValue.textContent = animationSpeed.toFixed(1) + 'x';
+    };
+  </script>
+</body>
+</html>
