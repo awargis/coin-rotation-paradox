@@ -1,0 +1,772 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Cinematic Math Question + Animation</title>
+  <style>
+    body {
+      background: radial-gradient(ellipse at 60% 30%, #223e8e 0%, #111827 70%, #1e1e1e 100%);
+      min-height: 100vh;
+      margin: 0;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      font-family: 'Segoe UI', Arial, sans-serif;
+      color: #f0f6ff;
+    }
+    .glass-panel, .question-panel {
+      background: rgba(24,30,48,0.88);
+      border-radius: 1.4em;
+      box-shadow: 0 8px 32px 0 #1e3a8a33, 0 1.5px 24px #38bdf855;
+      backdrop-filter: blur(18px);
+      padding: 2.1em 2.8em 2.1em 2.8em;
+      margin-top: 50px;
+      margin-bottom: 40px;
+      width: 540px;
+      max-width: 95vw;
+      z-index: 2;
+      transition: box-shadow 0.2s;
+      text-align: left;
+      font-size: 1.14em;
+      position: relative;
+      animation: fadeIn 1s;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(24px);}
+      to   { opacity: 1; transform: none;}
+    }
+    .question-panel .mjx-math {
+      font-size: 1.1em;
+    }
+    .option-list {
+      margin-top: 1.3em;
+      margin-bottom: 1.5em;
+    }
+    .option-list label {
+      display: block;
+      margin-bottom: 0.7em;
+      font-family: monospace;
+      font-size: 1.08em;
+      cursor: pointer;
+      color: #ffe066;
+      transition: color 0.15s;
+      padding-left: 0.6em;
+    }
+    .option-list input[type="radio"] {
+      accent-color: #38bdf8;
+      margin-right: 0.7em;
+      transform: scale(1.18);
+    }
+    .go-anim-btn, .back-question-btn {
+      display: inline-block;
+      margin-top: 20px;
+      padding: 12px 32px;
+      background: linear-gradient(90deg, #2563eb 65%, #f43f5e 100%);
+      color: white;
+      border: none;
+      border-radius: 9px;
+      cursor: pointer;
+      font-size: 1.18rem;
+      font-weight: bold;
+      box-shadow: 0 0 18px #38bdf8bb;
+      transition: box-shadow .17s, background .14s, transform .13s;
+    }
+    .go-anim-btn:hover, .back-question-btn:hover {
+      background: linear-gradient(90deg,#1e40af 60%,#c026d3 100%);
+      box-shadow: 0 0 33px #38bdf8, 0 2px 14px #f43f5e44;
+      transform: scale(1.06);
+    }
+    .back-question-btn {
+      margin-top: 0;
+      margin-bottom: 18px;
+      background: linear-gradient(90deg, #f43f5e 65%, #2563eb 100%);
+    }
+    .animation-section {
+      opacity: 0;
+      pointer-events: none;
+      max-height: 0;
+      transition: opacity 0.5s, max-height 0.6s;
+      overflow: hidden;
+    }
+    .animation-section.visible {
+      opacity: 1;
+      pointer-events: auto;
+      max-height: 2000px;
+      transition: opacity 0.7s, max-height 1.2s;
+      margin-top: 0;
+    }
+    .legend {
+      display: flex;
+      gap: 1.2em;
+      position: absolute;
+      left: 14px;
+      top: 13px;
+      z-index: 10;
+      background: rgba(24,30,48,0.82);
+      border-radius: 7px;
+      padding: 0.43em 1.1em 0.43em 1.13em;
+      font-size: 1.06em;
+      font-family: monospace;
+      letter-spacing: 0.02em;
+      box-shadow: 0 3px 13px #000a;
+      pointer-events: none;
+      user-select: none;
+    }
+    .fcurve { color: cyan; }
+    .gcurve { color: #f43; }
+    .fracline { color: #ffe066; }
+    .intersect { color: #c0f;}
+    .particle {
+      position: absolute;
+      background: rgba(236, 72, 153, 0.7);
+      border-radius: 50%;
+      pointer-events: none;
+      animation: particleFade 2s ease-out forwards;
+      z-index: 100;
+    }
+    @keyframes particleFade {
+      0% { opacity: 1; transform: scale(1);}
+      100% { opacity: 0; transform: scale(0);}
+    }
+    canvas {
+      border: 1px solid rgba(255, 255, 255, 0.45);
+      background: rgba(5, 15, 40, 0.89);
+      border-radius: 13px;
+      box-shadow: 0 0 40px #38bdf8bb;
+      display: block;
+      margin: 0 auto;
+      cursor: crosshair;
+    }
+    h2 {
+      text-align: center;
+      font-size: 2.1rem;
+      background: linear-gradient(90deg, #38bdf8 40%, #a78bfa 100%);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      background-clip: text; color: transparent;
+      font-weight: 800; letter-spacing: 0.03em;
+      margin-bottom: 26px;
+      margin-top: 0;
+      text-shadow: 0 2px 18px #94a3b888;
+    }
+    .controls-row {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-top: 22px;
+      gap: 14px;
+    }
+    button {
+      padding: 10px 19px;
+      background: linear-gradient(90deg, #2563eb 65%, #f43f5e 100%);
+      color: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 1.12rem;
+      font-weight: bold;
+      box-shadow: 0 0 12px #38bdf8bb;
+      transition: box-shadow .17s, background .14s, transform .13s;
+    }
+    button:hover, button.active {
+      background: linear-gradient(90deg,#1e40af 60%,#c026d3 100%);
+      box-shadow: 0 0 22px #38bdf8, 0 2px 12px #f43f5e44;
+      transform: scale(1.06);
+    }
+    .slider-row {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-top: 15px;
+      gap: 12px;
+    }
+    #manualSlider {
+      width: 330px;
+      accent-color: #38bdf8;
+      background: linear-gradient(90deg,#38bdf8,#6366f1 70%);
+      border-radius: 8px;
+      height: 8px;
+    }
+    .slider-label {
+      color: #ffe066;
+      font-family: monospace;
+      font-size: 1.09em;
+      font-weight: bold;
+      margin-right: 2px;
+      user-select: none;
+      letter-spacing: 0.04em;
+      text-shadow: 0 1px 8px #ffe06644;
+    }
+    .manual-x-value {
+      color: #38bdf8;
+      font-family: monospace;
+      font-size: 1.06em;
+      background: #17255488;
+      border-radius: 6px;
+      padding: 2px 9px;
+      margin-left: 2px;
+      font-weight: bold;
+      min-width: 50px;
+      display: inline-block;
+      text-align: right;
+      box-shadow: 0 1px 6px #38bdf866;
+    }
+    #info {
+      margin-top: 18px;
+      padding: 10px 18px;
+      background: rgba(255,255,255,0.11);
+      border-radius: 9px;
+      font-size: 1.14rem;
+      min-height: 38px;
+      box-shadow: 0 2px 13px #0003;
+      line-height: 1.6;
+      font-family: monospace;
+      text-align: center;
+      letter-spacing: 0.01em;
+    }
+    .highlight {
+      color: #ffe066;
+      font-weight: bold;
+      text-shadow: 0 0 8px #ffe06699;
+    }
+    .cval { color: #38bdf8; font-weight: bold; }
+    .gval { color: #f43; font-weight: bold; }
+    .fracval { color: #ffe066; font-weight: bold; }
+    .intersectval { color: #c0f; font-weight: bold; }
+    .tooltip {
+      position: absolute;
+      pointer-events: none;
+      background: rgba(24, 24, 40, 0.98);
+      color: #ffe066;
+      padding: 7px 14px;
+      border-radius: 7px;
+      font-size: 1.03em;
+      font-family: monospace;
+      box-shadow: 0 2px 12px #38bdf8cc;
+      z-index: 1000;
+      min-width: 140px;
+      text-align: center;
+      display: none;
+      transition: opacity .14s;
+    }
+    .sol-badge {
+      position: absolute;
+      top: 30px;
+      right: 55px;
+      background: #38bdf8;
+      color: #222;
+      font-weight: bold;
+      font-size: 1.3em;
+      padding: 11px 24px;
+      border-radius: 18px;
+      box-shadow: 0 2px 18px #38bdf8bb;
+      z-index: 999;
+      text-align: center;
+      display: none;
+    }
+    @media (max-width:600px) {
+      .glass-panel, .question-panel { padding: 1em; font-size:1em; }
+      .sol-badge { right: 4vw; top: 5vw; }
+    }
+  </style>
+  <!-- MathJax for LaTeX equations -->
+  <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+  <script id="MathJax-script" async
+    src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+</head>
+<body>
+  <div class="question-panel" id="questionPanel">
+    <div>
+      <span>
+        Let \( f(x) = x^2 - 4|x| \) and
+        \[
+        g(x) =
+        \begin{cases}
+        \min \{ f(t) : -6 \le t \le x \}, & x \in [-6, 0] \\
+        \max \{ f(t) : 0 < t \le x \}, & x \in (0, 6]
+        \end{cases}
+        \]
+        <br>
+        <br>
+        The number of solutions of \( g(x) = \{x\} \) in \( [-6, 6] \) is (where \( \{ \cdot \} \) denotes the fractional part function):
+      </span>
+    </div>
+    <div class="option-list">
+      <label><input type="radio" name="option" value="6"> a. 6</label>
+      <label><input type="radio" name="option" value="7"> b. 7</label>
+      <label><input type="radio" name="option" value="8"> c. 8</label>
+      <label><input type="radio" name="option" value="9"> d. 9</label>
+    </div>
+    <button class="go-anim-btn" id="goAnimBtn">Go to Animation &rarr;</button>
+  </div>
+  
+  <div class="animation-section" id="animationSection">
+    <button class="back-question-btn" id="backQuestionBtn">&larr; Back to Question</button>
+    <h2>Explanation By Aditya Wargis </span></h2>
+    <div class="container" style="position:relative;">
+      <div class="legend">
+        <span class="fcurve">■ f(x)</span>
+        <span class="gcurve">■ g(x)</span>
+        <span class="fracline">■ y={x}</span>
+        <span class="intersect">● Intersections</span>
+      </div>
+      <canvas id="graphCanvas" width="800" height="600"></canvas>
+      <div class="tooltip" id="graphTooltip"></div>
+      <div class="sol-badge" id="solCountBadge"></div>
+    </div>
+    <div class="controls-row">
+      <button id="playPauseBtn">Play</button>
+      <button id="stepBackBtn" title="Step Backward">⏮️</button>
+      <button id="stepFwdBtn" title="Step Forward">⏭️</button>
+      <button id="resetBtn" title="Reset">⏹️</button>
+      <button id="endBtn" title="Jump to End">⏩</button>
+    </div>
+    <div class="slider-row">
+      <span class="slider-label">Manual x</span>
+      <input id="manualSlider" type="range" min="-6" max="6" step="0.01" value="0">
+      <span class="manual-x-value" id="manualXVal">0.00</span>
+    </div>
+    <p id="info"></p>
+  </div>
+  <script>
+    // Show/hide animation and question panels
+    document.getElementById('goAnimBtn').onclick = function() {
+      document.getElementById('questionPanel').style.display = 'none';
+      document.getElementById('animationSection').classList.add('visible');
+      setTimeout(()=>window.scrollTo({top:0,behavior:'smooth'}), 200);
+    };
+    document.getElementById('backQuestionBtn').onclick = function() {
+      document.getElementById('animationSection').classList.remove('visible');
+      document.getElementById('questionPanel').style.display = '';
+      setTimeout(()=>window.scrollTo({top:0,behavior:'smooth'}), 200);
+    };
+
+    // Animation JS
+    const canvas = document.getElementById("graphCanvas");
+    const ctx = canvas.getContext("2d");
+    const width = canvas.width, height = canvas.height;
+    const originX = width / 2, originY = height / 2 + 50, scale = 50;
+    const manualSlider = document.getElementById('manualSlider');
+    const manualXVal = document.getElementById('manualXVal');
+    const solBadge = document.getElementById('solCountBadge');
+
+    function f(x) { return x * x - 4 * Math.abs(x); }
+    function fractionalPart(x) { let fx = x - Math.floor(x); if (fx < 0) fx += 1; return fx; }
+    function gAt(x) {
+      if (x <= 0) {
+        let minVal = Infinity;
+        for (let t = -6; t <= x; t += 0.01) minVal = Math.min(minVal, f(t));
+        return minVal;
+      } else {
+        let maxVal = -Infinity;
+        for (let t = 0.01; t <= x; t += 0.01) maxVal = Math.max(maxVal, f(t));
+        return maxVal;
+      }
+    }
+    function drawAxes() {
+      ctx.save();
+      ctx.beginPath();
+      ctx.strokeStyle = "rgba(255,255,255,0.5)";
+      ctx.lineWidth = 2.1;
+      ctx.moveTo(0, originY); ctx.lineTo(width, originY);
+      ctx.moveTo(originX, 0); ctx.lineTo(originX, height);
+      ctx.stroke();
+      ctx.font = "15px monospace";
+      ctx.fillStyle = "#b6eaff";
+      for (let x = -7; x <= 7; x++) {
+        const px = originX + x * scale;
+        ctx.beginPath();
+        ctx.moveTo(px, originY - 5);
+        ctx.lineTo(px, originY + 5);
+        ctx.stroke();
+        ctx.fillText(x, px - 5, originY + 24);
+      }
+      for (let y = -20; y <= 20; y += 2) {
+        const py = originY - y * scale;
+        ctx.beginPath();
+        ctx.moveTo(originX - 5, py); ctx.lineTo(originX + 5, py);
+        ctx.stroke();
+        if (y !== 0) ctx.fillText(y, originX + 12, py + 6);
+      }
+      ctx.restore();
+    }
+    function drawF(opacity = 1) {
+      ctx.save();
+      ctx.beginPath();
+      ctx.strokeStyle = `rgba(0,255,255,${opacity})`;
+      ctx.lineWidth = 3.5;
+      ctx.shadowBlur = 18*opacity;
+      ctx.shadowColor = "cyan";
+      let first = true;
+      for (let x = -6; x <= 6; x += 0.01) {
+        const y = f(x), px = originX + x * scale, py = originY - y * scale;
+        if (first) { ctx.moveTo(px, py); first = false; }
+        else ctx.lineTo(px, py);
+      }
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+      ctx.restore();
+    }
+    function drawFractionalPart(opacity = 1) {
+      ctx.save();
+      ctx.beginPath();
+      ctx.strokeStyle = `rgba(255, 224, 102, ${opacity})`;
+      ctx.lineWidth = 3.2;
+      ctx.shadowBlur = 13;
+      ctx.shadowColor = "#ffe066";
+      for (let n = -6; n < 6; n++) {
+        ctx.moveTo(originX + n * scale, originY);
+        ctx.lineTo(originX + (n + 1) * scale, originY - 1 * scale);
+      }
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+      ctx.font = "17px monospace";
+      ctx.fillStyle = `rgba(255,224,102,${opacity})`;
+      ctx.fillText("y = {x}", originX + 4.6 * scale, originY - 1 * scale + 18);
+      ctx.restore();
+    }
+    function drawGCurve(gPoints) {
+      ctx.save();
+      ctx.beginPath();
+      ctx.strokeStyle = "#f43";
+      ctx.lineWidth = 4;
+      ctx.shadowBlur = 20;
+      ctx.shadowColor = "#f43";
+      let started = false;
+      for (const [x, y] of gPoints) {
+        const px = originX + x * scale, py = originY - y * scale;
+        if (!started) { ctx.moveTo(px, py); started = true; }
+        else ctx.lineTo(px, py);
+      }
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+      ctx.restore();
+    }
+    function drawVerticalLine(x, color = "magenta") {
+      const px = originX + x * scale;
+      ctx.save();
+      ctx.beginPath();
+      ctx.strokeStyle = color;
+      ctx.setLineDash([5, 7]);
+      ctx.lineWidth = 2;
+      ctx.shadowBlur = 14;
+      ctx.shadowColor = color;
+      ctx.moveTo(px, 0); ctx.lineTo(px, height);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.shadowBlur = 0;
+      ctx.font = "16px Arial";
+      ctx.fillStyle = color;
+      ctx.fillText("x = t", px + 12, 30);
+      ctx.restore();
+    }
+    function drawPoint(x, y, color, r=8, glow=18) {
+      const px = originX + x*scale, py = originY - y*scale;
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(px, py, r, 0, 2*Math.PI);
+      ctx.fillStyle = color;
+      ctx.shadowBlur = glow;
+      ctx.shadowColor = color;
+      ctx.fill();
+      ctx.shadowBlur = 0;
+      ctx.restore();
+      if (Math.random()<0.18) createParticle(px + canvas.offsetLeft, py + canvas.offsetTop, color);
+    }
+    function drawIntersections(pulse = false) {
+      let result = [];
+      for (let x = -6; x <= 6; x += 0.002) {
+        if (Math.abs(gAt(x) - fractionalPart(x)) < 0.015) result.push([x, fractionalPart(x)]);
+      }
+      let filtered = [];
+      let lastX = -100;
+      let idx = 1;
+      for (let [x, y] of result) {
+        if (Math.abs(x - lastX) > 0.07) {
+          filtered.push([x, y]);
+          lastX = x;
+          // Pulse effect if pulse==true (animation just finished)
+          let glow = pulse ? 30 + 15 * Math.abs(Math.sin(Date.now()/250)) : 20;
+          drawPoint(x, y, "#c0f", 10, glow);
+          // Draw index label
+          ctx.save();
+          ctx.font = "bold 16px monospace";
+          ctx.fillStyle = "#ffe066";
+          ctx.textAlign = "center";
+          ctx.fillText(idx, originX + x*scale, originY - y*scale - 16);
+          ctx.restore();
+          idx++;
+        }
+      }
+      // Draw badge with number of solutions
+      if (pulse) {
+        solBadge.innerHTML = `Total solutions:<br><span style="font-size:2em">${filtered.length}</span>`;
+        solBadge.style.display = "";
+      } else {
+        solBadge.style.display = "none";
+      }
+      return filtered;
+    }
+    function createParticle(x, y, color="#ec4899") {
+      const particle = document.createElement("div");
+      particle.className = "particle";
+      particle.style.width = "9px";
+      particle.style.height = "9px";
+      particle.style.left = `${x-4}px`;
+      particle.style.top = `${y-4}px`;
+      particle.style.background = color;
+      document.body.appendChild(particle);
+      setTimeout(() => particle.remove(), 1800);
+    }
+
+    // --- Animation
+    let gPoints = [], xCurrent = -6, animating = false, frameTimer = null;
+    let fAnimationProgress = 0, fracAnimationProgress = 0, phase = "f";
+    const STEP = 0.045;
+    let pulseAnimId = null;
+
+    function updateInfo(x, gVal, fracVal, nsol) {
+      document.getElementById("info").innerHTML =
+        `x = <span class="cval">${x.toFixed(3)}</span> &nbsp;` +
+        `g(x) = <span class="gval">${gVal.toFixed(4)}</span> &nbsp;` +
+        `{x} = <span class="fracval">${fracVal.toFixed(4)}</span><br>` +
+        `<span class="intersect">g(x) = {x} intersections</span>: <span class="intersectval">${nsol}</span> in [−6, 6]` +
+        (phase === "done" ? `<br><span class="highlight">Total solutions: ${nsol}</span>` : "");
+    }
+
+    function animateF() {
+      if (!animating) return;
+      ctx.clearRect(0, 0, width, height);
+      drawAxes();
+      fAnimationProgress += 0.012;
+      const opacity = Math.min(fAnimationProgress, 1);
+      drawF(opacity);
+      document.getElementById("info").innerHTML = `<span class="fcurve">Drawing f(x) = x² - 4|x|...</span>`;
+      if (fAnimationProgress < 1) frameTimer = requestAnimationFrame(animateF);
+      else {
+        phase = "frac";
+        fracAnimationProgress = 0;
+        setTimeout(()=>frameTimer = requestAnimationFrame(animateFractionalPart), 300);
+      }
+    }
+    function animateFractionalPart() {
+      if (!animating) return;
+      ctx.clearRect(0, 0, width, height);
+      drawAxes();
+      drawF();
+      fracAnimationProgress += 0.012;
+      const opacity = Math.min(fracAnimationProgress, 1);
+      drawFractionalPart(opacity);
+      document.getElementById("info").innerHTML = `<span class="fracline">Drawing y={x}...</span>`;
+      if (fracAnimationProgress < 1) frameTimer = requestAnimationFrame(animateFractionalPart);
+      else {
+        phase = "g";
+        setTimeout(()=>frameTimer = requestAnimationFrame(animateG), 350);
+      }
+    }
+    function animateG() {
+      if (!animating) return;
+      if (xCurrent <= 0) {
+        let minVal = Infinity;
+        for (let t = -6; t <= xCurrent; t += 0.01) minVal = Math.min(minVal, f(t));
+        gPoints.push([xCurrent, minVal]);
+      } else if (xCurrent <= 6) {
+        let maxVal = -Infinity;
+        for (let t = 0.01; t <= xCurrent; t += 0.01) maxVal = Math.max(maxVal, f(t));
+        gPoints.push([xCurrent, maxVal]);
+      }
+      ctx.clearRect(0, 0, width, height);
+      drawAxes();
+      drawF();
+      drawFractionalPart();
+      drawGCurve(gPoints);
+      drawVerticalLine(xCurrent, "#f43");
+      let gx = gAt(xCurrent), fx = fractionalPart(xCurrent);
+      drawPoint(xCurrent, gx, "#f43", 10, 33);
+      drawPoint(xCurrent, fx, "#ffe066", 10, 23);
+
+      let filtered = drawIntersections();
+      updateInfo(xCurrent, gx, fx, filtered.length);
+
+      manualSlider.value = xCurrent;
+      manualXVal.textContent = xCurrent.toFixed(2);
+
+      if (xCurrent <= 6) {
+        xCurrent += STEP;
+        frameTimer = requestAnimationFrame(animateG);
+      } else {
+        phase = "done";
+        document.getElementById("info").innerHTML += `<br><span class="highlight">Animation completed.</span>`;
+        startPulseIntersections();
+      }
+    }
+    function playPause() {
+      animating = !animating;
+      const btn = document.getElementById('playPauseBtn');
+      btn.textContent = animating ? 'Pause' : 'Play';
+      btn.classList.toggle('active', animating);
+      if (animating) {
+        stopPulseIntersections();
+        if (phase === "f") frameTimer = requestAnimationFrame(animateF);
+        else if (phase === "frac") frameTimer = requestAnimationFrame(animateFractionalPart);
+        else if (phase === "g") frameTimer = requestAnimationFrame(animateG);
+      } else {
+        if (frameTimer) cancelAnimationFrame(frameTimer);
+      }
+    }
+    function stepForward() {
+      animating = false;
+      stopPulseIntersections();
+      document.getElementById('playPauseBtn').textContent = 'Play';
+      if (phase === "g") {
+        xCurrent = Math.min(xCurrent + STEP, 6);
+        manualSlider.value = xCurrent;
+        drawGManual(xCurrent);
+      } else if (phase === "f" || phase === "frac") {
+        phase = "g"; xCurrent = -6; gPoints = [];
+        drawGManual(xCurrent);
+      }
+    }
+    function stepBackward() {
+      animating = false;
+      stopPulseIntersections();
+      document.getElementById('playPauseBtn').textContent = 'Play';
+      if (phase === "g") {
+        xCurrent = Math.max(xCurrent - STEP, -6);
+        manualSlider.value = xCurrent;
+        drawGManual(xCurrent);
+      }
+    }
+    function resetAnimation() {
+      animating = false;
+      stopPulseIntersections();
+      if (frameTimer) cancelAnimationFrame(frameTimer);
+      gPoints = [];
+      xCurrent = -6;
+      phase = "f";
+      fAnimationProgress = 0;
+      fracAnimationProgress = 0;
+      document.getElementById('playPauseBtn').textContent = 'Play';
+      drawAxes();
+      drawF();
+      drawFractionalPart();
+      drawGCurve([]);
+      drawIntersections();
+      updateInfo(0, gAt(0), fractionalPart(0), 2);
+      manualSlider.value = 0;
+      manualXVal.textContent = "0.00";
+    }
+    function jumpToEnd() {
+      animating = false;
+      stopPulseIntersections();
+      if (frameTimer) cancelAnimationFrame(frameTimer);
+      phase = "g";
+      xCurrent = 6;
+      drawGManual(xCurrent);
+      document.getElementById('playPauseBtn').textContent = 'Play';
+      startPulseIntersections();
+    }
+    function drawGManual(xValue) {
+      gPoints = [];
+      for (let step = -6; step <= xValue; step += 0.05) {
+        if (step <= 0) {
+          let minVal = Infinity;
+          for (let t = -6; t <= step; t += 0.01) minVal = Math.min(minVal, f(t));
+          gPoints.push([step, minVal]);
+        } else {
+          let maxVal = -Infinity;
+          for (let t = 0.01; t <= step; t += 0.01) maxVal = Math.max(maxVal, f(t));
+          gPoints.push([step, maxVal]);
+        }
+      }
+      ctx.clearRect(0, 0, width, height);
+      drawAxes();
+      drawF();
+      drawFractionalPart();
+      drawGCurve(gPoints);
+      drawVerticalLine(xValue, "#f43");
+      let gx = gAt(xValue), fx = fractionalPart(xValue);
+      drawPoint(xValue, gx, "#f43", 10, 33);
+      drawPoint(xValue, fx, "#ffe066", 10, 23);
+      let filtered = drawIntersections();
+      updateInfo(xValue, gx, fx, filtered.length);
+      manualXVal.textContent = xValue.toFixed(2);
+      if (phase === "done") startPulseIntersections();
+      else stopPulseIntersections();
+    }
+
+    document.getElementById('playPauseBtn').onclick = playPause;
+    document.getElementById('stepBackBtn').onclick = stepBackward;
+    document.getElementById('stepFwdBtn').onclick = stepForward;
+    document.getElementById('resetBtn').onclick = resetAnimation;
+    document.getElementById('endBtn').onclick = jumpToEnd;
+
+    manualSlider.addEventListener('input', function() {
+      animating = false;
+      stopPulseIntersections();
+      xCurrent = parseFloat(this.value);
+      phase = "g";
+      drawGManual(xCurrent);
+    });
+
+    // --- Live tooltips
+    const tooltip = document.getElementById("graphTooltip");
+    canvas.addEventListener('mousemove', function(e) {
+      const rect = canvas.getBoundingClientRect();
+      const mx = e.clientX - rect.left, my = e.clientY - rect.top;
+      let x = (mx - originX) / scale;
+      let y = (originY - my) / scale;
+      if (mx > 0 && mx < width && my > 0 && my < height) {
+        let gx = gAt(x), fx = fractionalPart(x);
+        tooltip.style.display = "block";
+        tooltip.style.left = (e.clientX + 18) + "px";
+        tooltip.style.top = (e.clientY - 8) + "px";
+        tooltip.innerHTML =
+          `<span>x = <span class="cval">${x.toFixed(3)}</span></span><br>
+           g(x) = <span class="gval">${gx.toFixed(4)}</span><br>
+           {x} = <span class="fracval">${fx.toFixed(4)}</span>`;
+      } else {
+        tooltip.style.display = "none";
+      }
+    });
+    canvas.addEventListener('mouseleave', function() {
+      tooltip.style.display = "none";
+    });
+
+    // --- Pulse Animation for Intersections at End ---
+    function startPulseIntersections() {
+      if (pulseAnimId) return;
+      function pulse() {
+        ctx.clearRect(0, 0, width, height);
+        drawAxes();
+        drawF();
+        drawFractionalPart();
+        drawGCurve(gPoints);
+        drawIntersections(true); // pulse!
+        pulseAnimId = requestAnimationFrame(pulse);
+      }
+      pulseAnimId = requestAnimationFrame(pulse);
+    }
+    function stopPulseIntersections() {
+      if (pulseAnimId) cancelAnimationFrame(pulseAnimId);
+      pulseAnimId = null;
+      ctx.clearRect(0, 0, width, height);
+      drawAxes();
+      drawF();
+      drawFractionalPart();
+      drawGCurve(gPoints);
+      drawIntersections(false);
+    }
+
+    // --- Initial draw
+    drawAxes();
+    drawF();
+    drawFractionalPart();
+    drawGCurve([]);
+    drawIntersections();
+    updateInfo(0, gAt(0), fractionalPart(0), 2);
+    manualSlider.value = 0;
+    manualXVal.textContent = "0.00";
+    document.getElementById("info").innerHTML =
+      "Use <span class='highlight'>Play</span>, step, jump, or manual slider to explore the graph.<br>Hover on the graph for live tooltips!";
+  </script>
+</body>
+</html>

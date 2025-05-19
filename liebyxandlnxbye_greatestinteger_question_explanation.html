@@ -1,0 +1,590 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Interactive Explanation By Aditya Wargis</title>
+  <style>
+    body {
+      background: radial-gradient(ellipse at 60% 30%, #223e8e 0%, #111827 70%, #1e1e1e 100%);
+      min-height: 100vh;
+      margin: 0;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      font-family: 'Segoe UI', Arial, sans-serif;
+      color: #f0f6ff;
+    }
+    .question-panel {
+      background: rgba(24,30,48,0.88);
+      border-radius: 1.4em;
+      box-shadow: 0 8px 32px 0 #1e3a8a33, 0 1.5px 24px #38bdf855;
+      backdrop-filter: blur(18px);
+      padding: 2.1em 2.8em 2.1em 2.8em;
+      margin-top: 50px;
+      margin-bottom: 40px;
+      width: 540px;
+      max-width: 95vw;
+      z-index: 2;
+      text-align: left;
+      font-size: 1.14em;
+      position: relative;
+      animation: fadeIn 1s;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(24px);}
+      to   { opacity: 1; transform: none;}
+    }
+    .option-list {
+      margin-top: 1.3em;
+      margin-bottom: 1.5em;
+    }
+    .option-list label {
+      display: block;
+      margin-bottom: 0.7em;
+      font-family: monospace;
+      font-size: 1.08em;
+      cursor: pointer;
+      color: #ffe066;
+      padding-left: 0.6em;
+    }
+    .option-list input[type="radio"] {
+      accent-color: #38bdf8;
+      margin-right: 0.7em;
+      transform: scale(1.18);
+    }
+    .go-anim-btn, .back-question-btn {
+      display: inline-block;
+      margin-top: 20px;
+      padding: 12px 32px;
+      background: linear-gradient(90deg, #2563eb 65%, #f43f5e 100%);
+      color: white;
+      border: none;
+      border-radius: 9px;
+      cursor: pointer;
+      font-size: 1.18rem;
+      font-weight: bold;
+      box-shadow: 0 0 18px #38bdf8bb;
+    }
+    .go-anim-btn:hover, .back-question-btn:hover {
+      background: linear-gradient(90deg,#1e40af 60%,#c026d3 100%);
+      box-shadow: 0 0 33px #38bdf8, 0 2px 14px #f43f5e44;
+      transform: scale(1.06);
+    }
+    .back-question-btn {
+      margin-top: 0;
+      margin-bottom: 18px;
+      background: linear-gradient(90deg, #f43f5e 65%, #2563eb 100%);
+    }
+    .animation-section {
+      opacity: 0;
+      pointer-events: none;
+      max-height: 0;
+      transition: opacity 0.5s, max-height 0.6s;
+      overflow: hidden;
+    }
+    .animation-section.visible {
+      opacity: 1;
+      pointer-events: auto;
+      max-height: 2500px;
+      transition: opacity 0.7s, max-height 1.2s;
+      margin-top: 0;
+    }
+    .legend {
+      display: flex;
+      gap: 1.2em;
+      position: absolute;
+      left: 14px;
+      top: 13px;
+      z-index: 10;
+      background: rgba(24,30,48,0.82);
+      border-radius: 7px;
+      padding: 0.43em 1.1em 0.43em 1.13em;
+      font-size: 1.06em;
+      font-family: monospace;
+      letter-spacing: 0.02em;
+      box-shadow: 0 3px 13px #000a;
+      pointer-events: none;
+      user-select: none;
+    }
+    .hcurve { color: #f43f5e; }
+    .jumppt { color: #ffe066; }
+    .domain { color: #a3e635; }
+    .step-highlight {
+      background: #ffe06644;
+      border-radius: 8px;
+      padding: 0 6px;
+      color: #ffe066;
+      font-weight: bold;
+    }
+    canvas {
+      border: 1px solid rgba(255, 255, 255, 0.45);
+      background: rgba(5, 15, 40, 0.89);
+      border-radius: 13px;
+      box-shadow: 0 0 40px #38bdf8bb;
+      display: block;
+      margin: 0 auto;
+      cursor: crosshair;
+    }
+    h2 {
+      text-align: center;
+      font-size: 2.1rem;
+      background: linear-gradient(90deg, #f43f5e 40%, #a78bfa 100%);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      background-clip: text; color: transparent;
+      font-weight: 800; letter-spacing: 0.03em;
+      margin-bottom: 26px;
+      margin-top: 0;
+      text-shadow: 0 2px 18px #94a3b888;
+    }
+    .controls-row {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-top: 22px;
+      gap: 14px;
+    }
+    button {
+      padding: 10px 19px;
+      background: linear-gradient(90deg, #2563eb 65%, #f43f5e 100%);
+      color: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 1.12rem;
+      font-weight: bold;
+      box-shadow: 0 0 12px #38bdf8bb;
+    }
+    button:hover, button.active {
+      background: linear-gradient(90deg,#1e40af 60%,#c026d3 100%);
+      box-shadow: 0 0 22px #38bdf8, 0 2px 12px #f43f5e44;
+      transform: scale(1.06);
+    }
+    .slider-row {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-top: 15px;
+      gap: 12px;
+    }
+    #manualSlider {
+      width: 330px;
+      accent-color: #f43f5e;
+      background: linear-gradient(90deg,#f43f5e,#6366f1 70%);
+      border-radius: 8px;
+      height: 8px;
+    }
+    .slider-label {
+      color: #ffe066;
+      font-family: monospace;
+      font-size: 1.09em;
+      font-weight: bold;
+      margin-right: 2px;
+      user-select: none;
+      letter-spacing: 0.04em;
+      text-shadow: 0 1px 8px #ffe06644;
+    }
+    .manual-x-value {
+      color: #f43f5e;
+      font-family: monospace;
+      font-size: 1.06em;
+      background: #17255488;
+      border-radius: 6px;
+      padding: 2px 9px;
+      margin-left: 2px;
+      font-weight: bold;
+      min-width: 50px;
+      display: inline-block;
+      text-align: right;
+      box-shadow: 0 1px 6px #f43f5e66;
+    }
+    #info {
+      margin-top: 18px;
+      padding: 10px 18px;
+      background: rgba(255,255,255,0.11);
+      border-radius: 9px;
+      font-size: 1.14rem;
+      min-height: 38px;
+      box-shadow: 0 2px 13px #0003;
+      line-height: 1.6;
+      font-family: monospace;
+      text-align: center;
+      letter-spacing: 0.01em;
+    }
+    .highlight {
+      color: #ffe066;
+      font-weight: bold;
+      text-shadow: 0 0 8px #ffe06699;
+    }
+    .cval { color: #f43f5e; font-weight: bold; }
+    .hval { color: #f43f5e; font-weight: bold; }
+    .jumpval { color: #ffe066; font-weight: bold; }
+    .tooltip {
+      position: absolute;
+      pointer-events: none;
+      background: rgba(24, 24, 40, 0.98);
+      color: #ffe066;
+      padding: 7px 14px;
+      border-radius: 7px;
+      font-size: 1.03em;
+      font-family: monospace;
+      box-shadow: 0 2px 12px #f43f5ecc;
+      z-index: 1000;
+      min-width: 140px;
+      text-align: center;
+      display: none;
+      transition: opacity .14s;
+    }
+    @media (max-width:600px) {
+      .glass-panel, .question-panel { padding: 1em; font-size:1em; }
+    }
+  </style>
+  <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+  <script id="MathJax-script" async
+    src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+</head>
+<body>
+  <div class="question-panel" id="questionPanel">
+  <div>
+    <span>
+      If \( h(x) = \left\lfloor \ln \frac{x}{e} \right\rfloor + \left\lfloor \ln \frac{e}{x} \right\rfloor \), where \( \lfloor \cdot \rfloor \) denotes the greatest integer function, then which of the following are true?
+    </span>
+  </div>
+  <div class="option-list">
+    <label><input type="radio" name="option" value="a">
+      a. range of \( h(x) \) is \( \{-1, 0\} \)
+    </label>
+    <label><input type="radio" name="option" value="b">
+      b. If \( h(x) = 0 \), then \( x \) must be irrational
+    </label>
+    <label><input type="radio" name="option" value="c">
+      c. If \( h(x) = -1 \), then \( x \) can be rational as well as irrational
+    </label>
+    <label><input type="radio" name="option" value="d">
+      d. \( h(x) \) is a periodic function
+    </label>
+  </div>
+  <button class="go-anim-btn" id="goAnimBtn">Go to Animation &rarr;</button>
+</div>
+  
+  <div class="animation-section" id="animationSection">
+    <button class="back-question-btn" id="backQuestionBtn">&larr; Back to Question</button>
+    <h2>Interactive Explanation By Aditya Wargis <span class="hcurve">\( h(x) \)</span></h2>
+    <div class="container" style="position:relative;">
+      <div class="legend">
+        <span class="hcurve">■ \( h(x) = \left\lfloor\ln\left(\frac{x}{e}\right)\right\rfloor + \left\lfloor\ln\left(\frac{e}{x}\right)\right\rfloor \)</span>
+        <span class="jumppt">● Jumps at \( x = e^n \)</span>
+      </div>
+      <canvas id="graphCanvas" width="860" height="600"></canvas>
+      <div class="tooltip" id="graphTooltip"></div>
+    </div>
+    <div class="controls-row">
+      <button id="playPauseBtn">Play</button>
+      <button id="stepBackBtn" title="Step Backward">⏮️</button>
+      <button id="stepFwdBtn" title="Step Forward">⏭️</button>
+      <button id="resetBtn" title="Reset">⏹️</button>
+      <button id="endBtn" title="Jump to End">⏩</button>
+    </div>
+    <div class="slider-row">
+      <span class="slider-label">Manual x</span>
+      <input id="manualSlider" type="range" min="0.2" max="30" step="0.01" value="1">
+      <span class="manual-x-value" id="manualXVal">1.00</span>
+    </div>
+    <p id="info"></p>
+  </div>
+  <script>
+    // Show/hide animation and question panels
+    document.getElementById('goAnimBtn').onclick = function() {
+      document.getElementById('questionPanel').style.display = 'none';
+      document.getElementById('animationSection').classList.add('visible');
+      setTimeout(()=>window.scrollTo({top:0,behavior:'smooth'}), 200);
+    };
+    document.getElementById('backQuestionBtn').onclick = function() {
+      document.getElementById('animationSection').classList.remove('visible');
+      document.getElementById('questionPanel').style.display = '';
+      setTimeout(()=>window.scrollTo({top:0,behavior:'smooth'}), 200);
+    };
+
+    // Math functions
+    function y1(x) { return Math.floor(Math.log(x/Math.E)); }
+    function y2(x) { return Math.floor(Math.log(Math.E/x)); }
+    function h(x) { return y1(x) + y2(x); }
+
+    // Canvas setup
+    const canvas = document.getElementById("graphCanvas");
+    const ctx = canvas.getContext("2d");
+    const width = canvas.width, height = canvas.height;
+    const XMIN = 0.2, XMAX = 30;
+    const YMIN = -3, YMAX = 2;
+    function xToPx(x) { return 60 + (Math.log(x) - Math.log(XMIN)) / (Math.log(XMAX) - Math.log(XMIN)) * (width-120); }
+    function yToPy(y) { return height-40 - (y-YMIN)/(YMAX-YMIN)*(height-80); }
+
+    // Animation state
+    const manualSlider = document.getElementById('manualSlider');
+    const manualXVal = document.getElementById('manualXVal');
+    let animating = false, frameTimer = null;
+    let xCurrent = 0.2;
+    const STEP = 0.06;
+
+    function drawAxes() {
+      ctx.save();
+      // Shade left of y-axis (x < XMIN, left edge)
+      ctx.save();
+      ctx.globalAlpha = 0.18;
+      ctx.fillStyle = "#222";
+      ctx.fillRect(0, 0, xToPx(XMIN), height);
+      ctx.restore();
+
+      // X-axis
+      ctx.strokeStyle = "#ccc";
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(xToPx(XMIN), yToPy(0));
+      ctx.lineTo(xToPx(XMAX), yToPy(0));
+      ctx.stroke();
+
+      // Y-axis at x=0 (left edge, XMIN)
+      ctx.strokeStyle = "#ccc";
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      ctx.moveTo(xToPx(XMIN), yToPy(YMIN-1));
+      ctx.lineTo(xToPx(XMIN), yToPy(YMAX+1));
+      ctx.stroke();
+
+      // Dashed line at x=1 for reference
+      ctx.save();
+      ctx.setLineDash([6, 6]);
+      ctx.strokeStyle = "#888";
+      ctx.lineWidth = 1.2;
+      ctx.beginPath();
+      ctx.moveTo(xToPx(1), yToPy(YMIN-1));
+      ctx.lineTo(xToPx(1), yToPy(YMAX+1));
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.font = "bold 13px monospace";
+      ctx.fillStyle = "#888";
+      ctx.fillText("x=1", xToPx(1) - 15, yToPy(YMAX+1) + 20);
+      ctx.restore();
+
+      // Label axes
+      ctx.font = "bold 18px Segoe UI, Arial, sans-serif";
+      ctx.fillStyle = "#ffe066";
+      ctx.fillText("x", xToPx(XMAX) - 24, yToPy(0) + 22);
+      ctx.fillText("y", xToPx(XMIN) + 10, yToPy(YMAX+1) + 10);
+
+      // Draw origin dot at (x=0, y=0) (left edge)
+      ctx.beginPath();
+      ctx.arc(xToPx(XMIN), yToPy(0), 7, 0, 2 * Math.PI);
+      ctx.fillStyle = "#a3e635";
+      ctx.shadowBlur = 8;
+      ctx.shadowColor = "#a3e635";
+      ctx.fill();
+      ctx.shadowBlur = 0;
+      ctx.font = "bold 15px monospace";
+      ctx.fillStyle = "#a3e635";
+      ctx.fillText("O", xToPx(XMIN) + 10, yToPy(0) + 8);
+
+      // Domain text
+      ctx.font = "bold 15px Arial";
+      ctx.fillStyle = "#a3e635";
+      ctx.fillText("Domain: x > 0", xToPx(XMIN) + 40, yToPy(YMIN) + 28);
+
+      // x ticks (e^n)
+      ctx.font = "15px monospace";
+      ctx.fillStyle = "#a3e635";
+      for(let n=-2;n<=3;n++) {
+        let xTick = Math.exp(n);
+        let px = xToPx(xTick);
+        ctx.beginPath();
+        ctx.moveTo(px, yToPy(0)-7); ctx.lineTo(px, yToPy(0)+7); ctx.stroke();
+        ctx.fillText("e^"+n, px-12, yToPy(0)+27);
+      }
+      // y ticks
+      ctx.fillStyle = "#f0f6ff";
+      for(let y=YMIN;y<=YMAX;y++) {
+        let py = yToPy(y);
+        ctx.beginPath();
+        ctx.moveTo(xToPx(XMIN)-7, py); ctx.lineTo(xToPx(XMIN)+7, py); ctx.stroke();
+        ctx.fillText(y, xToPx(XMIN)-32, py+5);
+      }
+      ctx.restore();
+    }
+
+    function drawHCurve(maxX) {
+      ctx.save();
+      ctx.strokeStyle = "#f43f5e";
+      ctx.lineWidth = 4.5;
+      ctx.shadowBlur = 18;
+      ctx.shadowColor = "#f43f5e";
+      let prevFloor = h(XMIN);
+      ctx.beginPath();
+      for(let x=XMIN;x<=maxX;x+=0.01) {
+        let yv = h(x);
+        let px = xToPx(x), py = yToPy(yv);
+        if(yv!==prevFloor) {
+          ctx.lineTo(px, yToPy(prevFloor));
+          ctx.moveTo(px, py);
+          prevFloor = yv;
+        }
+        ctx.lineTo(px, py);
+      }
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+      ctx.restore();
+    }
+
+    function drawJumpPoints(maxX) {
+      ctx.save();
+      for(let n=-2;n<=3;n++) {
+        let xJump = Math.exp(n);
+        if(xJump<XMIN||xJump>maxX) continue;
+        let px = xToPx(xJump);
+        let hv = h(xJump+1e-6);
+        ctx.beginPath();
+        ctx.arc(px, yToPy(hv), 10, 0, 2*Math.PI);
+        ctx.fillStyle = "#ffe066"; ctx.globalAlpha=1;
+        ctx.shadowBlur=20; ctx.shadowColor="#ffe066";
+        ctx.fill();
+        ctx.shadowBlur=0;
+        ctx.globalAlpha=1;
+        ctx.font = "bold 16px monospace";
+        ctx.fillStyle = "#ffe066";
+        ctx.fillText("x=e^"+n, px, yToPy(YMIN)-18-12*n);
+      }
+      ctx.restore();
+    }
+    function drawStepHighlight(maxX) {
+      ctx.save();
+      for(let n=-2;n<=2;n++) {
+        let xL = Math.exp(n), xR = Math.exp(n+1);
+        let val = h(xL+0.01);
+        ctx.globalAlpha = 0.15;
+        if(val===0) ctx.fillStyle = "#a3e635";
+        else if(val===-1) ctx.fillStyle = "#f43f5e";
+        else ctx.fillStyle = "#888";
+        ctx.fillRect(xToPx(xL), yToPy(0.2), xToPx(xR)-xToPx(xL), yToPy(-2.2)-yToPy(0.2));
+      }
+      ctx.globalAlpha=1;
+      ctx.restore();
+    }
+
+    function drawAll(xVal) {
+      ctx.clearRect(0,0,width,height);
+      drawAxes();
+      drawStepHighlight(xVal);
+      drawHCurve(xVal);
+      drawJumpPoints(xVal);
+      // Draw current point
+      let px = xToPx(xVal);
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(px, yToPy(h(xVal)), 12, 0, 2*Math.PI);
+      ctx.fillStyle = "#f43f5e"; ctx.shadowBlur=26; ctx.shadowColor="#f43f5e";
+      ctx.fill(); ctx.shadowBlur=0;
+      ctx.restore();
+      // Info panel
+      const info = document.getElementById('info');
+      info.innerHTML = `x = <span class="cval">${xVal.toFixed(3)}</span> &nbsp; h(x) = <span class="hval">${h(xVal)}</span> <span class="step-highlight">(possible: -1 or 0)</span>`;
+    }
+
+    // Animation
+    function playPause() {
+      animating = !animating;
+      const btn = document.getElementById('playPauseBtn');
+      btn.textContent = animating ? 'Pause' : 'Play';
+      btn.classList.toggle('active', animating);
+      if(animating) frameTimer = requestAnimationFrame(animate);
+      else if(frameTimer) cancelAnimationFrame(frameTimer);
+    }
+    function animate() {
+      if(!animating) return;
+      xCurrent += STEP;
+      if(xCurrent>XMAX) xCurrent = XMAX;
+      drawAll(xCurrent);
+      manualSlider.value = xCurrent;
+      manualXVal.textContent = xCurrent.toFixed(2);
+      if(xCurrent<XMAX) frameTimer = requestAnimationFrame(animate);
+      else {
+        animating = false;
+        document.getElementById('playPauseBtn').textContent = 'Play';
+      }
+    }
+    function stepForward() {
+      animating = false;
+      document.getElementById('playPauseBtn').textContent = 'Play';
+      xCurrent = Math.min(xCurrent + STEP, XMAX);
+      drawAll(xCurrent);
+      manualSlider.value = xCurrent;
+      manualXVal.textContent = xCurrent.toFixed(2);
+    }
+    function stepBackward() {
+      animating = false;
+      document.getElementById('playPauseBtn').textContent = 'Play';
+      xCurrent = Math.max(xCurrent - STEP, XMIN);
+      drawAll(xCurrent);
+      manualSlider.value = xCurrent;
+      manualXVal.textContent = xCurrent.toFixed(2);
+    }
+    function resetAnimation() {
+      animating = false;
+      if(frameTimer) cancelAnimationFrame(frameTimer);
+      xCurrent = XMIN;
+      drawAll(xCurrent);
+      manualSlider.value = xCurrent;
+      manualXVal.textContent = xCurrent.toFixed(2);
+      document.getElementById('playPauseBtn').textContent = 'Play';
+    }
+    function jumpToEnd() {
+      animating = false;
+      if(frameTimer) cancelAnimationFrame(frameTimer);
+      xCurrent = XMAX;
+      drawAll(xCurrent);
+      manualSlider.value = xCurrent;
+      manualXVal.textContent = xCurrent.toFixed(2);
+      document.getElementById('playPauseBtn').textContent = 'Play';
+    }
+    manualSlider.addEventListener('input',function(){
+      animating = false;
+      xCurrent = parseFloat(this.value);
+      drawAll(xCurrent);
+      manualXVal.textContent = xCurrent.toFixed(2);
+      document.getElementById('playPauseBtn').textContent = 'Play';
+    });
+
+    document.getElementById('playPauseBtn').onclick = playPause;
+    document.getElementById('stepBackBtn').onclick = stepBackward;
+    document.getElementById('stepFwdBtn').onclick = stepForward;
+    document.getElementById('resetBtn').onclick = resetAnimation;
+    document.getElementById('endBtn').onclick = jumpToEnd;
+
+    // Tooltip
+    const tooltip = document.getElementById("graphTooltip");
+    canvas.addEventListener('mousemove', function(e) {
+      const rect = canvas.getBoundingClientRect();
+      const mx = e.clientX - rect.left, my = e.clientY - rect.top;
+      // Convert to x (log scale)
+      let logx = (mx-60)/(width-120)*(Math.log(XMAX)-Math.log(XMIN))+Math.log(XMIN);
+      let x = Math.exp(logx);
+      if(mx>55 && mx<width-55 && my>35 && my<height-35 && x>0) {
+        tooltip.style.display = "block";
+        tooltip.style.left = (e.clientX + 18) + "px";
+        tooltip.style.top = (e.clientY - 8) + "px";
+        tooltip.innerHTML =
+          `<span>x = <span class="cval">${x.toFixed(3)}</span></span><br>
+           h(x) = <span class="hval">${h(x)}</span>`;
+      } else {
+        tooltip.style.display = "none";
+      }
+    });
+    canvas.addEventListener('mouseleave', function() {
+      tooltip.style.display = "none";
+    });
+
+    // Initial draw
+    xCurrent = 1;
+    drawAll(xCurrent);
+    manualSlider.value = xCurrent;
+    manualXVal.textContent = xCurrent.toFixed(2);
+    document.getElementById("info").innerHTML =
+      "Use <span class='highlight'>Play</span>, step, jump, or manual slider to explore the graph.<br>Hover on the graph for live tooltips!";
+  </script>
+</body>
+</html>

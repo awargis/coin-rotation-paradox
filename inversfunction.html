@@ -1,0 +1,675 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Graph Reflection: Uniform Scale</title>
+  <style>
+    body {
+      background: radial-gradient(ellipse at 60% 30%, #223e8e 0%, #111827 70%, #1e1e1e 100%);
+      min-height: 100vh;
+      margin: 0;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      font-family: 'Segoe UI', Arial, sans-serif;
+      color: #f0f6ff;
+    }
+    .question-panel {
+      background: rgba(24,30,48,0.92);
+      border-radius: 1.5em;
+      box-shadow: 0 8px 32px 0 #1e3a8a4c, 0 2px 30px #38bdf880;
+      backdrop-filter: blur(20px);
+      padding: 2.1em 2.8em 2.1em 2.8em;
+      margin-top: 50px;
+      margin-bottom: 40px;
+      width: 540px;
+      max-width: 97vw;
+      z-index: 2;
+      text-align: left;
+      font-size: 1.18em;
+      position: relative;
+      animation: fadeIn 1s;
+      border: 1.5px solid #38bdf855;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(24px);}
+      to   { opacity: 1; transform: none;}
+    }
+    .option-list label {
+      display: block;
+      margin-bottom: 0.7em;
+      font-family: monospace;
+      font-size: 1.08em;
+      cursor: pointer;
+      color: #ffe066;
+      padding-left: 0.6em;
+    }
+    .go-anim-btn, .back-question-btn {
+      display: inline-block;
+      margin-top: 20px;
+      padding: 12px 32px;
+      background: linear-gradient(90deg, #2563eb 58%, #f43f5e 100%);
+      color: white;
+      border: none;
+      border-radius: 14px;
+      cursor: pointer;
+      font-size: 1.18rem;
+      font-weight: bold;
+      box-shadow: 0 0 20px #38bdf8bb;
+      letter-spacing: 0.02em;
+      transition: transform .15s, box-shadow .16s, filter .13s;
+    }
+    .go-anim-btn:active, .back-question-btn:active {
+      filter: brightness(1.15) contrast(1.14);
+      transform: scale(0.97);
+    }
+    .go-anim-btn:hover, .back-question-btn:hover {
+      background: linear-gradient(90deg,#1e40af 60%,#c026d3 100%);
+      box-shadow: 0 0 33px #38bdf8, 0 2px 14px #f43f5e44;
+      transform: scale(1.06);
+    }
+    .back-question-btn {
+      margin-top: 0;
+      margin-bottom: 18px;
+      background: linear-gradient(90deg, #f43f5e 65%, #2563eb 100%);
+    }
+    .animation-section {
+      opacity: 0;
+      pointer-events: none;
+      max-height: 0;
+      transition: opacity 0.5s, max-height 0.6s;
+      overflow: hidden;
+    }
+    .animation-section.visible {
+      opacity: 1;
+      pointer-events: auto;
+      max-height: 3100px;
+      transition: opacity 0.7s, max-height 1.2s;
+    }
+    .legend {
+      display: flex;
+      gap: 1.2em;
+      position: absolute;
+      left: 14px;
+      top: 13px;
+      z-index: 10;
+      background: linear-gradient(90deg,#172554e8 60%, #1e293bf0 100%);
+      border-radius: 12px;
+      padding: 0.53em 1.3em 0.53em 1.33em;
+      font-size: 1.13em;
+      font-family: monospace;
+      letter-spacing: 0.02em;
+      box-shadow: 0 3px 17px #38bdf877, 0 2px 22px #dbeafe44;
+      pointer-events: none;
+      user-select: none;
+      border: 1.5px solid #22d3ee99;
+    }
+    .fcurve { color: #38bdf8; font-weight: bold;}
+    .gcurve { color: #f43f5e; font-weight: bold;}
+    .diag { color: #a3e635; font-weight: bold;}
+    .domain { color: #a3e635; }
+    canvas {
+      border: 2.4px solid #38bdf8cc;
+      background: linear-gradient(120deg, #192a47 0%, #212e44 100%);
+      border-radius: 18px;
+      box-shadow: 0 0 40px #38bdf8cc, 0 9px 48px #000a;
+      display: block;
+      margin: 0 auto;
+      cursor: crosshair;
+      margin-bottom: 0.8em;
+      transition: box-shadow .23s;
+    }
+    canvas:active {
+      box-shadow: 0 0 44px #f43f5ecc, 0 10px 60px #000c;
+    }
+    h2 {
+      text-align: center;
+      font-size: 2.18rem;
+      background: linear-gradient(95deg, #38bdf8 40%, #f43f5e 100%);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      background-clip: text; color: transparent;
+      font-weight: 800; letter-spacing: 0.03em;
+      margin-bottom: 26px;
+      margin-top: 0;
+      text-shadow: 0 2px 18px #94a3b888;
+    }
+    .controls-row {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-top: 22px;
+      gap: 14px;
+    }
+    button {
+      padding: 10px 19px;
+      background: linear-gradient(90deg, #2563eb 65%, #f43f5e 100%);
+      color: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 1.12rem;
+      font-weight: bold;
+      box-shadow: 0 0 15px #38bdf8cc;
+      letter-spacing: 0.02em;
+      transition: box-shadow .15s, background .14s, transform .14s;
+    }
+    button:active {
+      filter: brightness(1.18) contrast(1.12);
+      transform: scale(0.93);
+    }
+    button:hover, button.active {
+      background: linear-gradient(90deg,#1e40af 60%,#c026d3 100%);
+      box-shadow: 0 0 24px #38bdf8, 0 4px 14px #f43f5e44;
+      transform: scale(1.06);
+    }
+    .slider-row {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-top: 15px;
+      gap: 12px;
+    }
+    #manualSlider {
+      width: 330px;
+      accent-color: #f43f5e;
+      background: linear-gradient(90deg,#f43f5e,#6366f1 70%);
+      border-radius: 8px;
+      height: 8px;
+    }
+    .slider-label {
+      color: #ffe066;
+      font-family: monospace;
+      font-size: 1.09em;
+      font-weight: bold;
+      margin-right: 2px;
+      user-select: none;
+      letter-spacing: 0.04em;
+      text-shadow: 0 1px 8px #ffe06644;
+    }
+    .manual-x-value {
+      color: #f43f5e;
+      font-family: monospace;
+      font-size: 1.13em;
+      background: #172554b8;
+      border-radius: 7px;
+      padding: 3px 13px;
+      margin-left: 2px;
+      font-weight: bold;
+      min-width: 62px;
+      display: inline-block;
+      text-align: right;
+      box-shadow: 0 1px 6px #f43f5e66;
+      border: 1.2px solid #fbbf24c9;
+    }
+    #info {
+      margin-top: 18px;
+      padding: 12px 18px;
+      background: rgba(255,255,255,0.13);
+      border-radius: 13px;
+      font-size: 1.17rem;
+      min-height: 38px;
+      box-shadow: 0 2px 18px #0003, 0 1.5px 11px #38bdf855;
+      line-height: 1.7;
+      font-family: monospace;
+      text-align: center;
+      letter-spacing: 0.01em;
+      border: 1.2px solid #38bdf8bb;
+      margin-bottom: 0.7em;
+    }
+    .fval { color: #38bdf8; font-weight: bold; }
+    .gval { color: #f43f5e; font-weight: bold; }
+    .cval { color: #a3e635; font-weight: bold; }
+    .tooltip {
+      position: absolute;
+      pointer-events: none;
+      background: rgba(24, 24, 40, 0.99);
+      color: #ffe066;
+      padding: 7px 14px;
+      border-radius: 8px;
+      font-size: 1.13em;
+      font-family: monospace;
+      box-shadow: 0 2px 18px #38bdf8cc;
+      z-index: 1000;
+      min-width: 140px;
+      text-align: center;
+      display: none;
+      transition: opacity .14s;
+      border: 1.2px solid #fbbf24a7;
+    }
+    .explanation-section {
+      margin-top: 40px;
+      margin-bottom: 60px;
+      background: rgba(24,30,48,0.97);
+      border-radius: 1.3em;
+      box-shadow: 0 4px 24px #38bdf899, 0 1.5px 22px #f43f5e66;
+      padding: 2em 2.2em;
+      width: 570px;
+      max-width: 99vw;
+      color: #f0f6ff;
+      font-size: 1.17em;
+      line-height: 1.68;
+      border: 1.5px solid #38bdf855;
+    }
+    .explanation-section b, .explanation-section .gcurve {
+      background: linear-gradient(90deg, #38bdf8 40%, #f43f5e 100%);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      background-clip: text; color: transparent; font-weight: bold;
+      letter-spacing: 0.02em;
+    }
+    @media (max-width:700px) {
+      .glass-panel, .question-panel, .explanation-section { padding: 1em; font-size:1em; }
+      .container { max-width: 99vw;}
+      #graphCanvas { width: 99vw !important; height: auto !important;}
+    }
+    @media (max-width:450px) {
+      .container { max-width: 350px;}
+      #graphCanvas { width: 350px !important; height: 350px !important;}
+      .explanation-section, .question-panel { width: 99vw; font-size: 0.97em;}
+    }
+  </style>
+  <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+  <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+</head>
+<body>
+  <div class="question-panel" id="questionPanel">
+    <div>
+      <span>
+        <b>EXAMPLE 2</b><br>
+        Suppose \( f(x) = (x + 1)^2 \) for \( x \geq -1 \). If \( g \) is the function whose graph is the reflection of the graph of \( f(x) \) with respect to the line \( y = x \), then \( g(x) \) equals:
+      </span>
+    </div>
+    <div class="option-list">
+      <label><input type="radio" name="option" value="a">
+        (a) \( -\sqrt{x} - 1, \; x \geq 0 \)
+      </label>
+      <label><input type="radio" name="option" value="b">
+        (b) \( \frac{1}{(1 + x)^2}, \; x \geq -1 \)
+      </label>
+      <label><input type="radio" name="option" value="c">
+        (c) \( \sqrt{x + 1}, \; x \geq -1 \)
+      </label>
+      <label><input type="radio" name="option" value="d">
+        (d) \( \sqrt{x} - 1, \; x \geq 0 \)
+      </label>
+    </div>
+    <button class="go-anim-btn" id="goAnimBtn">Go to Animation &rarr;</button>
+  </div>
+
+  <div class="animation-section" id="animationSection">
+    <button class="back-question-btn" id="backQuestionBtn">&larr; Back to Question</button>
+    <h2>Explanation By Aditya Wargis</h2>
+    <div class="container" style="position:relative;">
+      <div class="legend">
+        <span class="fcurve">■ \( f(x) = (x+1)^2 \), \( x \geq -1 \)</span>
+        <span class="gcurve">■ \( g(x) = \sqrt{x} - 1, \; x \geq 0 \)</span>
+        <span class="diag">■ Reflection line \( y = x \)</span>
+      </div>
+      <canvas id="graphCanvas" width="620" height="620"></canvas>
+      <div class="tooltip" id="graphTooltip"></div>
+    </div>
+    <div class="controls-row">
+      <button id="playPauseBtn">Play</button>
+      <button id="stepBackBtn" title="Step Backward">⏮️</button>
+      <button id="stepFwdBtn" title="Step Forward">⏭️</button>
+      <button id="resetBtn" title="Reset">⏹️</button>
+      <button id="endBtn" title="Jump to End">⏩</button>
+    </div>
+    <div class="slider-row">
+      <span class="slider-label">Manual x</span>
+      <input id="manualSlider" type="range" min="-1" max="6" step="0.01" value="-1">
+      <span class="manual-x-value" id="manualXVal">-1.00</span>
+    </div>
+    <p id="info"></p>
+  </div>
+
+  <div class="explanation-section" id="explanationSection" style="display:none;">
+    <b>🔍 Step-by-step Explanation</b><br><br>
+    <b>✅ Step 1: Understand the Given Function</b><br>
+    We are given:<br>
+    \( f(x) = (x + 1)^2 \) for \( x \geq -1 \)<br>
+    This is a parabola opening upwards, shifted left by 1 unit. Its <span class="domain">domain</span> is \( x \geq -1 \), and its <span class="domain">range</span> is \( y \geq 0 \).
+    <br><br>
+    <b>✅ Step 2: Reflection Across the Line \( y = x \)</b><br>
+    To reflect the graph of \( f(x) \) across \( y = x \), swap \( x \) and \( y \) in the equation.<br>
+    Start: \( y = (x + 1)^2 \)<br>
+    Swap: \( x = (y + 1)^2 \)<br>
+    Solve for \( y \):<br>
+    \( y + 1 = \sqrt{x} \implies y = \sqrt{x} - 1 \)
+    <br><br>
+    <b>✅ Step 3: Determine the Domain of \( g(x) \)</b><br>
+    The range of \( f(x) \) was \( y \geq 0 \), so the domain of \( g(x) \) (after reflection) is \( x \geq 0 \).
+    <br><br>
+    So, the reflected function is:<br>
+    <span class="gcurve"><b>\( g(x) = \sqrt{x} - 1, \quad x \geq 0 \)</b></span>
+    <br><br>
+    <b>✅ Step 4: Match with Given Options</b><br>
+    <b>(a)</b> \( -\sqrt{x} - 1,\, x \geq 0 \) – Incorrect<br>
+    <b>(b)</b> \( \frac{1}{(1 + x)^2},\, x \geq -1 \) – Incorrect<br>
+    <b>(c)</b> \( \sqrt{x + 1},\, x \geq -1 \) – Incorrect<br>
+    <b>(d)</b> \( \sqrt{x} - 1,\, x \geq 0 \) – <span class="gcurve"><b>Correct ✅</b></span>
+    <br><br>
+    <b>🎯 Final Answer:</b><br>
+    <span class="gcurve"><b>Option (d) is correct.</b></span>
+  </div>
+  <script>
+    // Panel switching
+    document.getElementById('goAnimBtn').onclick = function() {
+      document.getElementById('questionPanel').style.display = 'none';
+      document.getElementById('animationSection').classList.add('visible');
+      document.getElementById('explanationSection').style.display = '';
+      setTimeout(()=>window.scrollTo({top:0,behavior:'smooth'}), 200);
+    };
+    document.getElementById('backQuestionBtn').onclick = function() {
+      document.getElementById('animationSection').classList.remove('visible');
+      document.getElementById('questionPanel').style.display = '';
+      document.getElementById('explanationSection').style.display = 'none';
+      setTimeout(()=>window.scrollTo({top:0,behavior:'smooth'}), 200);
+    };
+
+    // Functions
+    function f(x) { return (x + 1) * (x + 1); }
+    function g(x) { return Math.sqrt(x) - 1; }
+
+    // Square aspect ratio, both axes [ -1, 6 ]
+    const canvas = document.getElementById("graphCanvas");
+    const ctx = canvas.getContext("2d");
+    const width = canvas.width, height = canvas.height;
+    const XMIN = -1, XMAX = 6;
+    const YMIN = -1, YMAX = 6;
+    function xToPx(x) { return 60 + (x - XMIN) / (XMAX - XMIN) * (width-120); }
+    function yToPy(y) { return height-60 - (y-YMIN)/(YMAX-YMIN)*(height-120); }
+
+    // Animation state
+    const manualSlider = document.getElementById('manualSlider');
+    const manualXVal = document.getElementById('manualXVal');
+    let animating = false, frameTimer = null;
+    let xCurrent = -1;
+    const STEP = 0.04;
+    let animPhase = 1; // 1: drawing f(x), 2: drawing g(x)
+
+    function drawAxes() {
+      ctx.save();
+      // Grid lines
+      ctx.lineWidth = 1.1;
+      ctx.strokeStyle = "#2f3e5f";
+      for(let x=0;x<=XMAX;x+=1) {
+        ctx.beginPath();
+        ctx.moveTo(xToPx(x), yToPy(YMIN));
+        ctx.lineTo(xToPx(x), yToPy(YMAX));
+        ctx.stroke();
+      }
+      for(let y=0;y<=YMAX;y+=1) {
+        ctx.beginPath();
+        ctx.moveTo(xToPx(XMIN), yToPy(y));
+        ctx.lineTo(xToPx(XMAX), yToPy(y));
+        ctx.stroke();
+      }
+      ctx.restore();
+
+      ctx.save();
+      // x and y axes
+      ctx.strokeStyle = "#fbbf24";
+      ctx.lineWidth = 2.6;
+      // x-axis
+      ctx.beginPath();
+      ctx.moveTo(xToPx(XMIN), yToPy(0));
+      ctx.lineTo(xToPx(XMAX), yToPy(0));
+      ctx.stroke();
+      // y-axis
+      ctx.beginPath();
+      ctx.moveTo(xToPx(0), yToPy(YMIN));
+      ctx.lineTo(xToPx(0), yToPy(YMAX));
+      ctx.stroke();
+
+      // Diagonal y = x (full visible region, 45°)
+      ctx.save();
+      ctx.shadowBlur = 13;
+      ctx.shadowColor = "#a3e635";
+      ctx.setLineDash([8,8]);
+      ctx.strokeStyle = "#a3e635";
+      ctx.lineWidth = 3.5;
+      ctx.beginPath();
+      ctx.moveTo(xToPx(Math.max(XMIN,YMIN)), yToPy(Math.max(XMIN,YMIN)));
+      ctx.lineTo(xToPx(Math.min(XMAX,YMAX)), yToPy(Math.min(XMAX,YMAX)));
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+      ctx.setLineDash([]);
+      ctx.font = "bold 17px monospace";
+      ctx.fillStyle = "#a3e635";
+      let diagLabel = Math.min(XMAX,YMAX)-0.5;
+      ctx.fillText("y = x", xToPx(diagLabel)-24, yToPy(diagLabel)-10);
+      ctx.restore();
+
+      // Labels
+      ctx.font = "bold 22px Segoe UI, Arial, sans-serif";
+      ctx.fillStyle = "#ffe066";
+      ctx.fillText("x", xToPx(XMAX) - 24, yToPy(0) + 32);
+      ctx.fillText("y", xToPx(0) + 18, yToPy(YMAX) + 8);
+
+      // x ticks
+      ctx.font = "17px monospace";
+      ctx.fillStyle = "#fbbf24";
+      for(let x=0;x<=XMAX;x+=1) {
+        let px = xToPx(x);
+        ctx.beginPath();
+        ctx.moveTo(px, yToPy(0)-9); ctx.lineTo(px, yToPy(0)+9); ctx.stroke();
+        ctx.fillText(x, px-7, yToPy(0)+34);
+      }
+      // y ticks
+      ctx.fillStyle = "#fbbf24";
+      for(let y=0;y<=YMAX;y+=1) {
+        let py = yToPy(y);
+        ctx.beginPath();
+        ctx.moveTo(xToPx(0)-9, py); ctx.lineTo(xToPx(0)+9, py); ctx.stroke();
+        ctx.fillText(y, xToPx(0)-38, py+7);
+      }
+      ctx.restore();
+    }
+
+    function drawFCurve(maxX) {
+      ctx.save();
+      ctx.strokeStyle = "#38bdf8";
+      ctx.lineWidth = 4.3;
+      ctx.shadowBlur = 18;
+      ctx.shadowColor = "#38bdf8";
+      ctx.beginPath();
+      let first = true;
+      for(let x = -1; x <= maxX; x += 0.01) {
+        if(x < -1) continue;
+        let y = f(x);
+        if(y > YMAX) continue;
+        if(first) { ctx.moveTo(xToPx(x), yToPy(y)); first = false; }
+        else ctx.lineTo(xToPx(x), yToPy(y));
+      }
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+      ctx.restore();
+    }
+    function drawGCurve(maxX) {
+      ctx.save();
+      ctx.strokeStyle = "#f43f5e";
+      ctx.lineWidth = 5.1;
+      ctx.shadowBlur = 22;
+      ctx.shadowColor = "#f43f5e";
+      ctx.beginPath();
+      let first = true;
+      for(let x = 0; x <= maxX; x += 0.01) {
+        let y = g(x);
+        if(y < YMIN || y > YMAX) continue;
+        if(first) { ctx.moveTo(xToPx(x), yToPy(y)); first = false; }
+        else ctx.lineTo(xToPx(x), yToPy(y));
+      }
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+      ctx.restore();
+    }
+
+    function drawAll(xVal) {
+      ctx.clearRect(0,0,width,height);
+      drawAxes();
+      if(animPhase === 1) {
+        drawFCurve(xVal);
+      } else {
+        drawFCurve(XMAX);
+        drawGCurve(xVal);
+      }
+      // Draw current points
+      ctx.save();
+      if(animPhase === 1 && xVal >= -1 && f(xVal) <= YMAX) {
+        ctx.beginPath();
+        ctx.arc(xToPx(xVal), yToPy(f(xVal)), 13, 0, 2*Math.PI);
+        ctx.shadowBlur=24; ctx.shadowColor="#38bdf8";
+        ctx.fillStyle = "#38bdf8";
+        ctx.fill(); ctx.shadowBlur=0;
+        ctx.lineWidth=3; ctx.strokeStyle="#fff9";
+        ctx.stroke();
+      }
+      if(animPhase === 2 && xVal >= 0 && g(xVal) >= YMIN && g(xVal) <= YMAX) {
+        ctx.beginPath();
+        ctx.arc(xToPx(xVal), yToPy(g(xVal)), 15, 0, 2*Math.PI);
+        ctx.shadowBlur=30; ctx.shadowColor="#f43f5e";
+        ctx.fillStyle = "#f43f5e";
+        ctx.fill(); ctx.shadowBlur=0;
+        ctx.lineWidth=3; ctx.strokeStyle="#fff9";
+        ctx.stroke();
+      }
+      ctx.restore();
+      // Info panel
+      const info = document.getElementById('info');
+      let msg = `x = <span class="cval">${xVal.toFixed(2)}</span>`;
+      if(animPhase === 1 && xVal >= -1) msg += ` &nbsp; f(x) = <span class="fval">${f(xVal).toFixed(2)}</span>`;
+      if(animPhase === 2 && xVal >= 0) msg += ` &nbsp; g(x) = <span class="gval">${g(xVal).toFixed(2)}</span>`;
+      info.innerHTML = msg;
+    }
+
+    // Animation
+    function playPause() {
+      animating = !animating;
+      const btn = document.getElementById('playPauseBtn');
+      btn.textContent = animating ? 'Pause' : 'Play';
+      btn.classList.toggle('active', animating);
+      if(animating) frameTimer = requestAnimationFrame(animate);
+      else if(frameTimer) cancelAnimationFrame(frameTimer);
+    }
+    function animate() {
+      if(!animating) return;
+      if(animPhase === 1) {
+        xCurrent += STEP;
+        if(xCurrent > XMAX) {
+          animPhase = 2;
+          xCurrent = 0;
+        }
+        drawAll(xCurrent);
+        manualSlider.value = Math.max(xCurrent, -1);
+        manualXVal.textContent = xCurrent.toFixed(2);
+        frameTimer = requestAnimationFrame(animate);
+      } else if(animPhase === 2) {
+        xCurrent += STEP;
+        if(xCurrent > XMAX) {
+          xCurrent = XMAX;
+          animating = false;
+          document.getElementById('playPauseBtn').textContent = 'Play';
+        }
+        drawAll(xCurrent);
+        manualSlider.value = xCurrent;
+        manualXVal.textContent = xCurrent.toFixed(2);
+        if(animating && xCurrent < XMAX) frameTimer = requestAnimationFrame(animate);
+      }
+    }
+    function stepForward() {
+      animating = false;
+      document.getElementById('playPauseBtn').textContent = 'Play';
+      if(animPhase === 1) {
+        xCurrent = Math.min(xCurrent + STEP, XMAX);
+        drawAll(xCurrent);
+        manualSlider.value = Math.max(xCurrent, -1);
+        manualXVal.textContent = xCurrent.toFixed(2);
+      } else {
+        xCurrent = Math.min(xCurrent + STEP, XMAX);
+        drawAll(xCurrent);
+        manualSlider.value = xCurrent;
+        manualXVal.textContent = xCurrent.toFixed(2);
+      }
+    }
+    function stepBackward() {
+      animating = false;
+      document.getElementById('playPauseBtn').textContent = 'Play';
+      if(animPhase === 1) {
+        xCurrent = Math.max(xCurrent - STEP, -1);
+        drawAll(xCurrent);
+        manualSlider.value = Math.max(xCurrent, -1);
+        manualXVal.textContent = xCurrent.toFixed(2);
+      } else {
+        xCurrent = Math.max(xCurrent - STEP, 0);
+        drawAll(xCurrent);
+        manualSlider.value = xCurrent;
+        manualXVal.textContent = xCurrent.toFixed(2);
+      }
+    }
+    function resetAnimation() {
+      animating = false;
+      if(frameTimer) cancelAnimationFrame(frameTimer);
+      xCurrent = -1;
+      animPhase = 1;
+      drawAll(xCurrent);
+      manualSlider.value = xCurrent;
+      manualXVal.textContent = xCurrent.toFixed(2);
+      document.getElementById('playPauseBtn').textContent = 'Play';
+    }
+    function jumpToEnd() {
+      animating = false;
+      if(frameTimer) cancelAnimationFrame(frameTimer);
+      animPhase = 2;
+      xCurrent = XMAX;
+      drawAll(xCurrent);
+      manualSlider.value = xCurrent;
+      manualXVal.textContent = xCurrent.toFixed(2);
+      document.getElementById('playPauseBtn').textContent = 'Play';
+    }
+    manualSlider.addEventListener('input',function(){
+      animating = false;
+      let val = parseFloat(this.value);
+      // Determine phase based on slider position
+      if(val < 0) { animPhase = 1; xCurrent = val; }
+      else { animPhase = 2; xCurrent = val; }
+      drawAll(xCurrent);
+      manualXVal.textContent = xCurrent.toFixed(2);
+      document.getElementById('playPauseBtn').textContent = 'Play';
+    });
+
+    document.getElementById('playPauseBtn').onclick = playPause;
+    document.getElementById('stepBackBtn').onclick = stepBackward;
+    document.getElementById('stepFwdBtn').onclick = stepForward;
+    document.getElementById('resetBtn').onclick = resetAnimation;
+    document.getElementById('endBtn').onclick = jumpToEnd;
+
+    // Tooltip
+    const tooltip = document.getElementById("graphTooltip");
+    canvas.addEventListener('mousemove', function(e) {
+      const rect = canvas.getBoundingClientRect();
+      const mx = e.clientX - rect.left, my = e.clientY - rect.top;
+      // Convert to x
+      let x = (mx-60)/(width-120)*(XMAX-XMIN)+XMIN;
+      if(mx>55 && mx<width-55 && my>35 && my<height-35) {
+        tooltip.style.display = "block";
+        tooltip.style.left = (e.clientX + 18) + "px";
+        tooltip.style.top = (e.clientY - 8) + "px";
+        let msg = `<span>x = <span class="cval">${x.toFixed(3)}</span></span>`;
+        if(x >= -1) msg += `<br>f(x) = <span class="fval">${f(x).toFixed(3)}</span>`;
+        if(x >= 0) msg += `<br>g(x) = <span class="gval">${g(x).toFixed(3)}</span>`;
+        tooltip.innerHTML = msg;
+      } else {
+        tooltip.style.display = "none";
+      }
+    });
+    canvas.addEventListener('mouseleave', function() {
+      tooltip.style.display = "none";
+    });
+
+    // Initial draw
+    resetAnimation();
+    document.getElementById("info").innerHTML =
+      "Use <span class='highlight'>Play</span>, step, jump, or manual slider to explore the graph.<br>Hover on the graph for live tooltips!";
+  </script>
+</body>
+</html>

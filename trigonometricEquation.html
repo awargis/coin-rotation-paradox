@@ -1,0 +1,737 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Solving Trigonometric Equations Using Graphs</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <!-- Fira Code & Lato fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@600&family=Lato:wght@700&display=swap" rel="stylesheet">
+  <!-- GSAP for transitions -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+  <!-- p5.js for graph animation -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.2/p5.min.js"></script>
+  <!-- MathJax for math rendering -->
+  <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+  <style>
+    html, body {
+      height: 100%; margin: 0; padding: 0; overflow-x: hidden;
+      font-family: 'Fira Code', 'Lato', Arial, sans-serif;
+      background: linear-gradient(120deg, #232b66 0%, #141729 80%, #090b14 100%);
+      color: #e8eaed;
+    }
+    body {
+      min-height: 100vh;
+      position: relative;
+      z-index: 0;
+    }
+    #starfield-canvas {
+      position: fixed; left: 0; top: 0; width: 100vw; height: 100vh; z-index: 0; pointer-events: none;
+    }
+    #main-container {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+      align-items: center;
+      justify-content: flex-start;
+      padding-bottom: 2em;
+    }
+    .panel {
+      background: rgba(24,30,47,0.92);
+      box-shadow: 0 8px 38px #00e6b650;
+      border-radius: 18px;
+      margin: 36px auto 0 auto;
+      padding: 2.3em 2.3em 2em 2.3em;
+      width: 97vw;
+      max-width: 750px;
+      min-height: 180px;
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      transition: box-shadow 0.3s;
+      backdrop-filter: blur(6px);
+    }
+    .avatar {
+      width: 62px; height: 62px; border-radius: 50%;
+      margin-bottom: 1.1em;
+      background: linear-gradient(135deg, #fee440 0%, #00e6b6 100%);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 2.6em; color: #222;
+      box-shadow: 0 2px 16px #00e6b6bb;
+    }
+    .panel h1 {
+      font-family: 'Lato', sans-serif;
+      text-align: center;
+      font-size: 2.2em;
+      color: #fee440;
+      margin: 0.1em 0 0.22em 0;
+      letter-spacing: 0.02em;
+    }
+    .panel h2 {
+      font-family: 'Lato', sans-serif;
+      font-size: 1.13em;
+      color: #00e6b6;
+      font-weight: 700;
+      text-align: center;
+      margin: 0.2em 0 0.7em 0;
+    }
+    .math-caption {
+      margin: 1.2em 0 0.7em 0;
+      font-size: 1.35em;
+      color: #fee440;
+      text-align: center;
+      min-height: 2.2em;
+      font-family: 'Fira Code', 'Lato', Arial, sans-serif;
+    }
+    .progress-bar {
+      width: 74%;
+      height: 10px;
+      border-radius: 7px;
+      background: #233;
+      margin: 1.1em auto 0.7em auto;
+      position: relative;
+      overflow: hidden;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .progress-bar-fill {
+      position: absolute; left: 0; top: 0;
+      height: 100%;
+      background: linear-gradient(90deg, #00e6b6 0%, #fee440 100%);
+      border-radius: 7px;
+      transition: width 0.5s cubic-bezier(.7,.2,.2,1.1);
+    }
+    .progress-label {
+      font-size: 0.8em;
+      color: #fff;
+      position: relative;
+      z-index: 1;
+      text-align: center;
+      flex: 1;
+    }
+    .graph-panel {
+      background: rgba(28,20,60,0.89);
+      border-radius: 14px;
+      box-shadow: 0 4px 20px #00e6b644;
+      padding: 1.4em 1em 1em 1em;
+      margin: 1.3em 0 0.8em 0;
+      width: 100%;
+      min-height: 320px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      transition: box-shadow 0.3s;
+    }
+    #graph-canvas {
+      display: block;
+      margin: 0 auto;
+      background: transparent;
+      border-radius: 8px;
+      box-shadow: 0 1px 8px #27aeff22;
+    }
+    .nav-btns {
+      margin-top: 1.3em;
+      display: flex;
+      gap: 1.3em;
+      justify-content: center;
+    }
+    button {
+      font-family: 'Fira Code', 'Lato', Arial, sans-serif;
+      font-size: 1.08em;
+      padding: 0.7em 1.7em;
+      border-radius: 8px;
+      border: none;
+      font-weight: 700;
+      background: linear-gradient(90deg, #00e6b6 0%, #fee440 100%);
+      color: #222;
+      box-shadow: 0 2px 6px #00e6b6aa;
+      cursor: pointer;
+      transition: background 0.21s;
+    }
+    button:hover { background: linear-gradient(90deg, #fee440 0%, #00e6b6 100%);}
+    button:disabled { background: #333a; color: #aaa; cursor: not-allowed;}
+    .quiz-panel {
+      background: rgba(24,30,47,0.92);
+      border-radius: 14px;
+      padding: 1em;
+      margin: 1em 0;
+      width: 100%;
+      text-align: center;
+      display: none;
+    }
+    .quiz-panel input {
+      padding: 0.5em;
+      margin: 0.5em;
+      font-family: 'Fira Code', sans-serif;
+      font-size: 1em;
+      border-radius: 5px;
+      border: none;
+    }
+    .quiz-panel button {
+      margin: 0.5em;
+    }
+    .quiz-feedback {
+      color: #00e6b6;
+      margin-top: 0.5em;
+    }
+    #unit-circle-toggle, #replay-animation {
+      margin-top: 0.5em;
+      font-size: 0.9em;
+      padding: 0.5em 1em;
+    }
+    @media (max-width: 700px) {
+      .panel, .graph-panel, .quiz-panel { max-width: 95vw; padding: 1.2em 0.6em; }
+      #graph-canvas { width: 95vw !important; height: 240px !important; }
+      .progress-bar { width: 90%; }
+      .progress-label { font-size: 0.7em; }
+    }
+    .mjx-math, .MathJax { color: #fee440 !important; }
+  </style>
+</head>
+<body>
+<canvas id="starfield-canvas"></canvas>
+<div id="main-container"></div>
+<script>
+/* === Sound Effects === */
+let ctx;
+function initAudioContext() {
+  if (!ctx) {
+    ctx = new (window.AudioContext || window.webkitAudioContext)();
+    if (ctx.state === 'suspended') {
+      document.addEventListener('click', () => ctx.resume(), { once: true });
+    }
+  }
+}
+function playSound(freq, type = 'sine', duration = 0.1) {
+  if (!ctx) initAudioContext();
+  try {
+    const osc = ctx.createOscillator();
+    osc.type = type;
+    osc.frequency.setValueAtTime(freq, ctx.currentTime);
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(0.3, ctx.currentTime);
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start();
+    gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + duration);
+    osc.stop(ctx.currentTime + duration);
+  } catch (e) {
+    console.warn('Audio playback failed:', e);
+  }
+}
+
+/* === Cosmic Starfield Background === */
+const stars = [];
+function resizeStarfield() {
+  const canvas = document.getElementById('starfield-canvas');
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+  stars.length = 0;
+  for(let i = 0; i < 120; i++) {
+    stars.push({
+      x: Math.random() * canvas.width,
+      y: Math.random() * canvas.height,
+      r: Math.random() * 1.1 + 0.3,
+      s: Math.random() * 0.28 + 0.15,
+      alpha: Math.random() * 0.7 + 0.3,
+      phase: Math.random() * Math.PI * 2
+    });
+  }
+}
+function animateStarfield() {
+  const canvas = document.getElementById('starfield-canvas');
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  for(let star of stars) {
+    let twinkle = 0.5 + 0.5 * Math.sin(Date.now() / 1200 + star.phase);
+    ctx.save();
+    ctx.globalAlpha = star.alpha * twinkle;
+    ctx.beginPath();
+    ctx.arc(star.x, star.y, star.r + twinkle * 0.7, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(255,255,220,0.97)';
+    ctx.shadowColor = '#8b00ff';
+    ctx.shadowBlur = 8 + 12 * star.s * twinkle;
+    ctx.fill();
+    ctx.restore();
+  }
+  requestAnimationFrame(animateStarfield);
+}
+window.addEventListener('resize', resizeStarfield);
+resizeStarfield();
+animateStarfield();
+
+/* === Scene System === */
+const SCENES = [
+  {
+    title: "Solving Trigonometric Equations Using Graphs",
+    avatar: "🌌",
+    intro: `Welcome! Learn to solve trigonometric equations and inequalities using <b>graphs</b>.<br>
+           <span style="color:#00e6b6;">Let’s build intuition step by step.</span>`,
+    math: "",
+    progress: 0,
+    graph: "intro",
+    quiz: null
+  },
+  {
+    title: "Example 1: \\( \\sin(\\theta) = 0 \\)",
+    avatar: "🟡",
+    intro: `See where the <b>sine</b> graph meets <span style="color:#fee440">y = 0</span>.`,
+    math: "\\[ \\sin(\\theta) = 0 \\]",
+    progress: 1/6,
+    graph: "sin0",
+    quiz: {
+      question: "Find solutions for \\(\\sin(\\theta) = 0\\) in \\([-2\\pi, 2\\pi]\\).",
+      answers: ["0, \\(\\pi\\), \\(-\\pi\\), \\(2\\pi\\), \\(-2\\pi\\)", "\\(\\pi/2, -\\pi/2\\)", "No solutions"],
+      correct: 0
+    }
+  },
+  {
+    title: "Example 2: \\( \\sin(\\theta) = \\frac{1}{2} \\)",
+    avatar: "💙",
+    intro: "Where does sine reach $\\frac{1}{2}$?<br>Let’s plot and see!",
+    math: "\\[ \\sin(\\theta) = \\frac{1}{2} \\]",
+    progress: 2/6,
+    graph: "sin_half",
+    quiz: {
+      question: "Find solutions for \\(\\sin(\\theta) = -\\frac{1}{2}\\).",
+      answers: ["\\(\\pi/6, 5\\pi/6\\)", "\\(7\\pi/6, 11\\pi/6\\)", "\\(\\pi/3, 5\\pi/3\\)"],
+      correct: 1
+    }
+  },
+  {
+    title: "Example 3: \\( \\sin(\\theta) \\geq \\frac{1}{2} \\)",
+    avatar: "💜",
+    intro: "Now highlight where sine stays above $\\frac{1}{2}$.",
+    math: "\\[ \\sin(\\theta) \\geq \\frac{1}{2} \\]",
+    progress: 3/6,
+    graph: "sin_ge_half",
+    quiz: {
+      question: "What are the intervals for \\(\\sin(\\theta) \\geq -\\frac{1}{2}\\)?",
+      answers: ["\\([\\pi/6, 5\\pi/6]\\)", "\\([-2\\pi, 2\\pi]\\)", "\\([7\\pi/6, 11\\pi/6]\\)"],
+      correct: 1
+    }
+  },
+  {
+    title: "Example 4: \\( \\cos(\\theta) = \\frac{1}{2} \\)",
+    avatar: "🟢",
+    intro: "Switch to <b>cosine</b> and find where it’s $\\frac{1}{2}$.",
+    math: "\\[ \\cos(\\theta) = \\frac{1}{2} \\]",
+    progress: 4/6,
+    graph: "cos_half",
+    quiz: {
+      question: "Find solutions for \\(\\cos(\\theta) = -\\frac{1}{2}\\).",
+      answers: ["\\(\\pi/3, 5\\pi/3\\)", "\\(2\\pi/3, 4\\pi/3\\)", "\\(\\pi/6, 5\\pi/6\\)"],
+      correct: 1
+    }
+  },
+  {
+    title: "Example 5: \\( \\cos(\\theta) \\geq \\frac{1}{2} \\)",
+    avatar: "🟠",
+    intro: "Shade where cosine is at least $\\frac{1}{2}$.",
+    math: "\\[ \\cos(\\theta) \\geq \\frac{1}{2} \\]",
+    progress: 5/6,
+    graph: "cos_ge_half",
+    quiz: {
+      question: "What are the intervals for \\(\\cos(\\theta) \\geq -\\frac{1}{2}\\)?",
+      answers: ["\\([-\\pi/3, \\pi/3]\\)", "\\([-2\\pi, 2\\pi]\\)", "\\([2\\pi/3, 4\\pi/3]\\)"],
+      correct: 1
+    }
+  },
+  {
+    title: "Example 6: \\( \\tan(\\theta) \\geq 1 \\)",
+    avatar: "🔴",
+    intro: "Now for tangent. Watch for those vertical asymptotes!",
+    math: "\\[ \\tan(\\theta) \\geq 1 \\]",
+    progress: 1,
+    graph: "tan_ge_one",
+    quiz: {
+      question: "What are the intervals for \\(\\tan(\\theta) \\geq -1\\)?",
+      answers: ["\\(-\\pi/4, \\pi/4\\)", "All reals except asymptotes", "\\(\\pi/4, 3\\pi/4\\)"],
+      correct: 1
+    }
+  }
+];
+let currentScene = 0;
+let showUnitCircle = false;
+
+function renderScene(idx) {
+  const scene = SCENES[idx];
+  const main = document.getElementById("main-container");
+  main.innerHTML = `
+    <div class="panel" id="scene-panel">
+      <div class="avatar">${scene.avatar}</div>
+      <h1>${scene.title}</h1>
+      <h2>${scene.intro}</h2>
+      <div class="progress-bar">
+        <div class="progress-bar-fill" style="width:${scene.progress*100}%;"></div>
+        ${SCENES.map((_, i) => `<span class="progress-label">${i === 0 ? 'Intro' : `Ex ${i}`}</span>`).join('')}
+      </div>
+      <div class="math-caption">${scene.math}</div>
+      <div class="graph-panel"><div id="p5-graph-holder"></div></div>
+      <button id="unit-circle-toggle">Toggle Unit Circle</button>
+      ${scene.graph !== "intro" ? '<button id="replay-animation">Replay Animation</button>' : ''}
+      <div class="quiz-panel" id="quiz-panel">
+        ${scene.quiz ? `
+          <div class="quiz-question">${scene.quiz.question}</div>
+          ${scene.quiz.answers.map((ans, i) => `
+            <button class="quiz-answer" data-index="${i}">${ans}</button>
+          `).join('')}
+          <div class="quiz-feedback" id="quiz-feedback"></div>
+        ` : ''}
+      </div>
+      <div class="nav-btns">
+        <button id="prevBtn" ${idx===0?'disabled':''}>← Previous</button>
+        <button id="nextBtn" ${idx===SCENES.length-1?'disabled':''}>Next →</button>
+      </div>
+    </div>
+  `;
+  gsap.fromTo("#scene-panel", {opacity:0, y:50}, {opacity:1, y:0, duration:0.8, ease:"power2.out"});
+  gsap.fromTo(".avatar", {scale:0.8, opacity:0.7}, {
+    scale:1.1, opacity:1, duration:1, yoyo:true, repeat:-1, ease:"sine.inOut"
+  });
+  if(window.MathJax) MathJax.typesetPromise();
+  setTimeout(() => drawGraphForScene(scene.graph), 40);
+  document.getElementById("prevBtn").onclick = () => { playSound(440); gotoScene(idx-1); };
+  document.getElementById("nextBtn").onclick = () => { playSound(440); gotoScene(idx+1); };
+  document.getElementById("unit-circle-toggle").onclick = () => {
+    playSound(660);
+    showUnitCircle = !showUnitCircle;
+    drawGraphForScene(scene.graph);
+  };
+  if (scene.graph !== "intro") {
+    document.getElementById("replay-animation").onclick = () => {
+      playSound(550);
+      drawGraphForScene(scene.graph);
+    };
+  }
+  if (scene.quiz) {
+    document.getElementById("quiz-panel").style.display = 'block';
+    document.querySelectorAll(".quiz-answer").forEach(btn => {
+      btn.onclick = () => {
+        playSound(550);
+        const feedback = document.getElementById("quiz-feedback");
+        const selected = parseInt(btn.dataset.index);
+        feedback.innerText = selected === scene.quiz.correct ? "Correct!" : "Try again!";
+        gsap.fromTo("#quiz-feedback", {opacity:0, y:10}, {opacity:1, y:0, duration:0.5});
+      };
+    });
+  }
+}
+function gotoScene(idx) {
+  if(idx < 0 || idx >= SCENES.length) return;
+  currentScene = idx;
+  renderScene(currentScene);
+}
+
+/* === Graph Drawing with p5.js === */
+function drawGraphForScene(graphType) {
+  if (window._p5Instance) window._p5Instance.remove();
+  let sketch = p => {
+    let w = window.innerWidth > 700 ? 600 : window.innerWidth * 0.95;
+    let h = window.innerWidth > 700 ? 300 : 240;
+    let ox = w/2, oy = h/2, scaleX = w/(4*Math.PI), scaleY = h/2.18, t0 = -2*Math.PI, t1 = 2*Math.PI;
+    let animT = 0, animState = 0, speed = 0.012;
+    let particles = [];
+    let asymptotes = [-3*Math.PI/2, -Math.PI/2, Math.PI/2, 3*Math.PI/2];
+
+    // Helper function to draw dashed lines in p5.js
+    function drawDashedLine(x1, y1, x2, y2, dashLength, gapLength, alpha) {
+      let totalLength = p.dist(x1, y1, x2, y2);
+      let dashCount = Math.floor(totalLength / (dashLength + gapLength));
+      let currentX = x1, currentY = y1;
+      let deltaX = (x2 - x1) / totalLength * (dashLength + gapLength);
+      let deltaY = (y2 - y1) / totalLength * (dashLength + gapLength);
+      p.push();
+      p.globalAlpha = alpha;
+      for (let i = 0; i < dashCount; i++) {
+        p.line(currentX, currentY, currentX + deltaX * dashLength / (dashLength + gapLength), currentY + deltaY * dashLength / (dashLength + gapLength));
+        currentX += deltaX;
+        currentY += deltaY;
+      }
+      p.pop();
+    }
+
+    // Helper function to draw x-axis dots and labels for solutions
+    function drawXAxisDots(p, fn, ox, oy, scaleX, scaleY, t0, t1, yval, color, animT, isTan) {
+      p.push();
+      p.noStroke();
+      p.fill(color);
+      p.textFont("Fira Code");
+      p.textSize(12);
+      p.fill("#fff");
+      p.textAlign(p.CENTER, p.TOP);
+      for(let t = t0; t <= t1; t += 0.01) {
+        let v1 = fn(t - 0.01), v2 = fn(t);
+        if(isTan && (Math.abs(v1) > 8 || Math.abs(v2) > 8)) continue;
+        if((v1 - yval) * (v2 - yval) <= 0) {
+          let xx = ox + scaleX * t;
+          let scale = 1 + 0.2 * Math.sin(p.frameCount / 10) * animT;
+          p.noStroke();
+          p.fill(color);
+          p.ellipse(xx, oy, 8 * scale, 8 * scale);
+          if (isTan) {
+            p.fill(255, 255, 255, 255 * animT);
+            let theta = Math.round(t / Math.PI * 100) / 100;
+            let label = '';
+            if (Math.abs(theta - 1/4) < 0.12) label = 'π/4';
+            else if (Math.abs(theta - 5/4) < 0.12) label = '5π/4';
+            else if (Math.abs(theta + 3/4) < 0.12) label = '-3π/4';
+            else if (Math.abs(theta + 7/4) < 0.12) label = '-7π/4';
+            if (label) p.text(label, xx, oy + 20);
+          }
+        }
+      }
+      p.pop();
+    }
+
+    p.setup = function() {
+      p.createCanvas(w, h).parent("p5-graph-holder");
+      p.background(0,0,0,0);
+      if (graphType === "intro") p.loop();
+      else p.loop();
+    };
+    p.draw = function() {
+      p.clear();
+      // Grid
+      p.push();
+      p.stroke(90, 120, 180, 32); p.strokeWeight(1);
+      for(let i = -2; i <= 2; i++) { let x = ox + scaleX * i * Math.PI; p.line(x, 0, x, h); }
+      for(let j = -1; j <= 1; j++) { let y = oy - scaleY * j; p.line(0, y, w, y); }
+      p.pop();
+      // Unit circle (toggleable)
+      if (showUnitCircle && graphType !== "intro") {
+        p.push();
+        p.stroke(140, 170, 250, 80); p.noFill();
+        p.ellipse(w * 0.12, oy, scaleY * 1.5, scaleY * 1.5);
+        p.line(w * 0.12, oy, w * 0.12 + scaleY * 0.75 * Math.cos(p.frameCount/30), oy - scaleY * 0.75 * Math.sin(p.frameCount/30));
+        p.pop();
+      }
+      // Axes
+      p.push();
+      p.stroke(255, 255, 255, 90); p.strokeWeight(1.7);
+      p.line(0, oy, w, oy); p.line(ox, 0, ox, h);
+      p.pop();
+      // X axis labels
+      p.push();
+      p.textFont("Fira Code"); p.textSize(13); p.fill(180, 220, 255, 190);
+      for(let i = -2; i <= 2; i++) {
+        let x = ox + scaleX * i * Math.PI;
+        p.text((i === 0) ? '0' : (i + 'π'), x - 10, oy + 20);
+      }
+      p.pop();
+
+      if(graphType === "intro") {
+        p.push();
+        p.stroke("#00e6b6"); p.noFill(); p.strokeWeight(3.5);
+        p.beginShape();
+        for(let t = t0; t <= t0 + (t1 - t0) * animT; t += 0.01) {
+          let xx = ox + scaleX * t, yy = oy - scaleY * Math.sin(t + 0.6 * p.frameCount / 18);
+          p.vertex(xx, yy);
+        }
+        p.endShape();
+        p.pop();
+        p.fill("#fee440");
+        p.textSize(22); p.text("Sine wave", ox - 38, oy - 1.21 * scaleY);
+        animT += speed;
+        if(animT >= 1) animT = 0;
+        p.redraw();
+      } else {
+        // Animation states for examples 1-6
+        let fn, yval, color, isTan = false, isInequality = false;
+        if(graphType === "sin0") {
+          fn = Math.sin; yval = 0; color = "#00e6b6";
+        } else if(graphType === "sin_half") {
+          fn = Math.sin; yval = 0.5; color = "#00e6b6";
+        } else if(graphType === "sin_ge_half") {
+          fn = Math.sin; yval = 0.5; color = "#00e6b6"; isInequality = true;
+        } else if(graphType === "cos_half") {
+          fn = Math.cos; yval = 0.5; color = "#27aeff";
+        } else if(graphType === "cos_ge_half") {
+          fn = Math.sin; yval = 0.5; color = "#27aeff"; isInequality = true;
+        } else if(graphType === "tan_ge_one") {
+          fn = Math.tan; yval = 1; color = "#f15bb5"; isInequality = true; isTan = true;
+        }
+        // Stage 1: Draw graph
+        if (animState >= 0) {
+          drawTrigGraph(p, fn, ox, oy, scaleX, isTan ? scaleY * 0.66 : scaleY, t0, t1, color, Math.min(animT / 0.4, 1), isTan);
+        }
+        // Stage 2: Draw horizontal line
+        if (animState >= 1) {
+          let lineAlpha = Math.min((animT - 0.4) / 0.3, 1);
+          drawHorizontalLine(p, oy - (isTan ? scaleY * 0.66 : scaleY) * yval, ox, scaleX, yval, t0, t1, color, lineAlpha);
+        }
+        // Stage 3: Draw solutions or regions and x-axis dots
+        if (animState >= 2) {
+          let solutionAlpha = Math.min((animT - 0.7) / 0.3, 1);
+          if (isInequality) {
+            highlightRegions(p, fn, ox, oy, scaleX, isTan ? scaleY * 0.66 : scaleY, t0, t1, yval, true, isTan ? "#00e6b633" : "#f15bb544", isTan, solutionAlpha);
+          } else {
+            highlightIntersections(p, fn, ox, oy, scaleX, scaleY, t0, t1, yval, "#fee440", solutionAlpha);
+            // Draw particles
+            particles.forEach(particle => {
+              particle.update();
+              particle.draw(p);
+            });
+            particles = particles.filter(p => p.life > 0);
+          }
+          // Draw x-axis dots and labels for solutions
+          drawXAxisDots(p, fn, ox, oy, scaleX, isTan ? scaleY * 0.66 : scaleY, t0, t1, yval, color, solutionAlpha, isTan);
+        }
+        // Stage 4: Draw asymptotes for tangent
+        if (isTan && animState >= 2) {
+          let asymAlpha = 0.9; // Constant high alpha for clarity
+          p.push();
+          p.stroke("#ff5555"); // Vivid red for better visibility
+          p.strokeWeight(2.5); // Thicker lines
+          for (let t of asymptotes) {
+            let x = ox + scaleX * t;
+            if (x >= 0 && x <= w) {
+              drawDashedLine(x, 0, x, h, 6, 4, asymAlpha); // Adjusted dash pattern
+            }
+          }
+          p.pop();
+        }
+        // Update animation state
+        animT += speed;
+        if (animT >= 0.4 && animState === 0) animState = 1;
+        if (animT >= 0.7 && animState === 1) {
+          animState = 2;
+          if (!isInequality) {
+            // Spawn particles at intersection points
+            for(let t = t0; t <= t1; t += 0.01) {
+              let v1 = fn(t - 0.01), v2 = fn(t);
+              if((v1 - yval) * (v2 - yval) <= 0) {
+                let xx = ox + scaleX * t, yy = oy - scaleY * v2;
+                for(let i = 0; i < 5; i++) {
+                  particles.push(new Particle(xx, yy, p));
+                }
+              }
+            }
+          }
+        }
+        if (animT < 1) p.redraw();
+      }
+    };
+    // Particle class for intersection effects
+    class Particle {
+      constructor(x, y, p) {
+        this.x = x;
+        this.y = y;
+        this.vx = (Math.random() - 0.5) * 2;
+        this.vy = (Math.random() - 0.5) * 2;
+        this.life = 60;
+        this.p = p;
+      }
+      update() {
+        this.x += this.vx;
+        this.y += this.vy;
+        this.life--;
+      }
+      draw(p) {
+        p.push();
+        p.noStroke();
+        p.fill(255, 224, 64, p.map(this.life, 60, 0, 255, 0));
+        p.ellipse(this.x, this.y, 3, 3);
+        p.pop();
+      }
+    }
+  };
+  window._p5Instance = new p5(sketch);
+}
+function drawTrigGraph(p, fn, ox, oy, scaleX, scaleY, t0, t1, color, animT = 1, isTan = false) {
+  p.push();
+  p.stroke(color); p.noFill(); p.strokeWeight(3.1);
+  let prevY = null;
+  p.beginShape();
+  for(let t = t0; t <= t0 + (t1 - t0) * animT; t += 0.011) {
+    let v = fn(t);
+    if(isTan && Math.abs(v) > 8) { prevY = null; p.endShape(); p.beginShape(); continue; }
+    let xx = ox + scaleX * t, yy = oy - scaleY * v;
+    if(prevY !== null && Math.abs(yy - prevY) > 85) { p.endShape(); p.beginShape(); }
+    p.vertex(xx, yy); prevY = yy;
+  }
+  p.endShape();
+  p.pop();
+}
+function drawHorizontalLine(p, y, ox, scaleX, val, t0, t1, color, alpha = 1) {
+  p.push();
+  p.stroke(color); p.strokeWeight(2.4); p.globalAlpha = alpha;
+  p.line(ox + scaleX * t0, y, ox + scaleX * t1, y);
+  p.pop();
+}
+function highlightIntersections(p, fn, ox, oy, scaleX, scaleY, t0, t1, yval, color, animT = 1) {
+  p.push();
+  for(let t = t0; t <= t1; t += 0.01) {
+    let v1 = fn(t - 0.01), v2 = fn(t);
+    if((v1 - yval) * (v2 - yval) <= 0) {
+      let xx = ox + scaleX * t, yy = oy - scaleY * v2;
+      let scale = 1 + 0.2 * Math.sin(p.frameCount / 10) * animT;
+      for(let r = 23; r > 7; r -= 4) {
+        p.noStroke();
+        p.fill(255, 224, 64, p.map(r, 7, 23, 60, 8) * animT);
+        p.ellipse(xx, yy, r * scale, r * scale);
+      }
+      p.noStroke(); p.fill(color);
+      p.ellipse(xx, yy, 10 * scale, 10 * scale);
+      p.push();
+      p.textFont("Fira Code"); p.textSize(13 * animT);
+      p.fill("#fff");
+      let theta = Math.round(t / Math.PI * 100) / 100;
+      let label = '';
+      if(Math.abs(theta - 1) < 0.12) label = 'π';
+      else if(Math.abs(theta - 0) < 0.12) label = '0';
+      else if(Math.abs(theta - 2) < 0.12) label = '2π';
+      else if(Math.abs(theta + 1) < 0.12) label = '-π';
+      else if(Math.abs(theta - 1/6) < 0.12) label = 'π/6';
+      else if(Math.abs(theta - 5/6) < 0.12) label = '5π/6';
+      else if(Math.abs(theta - 1/3) < 0.12) label = 'π/3';
+      else if(Math.abs(theta - 5/3) < 0.12) label = '5π/3';
+      if(label) p.text(label, xx - 8, yy - 12);
+      p.pop();
+    }
+  }
+  p.pop();
+}
+function highlightRegions(p, fn, ox, oy, scaleX, scaleY, t0, t1, yval, greater, color, isTan, animT = 1) {
+  p.push();
+  p.noStroke(); p.fill(color.replace(/[^0-9,]/g, '') + ',' + (animT * parseInt(color.match(/\d+/g)[3]) + ')'));
+  let inRegion = false;
+  let regionPoints = [];
+  for(let t = t0; t <= t1; t += 0.01) {
+    let v = fn(t);
+    if(isTan && Math.abs(v) > 8) { if(inRegion) { inRegion = false; regionPoints = []; } continue; }
+    let cond = greater ? (v >= yval - 0.01) : (v <= yval + 0.01);
+    if(cond) {
+      let xx = ox + scaleX * t, yy = oy - scaleY * v;
+      regionPoints.push([xx, yy]);
+      inRegion = true;
+    } else {
+      if(inRegion && regionPoints.length > 1) {
+        let lastX = regionPoints[regionPoints.length - 1][0];
+        p.beginShape();
+        for (let pt of regionPoints) p.vertex(pt[0], pt[1]);
+        p.vertex(lastX, oy - scaleY * yval * animT);
+        p.vertex(regionPoints[0][0], oy - scaleY * yval * animT);
+        p.endShape(p.CLOSE);
+      }
+      regionPoints = [];
+      inRegion = false;
+    }
+  }
+  if(inRegion && regionPoints.length > 1) {
+    let lastX = regionPoints[regionPoints.length - 1][0];
+    p.beginShape();
+    for (let pt of regionPoints) p.vertex(pt[0], pt[1]);
+    p.vertex(lastX, oy - scaleY * yval * animT);
+    p.vertex(regionPoints[0][0], oy - scaleY * yval * animT);
+    p.endShape(p.CLOSE);
+  }
+  p.pop();
+}
+window.onload = () => { renderScene(currentScene); };
+</script>
+</body>
+</html>
