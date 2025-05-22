@@ -1,0 +1,537 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>One-One Function Matchmaking</title>
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      font-family: 'Segoe UI', sans-serif;
+      min-height: 100vh;
+      overflow-x: hidden;
+      background: radial-gradient(circle at center, #2E1A47 0%, #0D0B1A 100%); /* Celestial gradient */
+      color: #FFD700; /* Gold text for a royal feel */
+      text-align: center;
+      position: relative;
+    }
+
+    /* Starry Background Overlay */
+    body::before {
+      content: '';
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: url('https://www.transparenttextures.com/patterns/stardust.png') repeat;
+      opacity: 0.3;
+      z-index: -1;
+    }
+
+    /* Floating Sparkles */
+    .sparkle {
+      position: absolute;
+      width: 5px;
+      height: 5px;
+      background: #FFD700;
+      border-radius: 50%;
+      animation: twinkle 3s infinite alternate;
+      z-index: 0;
+    }
+    @keyframes twinkle {
+      0% { opacity: 0.2; transform: scale(0.5); }
+      100% { opacity: 1; transform: scale(1); }
+    }
+
+    /* Floating Clouds for a Magical Effect */
+    .cloud {
+      position: absolute;
+      width: 150px;
+      height: 50px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 100px;
+      filter: blur(8px);
+      animation: float 25s linear infinite;
+      z-index: 0;
+    }
+    @keyframes float {
+      0% { transform: translateX(-100%); }
+      100% { transform: translateX(100vw); }
+    }
+
+    h1 {
+      color: #FFD700;
+      font-size: 2.5rem;
+      text-shadow: 0 0 10px #FF8C00, 0 0 20px #FF4500;
+      margin: 20px 0;
+      padding: 10px;
+      background: rgba(255, 215, 0, 0.1);
+      border-radius: 10px;
+      border: 1px solid rgba(255, 215, 0, 0.3);
+    }
+
+    .container {
+      display: flex;
+      justify-content: space-around;
+      margin-top: 30px;
+      padding: 20px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .group {
+      border: 2px solid #FFD700;
+      border-radius: 15px;
+      padding: 15px;
+      background: linear-gradient(145deg, rgba(46, 26, 71, 0.9), rgba(13, 11, 26, 0.9));
+      width: 40%;
+      box-shadow: 0 0 15px rgba(255, 215, 0, 0.5);
+      backdrop-filter: blur(5px);
+    }
+
+    .group h2 {
+      color: #FFD700;
+      text-shadow: 0 0 5px #FF8C00;
+      font-size: 1.5rem;
+      margin-bottom: 15px;
+    }
+
+    .item {
+      margin: 10px;
+      padding: 10px 20px;
+      background: linear-gradient(145deg, #8A2BE2, #4B0082); /* Regal purple gradient */
+      border-radius: 8px;
+      cursor: grab;
+      font-weight: bold;
+      transition: transform 0.3s, box-shadow 0.3s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #FFD700;
+      border: 1px solid #FFD700;
+      box-shadow: 0 0 10px rgba(255, 215, 0, 0.3);
+    }
+
+    .item img {
+      width: 30px;
+      height: 30px;
+      margin-right: 10px;
+      filter: drop-shadow(0 0 5px #FFD700);
+    }
+
+    .item:hover {
+      transform: scale(1.05);
+      box-shadow: 0 0 20px rgba(255, 215, 0, 0.7);
+    }
+
+    .item.dragging {
+      opacity: 0.5;
+      background: #4B0082;
+    }
+
+    .dropzone {
+      min-height: 40px;
+      margin: 5px;
+      border: 2px dashed #FFD700;
+      border-radius: 5px;
+      padding: 5px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(255, 215, 0, 0.1);
+      color: #FFD700;
+      transition: background 0.3s, box-shadow 0.3s;
+    }
+
+    .dropzone:hover {
+      background: rgba(255, 215, 0, 0.2);
+      box-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+    }
+
+    .dropzone img {
+      width: 30px;
+      height: 30px;
+      margin-right: 10px;
+      filter: drop-shadow(0 0 5px #FFD700);
+    }
+
+    #message {
+      font-size: 1.2rem;
+      margin-top: 20px;
+      color: #FFD700;
+      font-weight: bold;
+      text-shadow: 0 0 5px #FF8C00;
+      background: rgba(255, 215, 0, 0.1);
+      padding: 10px;
+      border-radius: 8px;
+      display: inline-block;
+    }
+
+    button {
+      padding: 10px 20px;
+      font-size: 1rem;
+      margin-top: 20px;
+      margin-right: 10px;
+      cursor: pointer;
+      background: linear-gradient(145deg, #FFD700, #FF8C00);
+      color: #2E1A47;
+      font-weight: bold;
+      border: none;
+      border-radius: 8px;
+      box-shadow: 0 0 10px #FFD700;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    button:hover {
+      transform: scale(1.05);
+      box-shadow: 0 0 20px #FF4500;
+    }
+
+    #king {
+      margin-top: 30px;
+      position: relative;
+      padding: 20px;
+    }
+
+    #kingFace {
+      width: 100px;
+      height: auto;
+      transition: all 0.3s;
+      filter: drop-shadow(0 0 10px #FFD700);
+      animation: glow 2s infinite alternate;
+    }
+
+    @keyframes glow {
+      0% { transform: scale(1); filter: drop-shadow(0 0 10px #FFD700); }
+      100% { transform: scale(1.05); filter: drop-shadow(0 0 20px #FF4500); }
+    }
+
+    #kingSpeechBubble {
+      background: rgba(255, 251, 230, 0.9);
+      border: 2px solid #FFD700;
+      display: inline-block;
+      padding: 10px 15px;
+      border-radius: 10px;
+      margin-top: 10px;
+      font-weight: bold;
+      color: #2E1A47;
+      max-width: 300px;
+      box-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+      position: relative;
+      backdrop-filter: blur(3px);
+    }
+
+    #kingSpeechBubble::before {
+      content: '';
+      position: absolute;
+      top: -10px;
+      left: 50%;
+      transform: translateX(-50%);
+      border-left: 10px solid transparent;
+      border-right: 10px solid transparent;
+      border-bottom: 10px solid #FFD700;
+    }
+
+    .reaction {
+      display: block;
+      font-size: 0.9rem;
+      margin-top: 5px;
+      color: #FF8C00;
+      font-style: italic;
+      text-shadow: 0 0 3px #FFD700;
+    }
+
+    #leaderboard, #matchHistory {
+      margin-top: 30px;
+      padding: 20px;
+      background: rgba(46, 26, 71, 0.8);
+      border-radius: 10px;
+      border: 1px solid #FFD700;
+      box-shadow: 0 0 15px rgba(255, 215, 0, 0.5);
+    }
+
+    #leaderboard h2, #matchHistory h2 {
+      color: #FFD700;
+      text-shadow: 0 0 5px #FF8C00;
+    }
+
+    #leaderList, #matchList {
+      color: #FFD700;
+      list-style-position: inside;
+      padding: 0;
+    }
+
+    #leaderList li, #matchList li {
+      margin: 5px 0;
+      padding: 5px;
+      background: rgba(255, 215, 0, 0.1);
+      border-radius: 5px;
+    }
+
+    /* Quiz Mode Overlay */
+    #quizOverlay {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.8);
+      z-index: 100;
+      justify-content: center;
+      align-items: center;
+      flex-direction: column;
+    }
+
+    #quizQuestion {
+      font-size: 1.5rem;
+      color: #FFD700;
+      text-shadow: 0 0 5px #FF8C00;
+      margin-bottom: 20px;
+    }
+
+    .quizOption {
+      padding: 10px 20px;
+      margin: 5px;
+      background: linear-gradient(145deg, #FFD700, #FF8C00);
+      color: #2E1A47;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      font-weight: bold;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    .quizOption:hover {
+      transform: scale(1.05);
+      box-shadow: 0 0 15px #FF4500;
+    }
+  </style>
+</head>
+<body>
+  <!-- Added Background Elements for Visual Enhancement -->
+  <div class="cloud" style="top: 15%; animation-delay: 0s;"></div>
+  <div class="cloud" style="top: 35%; animation-delay: -10s;"></div>
+  <div class="cloud" style="top: 55%; animation-delay: -20s;"></div>
+  <div class="sparkle" style="top: 10%; left: 15%; animation-delay: 0s;"></div>
+  <div class="sparkle" style="top: 20%; left: 85%; animation-delay: 0.5s;"></div>
+  <div class="sparkle" style="top: 30%; left: 25%; animation-delay: 1s;"></div>
+  <div class="sparkle" style="top: 40%; left: 75%; animation-delay: 1.5s;"></div>
+  <div class="sparkle" style="top: 50%; left: 35%; animation-delay: 2s;"></div>
+  <div class="sparkle" style="top: 60%; left: 65%; animation-delay: 2.5s;"></div>
+
+  <h1>👑 Royal Matchmaking: One-One Function Game</h1>
+  <div class="container">
+    <div class="group" id="domain">
+      <h2>Princes (Domain A)</h2>
+      <div class="item" draggable="true" id="p1"><img src="Prince_icon.png" alt="Prince 1">Prince 1<span class="reaction" id="reaction-p1"></span></div>
+      <div class="item" draggable="true" id="p2"><img src="Prince_icon2.png" alt="Prince 2">Prince 2<span class="reaction" id="reaction-p2"></span></div>
+      <div class="item" draggable="true" id="p3"><img src="Prince_icon1.png" alt="Prince 3">Prince 3<span class="reaction" id="reaction-p3"></span></div>
+    </div>
+
+    <div class="group" id="codomain">
+      <h2>Princesses (Co-domain B)</h2>
+      <div class="dropzone" data-id="q1" data-label="👸 Princess A"><img src="princessA.png" alt="Princess A">Princess A</div>
+      <div class="dropzone" data-id="q2" data-label="👸 Princess B"><img src="princessB.png" alt="Princess B">Princess B</div>
+      <div class="dropzone" data-id="q3" data-label="👸 Princess C"><img src="princessC.png" alt="Princess C">Princess C</div>
+      <div class="dropzone" data-id="q4" data-label="👸 Princess D"><img src="princessA.png" alt="Princess D">Princess D</div>
+    </div>
+  </div>
+
+  <div id="message"></div>
+  <button onclick="checkOneOne()">Check One-One Function</button>
+  <button onclick="startQuiz()">🎯 Start Quiz Mode</button>
+  <button onclick="resetGame()">🔄 Reset Game</button>
+
+  <div id="king">
+    <img id="kingFace" src="man-guard_1f482.png" alt="King">
+    <div id="kingSpeechBubble">Welcome to the royal ceremony!</div>
+  </div>
+
+  <div id="leaderboard" style="margin-top: 30px;">
+    <h2>🏆 Leaderboard</h2>
+    <ol id="leaderList"></ol>
+  </div>
+
+  <div id="matchHistory" style="margin-top: 30px;">
+    <h2>📜 Match History</h2>
+    <ul id="matchList"></ul>
+  </div>
+
+  <!-- Quiz Overlay -->
+  <div id="quizOverlay">
+    <div id="quizQuestion"></div>
+    <div id="quizOptions"></div>
+  </div>
+
+  <script>
+    // Drag-and-Drop Logic
+    const items = document.querySelectorAll('.item');
+    const dropzones = document.querySelectorAll('.dropzone');
+    const message = document.getElementById('message');
+    const kingSpeechBubble = document.getElementById('kingSpeechBubble');
+    const kingFace = document.getElementById('kingFace');
+    let matches = new Map();
+    let matchHistory = [];
+    let leaderboard = [];
+    let score = 0;
+
+    items.forEach(item => {
+      item.addEventListener('dragstart', (e) => {
+        item.classList.add('dragging');
+        e.dataTransfer.setData('text/plain', item.id);
+      });
+
+      item.addEventListener('dragend', () => {
+        item.classList.remove('dragging');
+      });
+    });
+
+    dropzones.forEach(zone => {
+      zone.addEventListener('dragover', (e) => {
+        e.preventDefault();
+      });
+
+      zone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        const itemId = e.dataTransfer.getData('text');
+        const item = document.getElementById(itemId);
+        const dropzoneId = zone.getAttribute('data-id');
+        const dropzoneLabel = zone.getAttribute('data-label');
+
+        // Check if this dropzone already has an item
+        let existingItem = null;
+        dropzones.forEach(z => {
+          if (z.children.length > 2 && z.getAttribute('data-id') === dropzoneId) {
+            existingItem = z.children[2]; // The dragged item (after img and text)
+          }
+        });
+
+        if (existingItem) {
+          // Return the existing item to its original place
+          document.getElementById('domain').appendChild(existingItem);
+        }
+
+        // Remove this item from any other dropzone
+        dropzones.forEach(z => {
+          if (z.children.length > 2) {
+            const child = z.children[2];
+            if (child.id === itemId) {
+              document.getElementById('domain').appendChild(child);
+            }
+          }
+        });
+
+        // Place the item in the new dropzone
+        zone.appendChild(item);
+        matches.set(itemId, dropzoneId);
+
+        // Update reaction
+        const reaction = document.getElementById(`reaction-${itemId}`);
+        reaction.textContent = `Matched with ${dropzoneLabel}`;
+      });
+    });
+
+    // Check One-One Function
+    function checkOneOne() {
+      const values = Array.from(matches.values());
+      const isOneOne = values.length === new Set(values).size && values.length === items.length;
+
+      if (isOneOne) {
+        message.textContent = "🎉 Valid One-One Function!";
+        kingSpeechBubble.textContent = "Splendid! A perfect match!";
+        kingFace.style.transform = 'scale(1.1)';
+        score += 10;
+        updateLeaderboard();
+        addToMatchHistory(true);
+      } else {
+        message.textContent = "❌ Not a One-One Function!";
+        kingSpeechBubble.textContent = "Oh no! Some princesses are unmatched or overbooked!";
+        kingFace.style.transform = 'scale(0.9)';
+        score = Math.max(0, score - 5);
+        addToMatchHistory(false);
+      }
+    }
+
+    // Reset Game
+    function resetGame() {
+      matches.clear();
+      items.forEach(item => {
+        document.getElementById('domain').appendChild(item);
+        const reaction = document.getElementById(`reaction-${item.id}`);
+        reaction.textContent = '';
+      });
+      message.textContent = '';
+      kingSpeechBubble.textContent = "Welcome to the royal ceremony!";
+      kingFace.style.transform = 'scale(1)';
+    }
+
+    // Add to Match History
+    function addToMatchHistory(isSuccess) {
+      const matchList = document.getElementById('matchList');
+      const matchEntry = document.createElement('li');
+      const matchDetails = Array.from(matches.entries())
+        .map(([prince, princess]) => `${prince} → ${princess}`)
+        .join(', ');
+      matchEntry.textContent = `${isSuccess ? '✅' : '❌'} ${matchDetails || 'No matches'}`;
+      matchList.prepend(matchEntry);
+      matchHistory.push({ matches: matchDetails, success: isSuccess });
+      if (matchHistory.length > 5) {
+        matchHistory.shift();
+        matchList.removeChild(matchList.lastChild);
+      }
+    }
+
+    // Update Leaderboard
+    function updateLeaderboard() {
+      const leaderList = document.getElementById('leaderList');
+      leaderboard.push(score);
+      leaderboard.sort((a, b) => b - a);
+      leaderboard = leaderboard.slice(0, 5); // Top 5 scores
+      leaderList.innerHTML = '';
+      leaderboard.forEach((s, i) => {
+        const li = document.createElement('li');
+        li.textContent = `Rank ${i + 1}: ${s} points`;
+        leaderList.appendChild(li);
+      });
+    }
+
+    // Quiz Mode
+    function startQuiz() {
+      const quizOverlay = document.getElementById('quizOverlay');
+      const quizQuestion = document.getElementById('quizQuestion');
+      const quizOptions = document.getElementById('quizOptions');
+
+      quizOverlay.style.display = 'flex';
+      quizQuestion.textContent = "How many one-one functions are possible from a set A with 3 elements to a set B with 4 elements?";
+
+      const correctAnswer = 4 * 3 * 2; // P(4,3) = 24
+      const options = [24, 12, 64, 16];
+      options.sort(() => Math.random() - 0.5);
+
+      quizOptions.innerHTML = '';
+      options.forEach(opt => {
+        const button = document.createElement('button');
+        button.className = 'quizOption';
+        button.textContent = opt;
+        button.onclick = () => {
+          if (opt === correctAnswer) {
+            message.textContent = "✅ Correct! There are 24 one-one functions.";
+            kingSpeechBubble.textContent = "Well done, scholar!";
+            score += 20;
+            updateLeaderboard();
+          } else {
+            message.textContent = "❌ Incorrect. Try again!";
+            kingSpeechBubble.textContent = "Not quite right. Think again!";
+            score = Math.max(0, score - 10);
+          }
+          quizOverlay.style.display = 'none';
+        };
+        quizOptions.appendChild(button);
+      });
+    }
+  </script>
+</body>
+</html>
