@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Enhanced 3D Differentiability Visualizer</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            font-family: 'Arial', sans-serif;
+            background: #000;
+            color: white;
+        }
+        #container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+        }
+        #info {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(0,0,0,0.7);
+            padding: 15px;
+            border-radius: 8px;
+            border-left: 4px solid #00a8ff;
+            max-width: 300px;
+            z-index: 100;
+            user-select: none;
+        }
+        #controls {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 10px;
+            z-index: 100;
+        }
+        button {
+            background: rgba(0, 100, 200, 0.5);
+            color: white;
+            border: 1px solid #00a8ff;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.3s;
+            user-select: none;
+        }
+        button:hover {
+            background: rgba(0, 168, 255, 0.7);
+            box-shadow: 0 0 15px rgba(0, 168, 255, 0.4);
+        }
+        canvas {
+            display: block;
+        }
+        .label {
+            position: absolute;
+            color: #00a8ff;
+            font-size: 14px;
+            font-weight: bold;
+            pointer-events: none;
+            text-shadow:
+                -1px -1px 0 #000,
+                1px -1px 0 #000,
+                -1px 1px 0 #000,
+                1px 1px 0 #000;
+            user-select: none;
+        }
+    </style>
+</head>
+<body>
+    <div id="container">
+        <div id="info">
+            <h2>Enhanced 3D Differentiability Visualizer</h2>
+            <p id="function-info">Current: f(x) = x² (Smooth)</p>
+            <p id="diff-status">Differentiable everywhere</p>
+            <p id="derivative-info">Derivative at cursor: </p>
+        </div>
+        <div id="controls">
+            <button id="smooth-btn">Smooth (x²)</button>
+            <button id="sharp-btn">Sharp (|x|)</button>
+            <button id="step-btn">Step (Discontinuous)</button>
+            <button id="autorotate-btn">Toggle Auto-Rotate</button>
+        </div>
+        <div id="point-label" class="label"></div>
+        <div id="derivative-label" class="label"></div>
+    </div>
+
+    <!-- Three.js Library -->
+    <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/build/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/examples/js/controls/OrbitControls.js"></script>
+
+    <script>
+        (() => {
+            const container = document.getElementById('container');
+            const diffStatus = document.getElementById('diff-status');
+            const derivativeInfo = document.getElementById('derivative-info');
+            const functionInfo = document.getElementById('function-info');
+            const pointLabel = document.getElementById('point-label');
+            const derivativeLabel = document.getElementById('derivative-label');
+
+            // === THREE.JS SCENE SETUP ===
+            const scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x000000);
+
+            const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.set(0, 10, 20); // Adjusted for better view
+            camera.lookAt(0, 0, 0);
+
+            const renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(window.devicePixelRatio);
+            container.appendChild(renderer.domElement);
+            console.log('Renderer initialized:', renderer.domElement);
+
+            // Controls with damping for smoothness
+            const controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.08;
+            controls.enablePan = false;
+
+            // Auto-rotate toggle
+            let autoRotate = false;
+
+            // === GRAPH SETTINGS ===
+            const graphSize = 15;
+            const graphSegments = 200;
+
+            // Functions with coloring info for gradient
+            const functions = {
+                smooth: (x) => ({ y: 0.5 * x * x, diffStatus: 'smooth' }), // Increased scale
+                sharp: (x) => {
+                    if (Math.abs(x) < 0.05) return { y: 1.5 * Math.abs(x), diffStatus: 'sharp' };
+                    return { y: 1.5 * Math.abs(x), diffStatus: 'smooth' };
+                },
+                step: (x) => {
+                    if (Math.abs(x) < 0.05) return { y: x < 0 ? -2 : 2, diffStatus: 'discont' };
+                    return { y: x < 0 ? -2 : 2, diffStatus: 'smooth' };
+                }
+            };
+
+            let currentFunction = 'smooth';
+
+            // === GRAPH GEOMETRY ===
+            const graphGeometry = new THREE.BufferGeometry();
+            const positions = new Float32Array((graphSegments + 1) * 3);
+            const graphMaterial = new THREE.LineBasicMaterial({ color: 0x00a8ff, linewidth: 3 });
+            const graphLine = new THREE.Line(graphGeometry, graphMaterial);
+            scene.add(graphLine);
+
+            // === TANGENT LINE ===
+            const tangentGeometry = new THREE.BufferGeometry();
+            const tangentMaterial = new THREE.LineBasicMaterial({
+                color: 0xff5555,
+                linewidth: 3,
+            });
+            const tangentLine = new THREE.Line(tangentGeometry, tangentMaterial);
+            scene.add(tangentLine);
+
+            // === SECANT LINE ===
+            const secantGeometry = new THREE.BufferGeometry();
+            const secantMaterial = new THREE.LineBasicMaterial({
+                color: 0xffff66,
+                linewidth: 2,
+                transparent: true,
+                opacity: 0.7,
+            });
+            const secantLine = new THREE.Line(secantGeometry, secantMaterial);
+            scene.add(secantLine);
+
+            // === POINT MESH ===
+            const pointGeometry = new THREE.SphereGeometry(0.15, 32, 16);
+            const pointMaterial = new THREE.MeshStandardMaterial({ color: 0x00a8ff, emissive: 0x006699, emissiveIntensity: 0.9 });
+            const pointMesh = new THREE.Mesh(pointGeometry, pointMaterial);
+            scene.add(pointMesh);
+
+            // === LIGHTS ===
+            const ambientLight = new THREE.AmbientLight(0x808080); // Increased intensity
+            scene.add(ambientLight);
+
+            const pointLight = new THREE.PointLight(0x00a8ff, 1.5, 100); // Increased intensity
+            pointLight.position.set(0, 10, 10);
+            scene.add(pointLight);
+
+            // === HELPER GRID ===
+            const gridHelper = new THREE.GridHelper(20, 40, 0x0066ff, 0x003366);
+            scene.add(gridHelper);
+
+            // === AXES HELPER ===
+            const axesHelper = new THREE.AxesHelper(5);
+            scene.add(axesHelper);
+
+            // === DEBUG CUBE ===
+            const cubeGeometry = new THREE.BoxGeometry(1, 1, 1);
+            const cubeMaterial = new THREE.MeshPhongMaterial({ color: 0xff00ff });
+            const cube = new THREE.Mesh(cubeGeometry, cubeMaterial);
+            cube.position.set(0, 5, 0);
+            scene.add(cube);
+
+            // === VARIABLES FOR ANIMATION ===
+            let cursorX = 0;
+            let lastMouseMove = Date.now();
+            let autoMoveForward = true;
+            let point3DPos = new THREE.Vector3();
+
+            // Labels positioning helper
+            function updateLabelPosition(label, pos3D) {
+                const vector = pos3D.clone();
+                vector.project(camera);
+
+                const x = (vector.x * 0.5 + 0.5) * window.innerWidth;
+                const y = (-vector.y * 0.5 + 0.5) * window.innerHeight;
+
+                label.style.transform = `translate(-50%, -50%) translate(${x}px,${y}px)`;
+            }
+
+            // === COMPUTE FUNCTION POINTS ===
+            function updateGraphGeometry() {
+                for (let i = 0; i <= graphSegments; i++) {
+                    const x = -graphSize / 2 + (graphSize * i / graphSegments);
+                    const { y } = functions[currentFunction](x);
+
+                    positions[3 * i] = x;
+                    positions[3 * i + 1] = y;
+                    positions[3 * i + 2] = 0;
+                }
+                graphGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+                graphGeometry.attributes.position.needsUpdate = true;
+                console.log('Graph positions updated:', positions.slice(0, 9));
+            }
+
+            // === DERIVATIVE ESTIMATION ===
+            function derivativeAt(x) {
+                const h = 0.001;
+                let f = functions[currentFunction];
+                if (currentFunction === 'step' && Math.abs(x) < h) return NaN;
+                if (currentFunction === 'sharp' && Math.abs(x) < h) return NaN;
+
+                let y1 = f(x + h).y;
+                let y0 = f(x - h).y;
+                return (y1 - y0) / (2 * h);
+            }
+
+            // === UPDATE TANGENT LINE ===
+            function updateTangentLine(x) {
+                let y = functions[currentFunction](x).y;
+                let m = derivativeAt(x);
+                if (isNaN(m)) {
+                    tangentLine.visible = false;
+                    return;
+                }
+
+                tangentLine.visible = true;
+
+                const length = 2;
+                const p1 = new THREE.Vector3(x - length, y - m * length, 0);
+                const p2 = new THREE.Vector3(x + length, y + m * length, 0);
+
+                const positions = new Float32Array([
+                    p1.x, p1.y, p1.z,
+                    p2.x, p2.y, p2.z
+                ]);
+                tangentGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+                tangentGeometry.attributes.position.needsUpdate = true;
+            }
+
+            // === UPDATE SECANT LINE ===
+            function updateSecantLine(x) {
+                let y = functions[currentFunction](x).y;
+                const h = 0.5;
+                const f = functions[currentFunction];
+
+                let x2 = x + h;
+                if (x2 > graphSize / 2) x2 = x - h;
+                let y2 = f(x2).y;
+
+                secantLine.visible = true;
+
+                const p1 = new THREE.Vector3(x, y, 0);
+                const p2 = new THREE.Vector3(x2, y2, 0);
+
+                const positions = new Float32Array([
+                    p1.x, p1.y, p1.z,
+                    p2.x, p2.y, p2.z
+                ]);
+                secantGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+                secantGeometry.attributes.position.needsUpdate = true;
+            }
+
+            // === UPDATE POINT MESH POSITION ===
+            function updatePoint(x) {
+                let y = functions[currentFunction](x).y;
+                pointMesh.position.set(x, y, 0);
+                point3DPos.copy(pointMesh.position);
+            }
+
+            // === UPDATE LABELS ===
+            function updateLabels(x) {
+                const y = functions[currentFunction](x).y;
+                const m = derivativeAt(x);
+
+                pointLabel.textContent = `Point: (${x.toFixed(3)}, ${y.toFixed(3)})`;
+                derivativeLabel.textContent = isNaN(m) ? 'Derivative: undefined' : `Derivative: ${m.toFixed(3)}`;
+
+                updateLabelPosition(pointLabel, pointMesh.position);
+                const derivLabelPos = pointMesh.position.clone();
+                derivLabelPos.y += 0.6;
+                updateLabelPosition(derivativeLabel, derivLabelPos);
+
+                derivativeInfo.textContent = isNaN(m) ? 'Derivative: undefined' : `Derivative: ${m.toFixed(3)}`;
+            }
+
+            // === UPDATE DIFFERENTIABILITY STATUS INFO ===
+            function updateDifferentiabilityStatus() {
+                switch (currentFunction) {
+                    case 'smooth':
+                        functionInfo.textContent = "Current: f(x) = x² (Smooth)";
+                        diffStatus.textContent = "Differentiable everywhere";
+                        diffStatus.style.color = "#00ff00";
+                        break;
+                    case 'sharp':
+                        functionInfo.textContent = "Current: f(x) = |x| (Sharp)";
+                        diffStatus.textContent = "Non-differentiable at x=0";
+                        diffStatus.style.color = "#ff5555";
+                        break;
+                    case 'step':
+                        functionInfo.textContent = "Current: Step Function (Discontinuous)";
+                        diffStatus.textContent = "Non-differentiable at x=0";
+                        diffStatus.style.color = "#ff5555";
+                        break;
+                }
+            }
+
+            // === MOUSE MOVE HANDLING ===
+            function onMouseMove(event) {
+                lastMouseMove = Date.now();
+                const rect = renderer.domElement.getBoundingClientRect();
+                const mouseX = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+                cursorX = mouseX * (graphSize / 2);
+            }
+            window.addEventListener('mousemove', onMouseMove);
+
+            // === AUTO-MOVE POINT WHEN IDLE ===
+            const idleTimeout = 3000;
+            let autoMoveSpeed = 0.008;
+
+            function updateAutoMove() {
+                const now = Date.now();
+                if (now - lastMouseMove > idleTimeout) {
+                    if (autoMoveForward) {
+                        cursorX += autoMoveSpeed;
+                        if (cursorX >= graphSize / 2) autoMoveForward = false;
+                    } else {
+                        cursorX -= autoMoveSpeed;
+                        if (cursorX <= -graphSize / 2) autoMoveForward = true;
+                    }
+                }
+            }
+
+            // === FUNCTION SWITCH BUTTONS ===
+            document.getElementById('smooth-btn').addEventListener('click', () => {
+                currentFunction = 'smooth';
+                updateGraphGeometry();
+                updateDifferentiabilityStatus();
+            });
+
+            document.getElementById('sharp-btn').addEventListener('click', () => {
+                currentFunction = 'sharp';
+                updateGraphGeometry();
+                updateDifferentiabilityStatus();
+            });
+
+            document.getElementById('step-btn').addEventListener('click', () => {
+                currentFunction = 'step';
+                updateGraphGeometry();
+                updateDifferentiabilityStatus();
+            });
+
+            document.getElementById('autorotate-btn').addEventListener('click', () => {
+                autoRotate = !autoRotate;
+                controls.autoRotate = autoRotate;
+            });
+
+            // === RENDER LOOP ===
+            function animate() {
+                requestAnimationFrame(animate);
+                updateAutoMove();
+                updatePoint(cursorX);
+                updateTangentLine(cursorX);
+                updateSecantLine(cursorX);
+                updateLabels(cursorX);
+                controls.update();
+                renderer.render(scene, camera);
+            }
+
+            // === HANDLE WINDOW RESIZE ===
+            window.addEventListener('resize', () => {
+                const w = window.innerWidth;
+                const h = window.innerHeight;
+                camera.aspect = w / h;
+                camera.updateProjectionMatrix();
+                renderer.setSize(w, h);
+            });
+
+            // === INITIALIZE ===
+            console.log('Initializing scene...');
+            updateGraphGeometry();
+            updateDifferentiabilityStatus();
+            updatePoint(0);
+            updateTangentLine(0);
+            updateSecantLine(0);
+            updateLabels(0);
+            animate();
+        })();
+    </script>
+</body>
+</html>

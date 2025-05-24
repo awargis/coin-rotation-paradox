@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Judge Modulo's Court</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Rajdhani:wght@500&display=swap');
+
+    body {
+      margin: 0;
+      background: radial-gradient(ellipse at center, #111 0%, #000 100%);
+      font-family: 'Rajdhani', sans-serif;
+      color: #fff;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      height: 100vh;
+      overflow: hidden;
+      padding-top: 30px;
+    }
+
+    h1 {
+      color: gold;
+      margin-bottom: 10px;
+      font-family: 'Playfair Display', serif;
+      font-size: 2.2em;
+      text-shadow: 3px 3px 8px rgba(255, 215, 0, 0.6);
+    }
+
+    canvas {
+      background: linear-gradient(180deg, rgba(255,255,255,0.05), rgba(0,0,0,0.5));
+      border: 4px solid gold;
+      border-radius: 20px;
+      margin-top: 20px;
+      box-shadow: 0 0 25px rgba(255, 215, 0, 0.3);
+      transition: all 0.5s ease;
+    }
+
+    .controls {
+      margin-top: 20px;
+      text-align: center;
+      background-color: rgba(255, 255, 255, 0.05);
+      padding: 20px;
+      border-radius: 12px;
+      border: 1px solid gold;
+      box-shadow: 0 0 15px rgba(255, 215, 0, 0.2);
+    }
+
+    select, input[type="range"] {
+      background-color: black;
+      color: gold;
+      border: 2px solid gold;
+      border-radius: 6px;
+      padding: 5px 10px;
+      font-size: 1em;
+      font-family: 'Rajdhani', sans-serif;
+      transition: all 0.3s ease;
+    }
+
+    select:hover, input[type="range"]:hover {
+      background-color: #222;
+      box-shadow: 0 0 10px gold;
+    }
+
+    input[type="range"] {
+      width: 300px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Scene: Solve |x| = a, |x| < a, |x| > a</h1>
+  <div class="controls">
+    <label for="sceneSelect">Choose Equation:</label>
+    <select id="sceneSelect">
+      <option value="equal">|x| = a</option>
+      <option value="less">|x| < a</option>
+      <option value="greater">|x| > a</option>
+    </select>
+    <br><br>
+    <label for="aRange">Adjust a: <span id="aVal">2</span></label><br>
+    <input type="range" id="aRange" min="0" max="5" step="0.1" value="2">
+  </div>
+  <canvas id="modCanvas" width="700" height="400"></canvas>
+  <script>
+    const canvas = document.getElementById("modCanvas");
+    const ctx = canvas.getContext("2d");
+    const aSlider = document.getElementById("aRange");
+    const aValText = document.getElementById("aVal");
+    const sceneSelect = document.getElementById("sceneSelect");
+
+    function drawAxes() {
+      ctx.strokeStyle = "white";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(50, 350);
+      ctx.lineTo(650, 350);
+      ctx.moveTo(350, 50);
+      ctx.lineTo(350, 370);
+      ctx.stroke();
+
+      for (let i = -5; i <= 5; i++) {
+        const x = 350 + i * 50;
+        ctx.fillStyle = "lightgray";
+        ctx.fillText(i, x - 5, 365);
+        ctx.beginPath();
+        ctx.moveTo(x, 345);
+        ctx.lineTo(x, 355);
+        ctx.stroke();
+      }
+
+      for (let i = 0; i <= 5; i++) {
+        const y = 350 - i * 50;
+        ctx.fillStyle = "lightgray";
+        ctx.fillText(i, 330, y + 5);
+        ctx.beginPath();
+        ctx.moveTo(345, y);
+        ctx.lineTo(355, y);
+        ctx.stroke();
+      }
+    }
+
+    function drawAbsGraph() {
+      ctx.strokeStyle = "cyan";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      for (let x = -5; x <= 5; x += 0.1) {
+        const y = Math.abs(x);
+        const cx = 350 + x * 50;
+        const cy = 350 - y * 50;
+        if (x === -5) ctx.moveTo(cx, cy);
+        else ctx.lineTo(cx, cy);
+      }
+      ctx.stroke();
+    }
+
+    function drawHorizontalLine(a) {
+      const y = 350 - a * 50;
+      ctx.strokeStyle = "orange";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(50, y);
+      ctx.lineTo(650, y);
+      ctx.stroke();
+    }
+
+    function drawSceneEqual(a) {
+      drawHorizontalLine(a);
+      const left = 350 - a * 50;
+      const right = 350 + a * 50;
+      const y = 350 - a * 50;
+
+      ctx.fillStyle = "yellow";
+      ctx.beginPath();
+      ctx.arc(left, y, 6, 0, 2 * Math.PI);
+      ctx.fill();
+      ctx.beginPath();
+      ctx.arc(right, y, 6, 0, 2 * Math.PI);
+      ctx.fill();
+
+      ctx.fillStyle = "white";
+      ctx.fillText(`x = -${a.toFixed(1)}`, left - 30, y - 10);
+      ctx.fillText(`x = ${a.toFixed(1)}`, right + 10, y - 10);
+    }
+
+    function drawSceneLess(a) {
+      drawHorizontalLine(a);
+      const left = 350 - a * 50;
+      const right = 350 + a * 50;
+
+      ctx.fillStyle = "rgba(0, 255, 0, 0.2)";
+      ctx.fillRect(left, 0, right - left, 400);
+
+      ctx.fillStyle = "white";
+      ctx.fillText(`Solution: -${a.toFixed(1)} < x < ${a.toFixed(1)}`, 250, 30);
+    }
+
+    function drawSceneGreater(a) {
+      drawHorizontalLine(a);
+      const left = 350 - a * 50;
+      const right = 350 + a * 50;
+
+      ctx.fillStyle = "rgba(255, 0, 0, 0.2)";
+      ctx.fillRect(50, 0, left - 50, 400);
+      ctx.fillRect(right, 0, 650 - right, 400);
+
+      ctx.fillStyle = "white";
+      ctx.fillText(`Solution: x < -${a.toFixed(1)} or x > ${a.toFixed(1)}`, 220, 30);
+    }
+
+    function draw() {
+      const a = parseFloat(aSlider.value);
+      aValText.textContent = a.toFixed(1);
+
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      drawAxes();
+      drawAbsGraph();
+
+      const scene = sceneSelect.value;
+      if (scene === "equal") drawSceneEqual(a);
+      else if (scene === "less") drawSceneLess(a);
+      else if (scene === "greater") drawSceneGreater(a);
+    }
+
+    aSlider.addEventListener("input", draw);
+    sceneSelect.addEventListener("change", draw);
+
+    draw();
+  </script>
+</body>
+</html>

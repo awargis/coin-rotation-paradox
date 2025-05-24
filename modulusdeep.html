@@ -1,0 +1,621 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Judge Modulo's Court: Trial of Absolute Values</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.2/p5.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.11.4/gsap.min.js"></script>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      background: #000;
+      font-family: 'Comic Sans MS', cursive, sans-serif;
+    }
+    
+    #canvas-container {
+      position: absolute;
+      width: 100vw;
+      height: 100vh;
+    }
+    
+    #ui-container {
+      position: absolute;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0, 0, 0, 0.7);
+      border-radius: 15px;
+      padding: 15px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+      z-index: 10;
+      border: 2px solid #4fc3f7;
+      box-shadow: 0 0 20px rgba(79, 195, 247, 0.5);
+    }
+    
+    .control-group {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+    
+    button {
+      background: linear-gradient(to right, #4fc3f7, #2196f3);
+      border: none;
+      color: white;
+      padding: 8px 15px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-family: inherit;
+      font-weight: bold;
+      transition: all 0.2s;
+    }
+    
+    button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 5px 15px rgba(79, 195, 247, 0.4);
+    }
+    
+    button.active {
+      background: linear-gradient(to right, #81c784, #4caf50);
+      box-shadow: 0 0 10px rgba(129, 199, 132, 0.7);
+    }
+    
+    #a-slider {
+      width: 200px;
+    }
+    
+    #narration {
+      position: absolute;
+      top: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0, 0, 0, 0.7);
+      color: white;
+      padding: 15px;
+      border-radius: 15px;
+      max-width: 80%;
+      text-align: center;
+      border: 2px solid #ff9800;
+      box-shadow: 0 0 20px rgba(255, 152, 0, 0.5);
+      z-index: 10;
+      font-size: 18px;
+    }
+    
+    #verdict {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      font-size: 48px;
+      font-weight: bold;
+      text-align: center;
+      z-index: 20;
+      opacity: 0;
+      text-shadow: 0 0 10px white;
+    }
+    
+    .verdict-correct {
+      color: #81c784;
+    }
+    
+    .verdict-incorrect {
+      color: #e57373;
+    }
+    
+    #x-input {
+      background: rgba(255, 255, 255, 0.2);
+      border: 1px solid #4fc3f7;
+      color: white;
+      padding: 8px;
+      border-radius: 5px;
+      font-family: inherit;
+      font-size: 16px;
+      width: 100px;
+      text-align: center;
+    }
+    
+    #judge-speech {
+      position: absolute;
+      bottom: 200px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0, 0, 0, 0.7);
+      color: white;
+      padding: 15px;
+      border-radius: 15px;
+      max-width: 80%;
+      text-align: center;
+      border: 2px solid #ba68c8;
+      box-shadow: 0 0 20px rgba(186, 104, 200, 0.5);
+      z-index: 10;
+      font-size: 18px;
+      opacity: 0;
+    }
+    
+    .formula {
+      font-family: 'Courier New', monospace;
+      background: rgba(255, 255, 255, 0.1);
+      padding: 2px 5px;
+      border-radius: 3px;
+    }
+  </style>
+</head>
+<body>
+  <div id="canvas-container"></div>
+  
+  <div id="narration">
+    Welcome to Judge Modulo's Cosmic Court! Today we rule on cases of absolute value justice.
+  </div>
+  
+  <div id="judge-speech"></div>
+  
+  <div id="verdict"></div>
+  
+  <div id="ui-container">
+    <div class="control-group">
+      <button id="eq-btn" class="active">|x| = a</button>
+      <button id="lt-btn">|x| < a</button>
+      <button id="gt-btn">|x| > a</button>
+    </div>
+    
+    <div class="control-group">
+      <label for="a-slider">a = <span id="a-value">2</span></label>
+      <input type="range" id="a-slider" min="0" max="5" step="0.1" value="2">
+    </div>
+    
+    <div class="control-group">
+      <span>Test x =</span>
+      <input type="number" id="x-input" value="0" step="0.1">
+      <button id="test-btn">Submit for Trial</button>
+    </div>
+  </div>
+
+  <script>
+    // Game state
+    const state = {
+      mode: 'eq', // 'eq', 'lt', or 'gt'
+      a: 2,
+      x: 0,
+      judgeY: 0,
+      verdict: null,
+      narrationIndex: 0,
+      narrations: [
+        "Welcome to Judge Modulo's Cosmic Court! Today we rule on cases of absolute value justice.",
+        "The absolute value |x| represents distance from zero - always fair, always non-negative!",
+        "Let's examine three fundamental cases of absolute value justice.",
+        "Case 1: |x| = a. The defendant x is exactly 'a' units from zero.",
+        "Case 2: |x| < a. The defendant x is within 'a' units of zero.",
+        "Case 3: |x| > a. The defendant x is beyond 'a' units from zero.",
+        "Now it's your turn to test values before the court!"
+      ]
+    };
+
+    // DOM elements
+    const elements = {
+      canvas: null,
+      eqBtn: document.getElementById('eq-btn'),
+      ltBtn: document.getElementById('lt-btn'),
+      gtBtn: document.getElementById('gt-btn'),
+      aSlider: document.getElementById('a-slider'),
+      aValue: document.getElementById('a-value'),
+      xInput: document.getElementById('x-input'),
+      testBtn: document.getElementById('test-btn'),
+      narration: document.getElementById('narration'),
+      judgeSpeech: document.getElementById('judge-speech'),
+      verdict: document.getElementById('verdict')
+    };
+
+    // p5.js sketch
+    function sketch(p) {
+      let judgeImg;
+      let stars = [];
+      let nebula = [];
+      
+      p.preload = function() {
+        // Load judge image (placeholder - would use actual image in production)
+        judgeImg = p.loadImage('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="30" r="20" fill="%23FFD700"/><circle cx="50" cy="30" r="15" fill="%23FFF"/><circle cx="42" cy="25" r="3" fill="%23000"/><circle cx="58" cy="25" r="3" fill="%23000"/><path d="M45 40 Q50 45 55 40" stroke="%23000" fill="none" stroke-width="2"/><rect x="35" y="50" width="30" height="40" fill="%234FC3F7"/><path d="M35 50 L20 30 L30 25 L35 50" fill="%234FC3F7"/><path d="M65 50 L80 30 L70 25 L65 50" fill="%234FC3F7"/><circle cx="50" cy="60" r="5" fill="%23FF9800"/></svg>');
+      };
+      
+      p.setup = function() {
+        const container = document.getElementById('canvas-container');
+        p.createCanvas(container.offsetWidth, container.offsetHeight).parent('canvas-container');
+        
+        // Create stars
+        for (let i = 0; i < 200; i++) {
+          stars.push({
+            x: p.random(p.width),
+            y: p.random(p.height),
+            size: p.random(1, 3),
+            brightness: p.random(100, 255)
+          });
+        }
+        
+        // Create nebula effects
+        for (let i = 0; i < 5; i++) {
+          nebula.push({
+            x: p.random(p.width),
+            y: p.random(p.height),
+            size: p.random(100, 300),
+            color: p.color(
+              p.random(50, 100),
+              p.random(0, 50),
+              p.random(100, 150),
+              p.random(20, 50)
+            ),
+            speed: p.random(0.1, 0.5)
+          });
+        }
+        
+        // Initial judge position
+        state.judgeY = p.height / 2;
+        
+        // Start narration animation
+        animateNarration();
+      };
+      
+      p.draw = function() {
+        // Cosmic background
+        p.background(0);
+        
+        // Draw nebula
+        for (let n of nebula) {
+          p.noStroke();
+          p.fill(n.color);
+          p.ellipse(n.x, n.y, n.size);
+          n.x += n.speed;
+          if (n.x > p.width + n.size) n.x = -n.size;
+        }
+        
+        // Draw stars
+        for (let star of stars) {
+          p.fill(255, star.brightness);
+          p.noStroke();
+          p.ellipse(star.x, star.y, star.size);
+          
+          // Twinkle effect
+          if (p.random() < 0.01) {
+            star.brightness = p.random(100, 255);
+          }
+        }
+        
+        // Draw coordinate system
+        drawCoordinateSystem(p);
+        
+        // Draw judge
+        p.imageMode(p.CENTER);
+        p.image(judgeImg, p.width/2, state.judgeY, 150, 150);
+        
+        // Bounce judge
+        state.judgeY = p.height/2 + p.sin(p.frameCount * 0.05) * 10;
+        
+        // Draw the absolute value function and current case visualization
+        drawFunctionVisualization(p);
+      };
+      
+      function drawCoordinateSystem(p) {
+        const centerX = p.width / 2;
+        const centerY = p.height / 2;
+        const scale = 50;
+        
+        // Light grid lines - more subtle
+        p.stroke(50, 50, 80);  // Darker blue-gray for subtlety
+        p.strokeWeight(0.5);    // Thinner lines
+        
+        // Vertical grid lines
+        for (let x = -10; x <= 10; x++) {
+          const px = centerX + x * scale;
+          p.line(px, 0, px, p.height);
+        }
+        
+        // Horizontal grid lines
+        for (let y = -10; y <= 10; y++) {
+          const py = centerY - y * scale;
+          p.line(0, py, p.width, py);
+        }
+        
+        // Axes - slightly more prominent
+        p.stroke(100, 150, 255);  // Light blue axes
+        p.strokeWeight(1.5);       // Slightly thicker
+        
+        // x-axis
+        p.line(0, centerY, p.width, centerY);
+        
+        // y-axis
+        p.line(centerX, 0, centerX, p.height);
+        
+        // Axis labels - light and subtle
+        p.fill(150, 180, 255);  // Light blue text
+        p.noStroke();
+        p.textSize(12);          // Smaller size
+        p.textAlign(p.CENTER, p.TOP);
+        
+        // x-axis labels
+        for (let x = -10; x <= 10; x += 2) {
+          if (x === 0) continue;
+          const px = centerX + x * scale;
+          p.text(x, px, centerY + 5);  // Closer to axis
+        }
+        
+        // y-axis labels
+        p.textAlign(p.RIGHT, p.CENTER);
+        for (let y = -10; y <= 10; y += 2) {
+          if (y === 0) continue;
+          const py = centerY - y * scale;
+          p.text(y, centerX - 5, py);  // Closer to axis
+        }
+        
+        // Origin label - slightly more visible
+        p.textAlign(p.RIGHT, p.TOP);
+        p.fill(200, 220, 255);  // Brighter for origin
+        p.text("0", centerX - 5, centerY + 5);
+      }
+      
+      function drawFunctionVisualization(p) {
+        const centerX = p.width / 2;
+        const centerY = p.height / 2;
+        const scale = 50;
+        const a = state.a;
+        
+        // Draw the absolute value function y = |x|
+        p.stroke(79, 195, 247);
+        p.strokeWeight(3);
+        p.noFill();
+        p.beginShape();
+        for (let x = -10; x <= 10; x += 0.1) {
+          const px = centerX + x * scale;
+          const py = centerY - Math.abs(x) * scale;
+          p.vertex(px, py);
+        }
+        p.endShape();
+        
+        // Draw the horizontal line y = a
+        p.stroke(255, 152, 0);
+        p.strokeWeight(2);
+        const aY = centerY - a * scale;
+        p.line(0, aY, p.width, aY);
+        p.fill(255, 152, 0);
+        p.noStroke();
+        p.textAlign(p.LEFT, p.CENTER);
+        p.text(`y = ${a.toFixed(1)}`, 20, aY - 10);
+        
+        // Highlight based on current mode
+        p.noStroke();
+        
+        if (state.mode === 'eq') {
+          // Show solutions to |x| = a
+          p.fill(244, 67, 54, 150);
+          p.ellipse(centerX + a * scale, aY, 20, 20);
+          p.ellipse(centerX - a * scale, aY, 20, 20);
+          
+          // Label solutions
+          p.fill(244, 67, 54);
+          p.text(`x = ${a.toFixed(1)}`, centerX + a * scale + 15, aY);
+          p.text(`x = -${a.toFixed(1)}`, centerX - a * scale - 15, aY);
+        } 
+        else if (state.mode === 'lt') {
+          // Shade area where |x| < a
+          p.fill(76, 175, 80, 80);  // More transparent
+          p.beginShape();
+          p.vertex(centerX - a * scale, aY);
+          p.vertex(centerX + a * scale, aY);
+          for (let x = a; x >= -a; x -= 0.1) {
+            const px = centerX + x * scale;
+            const py = centerY - Math.abs(x) * scale;
+            p.vertex(px, py);
+          }
+          p.endShape(p.CLOSE);
+          
+          // Label solution
+          p.fill(76, 175, 80);
+          p.text(`-${a.toFixed(1)} < x < ${a.toFixed(1)}`, centerX, aY + 30);
+        } 
+        else if (state.mode === 'gt') {
+          // Shade areas where |x| > a
+          p.fill(244, 67, 54, 80);  // More transparent
+          
+          // Left side
+          p.beginShape();
+          p.vertex(0, aY);
+          p.vertex(centerX - a * scale, aY);
+          for (let x = -a; x >= -10; x -= 0.1) {
+            const px = centerX + x * scale;
+            const py = centerY - Math.abs(x) * scale;
+            p.vertex(px, py);
+          }
+          p.vertex(0, centerY - 10 * scale);
+          p.vertex(0, aY);
+          p.endShape();
+          
+          // Right side
+          p.beginShape();
+          p.vertex(p.width, aY);
+          p.vertex(centerX + a * scale, aY);
+          for (let x = a; x <= 10; x += 0.1) {
+            const px = centerX + x * scale;
+            const py = centerY - Math.abs(x) * scale;
+            p.vertex(px, py);
+          }
+          p.vertex(p.width, centerY - 10 * scale);
+          p.vertex(p.width, aY);
+          p.endShape();
+          
+          // Label solution
+          p.fill(244, 67, 54);
+          p.text(`x < -${a.toFixed(1)} or x > ${a.toFixed(1)}`, centerX, aY + 30);
+        }
+        
+        // Draw the test point if verdict exists
+        if (state.verdict !== null) {
+          const testX = parseFloat(elements.xInput.value) || 0;
+          const testY = centerY - Math.abs(testX) * scale;
+          const testAY = centerY - a * scale;
+          
+          p.fill(state.verdict ? 76 : 244, state.verdict ? 175 : 67, state.verdict ? 80 : 54);
+          p.stroke(255);
+          p.strokeWeight(2);
+          p.ellipse(centerX + testX * scale, testY, 30, 30);
+          
+          // Draw line to x-axis
+          p.stroke(255, 100);
+          p.line(centerX + testX * scale, testY, centerX + testX * scale, centerY);
+          
+          // Label the point
+          p.fill(255);
+          p.noStroke();
+          p.textAlign(p.CENTER, p.BOTTOM);
+          p.text(`x = ${testX.toFixed(1)}`, centerX + testX * scale, testY - 20);
+        }
+      }
+      
+      p.windowResized = function() {
+        const container = document.getElementById('canvas-container');
+        p.resizeCanvas(container.offsetWidth, container.offsetHeight);
+      };
+    }
+
+    // Initialize the app
+    function init() {
+      // Create p5 sketch
+      new p5(sketch);
+      
+      // Set up event listeners
+      elements.eqBtn.addEventListener('click', () => setMode('eq'));
+      elements.ltBtn.addEventListener('click', () => setMode('lt'));
+      elements.gtBtn.addEventListener('click', () => setMode('gt'));
+      
+      elements.aSlider.addEventListener('input', updateAValue);
+      elements.testBtn.addEventListener('click', testValue);
+      elements.xInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') testValue();
+      });
+      
+      // Initial setup
+      updateAValue();
+    }
+    
+    // Set the current mode (eq, lt, gt)
+    function setMode(mode) {
+      state.mode = mode;
+      state.verdict = null;
+      
+      // Update button states
+      elements.eqBtn.classList.remove('active');
+      elements.ltBtn.classList.remove('active');
+      elements.gtBtn.classList.remove('active');
+      
+      if (mode === 'eq') {
+        elements.eqBtn.classList.add('active');
+        speak("Case |x| = a: The defendant must be exactly 'a' units from zero. Two points satisfy this condition.");
+      } 
+      else if (mode === 'lt') {
+        elements.ltBtn.classList.add('active');
+        speak("Case |x| < a: The defendant must be within 'a' units of zero. All points between -a and a are acceptable.");
+      } 
+      else if (mode === 'gt') {
+        elements.gtBtn.classList.add('active');
+        speak("Case |x| > a: The defendant must be beyond 'a' units from zero. Points outside the range -a to a qualify.");
+      }
+      
+      // Clear any previous verdict
+      elements.verdict.style.opacity = 0;
+      elements.verdict.textContent = '';
+    }
+    
+    // Update the 'a' value from slider
+    function updateAValue() {
+      state.a = parseFloat(elements.aSlider.value);
+      elements.aValue.textContent = state.a.toFixed(1);
+      state.verdict = null;
+      elements.verdict.style.opacity = 0;
+      elements.verdict.textContent = '';
+    }
+    
+    // Test the current x value against the selected condition
+    function testValue() {
+      const x = parseFloat(elements.xInput.value) || 0;
+      let verdict = false;
+      let message = '';
+      
+      if (state.mode === 'eq') {
+        verdict = Math.abs(x) === state.a;
+        message = verdict ? 
+          `✅ Correct! |${x.toFixed(1)}| = ${state.a.toFixed(1)}` : 
+          `❌ Incorrect! |${x.toFixed(1)}| ≠ ${state.a.toFixed(1)}`;
+      } 
+      else if (state.mode === 'lt') {
+        verdict = Math.abs(x) < state.a;
+        message = verdict ? 
+          `✅ Correct! |${x.toFixed(1)}| < ${state.a.toFixed(1)}` : 
+          `❌ Incorrect! |${x.toFixed(1)}| is not less than ${state.a.toFixed(1)}`;
+      } 
+      else if (state.mode === 'gt') {
+        verdict = Math.abs(x) > state.a;
+        message = verdict ? 
+          `✅ Correct! |${x.toFixed(1)}| > ${state.a.toFixed(1)}` : 
+          `❌ Incorrect! |${x.toFixed(1)}| is not greater than ${state.a.toFixed(1)}`;
+      }
+      
+      // Show verdict
+      state.verdict = verdict;
+      elements.verdict.textContent = message;
+      elements.verdict.className = verdict ? 'verdict-correct' : 'verdict-incorrect';
+      
+      // Animate verdict
+      gsap.fromTo(elements.verdict, 
+        { opacity: 0, scale: 0.5 }, 
+        { opacity: 1, scale: 1.2, duration: 0.5, ease: "back.out" }
+      );
+      
+      // Add judge's commentary
+      const comments = [
+        "The court finds this value...",
+        "After careful consideration...",
+        "The absolute law declares...",
+        "Justice has been served!",
+        "This case is now closed."
+      ];
+      
+      const randomComment = comments[Math.floor(Math.random() * comments.length)];
+      speak(randomComment);
+    }
+    
+    // Make the judge speak
+    function speak(text) {
+      elements.judgeSpeech.textContent = text;
+      gsap.to(elements.judgeSpeech, { opacity: 1, duration: 0.5 });
+      
+      // Auto-hide after delay
+      setTimeout(() => {
+        gsap.to(elements.judgeSpeech, { opacity: 0, duration: 0.5 });
+      }, 3000);
+    }
+    
+    // Animate narration text
+    function animateNarration() {
+      if (state.narrationIndex < state.narrations.length) {
+        elements.narration.textContent = state.narrations[state.narrationIndex];
+        
+        // Bounce animation
+        gsap.fromTo(elements.narration, 
+          { y: -20, opacity: 0 }, 
+          { y: 0, opacity: 1, duration: 0.5, ease: "back.out" }
+        );
+        
+        // Advance to next narration after delay
+        setTimeout(() => {
+          state.narrationIndex++;
+          setTimeout(animateNarration, 1000);
+        }, 4000);
+      }
+    }
+    
+    // Start the app when DOM is loaded
+    document.addEventListener('DOMContentLoaded', init);
+  </script>
+</body>
+</html>

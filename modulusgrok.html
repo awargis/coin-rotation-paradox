@@ -1,0 +1,852 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Modulus Function Animation</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.2/p5.min.js"></script>
+  <style>
+    body { margin: 0; padding: 20px; background: linear-gradient(#87CEEB, #E0F6FF); font-family: 'Roboto', sans-serif; }
+    canvas { border: 2px solid #333; display: block; margin: 0 auto; box-shadow: 0 4px 8px rgba(0,0,0,0.2); }
+    #controls {
+      position: absolute; top: 20px; left: -300px; width: 300px; background: linear-gradient(#1C2526, #2E3A3B);
+      color: #0ff; padding: 20px; border-radius: 0 10px 10px 0; transition: left 0.3s; box-shadow: 2px 0 5px rgba(0,0,0,0.5);
+    }
+    #controls:hover, #controls.active { left: 0; }
+    #toggleControls {
+      position: absolute; top: 20px; left: 20px; background: #0ff; color: #000; border: none; padding: 10px; border-radius: 0 5px 5px 0; cursor: pointer; font-weight: bold;
+    }
+    button, input, select {
+      margin: 5px; padding: 10px; font-size: 14px; border: none; border-radius: 5px; background: linear-gradient(#0ff, #00b7eb); color: #000; cursor: pointer; transition: transform 0.2s, background 0.2s;
+    }
+    button:hover { transform: scale(1.05); background: linear-gradient(#00b7eb, #0ff); }
+    input, select { background: #2E3A3B; color: #0ff; }
+    #customInput { width: 220px; }
+    #equationInput { width: 80px; }
+    #speedSlider { width: 120px; }
+    #errorMsg { color: #ff5555; font-size: 12px; }
+    #history { max-height: 100px; overflow-y: auto; background: #2E3A3B; }
+    #preview { color: #0ff; font-size: 12px; }
+    .tooltip { position: relative; display: inline-block; }
+    .tooltip .tooltiptext {
+      visibility: hidden; width: 150px; background: #000; color: #0ff; text-align: center; border-radius: 5px;
+      padding: 5px; position: absolute; z-index: 1; top: 100%; left: 50%; margin-left: -75px;
+    }
+    .tooltip:hover .tooltiptext { visibility: visible; }
+    #hud {
+      position: absolute; bottom: 150px; left: 50%; transform: translateX(-50%); background: rgba(0, 0, 0, 0.8);
+      color: #0ff; padding: 15px 25px; border-radius: 10px; font-size: 16px; max-width: 800px; text-align: center;
+      transition: opacity 0.3s; opacity: 0;
+    }
+    #hud.show { opacity: 1; }
+    #quizPanel {
+      position: absolute; top: 100px; left: 50%; transform: translateX(-50%); background: rgba(0, 0, 0, 0.8);
+      color: #0ff; padding: 20px; border-radius: 10px; width: 400px; text-align: center; display: none;
+    }
+    #quizPanel.show { display: block; }
+  </style>
+</head>
+<body>
+<button id="toggleControls">☰ Control Panel</button>
+<div id="controls">
+  <div class="tooltip">
+    <button onclick="selectFunction(0)">|x|</button>
+    <span class="tooltiptext">Graph absolute value of x (distance to origin)</span>
+  </div>
+  <div class="tooltip">
+    <button onclick="selectFunction(1)">|x - a|</button>
+    <span class="tooltiptext">Graph distance to point a</span>
+  </div>
+  <div class="tooltip">
+    <button onclick="selectFunction(2)">|x - a| + |x - b|</button>
+    <span class="tooltiptext">Graph sum of distances to a and b</span>
+  </div><br>
+  <label>a: <input id="aInput" type="number" value="2" step="0.1"></label>
+  <label>b: <input id="bInput" type="number" value="1" step="0.1"></label><br>
+  <label>Custom: <input id="customInput" type="text" placeholder="e.g., 2|x-3|+|x+1|"></label>
+  <div class="tooltip">
+    <button onclick="parseCustomFunction()">Load</button>
+    <span class="tooltiptext">Load custom modulus function</span>
+  </div>
+  <div id="preview"></div><br>
+  <label>Eq: <input id="equationInput" type="number" value="0" step="0.1" placeholder="e.g., 5"></label>
+  <div class="tooltip">
+    <button onclick="solveEquation()">Solve</button>
+    <span class="tooltiptext">Solve equation = c</span>
+  </div>
+  <div class="tooltip">
+    <button onclick="animateSolutions()">Animate Solutions</button>
+    <span class="tooltiptext">Move spaceship to solutions</span>
+  </div><br>
+  <div class="tooltip">
+    <button onclick="showSteps()">Steps</button>
+    <span class="tooltiptext">Show step-by-step solution</span>
+  </div>
+  <div class="tooltip">
+    <button onclick="togglePause()">⏸</button>
+    <span class="tooltiptext">Pause/resume spaceship</span>
+  </div>
+  <div class="tooltip">
+    <button onclick="zoom(1.2)">+</button>
+    <span class="tooltiptext">Zoom in graph</span>
+  </div>
+  <div class="tooltip">
+    <button onclick="zoom(0.833)">-</button>
+    <span class="tooltiptext">Zoom out graph</span>
+  </div>
+  <div class="tooltip">
+    <button onclick="toggleTheme()">🌙</button>
+    <span class="tooltiptext">Toggle space/day theme</span>
+  </div>
+  <div class="tooltip">
+    <button onclick="saveScreenshot()">📷</button>
+    <span class="tooltiptext">Save screenshot</span>
+  </div>
+  <div class="tooltip">
+    <button onclick="startQuiz()">Quiz</button>
+    <span class="tooltiptext">Start interactive quiz mode</span>
+  </div>
+  <div class="tooltip">
+    <button onclick="exportPDF()">Export PDF</button>
+    <span class="tooltiptext">Export solutions as PDF</span>
+  </div><br>
+  <label>Speed: <input id="speedSlider" type="range" min="0" max="0.1" step="0.01" value="0.05"></label><br>
+  <div>History: <select id="history" onchange="loadHistory(this.value)"></select></div>
+  <div id="errorMsg"></div>
+</div>
+<div id="hud"></div>
+<div id="quizPanel">
+  <h3>JEE Modulus Quiz</h3>
+  <p id="quizQuestion"></p>
+  <input id="quizAnswer" type="text" placeholder="Enter solution (e.g., 2, -1)">
+  <button onclick="submitQuizAnswer()">Submit</button>
+  <p id="quizFeedback"></p>
+  <p>Score: <span id="quizScore">0</span>/10</p>
+  <button onclick="nextQuizQuestion()">Next</button>
+  <button onclick="endQuiz()">End Quiz</button>
+</div>
+<script>
+// Initialize variables
+let x = -5; // Spaceship position
+let speed = 0.05; // Spaceship speed
+let paused = false; // Pause state
+let functionMode = 0; // 0: |x|, 1: |x-a|, 2: |x-a|+|x-b|, 3: custom
+let a = 2; // Space station at x=a
+let b = 1; // Space station at x=b
+let equationValue = 0; // For solving =c
+let solutions = []; // Equation solutions
+let customFunction = null; // Custom function
+let history = []; // Function history
+let zoomLevel = 1; // Graph zoom
+let panX = 0; // Graph pan
+let stepMode = false; // Step-by-step mode
+let stepIndex = 0; // Current step
+let steps = []; // Solution steps
+let isDark = false; // Theme (space vs day)
+let solutionIndex = -1; // For animating solutions
+let annotations = []; // Graph annotations
+let quizMode = false; // Quiz mode
+let quizQuestions = []; // Quiz questions
+let quizIndex = 0; // Current quiz question
+let quizScore = 0; // Quiz score
+const scaleX = 70; // Pixels per unit (x-axis)
+const scaleY = 30; // Pixels per unit (y-axis)
+let stars = []; // Starfield
+let planets = []; // Planets
+let shootingStars = []; // Shooting stars
+let clouds = []; // Clouds
+
+function setup() {
+  createCanvas(800, 600);
+  textAlign(CENTER);
+  textSize(16);
+  // Initialize stars
+  for (let i = 0; i < 150; i++) {
+    stars.push({
+      x: random(0, 800),
+      y: random(0, 600),
+      size: random(0.5, 2),
+      alpha: random(100, 255),
+      twinkleSpeed: random(0.01, 0.05)
+    });
+  }
+  // Initialize planets
+  planets.push({
+    x: 100,
+    y: 80,
+    size: 30,
+    speed: 0.2,
+    color: color(200, 100, 50), // Mars-like
+    craters: [{ offsetX: 5, offsetY: 5, size: 8 }, { offsetX: -7, offsetY: -3, size: 6 }]
+  });
+  planets.push({
+    x: 600,
+    y: 120,
+    size: 40,
+    speed: 0.15,
+    color: color(150, 150, 200), // Saturn-like
+    ringSize: 60,
+    ringColor: color(200, 200, 150, 150)
+  });
+  // Initialize clouds
+  for (let i = 0; i < 6; i++) {
+    clouds.push({
+      x: random(0, 800),
+      y: random(20, 100),
+      size: random(30, 60),
+      speed: random(0.1, 0.3), // Slower, realistic speed
+      alpha: random(150, 200), // Semi-transparent
+      yOffset: random(0, TWO_PI), // For vertical oscillation
+      ySpeed: random(0.005, 0.01) // Slow bobbing
+    });
+  }
+  // Bind inputs
+  document.getElementById('aInput').addEventListener('input', () => { a = parseFloat(document.getElementById('aInput').value) || 2; resetSolutions(); updateHUD(); });
+  document.getElementById('bInput').addEventListener('input', () => { b = parseFloat(document.getElementById('bInput').value) || 1; resetSolutions(); updateHUD(); });
+  document.getElementById('speedSlider').addEventListener('input', () => speed = parseFloat(document.getElementById('speedSlider').value));
+  document.getElementById('equationInput').addEventListener('input', () => { equationValue = parseFloat(document.getElementById('equationInput').value) || 0; resetSolutions(); updateHUD(); });
+  document.getElementById('customInput').addEventListener('input', previewCustomFunction);
+  document.getElementById('toggleControls').addEventListener('click', () => { document.getElementById('controls').classList.toggle('active'); });
+}
+
+function draw() {
+  // Update spaceship position with easing
+  if (!paused && !stepMode && solutionIndex == -1 && !quizMode) {
+    x += speed;
+    if (x > 5 || x < -5) speed *= -1;
+  } else if (solutionIndex >= 0) {
+    x = lerp(x, solutions[solutionIndex], 0.1);
+    if (Math.abs(x - solutions[solutionIndex]) < 0.01) {
+      solutionIndex = (solutionIndex + 1) % solutions.length;
+      if (solutionIndex == 0) solutionIndex = -1;
+    }
+  }
+  
+  // Draw background
+  if (isDark) {
+    // Space theme
+    background(10, 10, 26); // Deep space black
+    // Nebula glow
+    for (let r = 200; r > 0; r -= 20) {
+      fill(50, 50, 100, 10);
+      noStroke();
+      ellipse(400, 300, r * 2, r * 2);
+    }
+    // Draw stars
+    stars.forEach(s => {
+      fill(255, 255, 255, s.alpha + sin(frameCount * s.twinkleSpeed) * 50);
+      noStroke();
+      ellipse(s.x, s.y, s.size, s.size);
+    });
+    // Draw planets
+    planets.forEach(p => {
+      fill(p.color);
+      ellipse(p.x, p.y, p.size, p.size);
+      if (p.craters) {
+        p.craters.forEach(c => {
+          fill(100, 50, 30, 200);
+          ellipse(p.x + c.offsetX, p.y + c.offsetY, c.size, c.size);
+        });
+      }
+      if (p.ringSize) {
+        noFill();
+        stroke(p.ringColor);
+        strokeWeight(2);
+        ellipse(p.x, p.y, p.ringSize, p.ringSize * 0.3);
+        noStroke();
+      }
+      p.x += p.speed;
+      if (p.x > 850) p.x = -50;
+    });
+    // Draw shooting stars
+    if (random() < 0.01) {
+      shootingStars.push({ x: random(0, 800), y: 0, vx: random(-2, 2), vy: 3, alpha: 255 });
+    }
+    shootingStars = shootingStars.filter(s => s.alpha > 0);
+    shootingStars.forEach(s => {
+      stroke(255, 255, 255, s.alpha);
+      strokeWeight(2);
+      line(s.x, s.y, s.x + s.vx * 5, s.y + s.vy * 5);
+      s.x += s.vx;
+      s.y += s.vy;
+      s.alpha -= 5;
+    });
+    noStroke();
+  } else {
+    // Day theme
+    background(135, 206, 235);
+    // Draw clouds
+    clouds.forEach(c => {
+      fill(255, 255, 255, c.alpha);
+      noStroke();
+      let yPos = c.y + sin(frameCount * c.ySpeed + c.yOffset) * 5; // Vertical oscillation
+      ellipse(c.x, yPos, c.size, c.size * 0.6);
+      c.x += c.speed;
+      if (c.x > 800 + c.size) c.x = -c.size; // Wraparound
+    });
+  }
+  
+  // Draw cosmic highway
+  fill(isDark ? 40 : 80);
+  rect(50, 400, 700, 100);
+  fill(isDark ? 50 : 90);
+  for (let i = 50; i < 750; i += 20) {
+    rect(i, 400, 10, 100); // Cosmic texture lines
+  }
+  fill(isDark ? 20 : color(0, 100, 0));
+  rect(0, 500, 800, 100);
+  fill(isDark ? 255 : color(255, 255, 0));
+  for (let i = 50; i < 750; i += 40) {
+    rect(i, 445, 20, 10);
+  }
+  
+  // Draw mile markers
+  stroke(isDark ? 200 : 255);
+  strokeWeight(2);
+  for (let i = -5; i <= 5; i++) {
+    let xPos = 50 + (i + 5) * scaleX + panX;
+    line(xPos, 450, xPos, 470);
+    text(i, xPos, 480);
+  }
+  
+  // Draw space stations
+  if (functionMode >= 1) drawGasStation(a, color(255, 0, 0, 200));
+  if (functionMode >= 2) drawGasStation(b, color(0, 0, 255, 200));
+  
+  // Draw spaceship
+  let carX = 50 + (x + 5) * scaleX + panX;
+  let carWidth = 0.5 * scaleX;
+  fill(isDark ? color(0, 200, 200) : color(0, 255, 0)); // Cyan in space mode
+  rect(carX - carWidth / 2, 420, carWidth, 30, 5); // Spaceship body
+  fill(isDark ? 50 : 100);
+  rect(carX - carWidth / 3, 425, carWidth / 3, 10); // Cockpit
+  fill(isDark ? 255 : 0);
+  ellipse(carX - carWidth / 4, 450, 10, 10); // Thruster
+  ellipse(carX + carWidth / 4, 450, 10, 10);
+  fill(0, 0, 0, 100);
+  ellipse(carX, 455, carWidth * 0.8, 10); // Shadow
+  
+  // Draw distance lines
+  stroke(255, 165, 0, 200);
+  strokeWeight(2);
+  if (functionMode >= 1) {
+    let aX = 50 + (a + 5) * scaleX + panX;
+    line(carX, 435, aX, 435);
+  }
+  if (functionMode >= 2) {
+    let bX = 50 + (b + 5) * scaleX + panX;
+    line(carX, 445, bX, 445);
+  }
+  
+  // Draw graph
+  // Gradient grid
+  for (let i = -5; i <= 5; i += 0.5) {
+    let xPos = 50 + (i + 5) * scaleX + panX;
+    stroke(lerpColor(color(0, 255, 255, 50), color(0, 100, 255, 50), i / 10 + 0.5));
+    strokeWeight(1);
+    line(xPos, 50, xPos, 350);
+  }
+  for (let i = -2; i <= 10; i += 0.5) {
+    let yPos = 350 - i * scaleY * zoomLevel;
+    stroke(lerpColor(color(0, 255, 255, 50), color(0, 100, 255, 50), i / 12));
+    line(50, yPos, 750, yPos);
+  }
+  
+  // Bold axes with neon glow
+  stroke(0, 255, 255, 100);
+  strokeWeight(10);
+  line(50, 350, 750, 350); // X-Axis glow
+  line(400 + panX / scaleX * 70, 50, 400 + panX / scaleX * 70, 350); // Y-Axis glow
+  for (let i = 0; i < 700; i++) {
+    let t = i / 700;
+    stroke(lerpColor(color(0, 255, 255), color(0, 100, 255), t));
+    strokeWeight(4);
+    point(50 + i, 350);
+  }
+  for (let i = 0; i < 300; i++) {
+    let t = i / 300;
+    stroke(lerpColor(color(0, 255, 255), color(0, 100, 255), t));
+    point(400 + panX / scaleX * 70, 350 - i);
+  }
+  
+  // Arrowheads
+  fill(192, 192, 192);
+  stroke(0, 255, 255, 100);
+  strokeWeight(2);
+  triangle(750, 350, 740, 340, 740, 360);
+  triangle(400 + panX / scaleX * 70, 50, 390 + panX / scaleX * 70, 60, 410 + panX / scaleX * 70, 60);
+  
+  // Axis labels
+  fill(0, 255, 255);
+  textSize(20);
+  textStyle(BOLD);
+  text("X", 740, 370);
+  text("Y", 420 + panX / scaleX * 70, 60);
+  
+  // Origin marker
+  fill(255, 255, 0);
+  ellipse(400 + panX / scaleX * 70, 350, 10, 10);
+  fill(255, 255, 0, 100);
+  ellipse(400 + panX / scaleX * 70, 350, 20, 20);
+  
+  // Tick marks and labels
+  stroke(isDark ? 200 : 0);
+  strokeWeight(1);
+  for (let i = -5; i <= 5; i++) {
+    let xPos = 50 + (i + 5) * scaleX + panX;
+    line(xPos, 345, xPos, 355);
+    text(i, xPos, 370);
+  }
+  for (let i = -2; i <= 10; i++) {
+    let yPos = 350 - i * scaleY * zoomLevel;
+    line(395 + panX / scaleX * 70, yPos, 405 + panX / scaleX * 70, yPos);
+    text(i, 380 + panX / scaleX * 70, yPos + 5);
+  }
+  
+  // Plot function
+  let criticalPoints = functionMode == 2 ? [Math.min(a, b), Math.max(a, b)] : functionMode == 1 ? [a] : [0];
+  let colors = [[0, 0, 255], [255, 0, 255], [0, 255, 255]];
+  let segments = functionMode == 2 ? [[-5, criticalPoints[0]], [criticalPoints[0], criticalPoints[1]], [criticalPoints[1], 5]] : functionMode == 1 ? [[-5, a], [a, 5]] : [[-5, 0], [0, 5]];
+  if (functionMode < 3) {
+    for (let s = 0; s < segments.length; s++) {
+      stroke(colors[s % colors.length]);
+      strokeWeight(2);
+      noFill();
+      beginShape();
+      for (let i = segments[s][0]; i <= segments[s][1]; i += 0.1) {
+        let y = computeY(i);
+        let xPos = 50 + (i + 5) * scaleX + panX;
+        let yPos = 350 - y * scaleY * zoomLevel;
+        if (yPos >= 50 && yPos <= 350) vertex(xPos, yPos);
+      }
+      endShape();
+    }
+  } else if (customFunction) {
+    stroke(0, 100, 255);
+    strokeWeight(2);
+    noFill();
+    beginShape();
+    for (let i = -5; i <= 5; i += 0.1) {
+      let y = customFunction(i);
+      let xPos = 50 + (i + 5) * scaleX + panX;
+      let yPos = 350 - y * scaleY * zoomLevel;
+      if (yPos >= 50 && yPos <= 350) vertex(xPos, yPos);
+    }
+    endShape();
+  }
+  
+  // Draw critical points
+  fill(255, 255, 0);
+  criticalPoints.forEach(cp => {
+    let cpX = 50 + (cp + 5) * scaleX + panX;
+    let cpY = 350 - computeY(cp) * scaleY * zoomLevel;
+    if (cpY >= 50 && cpY <= 350) {
+      ellipse(cpX, cpY, 12, 12);
+      fill(255, 255, 0, 100);
+      ellipse(cpX, cpY, 20, 20);
+    }
+  });
+  
+  // Draw solutions
+  if (equationValue > 0 && functionMode == 2) {
+    fill(255, 0, 0);
+    solutions.forEach(sol => {
+      let solX = 50 + (sol + 5) * scaleX + panX;
+      let solY = 350 - equationValue * scaleY * zoomLevel;
+      if (solY >= 50 && solY <= 350) {
+        ellipse(solX, solY, 12, 12);
+        fill(255, 0, 0, 100);
+        ellipse(solX, solY, 20, 20);
+      }
+    });
+  }
+  
+  // Draw current point
+  let yVal = computeY(x);
+  let graphX = 50 + (x + 5) * scaleX + panX;
+  let graphY = 350 - yVal * scaleY * zoomLevel;
+  fill(255, 0, 0);
+  if (graphY >= 50 && graphY <= 350) {
+    ellipse(graphX, graphY, 12, 12);
+    fill(255, 0, 0, 100);
+    ellipse(graphX, graphY, 20, 20);
+  }
+  
+  // Draw annotations
+  annotations.forEach(a => {
+    let xPos = 50 + (a.x + 5) * scaleX + panX;
+    let yPos = 350 - a.y * scaleY * zoomLevel;
+    if (yPos >= 50 && yPos <= 350) {
+      fill(0, 255, 0);
+      ellipse(xPos, yPos, 10, 10);
+      fill(0);
+      textSize(12);
+      text(a.text, xPos, yPos - 10);
+    }
+  });
+  
+  // Update HUD
+  updateHUD();
+}
+
+// Draw space station
+function drawGasStation(pos, col) {
+  let xPos = 50 + (pos + 5) * scaleX + panX;
+  fill(col);
+  rect(xPos - 0.2 * scaleX, 430, 0.4 * scaleX, 20, 5); // Station body
+  fill(isDark ? 200 : 255);
+  rect(xPos - 0.1 * scaleX, 435, 0.2 * scaleX, 10); // Glowing panel
+  fill(col);
+  ellipse(xPos, 432, 10, 10); // Antenna
+  text(`x=${pos.toFixed(1)}`, xPos, 420);
+  fill(0, 0, 0, 100);
+  ellipse(xPos, 455, 0.4 * scaleX * 0.8, 10); // Shadow
+}
+
+// Compute y value
+function computeY(xVal) {
+  if (functionMode == 0) return Math.abs(xVal);
+  if (functionMode == 1) return Math.abs(xVal - a);
+  if (functionMode == 2) return Math.abs(xVal - a) + Math.abs(xVal - b);
+  if (functionMode == 3 && customFunction) return customFunction(xVal);
+  return 0;
+}
+
+// Update HUD
+function updateHUD() {
+  let hud = document.getElementById('hud');
+  hud.classList.add('show');
+  if (stepMode && steps.length > 0) {
+    hud.innerHTML = steps[stepIndex];
+  } else if (functionMode == 0) {
+    let output = x >= 0 ? `|${x.toFixed(1)}| = ${x.toFixed(1)}` : `|${x.toFixed(1)}| = -(${x.toFixed(1)}) = ${Math.abs(x).toFixed(1)}`;
+    hud.innerHTML = `Distance to 0: ${output}`;
+  } else if (functionMode == 1) {
+    let dist = x >= a ? `${x.toFixed(1)} - ${a.toFixed(1)}` : `-((${x.toFixed(1)}) - ${a.toFixed(1)})`;
+    hud.innerHTML = `Distance to ${a.toFixed(1)}: |${x.toFixed(1)} - ${a.toFixed(1)}| = ${dist} = ${Math.abs(x - a).toFixed(1)}`;
+  } else if (functionMode == 2) {
+    let dist1 = x >= a ? `${x.toFixed(1)} - ${a.toFixed(1)}` : `-((${x.toFixed(1)}) - ${a.toFixed(1)})`;
+    let dist2 = x >= b ? `${x.toFixed(1)} - ${b.toFixed(1)}` : `-((${x.toFixed(1)}) - ${b.toFixed(1)})`;
+    hud.innerHTML = `Distance to ${a.toFixed(1)}: |${x.toFixed(1)} - ${a.toFixed(1)}| = ${dist1} = ${Math.abs(x - a).toFixed(1)}<br>` +
+                    `Distance to ${b.toFixed(1)}: |${x.toFixed(1)} - ${b.toFixed(1)}| = ${dist2} = ${Math.abs(x - b).toFixed(1)}<br>` +
+                    `Total: ${Math.abs(x - a).toFixed(1)} + ${Math.abs(x - b).toFixed(1)} = ${computeY(x).toFixed(1)}`;
+  } else if (functionMode == 3) {
+    hud.innerHTML = `Custom: y = ${document.getElementById('customInput').value}<br>y = ${computeY(x).toFixed(1)} at x = ${x.toFixed(1)}`;
+  }
+}
+
+// Toggle pause
+function togglePause() {
+  paused = !paused;
+  stepMode = false;
+  solutionIndex = -1;
+}
+
+// Select function
+function selectFunction(mode) {
+  functionMode = mode;
+  customFunction = null;
+  resetSolutions();
+  addToHistory(mode == 0 ? '|x|' : mode == 1 ? `|x-${a}|` : `|x-${a}|+|x-${b}|`);
+  document.getElementById('errorMsg').textContent = '';
+  document.getElementById('preview').textContent = '';
+  updateHUD();
+}
+
+// Preview custom function
+function previewCustomFunction() {
+  let input = document.getElementById('customInput').value;
+  let preview = document.getElementById('preview');
+  try {
+    let tempFunction = x => {
+      let terms = input.split('+').map(t => t.trim());
+      let y = 0;
+      for (let term of terms) {
+        let match = term.match(/^(\d*)\|x([-+]\d+\.?\d*)?\|$/);
+        if (!match) throw new Error('Invalid format');
+        let coeff = match[1] ? parseFloat(match[1]) : 1;
+        let shift = match[2] ? parseFloat(match[2]) : 0;
+        y += coeff * Math.abs(x - shift);
+      }
+      return y;
+    };
+    let y = tempFunction(0);
+    preview.textContent = `y(0) = ${y.toFixed(1)}`;
+    document.getElementById('errorMsg').textContent = '';
+  } catch (e) {
+    preview.textContent = '';
+    document.getElementById('errorMsg').textContent = 'Invalid format';
+  }
+}
+
+// Parse custom function
+function parseCustomFunction() {
+  let input = document.getElementById('customInput').value;
+  try {
+    customFunction = x => {
+      let terms = input.split('+').map(t => t.trim());
+      let y = 0;
+      for (let term of terms) {
+        let match = term.match(/^(\d*)\|x([-+]\d+\.?\d*)?\|$/);
+        if (!match) throw new Error('Invalid format');
+        let coeff = match[1] ? parseFloat(match[1]) : 1;
+        let shift = match[2] ? parseFloat(match[2]) : 0;
+        y += coeff * Math.abs(x - shift);
+      }
+      return y;
+    };
+    customFunction(-5);
+    functionMode = 3;
+    resetSolutions();
+    addToHistory(input);
+    document.getElementById('errorMsg').textContent = '';
+    updateHUD();
+  } catch (e) {
+    document.getElementById('errorMsg').textContent = 'Error: Use format like 2|x-3|+|x+1|';
+  }
+}
+
+// Solve equation
+function solveEquation() {
+  if (functionMode != 2 || equationValue <= 0) {
+    document.getElementById('errorMsg').textContent = 'Select |x-a|+|x-b| and set c > 0';
+    return;
+  }
+  solutions = [];
+  let c = equationValue;
+  let x1 = (a + b + c) / 2;
+  let x2 = (a + b - c) / 2;
+  if (Math.abs(x1 - a) + Math.abs(x1 - b) == c && x1 >= -5 && x1 <= 5) solutions.push(x1);
+  if (Math.abs(x2 - a) + Math.abs(x2 - b) == c && x2 >= -5 && x2 <= 5) solutions.push(x2);
+  steps = [
+    `Solving |x-${a.toFixed(1)}| + |x-${b.toFixed(1)}| = ${c}`,
+    `Case 1: x >= ${Math.max(a, b).toFixed(1)}`,
+    `y = (x-${a.toFixed(1)}) + (x-${b.toFixed(1)}) = ${2}x-${(a + b).toFixed(1)}`,
+    `Solve ${2}x-${(a + b).toFixed(1)} = ${c}: x = ${((a + b + c) / 2).toFixed(1)}`,
+    `Case 2: ${Math.min(a, b).toFixed(1)} <= x < ${Math.max(a, b).toFixed(1)}`,
+    `y = ${a > b ? `-(x-${a.toFixed(1)})` : `(x-${a.toFixed(1)})`} + ${b > a ? `-(x-${b.toFixed(1)})` : `(x-${b.toFixed(1)})`} = ${Math.abs(a - b).toFixed(1)}`,
+    `Check if ${Math.abs(a - b).toFixed(1)} = ${c}`,
+    `Case 3: x < ${Math.min(a, b).toFixed(1)}`,
+    `y = -(x-${a.toFixed(1)}) - (x-${b.toFixed(1)}) = ${-2}x+${(a + b).toFixed(1)}`,
+    `Solve ${-2}x+${(a + b).toFixed(1)} = ${c}: x = ${((a + b - c) / 2).toFixed(1)}`,
+    `Solutions: x = ${solutions.map(s => s.toFixed(1)).join(', ')}`
+  ];
+  document.getElementById('errorMsg').textContent = '';
+  updateHUD();
+}
+
+// Animate solutions
+function animateSolutions() {
+  if (solutions.length == 0) solveEquation();
+  if (solutions.length > 0) {
+    solutionIndex = 0;
+    paused = true;
+    stepMode = false;
+  }
+}
+
+// Show steps
+function showSteps() {
+  if (steps.length == 0) solveEquation();
+  stepMode = true;
+  stepIndex = 0;
+  updateHUD();
+}
+
+// Zoom graph
+function zoom(factor) {
+  zoomLevel *= factor;
+  zoomLevel = constrain(zoomLevel, 0.5, 2);
+}
+
+// Toggle theme
+function toggleTheme() {
+  isDark = !isDark;
+  document.body.style.background = isDark ? 'linear-gradient(#0A0A1A, #1C2526)' : 'linear-gradient(#87CEEB, #E0F6FF)';
+}
+
+// Save screenshot
+function saveScreenshot() {
+  saveCanvas('modulus_animation', 'png');
+}
+
+// Start quiz
+function startQuiz() {
+  quizMode = true;
+  quizScore = 0;
+  quizIndex = 0;
+  quizQuestions = [];
+  for (let i = 0; i < 10; i++) {
+    let a = random(-3, 3);
+    let b = random(-3, 3);
+    let c = random(1, 6);
+    let sol1 = (a + b + c) / 2;
+    let sol2 = (a + b - c) / 2;
+    let solutions = [];
+    if (Math.abs(sol1 - a) + Math.abs(sol1 - b) == c && sol1 >= -5 && sol1 <= 5) solutions.push(sol1.toFixed(1));
+    if (Math.abs(sol2 - a) + Math.abs(sol2 - b) == c && sol2 >= -5 && sol2 <= 5) solutions.push(sol2.toFixed(1));
+    quizQuestions.push({ a, b, c, solutions });
+  }
+  document.getElementById('quizPanel').classList.add('show');
+  document.getElementById('quizScore').textContent = quizScore;
+  displayQuizQuestion();
+}
+
+// Display quiz question
+function displayQuizQuestion() {
+  if (quizIndex >= quizQuestions.length) {
+    endQuiz();
+    return;
+  }
+  let q = quizQuestions[quizIndex];
+  document.getElementById('quizQuestion').textContent = `Solve: |x - ${q.a.toFixed(1)}| + |x - ${q.b.toFixed(1)}| = ${q.c.toFixed(1)}`;
+  document.getElementById('quizAnswer').value = '';
+  document.getElementById('quizFeedback').textContent = '';
+  selectFunction(2);
+  a = q.a;
+  b = q.b;
+  equationValue = q.c;
+  document.getElementById('aInput').value = q.a;
+  document.getElementById('bInput').value = q.b;
+  document.getElementById('equationInput').value = q.c;
+  solveEquation();
+}
+
+// Submit quiz answer
+function submitQuizAnswer() {
+  let answer = document.getElementById('quizAnswer').value.split(',').map(x => parseFloat(x.trim()).toFixed(1));
+  let q = quizQuestions[quizIndex];
+  let correct = q.solutions;
+  let isCorrect = answer.length == correct.length && answer.every(a => correct.includes(a));
+  document.getElementById('quizFeedback').textContent = isCorrect ? 'Correct!' : `Incorrect. Solutions: x = ${correct.join(', ')}`;
+  if (isCorrect) quizScore++;
+  document.getElementById('quizScore').textContent = quizScore;
+}
+
+// Next quiz question
+function nextQuizQuestion() {
+  quizIndex++;
+  displayQuizQuestion();
+}
+
+// End quiz
+function endQuiz() {
+  quizMode = false;
+  document.getElementById('quizPanel').classList.remove('show');
+  document.getElementById('quizFeedback').textContent = `Quiz Complete! Final Score: ${quizScore}/10`;
+}
+
+// Export PDF (LaTeX output)
+function exportPDF() {
+  if (steps.length == 0) solveEquation();
+  let latexContent = `
+\\documentclass{article}
+\\usepackage{amsmath}
+\\begin{document}
+\\section{Modulus Equation Solution}
+${steps.map(s => s.replace(/\|/g, '\\lvert').replace(/=/g, '=').replace(/<br>/g, '\\\\')).join('\\\\ \\vspace{0.5cm}\n')}
+\\end{document}
+  `;
+  let blob = new Blob([latexContent], { type: 'text/plain' });
+  let link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.download = 'modulus_solution.tex';
+  link.click();
+}
+
+// Add to history
+function addToHistory(func) {
+  if (!history.includes(func)) {
+    history.push(func);
+    let select = document.getElementById('history');
+    let option = document.createElement('option');
+    option.value = func;
+    option.text = func;
+    select.appendChild(option);
+  }
+}
+
+// Load history
+function loadHistory(func) {
+  if (func.startsWith('|x|')) selectFunction(0);
+  else if (func.startsWith('|x-')) selectFunction(1);
+  else if (func.includes('+')) {
+    document.getElementById('customInput').value = func;
+    parseCustomFunction();
+  }
+}
+
+// Reset solutions
+function resetSolutions() {
+  solutions = [];
+  steps = [];
+  stepMode = false;
+  solutionIndex = -1;
+  annotations = [];
+}
+
+// Keyboard shortcuts
+function keyPressed() {
+  if (key == 'p' || key == 'P') togglePause();
+  if (key == 'z' || key == 'Z') zoom(1.2);
+  if (key == 'x' || key == 'X') zoom(0.833);
+  if (key == 's' || key == 'S') showSteps();
+  if (key == 't' || key == 'T') toggleTheme();
+  if (key == 'a' || key == 'A') animateSolutions();
+  if (key == 'q' || key == 'Q') startQuiz();
+}
+
+// Mouse interactions
+let isDraggingCar = false;
+let isPanning = false;
+
+function mousePressed() {
+  if (quizMode) return;
+  if (stepMode && mouseY < 100) {
+    stepIndex = (stepIndex + 1) % steps.length;
+    updateHUD();
+  } else if (mouseY > 400 && mouseY < 500 && abs(mouseX - (50 + (x + 5) * scaleX + panX)) < 0.5 * scaleX) {
+    isDraggingCar = true;
+    paused = true;
+    solutionIndex = -1;
+  } else if (mouseY > 50 && mouseY < 350 && mouseX > 50 && mouseX < 750) {
+    if (keyIsDown(SHIFT)) {
+      let xVal = (mouseX - 50 - panX) / scaleX - 5;
+      let yVal = (350 - mouseY) / (scaleY * zoomLevel);
+      annotations.push({ x: xVal, y: yVal, text: `Point (${xVal.toFixed(1)}, ${yVal.toFixed(1)})` });
+    } else {
+      x = (mouseX - 50 - panX) / scaleX - 5;
+      paused = true;
+      solutionIndex = -1;
+      updateHUD();
+    }
+  } else {
+    isPanning = true;
+  }
+}
+
+function mouseDragged() {
+  if (quizMode) return;
+  if (isDraggingCar && mouseY > 400 && mouseY < 500) {
+    x = (mouseX - 50 - panX) / scaleX - 5;
+    x = constrain(x, -5, 5);
+    paused = true;
+    solutionIndex = -1;
+    updateHUD();
+  } else if (isPanning && mouseY > 50 && mouseY < 350) {
+    panX += movedX;
+    panX = constrain(panX, -200, 200);
+  }
+}
+
+function mouseReleased() {
+  isDraggingCar = false;
+  isPanning = false;
+}
+
+function mouseWheel(event) {
+  if (quizMode) return;
+  zoom(event.delta > 0 ? 0.833 : 1.2);
+}
+</script>
+</body>
+</html>
