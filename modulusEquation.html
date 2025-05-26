@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Modulus Equation Visualizer</title>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500&display=swap" rel="stylesheet">
+  <style>
+    body {
+      margin: 0;
+      background: linear-gradient(to bottom right, #0a0f2c, #1f2d4d);
+      color: #fff;
+      font-family: 'Orbitron', sans-serif;
+      overflow: hidden;
+      transition: background 0.6s, color 0.6s;
+    }
+    canvas {
+      display: block;
+      transition: background 0.6s;
+    }
+    #controls {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      background: rgba(0, 0, 0, 0.5);
+      padding: 15px;
+      border-radius: 10px;
+    }
+    #controls select, #controls input {
+      font-size: 16px;
+      margin: 5px 0;
+      background: #222;
+      color: #fff;
+      border: none;
+      padding: 5px 10px;
+      border-radius: 5px;
+    }
+    #info {
+      position: absolute;
+      bottom: 10px;
+      left: 10px;
+      background: rgba(0, 0, 0, 0.5);
+      padding: 10px;
+      border-radius: 10px;
+      max-width: 300px;
+    }
+    #equationDisplay {
+      margin-top: 10px;
+      font-size: 18px;
+      color: #00ffcc;
+    }
+    body.light-mode {
+      background: linear-gradient(to bottom right, #f0f0f0, #d0e0ff);
+      color: #000;
+    }
+    body.light-mode #controls,
+    body.light-mode #info {
+      background: rgba(255, 255, 255, 0.8);
+    }
+    body.light-mode canvas {
+      background-color: #fff;
+    }
+    body.light-mode #equationDisplay {
+      color: #007799;
+    }
+    body.light-mode #controls select,
+    body.light-mode #controls input {
+      background: #ddd;
+      color: #000;
+    }
+  </style>
+</head>
+<body>
+  <div id="controls">
+    <label for="mode">Equation Type:</label><br />
+    <select id="mode">
+      <option value="eq">|x| = a</option>
+      <option value="leq">|x| ≤ a</option>
+      <option value="geq">|x| ≥ a</option>
+    </select><br />
+    <label for="aValue">Value of a:</label><br />
+    <input type="range" id="aValue" min="1" max="20" value="10" />
+    <span id="aDisplay">10</span>
+    <br/>
+    <label>
+      <input type="checkbox" id="themeToggle" /> Light Mode
+    </label>
+    <div id="equationDisplay"></div>
+  </div>
+
+  <div id="info">
+    <div><strong>Modulus Visualizer</strong></div>
+    <div>Shows graph of y = |x| and solution region based on equation type.</div>
+  </div>
+
+  <canvas id="graphCanvas"></canvas>
+
+  <script>
+    const canvas = document.getElementById("graphCanvas");
+    const ctx = canvas.getContext("2d");
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+
+    const modeSelector = document.getElementById("mode");
+    const aSlider = document.getElementById("aValue");
+    const aDisplay = document.getElementById("aDisplay");
+    const equationDisplay = document.getElementById("equationDisplay");
+    const themeToggle = document.getElementById("themeToggle");
+
+    // Load theme from localStorage
+    if (localStorage.getItem("theme") === "light") {
+      document.body.classList.add("light-mode");
+      themeToggle.checked = true;
+    }
+
+    themeToggle.addEventListener("change", () => {
+      document.body.classList.toggle("light-mode", themeToggle.checked);
+      localStorage.setItem("theme", themeToggle.checked ? "light" : "dark");
+    });
+
+    let mode = modeSelector.value;
+    let a = parseInt(aSlider.value);
+    let currentA = a;
+    let pulseRadius = 6;
+    let pulseIncreasing = true;
+
+    function updatePulse() {
+      pulseRadius += pulseIncreasing ? 0.2 : -0.2;
+      if (pulseRadius > 10) pulseIncreasing = false;
+      if (pulseRadius < 6) pulseIncreasing = true;
+    }
+
+    function animateToNewA(newA) {
+      const step = (newA - currentA) / 10;
+      let frame = 0;
+
+      function animateStep() {
+        currentA += step;
+        aDisplay.textContent = Math.round(currentA);
+        drawAnimated(currentA);
+        frame++;
+        if (frame < 10) {
+          requestAnimationFrame(animateStep);
+        } else {
+          currentA = newA;
+          a = newA;
+          aDisplay.textContent = a;
+          draw();
+        }
+      }
+
+      animateStep();
+    }
+
+    function drawAnimated(tempA) {
+      a = tempA;
+      draw();
+    }
+
+    function draw() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      updatePulse();
+      requestAnimationFrame(draw);
+
+      const cx = canvas.width / 2;
+      const cy = canvas.height / 2;
+      const scale = 20;
+
+      // Draw axes
+      ctx.strokeStyle = "#888";
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(0, cy);
+      ctx.lineTo(canvas.width, cy);
+      ctx.moveTo(cx, 0);
+      ctx.lineTo(cx, canvas.height);
+      ctx.stroke();
+
+      // Draw axis markers and labels with improved visuals
+      ctx.fillStyle = "#fff";
+      ctx.font = "bold 14px Orbitron";
+      for (let i = -20; i <= 20; i++) {
+        const x = cx + i * scale;
+        ctx.strokeStyle = "#999";
+        ctx.beginPath();
+        ctx.moveTo(x, cy - 6);
+        ctx.lineTo(x, cy + 6);
+        ctx.stroke();
+        if (i !== 0) ctx.fillText(i.toString(), x - 6, cy + 20);
+      }
+      for (let j = -10; j <= 10; j++) {
+        const y = cy - j * scale;
+        ctx.strokeStyle = "#999";
+        ctx.beginPath();
+        ctx.moveTo(cx - 6, y);
+        ctx.lineTo(cx + 6, y);
+        ctx.stroke();
+        if (j !== 0) ctx.fillText(j.toString(), cx + 10, y + 4);
+      }
+
+      // Draw |x|
+      ctx.strokeStyle = "#ffcc00";
+      ctx.lineWidth = 2.5;
+      ctx.shadowColor = "#ffaa00";
+      ctx.shadowBlur = 8;
+      ctx.beginPath();
+      for (let x = -canvas.width / 2; x <= canvas.width / 2; x++) {
+        const gx = cx + x;
+        const gy = cy - Math.abs(x / scale) * scale;
+        if (x === -canvas.width / 2) ctx.moveTo(gx, gy);
+        else ctx.lineTo(gx, gy);
+      }
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+
+      // Draw horizontal line y = a
+      const yA = cy - a * scale;
+      ctx.strokeStyle = "#00ccff";
+      ctx.lineWidth = 2;
+      ctx.shadowColor = "#00ccff";
+      ctx.shadowBlur = 10;
+      ctx.beginPath();
+      ctx.moveTo(0, yA);
+      ctx.lineTo(canvas.width, yA);
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+
+      if (mode === "eq") {
+        const leftX = cx - a * scale;
+        const rightX = cx + a * scale;
+        drawPoint(leftX, yA);
+        drawPoint(rightX, yA);
+        drawDottedLine(leftX, yA, leftX, cy);
+        drawDottedLine(rightX, yA, rightX, cy);
+      } else if (mode === "leq") {
+        ctx.fillStyle = "rgba(0, 255, 100, 0.3)";
+        ctx.shadowColor = "#00ff66";
+        ctx.shadowBlur = 12;
+        ctx.fillRect(cx - a * scale, yA, a * 2 * scale, a * scale);
+        ctx.shadowBlur = 0;
+      } else if (mode === "geq") {
+        ctx.fillStyle = "rgba(255, 50, 50, 0.3)";
+        ctx.shadowColor = "#ff3333";
+        ctx.shadowBlur = 12;
+        ctx.beginPath();
+        ctx.rect(0, 0, cx - a * scale, yA);
+        ctx.rect(cx + a * scale, 0, canvas.width - (cx + a * scale), yA);
+        ctx.fill();
+        ctx.shadowBlur = 0;
+      }
+
+      updateEquationText();
+    }
+
+    function drawPoint(x, y) {
+      ctx.fillStyle = "#fff";
+      ctx.beginPath();
+      ctx.arc(x, y, pulseRadius, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = "#00ffff";
+      ctx.lineWidth = 2;
+      ctx.shadowColor = "#00ffff";
+      ctx.shadowBlur = 15;
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+    }
+
+    function drawDottedLine(x1, y1, x2, y2) {
+      ctx.strokeStyle = "red";
+      ctx.lineWidth = 1.5;
+      ctx.setLineDash([5, 5]);
+      ctx.beginPath();
+      ctx.moveTo(x1, y1);
+      ctx.lineTo(x2, y2);
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
+
+    function updateEquationText() {
+      if (mode === "eq") {
+        equationDisplay.textContent = `|x| = ${a}  ⇒  x = ±${a}`;
+      } else if (mode === "leq") {
+        equationDisplay.textContent = `|x| ≤ ${a}  ⇒  -${a} ≤ x ≤ ${a}`;
+      } else if (mode === "geq") {
+        equationDisplay.textContent = `|x| ≥ ${a}  ⇒  x ≤ -${a} or x ≥ ${a}`;
+      }
+    }
+
+    modeSelector.addEventListener("change", () => {
+      mode = modeSelector.value;
+      draw();
+    });
+
+    aSlider.addEventListener("input", () => {
+      const newA = parseInt(aSlider.value);
+      animateToNewA(newA);
+    });
+
+    window.addEventListener("resize", () => {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+      draw();
+    });
+
+    draw();
+  </script>
+</body>
+</html>
