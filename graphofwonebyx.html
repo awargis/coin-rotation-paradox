@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Enhanced 1/x Visualization</title>
+    <style>
+        body { 
+            margin: 0;
+            overflow: hidden;
+            font-family: 'Arial', sans-serif;
+        }
+        #canvas-container { 
+            width: 100vw;
+            height: 100vh;
+            position: relative;
+        }
+        .annotation {
+            position: fixed;
+            background: rgba(0,0,0,0.9);
+            color: white;
+            padding: 1.5rem;
+            border-radius: 10px;
+            pointer-events: none;
+            border: 2px solid #00ffff;
+            box-shadow: 0 0 15px rgba(0,255,255,0.5);
+            z-index: 100;
+        }
+        #gui-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 200;
+        }
+        #vr-button {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            z-index: 200;
+            padding: 12px 24px;
+            background: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: all 0.3s;
+        }
+        #vr-button:hover {
+            background: #45a049;
+            transform: scale(1.05);
+        }
+    </style>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.4/dist/katex.min.css">
+</head>
+<body>
+    <div id="canvas-container"></div>
+    <div id="gui-container"></div>
+    <div class="annotation" id="domain-ann" style="top: 20px; left: 20px;"></div>
+    <div class="annotation" id="range-ann" style="bottom: 20px; right: 20px;"></div>
+    <button id="vr-button">ENTER VR</button>
+
+    <script type="module">
+        import * as THREE from 'https://cdn.skypack.dev/three@0.136.0';
+        import { OrbitControls } from 'https://cdn.skypack.dev/three@0.136.0/examples/jsm/controls/OrbitControls.js';
+        import { EffectComposer } from 'https://cdn.skypack.dev/three@0.136.0/examples/jsm/postprocessing/EffectComposer.js';
+        import { RenderPass } from 'https://cdn.skypack.dev/three@0.136.0/examples/jsm/postprocessing/RenderPass.js';
+        import { UnrealBloomPass } from 'https://cdn.skypack.dev/three@0.136.0/examples/jsm/postprocessing/UnrealBloomPass.js';
+        import { VRButton } from 'https://cdn.skypack.dev/three@0.136.0/examples/jsm/webxr/VRButton.js';
+        import { GUI } from 'https://cdn.skypack.dev/dat.gui@0.7.9';
+        import TWEEN from 'https://cdn.skypack.dev/@tweenjs/tween.js';
+        import katex from 'https://cdn.jsdelivr.net/npm/katex@0.16.4/dist/katex.mjs';
+
+        class EnhancedVisualizer {
+            constructor() {
+                this.params = {
+                    hyperbolaScale: 1.0,
+                    particleSpeed: 0.02,
+                    starRotation: true,
+                    bloomStrength: 1.5,
+                    bloomRadius: 0.4
+                };
+                
+                this.initScene();
+                this.createVisualElements();
+                this.setupControls();
+                this.setupEventListeners();
+                this.setupAudio();
+                this.animate();
+            }
+
+            initScene() {
+                // Scene setup
+                this.scene = new THREE.Scene();
+                this.camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
+                this.camera.position.set(0, 5, 15);
+
+                // Renderer
+                this.renderer = new THREE.WebGLRenderer({
+                    antialias: true,
+                    powerPreference: "high-performance",
+                    logarithmicDepthBuffer: true
+                });
+                this.renderer.setSize(window.innerWidth, window.innerHeight);
+                this.renderer.xr.enabled = true;
+                document.getElementById('canvas-container').appendChild(this.renderer.domElement);
+
+                // Post-processing
+                this.composer = new EffectComposer(this.renderer);
+                this.composer.addPass(new RenderPass(this.scene, this.camera));
+                this.bloomPass = new UnrealBloomPass(
+                    new THREE.Vector2(window.innerWidth, window.innerHeight),
+                    this.params.bloomStrength,
+                    this.params.bloomRadius,
+                    0.85
+                );
+                this.composer.addPass(this.bloomPass);
+
+                // Lighting
+                const ambientLight = new THREE.AmbientLight(0x404040);
+                const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
+                directionalLight.position.set(0, 10, 5);
+                this.scene.add(ambientLight, directionalLight);
+            }
+
+            createVisualElements() {
+                // Coordinate system
+                const grid = new THREE.GridHelper(20, 40, 0x444444, 0x222222);
+                const axes = new THREE.AxesHelper(10);
+                this.scene.add(grid, axes);
+
+                // Hyperbola
+                this.createHyperbola();
+                this.createAsymptotes();
+                this.createParticles();
+                this.createStarfield();
+                this.createRangeHighlights();
+            }
+
+            createHyperbola() {
+                const points = [];
+                const colors = [];
+                const color = new THREE.Color();
+
+                for(let x = -9.9; x < 10; x += 0.05) {
+                    if(Math.abs(x) < 0.1) continue;
+                    const y = 1/x;
+                    points.push(new THREE.Vector3(x, y, 0));
+                    color.set(x > 0 ? 0x00FFFF : 0xFF00FF);
+                    colors.push(color.r, color.g, color.b);
+                }
+
+                const geometry = new THREE.BufferGeometry().setFromPoints(points);
+                geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+
+                this.hyperbola = new THREE.Line(
+                    geometry,
+                    new THREE.LineBasicMaterial({
+                        vertexColors: true,
+                        linewidth: 4,
+                        transparent: true,
+                        opacity: 0.9
+                    })
+                );
+                this.scene.add(this.hyperbola);
+            }
+
+            createAsymptotes() {
+                const asymptoteMaterial = new THREE.LineDashedMaterial({
+                    color: 0xFF4444,
+                    dashSize: 0.5,
+                    gapSize: 0.5
+                });
+
+                const yAsymptote = new THREE.Line(
+                    new THREE.BufferGeometry().setFromPoints([
+                        new THREE.Vector3(0, -10, 0),
+                        new THREE.Vector3(0, 10, 0)
+                    ]),
+                    asymptoteMaterial
+                );
+                yAsymptote.computeLineDistances();
+                this.scene.add(yAsymptote);
+            }
+
+            createParticles() {
+                const geometry = new THREE.BufferGeometry();
+                const positions = new Float32Array(2000 * 3);
+                const colors = new Float32Array(2000 * 3);
+                const color = new THREE.Color();
+
+                for(let i = 0; i < 2000; i++) {
+                    positions[i*3] = (Math.random() - 0.5) * 0.2;
+                    positions[i*3+1] = (Math.random() - 0.5) * 40;
+                    positions[i*3+2] = 0;
+                    
+                    color.setHSL(Math.random(), 0.8, 0.6);
+                    colors[i*3] = color.r;
+                    colors[i*3+1] = color.g;
+                    colors[i*3+2] = color.b;
+                }
+
+                geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+                geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+
+                this.particles = new THREE.Points(
+                    geometry,
+                    new THREE.PointsMaterial({
+                        size: 0.1,
+                        vertexColors: true,
+                        transparent: true,
+                        opacity: 0.8,
+                        depthWrite: false,
+                        blending: THREE.AdditiveBlending
+                    })
+                );
+                this.scene.add(this.particles);
+            }
+
+            createStarfield() {
+                const geometry = new THREE.BufferGeometry();
+                const positions = [];
+                const sizes = [];
+
+                for(let i = 0; i < 10000; i++) {
+                    positions.push(
+                        (Math.random() - 0.5) * 2000,
+                        (Math.random() - 0.5) * 2000,
+                        (Math.random() - 0.5) * 2000
+                    );
+                    sizes.push(Math.random() * 2);
+                }
+
+                geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+                geometry.setAttribute('size', new THREE.Float32BufferAttribute(sizes, 1));
+
+                this.starField = new THREE.Points(
+                    geometry,
+                    new THREE.PointsMaterial({
+                        size: 0.1,
+                        sizeAttenuation: true,
+                        color: 0xFFFFFF,
+                        transparent: true,
+                        opacity: 0.8
+                    })
+                );
+                this.scene.add(this.starField);
+            }
+
+            createRangeHighlights() {
+                // Exclusion zone
+                const exclusionGeometry = new THREE.PlaneGeometry(20, 0.2);
+                const exclusionMaterial = new THREE.MeshBasicMaterial({
+                    color: 0xFF0000,
+                    transparent: true,
+                    opacity: 0.2,
+                    side: THREE.DoubleSide
+                });
+                const exclusionZone = new THREE.Mesh(exclusionGeometry, exclusionMaterial);
+                exclusionZone.position.z = -0.1;
+                this.scene.add(exclusionZone);
+
+                // Valid ranges
+                const rangeGeometry = new THREE.PlaneGeometry(20, 10);
+                const rangeMaterial = new THREE.MeshBasicMaterial({
+                    color: 0x00FF00,
+                    transparent: true,
+                    opacity: 0.1,
+                    side: THREE.DoubleSide
+                });
+                const positiveRange = new THREE.Mesh(rangeGeometry, rangeMaterial);
+                positiveRange.position.set(0, 5, -0.1);
+                const negativeRange = new THREE.Mesh(rangeGeometry, rangeMaterial);
+                negativeRange.position.set(0, -5, -0.1);
+                this.scene.add(positiveRange, negativeRange);
+            }
+
+            setupControls() {
+                // Orbit controls
+                this.controls = new OrbitControls(this.camera, this.renderer.domElement);
+                this.controls.enableDamping = true;
+                this.controls.dampingFactor = 0.05;
+
+                // GUI controls
+                this.gui = new GUI({ autoPlace: false });
+                document.getElementById('gui-container').appendChild(this.gui.domElement);
+                
+                this.gui.add(this.params, 'hyperbolaScale', 0.1, 3)
+                    .name('Hyperbola Scale')
+                    .onChange(v => this.hyperbola.scale.set(v, v, v));
+                
+                this.gui.add(this.params, 'particleSpeed', 0.01, 0.1)
+                    .name('Particle Speed');
+                
+                this.gui.add(this.params, 'starRotation')
+                    .name('Star Rotation');
+                
+                this.gui.add(this.params, 'bloomStrength', 0.1, 3)
+                    .name('Bloom Strength')
+                    .onChange(v => this.bloomPass.strength = v);
+                
+                this.gui.add(this.params, 'bloomRadius', 0.1, 2)
+                    .name('Bloom Radius')
+                    .onChange(v => this.bloomPass.radius = v);
+            }
+
+            setupEventListeners() {
+                // VR
+                document.body.appendChild(VRButton.createButton(this.renderer));
+
+                // Resize
+                window.addEventListener('resize', () => {
+                    this.camera.aspect = window.innerWidth / window.innerHeight;
+                    this.camera.updateProjectionMatrix();
+                    this.renderer.setSize(window.innerWidth, window.innerHeight);
+                    this.composer.setSize(window.innerWidth, window.innerHeight);
+                });
+
+                // Camera presets
+                window.switchCamera = (preset) => {
+                    const presets = {
+                        default: { pos: [0, 5, 15], target: [0, 0, 0] },
+                        top: { pos: [0, 15, 0.1], target: [0, 0, 0] },
+                        asymptote: { pos: [0.1, 0, 5], target: [0, 0, 0] }
+                    };
+
+                    new TWEEN.Tween(this.camera.position)
+                        .to(presets[preset].pos, 1000)
+                        .easing(TWEEN.Easing.Quadratic.InOut)
+                        .start();
+
+                    new TWEEN.Tween(this.controls.target)
+                        .to(presets[preset].target, 1000)
+                        .easing(TWEEN.Easing.Quadratic.InOut)
+                        .start();
+                };
+
+                // Annotations
+                katex.render("\\text{Domain: } -10 < x < 10,\\ x \\neq 0", 
+                    document.getElementById('domain-ann'), 
+                    { displayMode: true }
+                );
+                katex.render("\\text{Range: } y \\leq -0.1 \\cup y \\geq 0.1", 
+                    document.getElementById('range-ann'), 
+                    { displayMode: true }
+                );
+            }
+
+            setupAudio() {
+                this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                this.oscillator = this.audioContext.createOscillator();
+                this.gainNode = this.audioContext.createGain();
+                
+                this.oscillator.connect(this.gainNode);
+                this.gainNode.connect(this.audioContext.destination);
+                this.oscillator.start();
+                
+                window.addEventListener('mousemove', (e) => {
+                    if(this.audioContext.state === 'suspended') {
+                        this.audioContext.resume();
+                    }
+                    const freq = (e.clientX / window.innerWidth) * 500 + 100;
+                    const vol = (e.clientY / window.innerHeight) * 0.5;
+                    
+                    this.oscillator.frequency.setValueAtTime(freq, this.audioContext.currentTime);
+                    this.gainNode.gain.setValueAtTime(vol, this.audioContext.currentTime);
+                });
+            }
+
+            animate() {
+                requestAnimationFrame(() => this.animate());
+                TWEEN.update();
+
+                // Update particles
+                const positions = this.particles.geometry.attributes.position.array;
+                for(let i = 0; i < positions.length; i += 3) {
+                    positions[i+1] += this.params.particleSpeed;
+                    if(positions[i+1] > 10) positions[i+1] = -10;
+                }
+                this.particles.geometry.attributes.position.needsUpdate = true;
+
+                // Update starfield
+                if(this.params.starRotation) {
+                    this.starField.rotation.x += 0.0001;
+                    this.starField.rotation.y += 0.0001;
+                }
+
+                this.controls.update();
+                this.composer.render();
+            }
+        }
+
+        // Initialize visualization
+        new EnhancedVisualizer();
+    </script>
+</body>
+</html>
