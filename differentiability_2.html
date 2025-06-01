@@ -1,0 +1,1129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Enhanced Constant Acceleration Visualization</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #0c1445, #1a237e, #283593);
+            color: #e6e6e6;
+            min-height: 100vh;
+            overflow-x: hidden;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        
+        header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 30px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 20px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.4);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 5px;
+            background: linear-gradient(90deg, #ff6b6b, #4ecdc4, #ffd166);
+            animation: header-glow 3s infinite alternate;
+        }
+        
+        h1 {
+            font-size: 3.5rem;
+            margin-bottom: 15px;
+            background: linear-gradient(45deg, #ff6b6b, #4ecdc4);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            text-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+            letter-spacing: 1px;
+        }
+        
+        .subtitle {
+            font-size: 1.6rem;
+            opacity: 0.9;
+            margin-bottom: 20px;
+            color: #a0d2eb;
+        }
+        
+        .quote {
+            font-style: italic;
+            color: #ffd166;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+            border-left: 4px solid #ff6b6b;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 0 15px 15px 0;
+            font-size: 1.2rem;
+            position: relative;
+        }
+        
+        .quote::after {
+            content: '""';
+            position: absolute;
+            font-size: 3rem;
+            color: rgba(255, 255, 255, 0.1);
+            top: -10px;
+            left: 10px;
+            font-family: serif;
+        }
+        
+        .content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-bottom: 40px;
+        }
+        
+        @media (max-width: 1100px) {
+            .content {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        .visualization {
+            background: rgba(0, 0, 0, 0.25);
+            border-radius: 20px;
+            padding: 30px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.4);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .visual-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 25px;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+        
+        .visual-header h2 {
+            font-size: 2.2rem;
+            color: #ffd166;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .visual-header h2 i {
+            color: #ff6b6b;
+        }
+        
+        #road-container {
+            height: 200px;
+            position: relative;
+            background: #1b5e20;
+            border-radius: 15px;
+            overflow: hidden;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+        }
+        
+        .road {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+        }
+        
+        .road-line {
+            position: absolute;
+            width: 100px;
+            height: 10px;
+            background: #ffd166;
+            top: 50%;
+            transform: translateY(-50%);
+        }
+        
+        .car-container {
+            position: absolute;
+            left: 50px;
+            top: 50%;
+            transform: translateY(-50%);
+            transition: left 0.1s linear;
+        }
+        
+        .car {
+            width: 100px;
+            height: 50px;
+            background: #ff6b6b;
+            border-radius: 10px 20px 20px 10px;
+            box-shadow: 0 0 20px rgba(255, 107, 107, 0.7);
+            position: relative;
+        }
+        
+        .car::before {
+            content: '';
+            position: absolute;
+            width: 30px;
+            height: 30px;
+            background: rgba(0, 0, 0, 0.3);
+            top: 10px;
+            right: 15px;
+            border-radius: 5px;
+        }
+        
+        .car::after {
+            content: '';
+            position: absolute;
+            width: 15px;
+            height: 15px;
+            background: #ffd166;
+            border-radius: 50%;
+            top: -10px;
+            left: 15px;
+            box-shadow: 30px 0 #ffd166;
+        }
+        
+        .wheel {
+            position: absolute;
+            width: 15px;
+            height: 15px;
+            background: #333;
+            border-radius: 50%;
+            bottom: -5px;
+            left: 15px;
+            box-shadow: 60px 0 #333;
+        }
+        
+        .wheel::after {
+            content: '';
+            position: absolute;
+            width: 7px;
+            height: 7px;
+            background: #555;
+            border-radius: 50%;
+            top: 4px;
+            left: 4px;
+        }
+        
+        .distance-trail {
+            position: absolute;
+            height: 10px;
+            background: rgba(255, 209, 102, 0.7);
+            top: 50%;
+            transform: translateY(-50%);
+            left: 50px;
+            border-radius: 5px;
+        }
+        
+        .graph-panel {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        
+        @media (min-width: 768px) {
+            .graph-panel {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+        
+        .graph-container {
+            height: 250px;
+            position: relative;
+            background: rgba(0, 10, 30, 0.7);
+            border-radius: 15px;
+            overflow: hidden;
+        }
+        
+        .graph-title {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            color: #a0d2eb;
+            font-size: 1.1rem;
+            z-index: 10;
+            background: rgba(0, 0, 0, 0.4);
+            padding: 5px 10px;
+            border-radius: 5px;
+        }
+        
+        canvas {
+            width: 100%;
+            height: 100%;
+        }
+        
+        .controls-panel {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            margin: 25px 0;
+        }
+        
+        .control-group {
+            flex: 1;
+            min-width: 200px;
+            background: rgba(0, 0, 0, 0.3);
+            padding: 20px;
+            border-radius: 15px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 12px;
+            color: #ff6b6b;
+            font-weight: 600;
+            font-size: 1.1rem;
+        }
+        
+        input[type="range"] {
+            width: 100%;
+            margin-top: 8px;
+            background: linear-gradient(90deg, #ff6b6b, #4ecdc4);
+            height: 10px;
+            border-radius: 5px;
+            outline: none;
+            -webkit-appearance: none;
+        }
+        
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background: #ffd166;
+            cursor: pointer;
+            box-shadow: 0 0 15px rgba(255, 209, 102, 0.7);
+        }
+        
+        .value-display {
+            text-align: center;
+            font-size: 1.2rem;
+            margin-top: 10px;
+            color: #a0d2eb;
+            font-weight: 500;
+        }
+        
+        .button-group {
+            display: flex;
+            gap: 15px;
+            margin-top: 20px;
+        }
+        
+        .btn {
+            flex: 1;
+            padding: 12px 20px;
+            border: none;
+            border-radius: 50px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+        }
+        
+        .btn-play {
+            background: linear-gradient(90deg, #4ecdc4, #1a936f);
+            color: white;
+        }
+        
+        .btn-pause {
+            background: linear-gradient(90deg, #ff9e7d, #ff6b6b);
+            color: white;
+        }
+        
+        .btn-reset {
+            background: rgba(255, 255, 255, 0.1);
+            color: #ffd166;
+            border: 1px solid #ffd166;
+        }
+        
+        .btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
+        }
+        
+        .btn:active {
+            transform: translateY(1px);
+        }
+        
+        .info-panel {
+            display: flex;
+            justify-content: space-around;
+            background: rgba(0, 0, 0, 0.4);
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 20px;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        
+        .info-item {
+            text-align: center;
+            min-width: 150px;
+            padding: 10px;
+        }
+        
+        .info-value {
+            font-size: 1.8rem;
+            font-weight: bold;
+            color: #ffd166;
+            margin-bottom: 5px;
+        }
+        
+        .info-label {
+            font-size: 1.1rem;
+            color: #a0d2eb;
+        }
+        
+        .legend {
+            display: flex;
+            justify-content: center;
+            gap: 25px;
+            margin-top: 20px;
+            flex-wrap: wrap;
+        }
+        
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 1.1rem;
+        }
+        
+        .legend-color {
+            width: 25px;
+            height: 25px;
+            border-radius: 5px;
+        }
+        
+        .car-color { background: #ff6b6b; }
+        .velocity-color { background: #4ecdc4; }
+        .distance-color { background: #ff9e7d; }
+        .area-color { background: rgba(255, 209, 102, 0.5); }
+        .position-color { background: #a0d2eb; }
+        
+        .explanation {
+            background: rgba(0, 0, 0, 0.25);
+            border-radius: 20px;
+            padding: 30px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.4);
+            overflow-y: auto;
+            max-height: 700px;
+        }
+        
+        .explanation h2 {
+            font-size: 2.2rem;
+            margin-bottom: 25px;
+            color: #ffd166;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        
+        .explanation h2 i {
+            color: #ff6b6b;
+        }
+        
+        .explanation p {
+            line-height: 1.8;
+            margin-bottom: 25px;
+            font-size: 1.2rem;
+        }
+        
+        .math-box {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 25px;
+            border-radius: 15px;
+            margin: 30px 0;
+            border-left: 5px solid #4ecdc4;
+            position: relative;
+        }
+        
+        .math-box::before {
+            content: '∫';
+            position: absolute;
+            font-size: 5rem;
+            opacity: 0.1;
+            top: 10px;
+            right: 20px;
+            font-family: Cambria, Cochin, Georgia, Times, 'Times New Roman', serif;
+        }
+        
+        .equation {
+            font-size: 1.8rem;
+            text-align: center;
+            margin: 20px 0;
+            font-family: 'Cambria Math', serif;
+            color: #a0d2eb;
+        }
+        
+        .concept {
+            display: flex;
+            gap: 20px;
+            margin: 30px 0;
+            align-items: center;
+        }
+        
+        .concept-icon {
+            min-width: 70px;
+            height: 70px;
+            background: rgba(255, 107, 107, 0.2);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+            color: #ff6b6b;
+        }
+        
+        .concept-content {
+            flex: 1;
+        }
+        
+        .concept h3 {
+            font-size: 1.8rem;
+            color: #4ecdc4;
+            margin-bottom: 15px;
+        }
+        
+        footer {
+            text-align: center;
+            padding: 30px;
+            margin-top: 20px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 15px;
+            font-size: 1.1rem;
+            color: #a0d2eb;
+        }
+        
+        .highlight {
+            color: #ffd166;
+            font-weight: 600;
+        }
+        
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(255, 107, 107, 0.7); }
+            70% { box-shadow: 0 0 0 15px rgba(255, 107, 107, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(255, 107, 107, 0); }
+        }
+        
+        @keyframes header-glow {
+            0% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+        
+        @keyframes wheel-rotate {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .pulse {
+            animation: pulse 2s infinite;
+        }
+        
+        .wheel-rotate {
+            animation: wheel-rotate 1s linear infinite;
+        }
+        
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+            h1 {
+                font-size: 2.5rem;
+            }
+            
+            .subtitle {
+                font-size: 1.3rem;
+            }
+            
+            .visual-header h2 {
+                font-size: 1.8rem;
+            }
+            
+            .equation {
+                font-size: 1.4rem;
+            }
+            
+            .info-value {
+                font-size: 1.5rem;
+            }
+            
+            .concept {
+                flex-direction: column;
+                text-align: center;
+            }
+            
+            .concept-icon {
+                margin-bottom: 15px;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .button-group {
+                flex-direction: column;
+            }
+            
+            .info-item {
+                min-width: 100%;
+            }
+            
+            .legend {
+                flex-direction: column;
+                align-items: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Constant Acceleration</h1>
+            <p class="subtitle">Visualizing Motion with Calculus</p>
+            <p class="quote">"The fundamental theorem says the distance traveled equals the area accumulated under the speed curve."</p>
+        </header>
+        
+        <div class="content">
+            <div class="visualization">
+                <div class="visual-header">
+                    <h2><i class="fas fa-car"></i> Car Acceleration Simulation</h2>
+                </div>
+                
+                <div id="road-container">
+                    <div class="road">
+                        <div class="road-line" style="left: 200px;"></div>
+                        <div class="road-line" style="left: 400px;"></div>
+                        <div class="road-line" style="left: 600px;"></div>
+                        <div class="road-line" style="left: 800px;"></div>
+                        <div class="distance-trail" id="distance-trail"></div>
+                        <div class="car-container" id="car-container">
+                            <div class="car pulse">
+                                <div class="wheel" id="wheel"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="graph-panel">
+                    <div class="graph-container">
+                        <div class="graph-title">Velocity vs Time</div>
+                        <canvas id="velocity-graph"></canvas>
+                    </div>
+                    <div class="graph-container">
+                        <div class="graph-title">Distance vs Time</div>
+                        <canvas id="distance-graph"></canvas>
+                    </div>
+                </div>
+                
+                <div class="info-panel">
+                    <div class="info-item">
+                        <div class="info-value" id="time-value">0.00 s</div>
+                        <div class="info-label">Time</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-value" id="velocity-value">0.00 m/s</div>
+                        <div class="info-label">Velocity</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-value" id="distance-value">0.00 m</div>
+                        <div class="info-label">Distance</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-value" id="area-value">0.00 m</div>
+                        <div class="info-label">Area under curve</div>
+                    </div>
+                </div>
+                
+                <div class="controls-panel">
+                    <div class="control-group">
+                        <label for="acceleration">Acceleration: <span id="acceleration-value">2.00</span> m/s²</label>
+                        <input type="range" id="acceleration" min="0.5" max="5" step="0.1" value="2.0">
+                    </div>
+                    
+                    <div class="control-group">
+                        <label for="time-slider">Time: <span id="time-slider-value">0.00</span> s</label>
+                        <input type="range" id="time-slider" min="0" max="10" step="0.1" value="0">
+                    </div>
+                </div>
+                
+                <div class="button-group">
+                    <button class="btn btn-play" id="play-btn">
+                        <i class="fas fa-play"></i> Play
+                    </button>
+                    <button class="btn btn-pause" id="pause-btn">
+                        <i class="fas fa-pause"></i> Pause
+                    </button>
+                    <button class="btn btn-reset" id="reset-btn">
+                        <i class="fas fa-redo"></i> Reset
+                    </button>
+                </div>
+                
+                <div class="legend">
+                    <div class="legend-item">
+                        <div class="legend-color car-color"></div>
+                        <span>Accelerating Car</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color velocity-color"></div>
+                        <span>Velocity (v = at)</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color position-color"></div>
+                        <span>Distance (y = ½at²)</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color area-color"></div>
+                        <span>Area under curve (distance)</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="explanation">
+                <h2><i class="fas fa-lightbulb"></i> The Physics of Acceleration</h2>
+                
+                <div class="concept">
+                    <div class="concept-icon">
+                        <i class="fas fa-car"></i>
+                    </div>
+                    <div class="concept-content">
+                        <h3>Constant Acceleration</h3>
+                        <p>When an object experiences constant acceleration, its velocity increases linearly with time. This is described by the equation:</p>
+                        <div class="equation">v(t) = a · t</div>
+                        <p>where <span class="highlight">a</span> is acceleration, <span class="highlight">t</span> is time, and <span class="highlight">v(t)</span> is velocity at time t.</p>
+                    </div>
+                </div>
+                
+                <div class="concept">
+                    <div class="concept-icon">
+                        <i class="fas fa-chart-line"></i>
+                    </div>
+                    <div class="concept-content">
+                        <h3>Velocity-Time Graph</h3>
+                        <p>The velocity-time graph for constant acceleration is a straight line with slope equal to acceleration. The area under this curve represents the distance traveled.</p>
+                        <div class="equation">Area = ½ · base · height = ½ · t · (a·t) = ½ · a · t²</div>
+                    </div>
+                </div>
+                
+                <div class="concept">
+                    <div class="concept-icon">
+                        <i class="fas fa-running"></i>
+                    </div>
+                    <div class="concept-content">
+                        <h3>Distance Traveled</h3>
+                        <p>The distance traveled by an object under constant acceleration starting from rest is given by:</p>
+                        <div class="equation">y(t) = ½ · a · t²</div>
+                        <p>This is exactly the area of the triangle under the velocity-time curve.</p>
+                    </div>
+                </div>
+                
+                <div class="math-box">
+                    <h3>The Fundamental Theorem of Calculus</h3>
+                    <p>Newton's fundamental theorem connects the concept of derivatives (rates of change) with integrals (accumulated areas):</p>
+                    <div class="equation">∫ v(t) dt = y(t)</div>
+                    <p>This means that the integral (area under the curve) of the velocity function gives us the distance function. Conversely, the derivative of the distance function gives the velocity function.</p>
+                </div>
+                
+                <div class="concept">
+                    <div class="concept-icon">
+                        <i class="fas fa-history"></i>
+                    </div>
+                    <div class="concept-content">
+                        <h3>Historical Insight</h3>
+                        <p>Scholars in the Middle Ages like William Heytesbury and Nicole Oresme understood these relationships centuries before calculus was formalized. Galileo later confirmed these principles experimentally with falling objects.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <footer>
+            <p>Interactive Visualization of Constant Acceleration | Demonstrating the Fundamental Theorem of Calculus</p>
+            <p>Adjust the acceleration and time sliders to explore the relationships between position, velocity, and acceleration</p>
+        </footer>
+    </div>
+    
+    <script>
+        // Get canvas contexts
+        const velocityCanvas = document.getElementById('velocity-graph');
+        const velocityCtx = velocityCanvas.getContext('2d');
+        const distanceCanvas = document.getElementById('distance-graph');
+        const distanceCtx = distanceCanvas.getContext('2d');
+        
+        // Set canvas to container size
+        function resizeCanvases() {
+            const graphContainers = document.querySelectorAll('.graph-container');
+            
+            velocityCanvas.width = graphContainers[0].clientWidth;
+            velocityCanvas.height = graphContainers[0].clientHeight;
+            
+            distanceCanvas.width = graphContainers[1].clientWidth;
+            distanceCanvas.height = graphContainers[1].clientHeight;
+        }
+        
+        resizeCanvases();
+        window.addEventListener('resize', resizeCanvases);
+        
+        // Physics parameters
+        let acceleration = 2.0; // m/s²
+        let time = 0; // seconds
+        let carPosition = 0; // meters
+        let velocity = 0; // m/s
+        let animationId = null;
+        let isPlaying = false;
+        
+        // DOM elements
+        const carContainer = document.getElementById('car-container');
+        const distanceTrail = document.getElementById('distance-trail');
+        const wheel = document.getElementById('wheel');
+        const timeValue = document.getElementById('time-value');
+        const velocityValue = document.getElementById('velocity-value');
+        const distanceValue = document.getElementById('distance-value');
+        const areaValue = document.getElementById('area-value');
+        const accelerationSlider = document.getElementById('acceleration');
+        const accelerationValue = document.getElementById('acceleration-value');
+        const timeSlider = document.getElementById('time-slider');
+        const timeSliderValue = document.getElementById('time-slider-value');
+        const playBtn = document.getElementById('play-btn');
+        const pauseBtn = document.getElementById('pause-btn');
+        const resetBtn = document.getElementById('reset-btn');
+        
+        // Initialize values
+        updateDisplays();
+        
+        // Coordinate conversion for graph
+        function toCanvasX(canvas, x, xMin, xMax) {
+            const padding = 60;
+            return padding + (x - xMin) / (xMax - xMin) * (canvas.width - 2 * padding);
+        }
+        
+        function toCanvasY(canvas, y, yMin, yMax) {
+            const padding = 40;
+            return canvas.height - padding - (y - yMin) / (yMax - yMin) * (canvas.height - 2 * padding);
+        }
+        
+        // Draw coordinate system
+        function drawAxes(ctx, canvas, xMin, xMax, yMin, yMax, title) {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // Draw grid
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+            ctx.lineWidth = 1;
+            
+            // Vertical grid lines (time)
+            for (let t = 0; t <= xMax; t += 2) {
+                ctx.beginPath();
+                ctx.moveTo(toCanvasX(canvas, t, xMin, xMax), toCanvasY(canvas, yMin, yMin, yMax));
+                ctx.lineTo(toCanvasX(canvas, t, xMin, xMax), toCanvasY(canvas, yMax, yMin, yMax));
+                ctx.stroke();
+                
+                // Time labels
+                ctx.fillStyle = '#f0f0f0';
+                ctx.font = '14px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText(t + ' s', toCanvasX(canvas, t, xMin, xMax), toCanvasY(canvas, yMin, yMin, yMax) + 25);
+            }
+            
+            // Horizontal grid lines (value)
+            const yStep = title === 'Velocity vs Time' ? 10 : 25;
+            for (let v = 0; v <= yMax; v += yStep) {
+                ctx.beginPath();
+                ctx.moveTo(toCanvasX(canvas, xMin, xMin, xMax), toCanvasY(canvas, v, yMin, yMax));
+                ctx.lineTo(toCanvasX(canvas, xMax, xMin, xMax), toCanvasY(canvas, v, yMin, yMax));
+                ctx.stroke();
+                
+                // Value labels
+                ctx.fillStyle = '#f0f0f0';
+                ctx.font = '14px Arial';
+                ctx.textAlign = 'right';
+                ctx.fillText(v + (title === 'Velocity vs Time' ? ' m/s' : ' m'), 
+                             toCanvasX(canvas, xMin, xMin, xMax) - 10, 
+                             toCanvasY(canvas, v, yMin, yMax) + 5);
+            }
+            
+            // Draw axes
+            ctx.strokeStyle = '#f0f0f0';
+            ctx.lineWidth = 2;
+            
+            // X-axis (time)
+            ctx.beginPath();
+            ctx.moveTo(toCanvasX(canvas, xMin, xMin, xMax), toCanvasY(canvas, 0, yMin, yMax));
+            ctx.lineTo(toCanvasX(canvas, xMax, xMin, xMax), toCanvasY(canvas, 0, yMin, yMax));
+            ctx.stroke();
+            
+            // Y-axis (value)
+            ctx.beginPath();
+            ctx.moveTo(toCanvasX(canvas, 0, xMin, xMax), toCanvasY(canvas, yMin, yMin, yMax));
+            ctx.lineTo(toCanvasX(canvas, 0, xMin, xMax), toCanvasY(canvas, yMax, yMin, yMax));
+            ctx.stroke();
+            
+            // Axis titles
+            ctx.fillStyle = '#f0f0f0';
+            ctx.font = 'bold 16px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText('Time (s)', canvas.width - 30, toCanvasY(canvas, 0, yMin, yMax) - 10);
+            ctx.textAlign = 'right';
+            ctx.fillText(title === 'Velocity vs Time' ? 'Velocity (m/s)' : 'Distance (m)', 
+                         toCanvasX(canvas, 0, xMin, xMax) - 10, 20);
+        }
+        
+        // Draw the velocity-time graph
+        function drawVelocityGraph() {
+            const xMin = 0;
+            const xMax = 10;
+            const yMin = 0;
+            const yMax = 50;
+            
+            drawAxes(velocityCtx, velocityCanvas, xMin, xMax, yMin, yMax, 'Velocity vs Time');
+            
+            // Draw velocity line
+            velocityCtx.beginPath();
+            velocityCtx.strokeStyle = '#4ecdc4';
+            velocityCtx.lineWidth = 3;
+            
+            for (let t = 0; t <= xMax; t += 0.1) {
+                const v = acceleration * t;
+                if (t === 0) {
+                    velocityCtx.moveTo(toCanvasX(velocityCanvas, t, xMin, xMax), toCanvasY(velocityCanvas, v, yMin, yMax));
+                } else {
+                    velocityCtx.lineTo(toCanvasX(velocityCanvas, t, xMin, xMax), toCanvasY(velocityCanvas, v, yMin, yMax));
+                }
+            }
+            
+            velocityCtx.stroke();
+            
+            // Draw area under curve up to current time
+            if (time > 0) {
+                velocityCtx.beginPath();
+                velocityCtx.moveTo(toCanvasX(velocityCanvas, 0, xMin, xMax), toCanvasY(velocityCanvas, 0, yMin, yMax));
+                
+                for (let t = 0; t <= time; t += 0.1) {
+                    const v = acceleration * t;
+                    velocityCtx.lineTo(toCanvasX(velocityCanvas, t, xMin, xMax), toCanvasY(velocityCanvas, v, yMin, yMax));
+                }
+                
+                velocityCtx.lineTo(toCanvasX(velocityCanvas, time, xMin, xMax), toCanvasY(velocityCanvas, 0, yMin, yMax));
+                velocityCtx.closePath();
+                
+                velocityCtx.fillStyle = 'rgba(255, 209, 102, 0.5)';
+                velocityCtx.fill();
+            }
+            
+            // Draw current time point
+            if (time > 0) {
+                const currentVelocity = acceleration * time;
+                
+                velocityCtx.beginPath();
+                velocityCtx.fillStyle = '#ff9e7d';
+                velocityCtx.arc(
+                    toCanvasX(velocityCanvas, time, xMin, xMax), 
+                    toCanvasY(velocityCanvas, currentVelocity, yMin, yMax), 
+                    8, 0, Math.PI * 2
+                );
+                velocityCtx.fill();
+                
+                // Label
+                velocityCtx.fillStyle = '#ff9e7d';
+                velocityCtx.font = 'bold 16px Arial';
+                velocityCtx.textAlign = 'left';
+                velocityCtx.fillText(`v = ${currentVelocity.toFixed(2)} m/s`, 
+                                  toCanvasX(velocityCanvas, time, xMin, xMax) + 10, 
+                                  toCanvasY(velocityCanvas, currentVelocity, yMin, yMax) - 10);
+            }
+        }
+        
+        // Draw the distance-time graph
+        function drawDistanceGraph() {
+            const xMin = 0;
+            const xMax = 10;
+            const yMin = 0;
+            const yMax = 250;
+            
+            drawAxes(distanceCtx, distanceCanvas, xMin, xMax, yMin, yMax, 'Distance vs Time');
+            
+            // Draw distance curve
+            distanceCtx.beginPath();
+            distanceCtx.strokeStyle = '#a0d2eb';
+            distanceCtx.lineWidth = 3;
+            
+            for (let t = 0; t <= xMax; t += 0.1) {
+                const d = 0.5 * acceleration * t * t;
+                if (t === 0) {
+                    distanceCtx.moveTo(toCanvasX(distanceCanvas, t, xMin, xMax), toCanvasY(distanceCanvas, d, yMin, yMax));
+                } else {
+                    distanceCtx.lineTo(toCanvasX(distanceCanvas, t, xMin, xMax), toCanvasY(distanceCanvas, d, yMin, yMax));
+                }
+            }
+            
+            distanceCtx.stroke();
+            
+            // Draw current time point
+            if (time > 0) {
+                const currentDistance = 0.5 * acceleration * time * time;
+                
+                distanceCtx.beginPath();
+                distanceCtx.fillStyle = '#ff6b6b';
+                distanceCtx.arc(
+                    toCanvasX(distanceCanvas, time, xMin, xMax), 
+                    toCanvasY(distanceCanvas, currentDistance, yMin, yMax), 
+                    8, 0, Math.PI * 2
+                );
+                distanceCtx.fill();
+                
+                // Label
+                distanceCtx.fillStyle = '#ff6b6b';
+                distanceCtx.font = 'bold 16px Arial';
+                distanceCtx.textAlign = 'left';
+                distanceCtx.fillText(`y = ${currentDistance.toFixed(2)} m`, 
+                                  toCanvasX(distanceCanvas, time, xMin, xMax) + 10, 
+                                  toCanvasY(distanceCanvas, currentDistance, yMin, yMax) - 10);
+            }
+        }
+        
+        // Update car position
+        function updateCarPosition() {
+            // Calculate position based on physics: s = 0.5 * a * t²
+            carPosition = 0.5 * acceleration * time * time;
+            
+            // Convert to pixels (1m = 5px for visualization)
+            const maxWidth = document.getElementById('road-container').clientWidth - 150;
+            const pixelPosition = Math.min(carPosition * 5, maxWidth);
+            
+            // Update car position
+            carContainer.style.left = (50 + pixelPosition) + 'px';
+            
+            // Update distance trail
+            distanceTrail.style.width = pixelPosition + 'px';
+            
+            // Update velocity for visual effect
+            velocity = acceleration * time;
+            
+            // Update wheel rotation
+            if (velocity > 0 && isPlaying) {
+                wheel.style.animation = `wheel-rotate ${Math.max(0.5, 2 - velocity/10)}s linear infinite`;
+            } else {
+                wheel.style.animation = 'none';
+            }
+        }
+        
+        // Update display values
+        function updateDisplays() {
+            timeValue.textContent = time.toFixed(2) + ' s';
+            velocityValue.textContent = velocity.toFixed(2) + ' m/s';
+            distanceValue.textContent = carPosition.toFixed(2) + ' m';
+            areaValue.textContent = (0.5 * acceleration * time * time).toFixed(2) + ' m';
+        }
+        
+        // Animation function
+        function animate() {
+            if (isPlaying && time < 10) {
+                time += 0.05;
+                if (time > 10) time = 10;
+                
+                timeSlider.value = time;
+                timeSliderValue.textContent = time.toFixed(2);
+                
+                updatePhysics();
+                updateDisplays();
+                animationId = requestAnimationFrame(animate);
+            } else if (time >= 10) {
+                isPlaying = false;
+                playBtn.textContent = '▶ Play';
+                playBtn.innerHTML = '<i class="fas fa-play"></i> Play';
+            }
+        }
+        
+        // Update physics and visuals
+        function updatePhysics() {
+            updateCarPosition();
+            drawVelocityGraph();
+            drawDistanceGraph();
+        }
+        
+        // Play/pause animation
+        function toggleAnimation() {
+            isPlaying = !isPlaying;
+            if (isPlaying) {
+                playBtn.textContent = '⏸ Pause';
+                playBtn.innerHTML = '<i class="fas fa-pause"></i> Pause';
+                animate();
+            } else {
+                playBtn.textContent = '▶ Play';
+                playBtn.innerHTML = '<i class="fas fa-play"></i> Play';
+                cancelAnimationFrame(animationId);
+            }
+        }
+        
+        // Reset animation
+        function resetAnimation() {
+            time = 0;
+            carPosition = 0;
+            velocity = 0;
+            updatePhysics();
+            updateDisplays();
+            timeSlider.value = 0;
+            timeSliderValue.textContent = '0.00';
+            if (isPlaying) {
+                isPlaying = false;
+                cancelAnimationFrame(animationId);
+                playBtn.textContent = '▶ Play';
+                playBtn.innerHTML = '<i class="fas fa-play"></i> Play';
+            }
+        }
+        
+        // Initialize
+        function init() {
+            // Set up event listeners
+            accelerationSlider.addEventListener('input', function() {
+                acceleration = parseFloat(this.value);
+                accelerationValue.textContent = acceleration.toFixed(2);
+                updatePhysics();
+                updateDisplays();
+            });
+            
+            timeSlider.addEventListener('input', function() {
+                time = parseFloat(this.value);
+                timeSliderValue.textContent = time.toFixed(2);
+                updatePhysics();
+                updateDisplays();
+            });
+            
+            playBtn.addEventListener('click', toggleAnimation);
+            pauseBtn.addEventListener('click', () => {
+                isPlaying = false;
+                cancelAnimationFrame(animationId);
+                playBtn.textContent = '▶ Play';
+                playBtn.innerHTML = '<i class="fas fa-play"></i> Play';
+            });
+            resetBtn.addEventListener('click', resetAnimation);
+            
+            // Initial draw
+            updatePhysics();
+        }
+        
+        // Start everything
+        window.onload = init;
+    </script>
+</body>
+</html>
