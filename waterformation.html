@@ -6,6 +6,7 @@
     <title>Advanced Chemical Reaction Animation</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Exo+2:wght@400;600;700&family=Roboto+Mono:wght@400;500&display=swap" rel="stylesheet">
     <style>
         * {
             margin: 0;
@@ -14,7 +15,7 @@
         }
         
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-family: 'Exo 2', sans-serif;
             background: linear-gradient(135deg, #0a1929, #122e4a, #1a4570);
             color: #fff;
             min-height: 100vh;
@@ -25,19 +26,33 @@
         
         header {
             padding: 1.2rem 2rem;
-            background: rgba(0, 20, 40, 0.8);
+            background: rgba(0, 20, 40, 0.9);
             backdrop-filter: blur(10px);
-            border-bottom: 1px solid rgba(100, 180, 255, 0.2);
+            border-bottom: 1px solid rgba(100, 180, 255, 0.3);
             display: flex;
             justify-content: space-between;
             align-items: center;
             box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle at 20% 30%, rgba(0, 201, 255, 0.1), transparent 70%);
+            pointer-events: none;
         }
         
         .logo {
             display: flex;
             align-items: center;
             gap: 12px;
+            z-index: 2;
         }
         
         .logo-icon {
@@ -45,6 +60,7 @@
             background: linear-gradient(135deg, #00c9ff, #92fe9d);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
+            filter: drop-shadow(0 0 5px rgba(0, 201, 255, 0.7));
         }
         
         h1 {
@@ -53,6 +69,7 @@
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             text-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+            letter-spacing: 0.5px;
         }
         
         .subtitle {
@@ -61,6 +78,8 @@
             max-width: 800px;
             margin-top: 0.2rem;
             line-height: 1.5;
+            font-family: 'Roboto Mono', monospace;
+            color: #a3d5ff;
         }
         
         .container {
@@ -75,32 +94,44 @@
             flex: 1;
             border-radius: 16px;
             overflow: hidden;
-            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
-            background: rgba(5, 25, 45, 0.3);
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.6);
+            background: linear-gradient(45deg, rgba(5, 25, 45, 0.4), rgba(10, 40, 70, 0.3));
             position: relative;
-            border: 1px solid rgba(100, 180, 255, 0.15);
+            border: 1px solid rgba(100, 180, 255, 0.2);
+            transition: all 0.3s ease;
+        }
+        
+        #canvas-container:hover {
+            box-shadow: 0 12px 50px rgba(0, 114, 255, 0.4);
         }
         
         .controls {
             width: 320px;
-            background: rgba(10, 35, 60, 0.6);
+            background: rgba(10, 35, 60, 0.7);
             border-radius: 16px;
             padding: 1.6rem;
-            backdrop-filter: blur(8px);
-            border: 1px solid rgba(100, 180, 255, 0.2);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(100, 180, 255, 0.25);
             display: flex;
             flex-direction: column;
             gap: 1.8rem;
-            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4);
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5);
             overflow-y: auto;
             max-height: calc(100vh - 150px);
         }
         
         .control-group {
-            background: rgba(15, 45, 75, 0.5);
-            border-radius: 12px;
+            background: linear-gradient(145deg, rgba(15, 45, 75, 0.6), rgba(20, 55, 90, 0.4));
+            border-radius: 16px;
             padding: 1.4rem;
-            border: 1px solid rgba(100, 180, 255, 0.1);
+            border: 1px solid rgba(100, 180, 255, 0.15);
+            box-shadow: inset 0 2px 10px rgba(0, 0, 0, 0.2), 0 4px 15px rgba(0, 0, 0, 0.3);
+            transition: transform 0.3s ease;
+        }
+        
+        .control-group:hover {
+            transform: translateY(-3px);
+            border-color: rgba(100, 180, 255, 0.3);
         }
         
         h2 {
@@ -111,25 +142,30 @@
             align-items: center;
             gap: 0.5rem;
             padding-bottom: 0.5rem;
-            border-bottom: 1px solid rgba(100, 180, 255, 0.2);
+            border-bottom: 1px solid rgba(100, 180, 255, 0.3);
+            font-weight: 600;
         }
         
         h2 i {
             font-size: 1.2rem;
+            filter: drop-shadow(0 0 4px rgba(0, 201, 255, 0.7));
         }
         
         .reaction-equation {
             text-align: center;
-            font-size: 1.6rem;
-            padding: 1.2rem;
-            background: rgba(0, 30, 60, 0.5);
-            border-radius: 12px;
-            margin: 1.2rem 0;
+            font-size: 1.8rem;
+            padding: 1.5rem;
+            background: linear-gradient(45deg, rgba(0, 30, 60, 0.6), rgba(0, 40, 80, 0.5));
+            border-radius: 16px;
+            margin: 1.5rem 0;
             font-weight: bold;
             color: #92fe9d;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
             position: relative;
             overflow: hidden;
+            font-family: 'Roboto Mono', monospace;
+            text-shadow: 0 0 10px rgba(146, 254, 157, 0.4);
+            border: 1px solid rgba(100, 180, 255, 0.2);
         }
         
         .reaction-equation::before {
@@ -139,7 +175,7 @@
             left: -100%;
             width: 100%;
             height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(146, 254, 157, 0.1), transparent);
+            background: linear-gradient(90deg, transparent, rgba(146, 254, 157, 0.15), transparent);
             animation: shine 4s infinite;
         }
         
@@ -152,7 +188,7 @@
         .button-group {
             display: flex;
             gap: 1rem;
-            margin-bottom: 1rem;
+            margin-bottom: 1.2rem;
         }
         
         button {
@@ -160,22 +196,44 @@
             background: linear-gradient(45deg, #0072ff, #00c9ff);
             border: none;
             color: #fff;
-            padding: 0.9rem;
-            border-radius: 10px;
+            padding: 1rem;
+            border-radius: 12px;
             font-weight: bold;
             cursor: pointer;
             transition: all 0.3s ease;
             font-size: 1rem;
-            box-shadow: 0 4px 15px rgba(0, 114, 255, 0.3);
+            box-shadow: 0 6px 20px rgba(0, 114, 255, 0.4);
             display: flex;
             align-items: center;
             justify-content: center;
             gap: 0.5rem;
+            font-family: 'Exo 2', sans-serif;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            position: relative;
+            overflow: hidden;
+            z-index: 1;
+        }
+        
+        button::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            transition: 0.5s;
+            z-index: -1;
+        }
+        
+        button:hover::before {
+            left: 100%;
         }
         
         button:hover {
             transform: translateY(-3px);
-            box-shadow: 0 6px 20px rgba(0, 114, 255, 0.5);
+            box-shadow: 0 8px 25px rgba(0, 114, 255, 0.6);
         }
         
         button:active {
@@ -184,11 +242,11 @@
         
         #reset-btn {
             background: linear-gradient(45deg, #ff416c, #ff4b2b);
-            box-shadow: 0 4px 15px rgba(255, 65, 108, 0.3);
+            box-shadow: 0 6px 20px rgba(255, 65, 108, 0.4);
         }
         
         #reset-btn:hover {
-            box-shadow: 0 6px 20px rgba(255, 65, 108, 0.5);
+            box-shadow: 0 8px 25px rgba(255, 65, 108, 0.6);
         }
         
         .slider-container {
@@ -197,11 +255,12 @@
         
         label {
             display: block;
-            margin-bottom: 0.6rem;
+            margin-bottom: 0.8rem;
             font-size: 0.95rem;
             opacity: 0.9;
             display: flex;
             justify-content: space-between;
+            font-family: 'Roboto Mono', monospace;
         }
         
         label span {
@@ -211,8 +270,8 @@
         
         input[type="range"] {
             width: 100%;
-            height: 8px;
-            border-radius: 4px;
+            height: 10px;
+            border-radius: 5px;
             background: rgba(255, 255, 255, 0.1);
             outline: none;
             -webkit-appearance: none;
@@ -220,12 +279,13 @@
         
         input[type="range"]::-webkit-slider-thumb {
             -webkit-appearance: none;
-            width: 20px;
-            height: 20px;
+            width: 22px;
+            height: 22px;
             border-radius: 50%;
             background: #00c9ff;
             cursor: pointer;
-            box-shadow: 0 0 10px rgba(0, 201, 255, 0.8);
+            box-shadow: 0 0 15px rgba(0, 201, 255, 0.9);
+            border: 2px solid white;
         }
         
         .atom-info {
@@ -233,22 +293,30 @@
             align-items: center;
             gap: 0.8rem;
             margin: 1rem 0;
-            padding: 0.8rem;
-            border-radius: 10px;
+            padding: 1rem;
+            border-radius: 12px;
             background: rgba(255, 255, 255, 0.05);
-            transition: transform 0.3s ease;
+            transition: all 0.3s ease;
+            cursor: pointer;
         }
         
         .atom-info:hover {
-            transform: translateX(5px);
-            background: rgba(255, 255, 255, 0.08);
+            transform: translateX(8px);
+            background: rgba(255, 255, 255, 0.1);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
         }
         
         .atom-color {
-            width: 24px;
-            height: 24px;
+            width: 28px;
+            height: 28px;
             border-radius: 50%;
-            box-shadow: 0 0 10px rgba(255, 255, 255, 0.3);
+            box-shadow: 0 0 15px rgba(255, 255, 255, 0.4);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 0.7rem;
+            color: black;
         }
         
         .hydrogen { background: #FFFFFF; }
@@ -259,50 +327,66 @@
             position: absolute;
             top: 20px;
             left: 20px;
-            background: rgba(0, 20, 40, 0.8);
-            padding: 0.9rem 1.6rem;
+            background: rgba(0, 20, 40, 0.9);
+            padding: 1rem 1.8rem;
             border-radius: 30px;
             font-weight: bold;
-            backdrop-filter: blur(5px);
-            border: 1px solid rgba(100, 180, 255, 0.3);
+            backdrop-filter: blur(6px);
+            border: 1px solid rgba(100, 180, 255, 0.4);
             display: flex;
             align-items: center;
             gap: 0.8rem;
             z-index: 10;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
+            font-family: 'Roboto Mono', monospace;
         }
         
         .indicator-dot {
-            width: 14px;
-            height: 14px;
+            width: 16px;
+            height: 16px;
             border-radius: 50%;
             background: #ff5555;
-            box-shadow: 0 0 8px #ff5555;
+            box-shadow: 0 0 10px #ff5555;
+            animation: pulse 1.5s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(255, 85, 85, 0.7); }
+            70% { box-shadow: 0 0 0 10px rgba(255, 85, 85, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(255, 85, 85, 0); }
         }
         
         .indicator-dot.active {
             background: #92fe9d;
-            box-shadow: 0 0 12px #92fe9d;
+            box-shadow: 0 0 15px #92fe9d;
+            animation: pulse-green 1.5s infinite;
+        }
+        
+        @keyframes pulse-green {
+            0% { box-shadow: 0 0 0 0 rgba(146, 254, 157, 0.7); }
+            70% { box-shadow: 0 0 0 10px rgba(146, 254, 157, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(146, 254, 157, 0); }
         }
         
         .reaction-info {
-            background: rgba(0, 20, 40, 0.8);
-            border-radius: 12px;
-            padding: 1.2rem;
+            background: linear-gradient(45deg, rgba(0, 20, 40, 0.8), rgba(0, 30, 60, 0.7));
+            border-radius: 16px;
+            padding: 1.4rem;
             font-size: 0.95rem;
             line-height: 1.6;
-            backdrop-filter: blur(5px);
-            border: 1px solid rgba(100, 180, 255, 0.2);
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
-            margin-top: 1rem;
+            backdrop-filter: blur(6px);
+            border: 1px solid rgba(100, 180, 255, 0.25);
+            box-shadow: 0 6px 25px rgba(0, 0, 0, 0.4);
+            margin-top: 1.2rem;
         }
         
         .reaction-info h3 {
             color: #00c9ff;
-            margin-bottom: 0.6rem;
+            margin-bottom: 0.8rem;
             display: flex;
             align-items: center;
             gap: 0.6rem;
+            font-size: 1.1rem;
         }
         
         .energy-display {
@@ -313,23 +397,27 @@
         }
         
         .energy-value {
-            font-size: 1.8rem;
+            font-size: 2rem;
             font-weight: bold;
             color: #92fe9d;
-            text-shadow: 0 0 10px rgba(146, 254, 157, 0.5);
+            text-shadow: 0 0 15px rgba(146, 254, 157, 0.7);
+            font-family: 'Roboto Mono', monospace;
         }
         
         .energy-label {
             font-size: 0.9rem;
             opacity: 0.8;
+            margin-top: 0.3rem;
         }
         
         .footer {
             text-align: center;
-            padding: 1rem;
+            padding: 1.2rem;
             font-size: 0.85rem;
             opacity: 0.7;
-            background: rgba(0, 10, 20, 0.6);
+            background: rgba(0, 10, 20, 0.7);
+            font-family: 'Roboto Mono', monospace;
+            letter-spacing: 0.5px;
         }
         
         /* New visualization enhancements */
@@ -339,7 +427,7 @@
         
         @keyframes glow-pulse {
             from { box-shadow: 0 0 5px #fff, 0 0 10px #fff; }
-            to { box-shadow: 0 0 15px #fff, 0 0 20px #fff; }
+            to { box-shadow: 0 0 15px #fff, 0 0 25px #fff; }
         }
         
         .energy-wave {
@@ -363,22 +451,85 @@
         .molecule-stats {
             display: grid;
             grid-template-columns: repeat(2, 1fr);
-            gap: 10px;
+            gap: 12px;
             margin-top: 15px;
         }
         
         .stat-card {
-            background: rgba(255, 255, 255, 0.05);
-            border-radius: 8px;
-            padding: 10px;
+            background: rgba(255, 255, 255, 0.07);
+            border-radius: 12px;
+            padding: 12px;
             text-align: center;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+            transition: all 0.3s ease;
+        }
+        
+        .stat-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 6px 15px rgba(0, 0, 0, 0.3);
+            background: rgba(255, 255, 255, 0.1);
         }
         
         .stat-value {
             font-weight: bold;
             color: #00c9ff;
+            font-size: 1.4rem;
+            margin: 5px 0;
+            text-shadow: 0 0 10px rgba(0, 201, 255, 0.5);
         }
         
+        .progress-container {
+            margin: 1.5rem 0;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+            padding: 0.5rem;
+        }
+        
+        .progress-bar {
+            height: 20px;
+            background: linear-gradient(90deg, #0072ff, #00c9ff);
+            border-radius: 8px;
+            width: 0%;
+            transition: width 0.5s ease;
+            box-shadow: 0 0 15px rgba(0, 114, 255, 0.5);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .progress-bar::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+            animation: progress-shine 2s infinite;
+        }
+        
+        @keyframes progress-shine {
+            0% { left: -100%; }
+            100% { left: 100%; }
+        }
+        
+        .reaction-stages {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 0.5rem;
+            font-size: 0.8rem;
+            opacity: 0.8;
+        }
+        
+        .stage-highlight {
+            position: absolute;
+            top: 0;
+            height: 30px;
+            background: rgba(146, 254, 157, 0.2);
+            border-radius: 8px;
+            transition: all 0.5s ease;
+        }
+        
+        /* Responsive design */
         @media (max-width: 900px) {
             .container {
                 flex-direction: column;
@@ -391,7 +542,11 @@
             header {
                 flex-direction: column;
                 text-align: center;
-                gap: 0.5rem;
+                gap: 0.8rem;
+            }
+            
+            h1 {
+                font-size: 1.6rem;
             }
         }
     </style>
@@ -402,11 +557,11 @@
             <div class="logo-icon">⚗️</div>
             <div>
                 <h1>Advanced Chemical Reaction Simulator</h1>
-                <p class="subtitle">Interactive 3D Visualization of Water Formation Reaction</p>
+                <p class="subtitle">Interactive 3D Visualization of Water Formation Reaction with Real-Time Analytics</p>
             </div>
         </div>
         <div class="header-info">
-            <p>2H₂ + O₂ → 2H₂O | ΔH = -572 kJ/mol</p>
+            <p class="subtitle">2H₂ + O₂ → 2H₂O | ΔH = -572 kJ/mol | Exothermic Reaction</p>
         </div>
     </header>
     
@@ -420,7 +575,7 @@
         
         <div class="controls">
             <div class="control-group">
-                <h2>⚙️ Reaction Controls</h2>
+                <h2>⚙️ REACTION CONTROLS</h2>
                 <div class="reaction-equation">2H₂ + O₂ → 2H₂O</div>
                 <div class="button-group">
                     <button id="start-btn">
@@ -430,6 +585,16 @@
                         <span>🔄</span> Reset
                     </button>
                 </div>
+                
+                <div class="progress-container">
+                    <div class="progress-bar" id="reaction-progress"></div>
+                    <div class="reaction-stages">
+                        <div>Bond Breaking</div>
+                        <div>Rearrangement</div>
+                        <div>Bond Formation</div>
+                    </div>
+                </div>
+                
                 <div class="slider-container">
                     <label for="speed-slider">
                         <span>Animation Speed</span>
@@ -438,9 +603,8 @@
                     <input type="range" id="speed-slider" min="0.3" max="2" step="0.1" value="1">
                 </div>
                 
-                <!-- Moved reaction info here -->
                 <div class="reaction-info">
-                    <h3>🔬 Reaction Information</h3>
+                    <h3>🔬 REACTION INFORMATION</h3>
                     <p>This animation demonstrates the formation of water molecules through the exothermic reaction: 2 molecules of hydrogen gas (H₂) react with 1 molecule of oxygen gas (O₂) to form 2 molecules of water (H₂O).</p>
                     
                     <div class="energy-display">
@@ -461,7 +625,7 @@
             </div>
             
             <div class="control-group">
-                <h2>🎚️ Visualization Settings</h2>
+                <h2>🎚️ VISUALIZATION SETTINGS</h2>
                 <div class="slider-container">
                     <label for="camera-slider">
                         <span>Camera Distance</span>
@@ -477,7 +641,6 @@
                     <input type="range" id="particle-slider" min="0" max="2" step="1" value="2">
                 </div>
                 
-                <!-- New molecule stats -->
                 <div class="molecule-stats">
                     <div class="stat-card">
                         <div>Molecules</div>
@@ -499,23 +662,23 @@
             </div>
             
             <div class="control-group">
-                <h2>🧪 Chemical Elements</h2>
+                <h2>🧪 CHEMICAL ELEMENTS</h2>
                 <div class="atom-info">
-                    <div class="atom-color hydrogen"></div>
+                    <div class="atom-color hydrogen">H</div>
                     <div>
                         <strong>Hydrogen (H)</strong>
                         <div>Color: White | Atomic Radius: 53 pm</div>
                     </div>
                 </div>
                 <div class="atom-info">
-                    <div class="atom-color oxygen"></div>
+                    <div class="atom-color oxygen">O</div>
                     <div>
                         <strong>Oxygen (O)</strong>
                         <div>Color: Red | Atomic Radius: 60 pm</div>
                     </div>
                 </div>
                 <div class="atom-info">
-                    <div class="atom-color bond"></div>
+                    <div class="atom-color bond">-</div>
                     <div>
                         <strong>Chemical Bonds</strong>
                         <div>Representing covalent electron sharing</div>
@@ -524,20 +687,20 @@
             </div>
             
             <div class="control-group">
-                <h2>📊 Reaction Stages</h2>
+                <h2>📊 REACTION STAGES</h2>
                 <div style="margin-top: 0.8rem;">
                     <div class="stage">
                         <div style="display: flex; align-items: center; margin-bottom: 0.8rem;">
-                            <div style="width: 12px; height: 12px; border-radius: 50%; background: #ff5555; margin-right: 10px;"></div>
-                            <div><strong>Bond Breaking</strong> - Energy absorption</div>
+                            <div style="width: 14px; height: 14px; border-radius: 50%; background: #ff5555; margin-right: 10px; box-shadow: 0 0 8px #ff5555;"></div>
+                            <div><strong>Bond Breaking</strong> - Energy absorption (Endothermic)</div>
                         </div>
                         <div style="display: flex; align-items: center; margin-bottom: 0.8rem;">
-                            <div style="width: 12px; height: 12px; border-radius: 50%; background: #ffaa00; margin-right: 10px;"></div>
+                            <div style="width: 14px; height: 14px; border-radius: 50%; background: #ffaa00; margin-right: 10px; box-shadow: 0 0 8px #ffaa00;"></div>
                             <div><strong>Atom Rearrangement</strong> - Formation of intermediates</div>
                         </div>
                         <div style="display: flex; align-items: center;">
-                            <div style="width: 12px; height: 12px; border-radius: 50%; background: #92fe9d; margin-right: 10px;"></div>
-                            <div><strong>Bond Formation</strong> - Energy release</div>
+                            <div style="width: 14px; height: 14px; border-radius: 50%; background: #92fe9d; margin-right: 10px; box-shadow: 0 0 10px #92fe9d;"></div>
+                            <div><strong>Bond Formation</strong> - Energy release (Exothermic)</div>
                         </div>
                     </div>
                 </div>
@@ -614,10 +777,12 @@
             
             const directionalLight = new THREE.DirectionalLight(0xffffff, 1.2);
             directionalLight.position.set(5, 5, 5);
+            directionalLight.castShadow = true;
             scene.add(directionalLight);
             
             const pointLight = new THREE.PointLight(0xffffff, 1, 100);
             pointLight.position.set(-5, 5, 5);
+            pointLight.castShadow = true;
             scene.add(pointLight);
             
             const pointLight2 = new THREE.PointLight(0x00aaff, 0.8, 50);
@@ -642,12 +807,13 @@
             const starGeometry = new THREE.BufferGeometry();
             const starMaterial = new THREE.PointsMaterial({
                 color: 0xffffff,
-                size: 0.1,
-                transparent: true
+                size: 0.15,
+                transparent: true,
+                sizeAttenuation: true
             });
             
             const starVertices = [];
-            for (let i = 0; i < 2000; i++) {
+            for (let i = 0; i < 3000; i++) {
                 const x = (Math.random() - 0.5) * 200;
                 const y = (Math.random() - 0.5) * 200;
                 const z = (Math.random() - 0.5) * 200;
@@ -693,6 +859,9 @@
             
             // Update stats
             updateStats();
+            
+            // Reset progress bar
+            document.getElementById('reaction-progress').style.width = '0%';
         }
         
         // Create an atom with enhanced material
@@ -712,7 +881,7 @@
             scene.add(atom);
             
             // Add glow effect
-            const glow = new THREE.PointLight(props.color, 0.5, 3);
+            const glow = new THREE.PointLight(props.color, 0.6, 4);
             atom.add(glow);
             
             return atom;
@@ -724,7 +893,7 @@
             const direction = new THREE.Vector3().subVectors(atom2.position, atom1.position);
             const length = direction.length();
             
-            const geometry = new THREE.CylinderGeometry(radius, radius, length, 8);
+            const geometry = new THREE.CylinderGeometry(radius, radius, length, 16);
             geometry.translate(0, length/2, 0);
             geometry.rotateX(Math.PI/2);
             
@@ -747,7 +916,7 @@
         
         // Create energy particle
         function createParticle(position, color, size) {
-            const geometry = new THREE.SphereGeometry(size, 8, 8);
+            const geometry = new THREE.SphereGeometry(size, 12, 12);
             const material = new THREE.MeshBasicMaterial({ 
                 color: color,
                 transparent: true,
@@ -806,6 +975,8 @@
             animationState = 'breaking';
             document.getElementById('start-btn').disabled = true;
             document.getElementById('state-text').textContent = 'Bond Breaking - Energy Absorption';
+            document.getElementById('state-dot').style.background = "#ff5555";
+            document.getElementById('state-dot').style.boxShadow = "0 0 15px #ff5555";
             document.getElementById('bond-energy').textContent = "436 kJ";
             document.getElementById('bond-energy2').textContent = "498 kJ";
             document.getElementById('reaction-energy').textContent = "0 kJ";
@@ -845,6 +1016,9 @@
             document.getElementById('bond-energy2').textContent = "498 kJ";
             document.getElementById('reaction-energy').textContent = "-572 kJ";
             
+            // Reset progress bar
+            document.getElementById('reaction-progress').style.width = '0%';
+            
             // Restart animation loop
             animate();
         }
@@ -868,6 +1042,9 @@
             
             // Update particles
             updateParticles();
+            
+            // Update progress bar
+            updateProgressBar();
             
             // Handle different animation states
             switch (animationState) {
@@ -904,9 +1081,8 @@
                         // Move to next state
                         animationState = 'rearranging';
                         document.getElementById('state-text').textContent = 'Atom Rearrangement - Formation of Intermediates';
-                        document.getElementById('state-dot').className = 'indicator-dot';
                         document.getElementById('state-dot').style.background = "#ffaa00";
-                        document.getElementById('state-dot').style.boxShadow = "0 0 12px #ffaa00";
+                        document.getElementById('state-dot').style.boxShadow = "0 0 15px #ffaa00";
                         document.getElementById('reaction-energy').textContent = "-286 kJ";
                         progress = 0;
                     }
@@ -946,7 +1122,7 @@
                         animationState = 'forming';
                         document.getElementById('state-text').textContent = 'Bond Formation - Energy Release';
                         document.getElementById('state-dot').style.background = "#92fe9d";
-                        document.getElementById('state-dot').style.boxShadow = "0 0 12px #92fe9d";
+                        document.getElementById('state-dot').style.boxShadow = "0 0 15px #92fe9d";
                         document.getElementById('reaction-energy').textContent = "-572 kJ";
                         progress = 0;
                         
@@ -1021,6 +1197,28 @@
             }
             
             renderer.render(scene, camera);
+        }
+        
+        // Update progress bar
+        function updateProgressBar() {
+            let progressWidth = 0;
+            
+            switch(animationState) {
+                case 'breaking':
+                    progressWidth = progress * 33;
+                    break;
+                case 'rearranging':
+                    progressWidth = 33 + progress * 33;
+                    break;
+                case 'forming':
+                    progressWidth = 66 + progress * 34;
+                    break;
+                case 'complete':
+                    progressWidth = 100;
+                    break;
+            }
+            
+            document.getElementById('reaction-progress').style.width = progressWidth + '%';
         }
         
         // Update particles
