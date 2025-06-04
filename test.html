@@ -6,6 +6,8 @@
     <title>3D Interactive Periodic Table</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.min.js"></script>
+    <!-- Add Tween.js for animations -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tween.js/18.6.4/tween.umd.js"></script>
     <style>
         * {
             margin: 0;
@@ -225,6 +227,23 @@
                 max-width: 95%;
                 margin: 15px auto;
             }
+            
+            h1 {
+                font-size: 2rem;
+            }
+            
+            .subtitle {
+                font-size: 1rem;
+            }
+        }
+        
+        .loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 1.5rem;
+            color: #4cc9f0;
         }
     </style>
 </head>
@@ -235,7 +254,9 @@
             <p class="subtitle">Explore the building blocks of our universe in 3D</p>
         </header>
         
-        <div id="canvas-container"></div>
+        <div id="canvas-container">
+            <div class="loading">Loading elements...</div>
+        </div>
         
         <div id="info-panel">
             <div id="element-name">Select an element</div>
@@ -298,7 +319,7 @@
     </div>
 
     <script>
-        // Periodic table data
+        // Periodic table data - expanded with more elements
         const elements = [
             { symbol: "H", name: "Hydrogen", number: 1, mass: 1.008, category: "Nonmetals", discovered: "1766", config: "1s¹", color: "#577590" },
             { symbol: "He", name: "Helium", number: 2, mass: 4.0026, category: "Noble Gases", discovered: "1868", config: "1s²", color: "#9d4edd" },
@@ -320,11 +341,89 @@
             { symbol: "Ar", name: "Argon", number: 18, mass: 39.948, category: "Noble Gases", discovered: "1894", config: "[Ne] 3s² 3p⁶", color: "#9d4edd" },
             { symbol: "K", name: "Potassium", number: 19, mass: 39.098, category: "Alkali Metals", discovered: "1807", config: "[Ar] 4s¹", color: "#f94144" },
             { symbol: "Ca", name: "Calcium", number: 20, mass: 40.078, category: "Alkaline Earth Metals", discovered: "1808", config: "[Ar] 4s²", color: "#f3722c" },
+            { symbol: "Sc", name: "Scandium", number: 21, mass: 44.956, category: "Transition Metals", discovered: "1879", config: "[Ar] 3d¹ 4s²", color: "#f8961e" },
+            { symbol: "Ti", name: "Titanium", number: 22, mass: 47.867, category: "Transition Metals", discovered: "1791", config: "[Ar] 3d² 4s²", color: "#f8961e" },
+            { symbol: "V", name: "Vanadium", number: 23, mass: 50.942, category: "Transition Metals", discovered: "1801", config: "[Ar] 3d³ 4s²", color: "#f8961e" },
+            { symbol: "Cr", name: "Chromium", number: 24, mass: 51.996, category: "Transition Metals", discovered: "1797", config: "[Ar] 3d⁵ 4s¹", color: "#f8961e" },
+            { symbol: "Mn", name: "Manganese", number: 25, mass: 54.938, category: "Transition Metals", discovered: "1774", config: "[Ar] 3d⁵ 4s²", color: "#f8961e" },
             { symbol: "Fe", name: "Iron", number: 26, mass: 55.845, category: "Transition Metals", discovered: "Ancient", config: "[Ar] 3d⁶ 4s²", color: "#f8961e" },
+            { symbol: "Co", name: "Cobalt", number: 27, mass: 58.933, category: "Transition Metals", discovered: "1735", config: "[Ar] 3d⁷ 4s²", color: "#f8961e" },
+            { symbol: "Ni", name: "Nickel", number: 28, mass: 58.693, category: "Transition Metals", discovered: "1751", config: "[Ar] 3d⁸ 4s²", color: "#f8961e" },
             { symbol: "Cu", name: "Copper", number: 29, mass: 63.546, category: "Transition Metals", discovered: "Ancient", config: "[Ar] 3d¹⁰ 4s¹", color: "#f8961e" },
+            { symbol: "Zn", name: "Zinc", number: 30, mass: 65.38, category: "Transition Metals", discovered: "1746", config: "[Ar] 3d¹⁰ 4s²", color: "#f8961e" },
+            { symbol: "Ga", name: "Gallium", number: 31, mass: 69.723, category: "Post-Transition Metals", discovered: "1875", config: "[Ar] 3d¹⁰ 4s² 4p¹", color: "#90be6d" },
+            { symbol: "Ge", name: "Germanium", number: 32, mass: 72.630, category: "Metalloids", discovered: "1886", config: "[Ar] 3d¹⁰ 4s² 4p²", color: "#43aa8b" },
+            { symbol: "As", name: "Arsenic", number: 33, mass: 74.922, category: "Metalloids", discovered: "1250", config: "[Ar] 3d¹⁰ 4s² 4p³", color: "#43aa8b" },
+            { symbol: "Se", name: "Selenium", number: 34, mass: 78.971, category: "Nonmetals", discovered: "1817", config: "[Ar] 3d¹⁰ 4s² 4p⁴", color: "#577590" },
+            { symbol: "Br", name: "Bromine", number: 35, mass: 79.904, category: "Halogens", discovered: "1826", config: "[Ar] 3d¹⁰ 4s² 4p⁵", color: "#277da1" },
+            { symbol: "Kr", name: "Krypton", number: 36, mass: 83.798, category: "Noble Gases", discovered: "1898", config: "[Ar] 3d¹⁰ 4s² 4p⁶", color: "#9d4edd" },
+            { symbol: "Rb", name: "Rubidium", number: 37, mass: 85.468, category: "Alkali Metals", discovered: "1861", config: "[Kr] 5s¹", color: "#f94144" },
+            { symbol: "Sr", name: "Strontium", number: 38, mass: 87.62, category: "Alkaline Earth Metals", discovered: "1790", config: "[Kr] 5s²", color: "#f3722c" },
+            { symbol: "Y", name: "Yttrium", number: 39, mass: 88.906, category: "Transition Metals", discovered: "1794", config: "[Kr] 4d¹ 5s²", color: "#f8961e" },
+            { symbol: "Zr", name: "Zirconium", number: 40, mass: 91.224, category: "Transition Metals", discovered: "1789", config: "[Kr] 4d² 5s²", color: "#f8961e" },
+            { symbol: "Nb", name: "Niobium", number: 41, mass: 92.906, category: "Transition Metals", discovered: "1801", config: "[Kr] 4d⁴ 5s¹", color: "#f8961e" },
+            { symbol: "Mo", name: "Molybdenum", number: 42, mass: 95.95, category: "Transition Metals", discovered: "1781", config: "[Kr] 4d⁵ 5s¹", color: "#f8961e" },
+            { symbol: "Tc", name: "Technetium", number: 43, mass: 98, category: "Transition Metals", discovered: "1937", config: "[Kr] 4d⁵ 5s²", color: "#f8961e" },
+            { symbol: "Ru", name: "Ruthenium", number: 44, mass: 101.07, category: "Transition Metals", discovered: "1844", config: "[Kr] 4d⁷ 5s¹", color: "#f8961e" },
+            { symbol: "Rh", name: "Rhodium", number: 45, mass: 102.91, category: "Transition Metals", discovered: "1803", config: "[Kr] 4d⁸ 5s¹", color: "#f8961e" },
+            { symbol: "Pd", name: "Palladium", number: 46, mass: 106.42, category: "Transition Metals", discovered: "1803", config: "[Kr] 4d¹⁰", color: "#f8961e" },
             { symbol: "Ag", name: "Silver", number: 47, mass: 107.87, category: "Transition Metals", discovered: "Ancient", config: "[Kr] 4d¹⁰ 5s¹", color: "#f8961e" },
+            { symbol: "Cd", name: "Cadmium", number: 48, mass: 112.41, category: "Transition Metals", discovered: "1817", config: "[Kr] 4d¹⁰ 5s²", color: "#f8961e" },
+            { symbol: "In", name: "Indium", number: 49, mass: 114.82, category: "Post-Transition Metals", discovered: "1863", config: "[Kr] 4d¹⁰ 5s² 5p¹", color: "#90be6d" },
+            { symbol: "Sn", name: "Tin", number: 50, mass: 118.71, category: "Post-Transition Metals", discovered: "Ancient", config: "[Kr] 4d¹⁰ 5s² 5p²", color: "#90be6d" },
+            { symbol: "Sb", name: "Antimony", number: 51, mass: 121.76, category: "Metalloids", discovered: "Ancient", config: "[Kr] 4d¹⁰ 5s² 5p³", color: "#43aa8b" },
+            { symbol: "Te", name: "Tellurium", number: 52, mass: 127.60, category: "Metalloids", discovered: "1783", config: "[Kr] 4d¹⁰ 5s² 5p⁴", color: "#43aa8b" },
+            { symbol: "I", name: "Iodine", number: 53, mass: 126.90, category: "Halogens", discovered: "1811", config: "[Kr] 4d¹⁰ 5s² 5p⁵", color: "#277da1" },
+            { symbol: "Xe", name: "Xenon", number: 54, mass: 131.29, category: "Noble Gases", discovered: "1898", config: "[Kr] 4d¹⁰ 5s² 5p⁶", color: "#9d4edd" },
+            { symbol: "Cs", name: "Cesium", number: 55, mass: 132.91, category: "Alkali Metals", discovered: "1860", config: "[Xe] 6s¹", color: "#f94144" },
+            { symbol: "Ba", name: "Barium", number: 56, mass: 137.33, category: "Alkaline Earth Metals", discovered: "1808", config: "[Xe] 6s²", color: "#f3722c" },
+            { symbol: "La", name: "Lanthanum", number: 57, mass: 138.91, category: "Lanthanides", discovered: "1839", config: "[Xe] 5d¹ 6s²", color: "#ff70a6" },
+            { symbol: "Ce", name: "Cerium", number: 58, mass: 140.12, category: "Lanthanides", discovered: "1803", config: "[Xe] 4f¹ 5d¹ 6s²", color: "#ff70a6" },
+            { symbol: "Pr", name: "Praseodymium", number: 59, mass: 140.91, category: "Lanthanides", discovered: "1885", config: "[Xe] 4f³ 6s²", color: "#ff70a6" },
+            { symbol: "Nd", name: "Neodymium", number: 60, mass: 144.24, category: "Lanthanides", discovered: "1885", config: "[Xe] 4f⁴ 6s²", color: "#ff70a6" },
+            { symbol: "Pm", name: "Promethium", number: 61, mass: 145, category: "Lanthanides", discovered: "1945", config: "[Xe] 4f⁵ 6s²", color: "#ff70a6" },
+            { symbol: "Sm", name: "Samarium", number: 62, mass: 150.36, category: "Lanthanides", discovered: "1879", config: "[Xe] 4f⁶ 6s²", color: "#ff70a6" },
+            { symbol: "Eu", name: "Europium", number: 63, mass: 151.96, category: "Lanthanides", discovered: "1901", config: "[Xe] 4f⁷ 6s²", color: "#ff70a6" },
+            { symbol: "Gd", name: "Gadolinium", number: 64, mass: 157.25, category: "Lanthanides", discovered: "1880", config: "[Xe] 4f⁷ 5d¹ 6s²", color: "#ff70a6" },
+            { symbol: "Tb", name: "Terbium", number: 65, mass: 158.93, category: "Lanthanides", discovered: "1843", config: "[Xe] 4f⁹ 6s²", color: "#ff70a6" },
+            { symbol: "Dy", name: "Dysprosium", number: 66, mass: 162.50, category: "Lanthanides", discovered: "1886", config: "[Xe] 4f¹⁰ 6s²", color: "#ff70a6" },
+            { symbol: "Ho", name: "Holmium", number: 67, mass: 164.93, category: "Lanthanides", discovered: "1878", config: "[Xe] 4f¹¹ 6s²", color: "#ff70a6" },
+            { symbol: "Er", name: "Erbium", number: 68, mass: 167.26, category: "Lanthanides", discovered: "1843", config: "[Xe] 4f¹² 6s²", color: "#ff70a6" },
+            { symbol: "Tm", name: "Thulium", number: 69, mass: 168.93, category: "Lanthanides", discovered: "1879", config: "[Xe] 4f¹³ 6s²", color: "#ff70a6" },
+            { symbol: "Yb", name: "Ytterbium", number: 70, mass: 173.05, category: "Lanthanides", discovered: "1878", config: "[Xe] 4f¹⁴ 6s²", color: "#ff70a6" },
+            { symbol: "Lu", name: "Lutetium", number: 71, mass: 174.97, category: "Lanthanides", discovered: "1907", config: "[Xe] 4f¹⁴ 5d¹ 6s²", color: "#ff70a6" },
+            { symbol: "Hf", name: "Hafnium", number: 72, mass: 178.49, category: "Transition Metals", discovered: "1923", config: "[Xe] 4f¹⁴ 5d² 6s²", color: "#f8961e" },
+            { symbol: "Ta", name: "Tantalum", number: 73, mass: 180.95, category: "Transition Metals", discovered: "1802", config: "[Xe] 4f¹⁴ 5d³ 6s²", color: "#f8961e" },
+            { symbol: "W", name: "Tungsten", number: 74, mass: 183.84, category: "Transition Metals", discovered: "1783", config: "[Xe] 4f¹⁴ 5d⁴ 6s²", color: "#f8961e" },
+            { symbol: "Re", name: "Rhenium", number: 75, mass: 186.21, category: "Transition Metals", discovered: "1925", config: "[Xe] 4f¹⁴ 5d⁵ 6s²", color: "#f8961e" },
+            { symbol: "Os", name: "Osmium", number: 76, mass: 190.23, category: "Transition Metals", discovered: "1803", config: "[Xe] 4f¹⁴ 5d⁶ 6s²", color: "#f8961e" },
+            { symbol: "Ir", name: "Iridium", number: 77, mass: 192.22, category: "Transition Metals", discovered: "1803", config: "[Xe] 4f¹⁴ 5d⁷ 6s²", color: "#f8961e" },
+            { symbol: "Pt", name: "Platinum", number: 78, mass: 195.08, category: "Transition Metals", discovered: "1735", config: "[Xe] 4f¹⁴ 5d⁹ 6s¹", color: "#f8961e" },
             { symbol: "Au", name: "Gold", number: 79, mass: 196.97, category: "Transition Metals", discovered: "Ancient", config: "[Xe] 4f¹⁴ 5d¹⁰ 6s¹", color: "#f8961e" },
-            { symbol: "U", name: "Uranium", number: 92, mass: 238.03, category: "Actinides", discovered: "1789", config: "[Rn] 5f³ 6d¹ 7s²", color: "#ff9770" }
+            { symbol: "Hg", name: "Mercury", number: 80, mass: 200.59, category: "Transition Metals", discovered: "Ancient", config: "[Xe] 4f¹⁴ 5d¹⁰ 6s²", color: "#f8961e" },
+            { symbol: "Tl", name: "Thallium", number: 81, mass: 204.38, category: "Post-Transition Metals", discovered: "1861", config: "[Xe] 4f¹⁴ 5d¹⁰ 6s² 6p¹", color: "#90be6d" },
+            { symbol: "Pb", name: "Lead", number: 82, mass: 207.2, category: "Post-Transition Metals", discovered: "Ancient", config: "[Xe] 4f¹⁴ 5d¹⁰ 6s² 6p²", color: "#90be6d" },
+            { symbol: "Bi", name: "Bismuth", number: 83, mass: 208.98, category: "Post-Transition Metals", discovered: "1753", config: "[Xe] 4f¹⁴ 5d¹⁰ 6s² 6p³", color: "#90be6d" },
+            { symbol: "Po", name: "Polonium", number: 84, mass: 209, category: "Metalloids", discovered: "1898", config: "[Xe] 4f¹⁴ 5d¹⁰ 6s² 6p⁴", color: "#43aa8b" },
+            { symbol: "At", name: "Astatine", number: 85, mass: 210, category: "Halogens", discovered: "1940", config: "[Xe] 4f¹⁴ 5d¹⁰ 6s² 6p⁵", color: "#277da1" },
+            { symbol: "Rn", name: "Radon", number: 86, mass: 222, category: "Noble Gases", discovered: "1900", config: "[Xe] 4f¹⁴ 5d¹⁰ 6s² 6p⁶", color: "#9d4edd" },
+            { symbol: "Fr", name: "Francium", number: 87, mass: 223, category: "Alkali Metals", discovered: "1939", config: "[Rn] 7s¹", color: "#f94144" },
+            { symbol: "Ra", name: "Radium", number: 88, mass: 226, category: "Alkaline Earth Metals", discovered: "1898", config: "[Rn] 7s²", color: "#f3722c" },
+            { symbol: "Ac", name: "Actinium", number: 89, mass: 227, category: "Actinides", discovered: "1899", config: "[Rn] 6d¹ 7s²", color: "#ff9770" },
+            { symbol: "Th", name: "Thorium", number: 90, mass: 232.04, category: "Actinides", discovered: "1829", config: "[Rn] 6d² 7s²", color: "#ff9770" },
+            { symbol: "Pa", name: "Protactinium", number: 91, mass: 231.04, category: "Actinides", discovered: "1913", config: "[Rn] 5f² 6d¹ 7s²", color: "#ff9770" },
+            { symbol: "U", name: "Uranium", number: 92, mass: 238.03, category: "Actinides", discovered: "1789", config: "[Rn] 5f³ 6d¹ 7s²", color: "#ff9770" },
+            { symbol: "Np", name: "Neptunium", number: 93, mass: 237, category: "Actinides", discovered: "1940", config: "[Rn] 5f⁴ 6d¹ 7s²", color: "#ff9770" },
+            { symbol: "Pu", name: "Plutonium", number: 94, mass: 244, category: "Actinides", discovered: "1940", config: "[Rn] 5f⁶ 7s²", color: "#ff9770" },
+            { symbol: "Am", name: "Americium", number: 95, mass: 243, category: "Actinides", discovered: "1944", config: "[Rn] 5f⁷ 7s²", color: "#ff9770" },
+            { symbol: "Cm", name: "Curium", number: 96, mass: 247, category: "Actinides", discovered: "1944", config: "[Rn] 5f⁷ 6d¹ 7s²", color: "#ff9770" },
+            { symbol: "Bk", name: "Berkelium", number: 97, mass: 247, category: "Actinides", discovered: "1949", config: "[Rn] 5f⁹ 7s²", color: "#ff9770" },
+            { symbol: "Cf", name: "Californium", number: 98, mass: 251, category: "Actinides", discovered: "1950", config: "[Rn] 5f¹⁰ 7s²", color: "#ff9770" },
+            { symbol: "Es", name: "Einsteinium", number: 99, mass: 252, category: "Actinides", discovered: "1952", config: "[Rn] 5f¹¹ 7s²", color: "#ff9770" },
+            { symbol: "Fm", name: "Fermium", number: 100, mass: 257, category: "Actinides", discovered: "1952", config: "[Rn] 5f¹² 7s²", color: "#ff9770" },
+            { symbol: "Md", name: "Mendelevium", number: 101, mass: 258, category: "Actinides", discovered: "1955", config: "[Rn] 5f¹³ 7s²", color: "#ff9770" },
+            { symbol: "No", name: "Nobelium", number: 102, mass: 259, category: "Actinides", discovered: "1958", config: "[Rn] 5f¹⁴ 7s²", color: "#ff9770" },
+            { symbol: "Lr", name: "Lawrencium", number: 103, mass: 266, category: "Actinides", discovered: "1961", config: "[Rn] 5f¹⁴ 7s² 7p¹", color: "#ff9770" }
         ];
 
         // Three.js variables
@@ -337,6 +436,9 @@
 
         // Initialize the scene
         function init() {
+            // Remove loading message
+            document.querySelector('.loading').style.display = 'none';
+            
             // Create scene
             scene = new THREE.Scene();
             scene.background = new THREE.Color(0x0a1520);
@@ -398,7 +500,7 @@
             scene.add(periodicTableGroup);
             
             // Layout parameters
-            const rows = 7;
+            const rows = 10;
             const cols = 18;
             const spacing = 1.8;
             const startX = -((cols - 1) * spacing) / 2;
@@ -406,25 +508,27 @@
             
             // Create element boxes
             elements.forEach(element => {
-                const row = Math.min(Math.floor((element.number - 1) / cols) + 1, rows);
-                const col = (element.number - 1) % cols + 1;
+                // Calculate row and column based on atomic number
+                let row, col;
                 
-                // Special positioning for certain elements
-                let x, y;
-                if (element.number <= 2) {
-                    x = startX + (element.number - 1) * spacing;
-                    y = startY;
-                } else if (element.number <= 10) {
-                    x = startX + (element.number - 1) * spacing;
-                    y = startY - spacing;
-                } else if (element.number <= 18) {
-                    x = startX + (element.number - 1) * spacing;
-                    y = startY - 2 * spacing;
+                // Handle special cases for lanthanides and actinides
+                if (element.number >= 57 && element.number <= 71) {
+                    // Lanthanides
+                    row = 8;
+                    col = element.number - 57 + 3;
+                } else if (element.number >= 89 && element.number <= 103) {
+                    // Actinides
+                    row = 9;
+                    col = element.number - 89 + 3;
                 } else {
-                    // For simplicity, position other elements randomly
-                    x = startX + Math.random() * cols * spacing;
-                    y = startY - Math.random() * rows * spacing;
+                    // Standard positioning
+                    row = Math.floor((element.number - 1) / 18) + 1;
+                    col = (element.number - 1) % 18 + 1;
                 }
+                
+                // Position elements
+                const x = startX + (col - 1) * spacing;
+                const y = startY - (row - 1) * spacing;
                 
                 // Create element box
                 const elementGroup = createElementBox(element, x, y);
@@ -481,14 +585,14 @@
             cube.receiveShadow = true;
             group.add(cube);
             
-            // Symbol text (simulated with sprites)
+            // Symbol text
             createTextSprite(element.symbol, 0.5, 0.2, 0.76, 0xffffff, group);
             createTextSprite(element.number, 0.3, -0.5, 0.76, 0xffffff, group);
             
             return group;
         }
         
-        // Create text sprite (simulated with planes)
+        // Create text sprite
         function createTextSprite(text, size, yPos, zPos, color, parent) {
             const canvas = document.createElement('canvas');
             const context = canvas.getContext('2d');
@@ -501,7 +605,13 @@
             context.font = 'bold 120px Arial';
             context.textAlign = 'center';
             context.textBaseline = 'middle';
-            context.fillStyle = `rgb(${color.r * 255}, ${color.g * 255}, ${color.b * 255})`;
+            
+            // Convert color to RGB
+            const tempColor = new THREE.Color(color);
+            const r = Math.floor(tempColor.r * 255);
+            const g = Math.floor(tempColor.g * 255);
+            const b = Math.floor(tempColor.b * 255);
+            context.fillStyle = `rgb(${r}, ${g}, ${b})`;
             context.fillText(text, canvas.width / 2, canvas.height / 2);
             
             const texture = new THREE.CanvasTexture(canvas);
@@ -529,8 +639,10 @@
             
             // Reset previous highlights
             elementObjects.forEach(obj => {
-                obj.mesh.scale.set(1, 1, 1);
-                obj.mesh.children[0].material.emissive.set(0x000000);
+                if (obj.mesh !== selectedElement) {
+                    obj.mesh.scale.set(1, 1, 1);
+                    obj.mesh.children[0].material.emissive.set(0x000000);
+                }
             });
             
             // Raycast to find intersected objects
@@ -604,7 +716,9 @@
         
         // Hide element information panel
         function hideElementInfo() {
-            document.getElementById('info-panel').classList.remove('visible');
+            if (!selectedElement) {
+                document.getElementById('info-panel').classList.remove('visible');
+            }
         }
         
         // Reset camera view
@@ -622,22 +736,42 @@
         
         // Show all elements animation
         function showAllElements() {
-            // Animate all elements to their positions
-            elementObjects.forEach((obj, index) => {
-                const row = Math.min(Math.floor(index / 18) + 1, 7);
-                const col = (index % 18) + 1;
+            // Layout parameters
+            const rows = 10;
+            const cols = 18;
+            const spacing = 1.8;
+            const startX = -((cols - 1) * spacing) / 2;
+            const startY = ((rows - 1) * spacing) / 2;
+
+            elementObjects.forEach((obj) => {
+                const element = obj.element;
+                let row, col;
                 
-                const startX = -((18 - 1) * 1.8) / 2;
-                const startY = ((7 - 1) * 1.8) / 2;
+                // Handle special cases for lanthanides and actinides
+                if (element.number >= 57 && element.number <= 71) {
+                    // Lanthanides
+                    row = 8;
+                    col = element.number - 57 + 3;
+                } else if (element.number >= 89 && element.number <= 103) {
+                    // Actinides
+                    row = 9;
+                    col = element.number - 89 + 3;
+                } else {
+                    // Standard positioning
+                    row = Math.floor((element.number - 1) / 18) + 1;
+                    col = (element.number - 1) % 18 + 1;
+                }
                 
-                const targetX = startX + (col - 1) * 1.8;
-                const targetY = startY - (row - 1) * 1.8;
-                
+                // Position elements
+                const targetX = startX + (col - 1) * spacing;
+                const targetY = startY - (row - 1) * spacing;
+                const targetZ = 0;
+
                 // Create animation
                 new TWEEN.Tween(obj.mesh.position)
-                    .to({ x: targetX, y: targetY, z: 0 }, 1500)
+                    .to({ x: targetX, y: targetY, z: targetZ }, 1500)
                     .easing(TWEEN.Easing.Elastic.Out)
-                    .delay(index * 30)
+                    .delay(element.number * 10)
                     .start();
             });
         }
@@ -659,13 +793,15 @@
             controls.update();
             
             // Add subtle rotation to the entire table
-            periodicTableGroup.rotation.y += 0.001;
+            if (autoRotate) {
+                periodicTableGroup.rotation.y += 0.001;
+            }
             
             // Add pulsing animation to all elements
             const time = Date.now() * 0.001;
             elementObjects.forEach((obj, index) => {
-                const scale = 1 + Math.sin(time * 2 + index) * 0.05;
                 if (obj.mesh !== selectedElement) {
+                    const scale = 1 + Math.sin(time * 2 + index) * 0.05;
                     obj.mesh.scale.set(scale, scale, scale);
                 }
             });
