@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hyper-Realistic Shielding Effect</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.min.js"></script>
+    <style>
+        body { 
+            margin: 0; 
+            overflow: hidden;
+            background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        canvas { 
+            display: block; 
+        }
+        #info {
+            position: absolute;
+            top: 20px;
+            width: 100%;
+            text-align: center;
+            color: #fff;
+            text-shadow: 0 0 10px rgba(0, 150, 255, 0.8);
+            z-index: 100;
+            pointer-events: none;
+        }
+        #title {
+            font-size: 32px;
+            font-weight: bold;
+            margin-bottom: 10px;
+            letter-spacing: 2px;
+        }
+        #description {
+            max-width: 600px;
+            margin: 0 auto;
+            font-size: 18px;
+            opacity: 0.8;
+            padding: 0 20px;
+        }
+        #controls {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(0, 20, 40, 0.7);
+            padding: 15px;
+            border-radius: 10px;
+            color: white;
+            border: 1px solid rgba(100, 180, 255, 0.3);
+            box-shadow: 0 0 20px rgba(0, 150, 255, 0.3);
+        }
+        .control-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-size: 14px;
+        }
+        input[type="range"] {
+            width: 200px;
+        }
+        #loading {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 10, 20, 0.9);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            color: #4fc3f7;
+            font-size: 24px;
+            flex-direction: column;
+        }
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 5px solid rgba(79, 195, 247, 0.3);
+            border-radius: 50%;
+            border-top-color: #4fc3f7;
+            animation: spin 1s ease-in-out infinite;
+            margin-bottom: 20px;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div id="info">
+        <div id="title">QUANTUM SHIELDING EFFECT</div>
+        <div id="description">Advanced energy barrier simulation By Aditya wargis with Real-time particle physics with dynamic lighting and force field interactions.</div>
+    </div>
+    
+    <div id="controls">
+        <div class="control-group">
+            <label for="intensity">Shield Intensity</label>
+            <input type="range" id="intensity" min="0.5" max="2" step="0.1" value="1">
+        </div>
+        <div class="control-group">
+            <label for="speed">Animation Speed</label>
+            <input type="range" id="speed" min="0.5" max="3" step="0.1" value="1">
+        </div>
+        <div class="control-group">
+            <label for="color">Shield Color</label>
+            <input type="range" id="color" min="0" max="100" step="1" value="50">
+        </div>
+    </div>
+    
+    <div id="loading">
+        <div class="spinner"></div>
+        <div>Initializing Quantum Shielding System...</div>
+    </div>
+
+    <script>
+        // Main Three.js implementation
+        document.addEventListener('DOMContentLoaded', () => {
+            // Scene setup
+            const scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x020924);
+            scene.fog = new THREE.Fog(0x020924, 15, 30);
+            
+            // Camera setup
+            const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.set(0, 0, 12);
+            
+            // Renderer setup
+            const renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(window.devicePixelRatio);
+            document.body.appendChild(renderer.domElement);
+            
+            // Add controls
+            const controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.05;
+            
+            // Add lighting
+            const ambientLight = new THREE.AmbientLight(0x222244);
+            scene.add(ambientLight);
+            
+            const pointLight = new THREE.PointLight(0x4fc3f7, 1.5, 30);
+            pointLight.position.set(5, 5, 5);
+            scene.add(pointLight);
+            
+            const pointLight2 = new THREE.PointLight(0xff77aa, 1, 30);
+            pointLight2.position.set(-5, -5, -5);
+            scene.add(pointLight2);
+            
+            // Create the shield effect
+            const shieldGroup = new THREE.Group();
+            scene.add(shieldGroup);
+            
+            // Create the core sphere
+            const coreGeometry = new THREE.SphereGeometry(2, 64, 64);
+            const coreMaterial = new THREE.MeshPhongMaterial({
+                color: 0x00aaff,
+                emissive: 0x0044aa,
+                specular: 0xffffff,
+                shininess: 100,
+                transparent: true,
+                opacity: 0.8
+            });
+            const core = new THREE.Mesh(coreGeometry, coreMaterial);
+            shieldGroup.add(core);
+            
+            // Create the shield layers
+            const createShieldLayer = (radius, color, opacity) => {
+                const geometry = new THREE.SphereGeometry(radius, 64, 64);
+                const material = new THREE.MeshPhongMaterial({
+                    color: color,
+                    transparent: true,
+                    opacity: opacity,
+                    wireframe: true,
+                    emissive: color,
+                    shininess: 100,
+                    side: THREE.DoubleSide
+                });
+                return new THREE.Mesh(geometry, material);
+            };
+            
+            const shield1 = createShieldLayer(2.8, 0x00aaff, 0.15);
+            const shield2 = createShieldLayer(3.0, 0x00ffff, 0.12);
+            const shield3 = createShieldLayer(3.2, 0x0088ff, 0.10);
+            
+            shieldGroup.add(shield1);
+            shieldGroup.add(shield2);
+            shieldGroup.add(shield3);
+            
+            // Create particle effects
+            const particleCount = 2000;
+            const particles = new THREE.BufferGeometry();
+            const posArray = new Float32Array(particleCount * 3);
+            const colorArray = new Float32Array(particleCount * 3);
+            
+            for (let i = 0; i < particleCount * 3; i += 3) {
+                // Position particles in a spherical distribution
+                const radius = 3.3 + Math.random() * 0.5;
+                const theta = Math.random() * Math.PI * 2;
+                const phi = Math.acos(2 * Math.random() - 1);
+                
+                posArray[i] = radius * Math.sin(phi) * Math.cos(theta);
+                posArray[i+1] = radius * Math.sin(phi) * Math.sin(theta);
+                posArray[i+2] = radius * Math.cos(phi);
+                
+                // Set colors
+                colorArray[i] = Math.random() * 0.5 + 0.5;   // R
+                colorArray[i+1] = Math.random() * 0.8 + 0.2; // G
+                colorArray[i+2] = Math.random() * 1.0;      // B
+            }
+            
+            particles.setAttribute('position', new THREE.BufferAttribute(posArray, 3));
+            particles.setAttribute('color', new THREE.BufferAttribute(colorArray, 3));
+            
+            const particleMaterial = new THREE.PointsMaterial({
+                size: 0.05,
+                vertexColors: true,
+                transparent: true,
+                opacity: 0.8,
+                blending: THREE.AdditiveBlending
+            });
+            
+            const particleSystem = new THREE.Points(particles, particleMaterial);
+            shieldGroup.add(particleSystem);
+            
+            // Create impact effects
+            const impactGeometry = new THREE.SphereGeometry(0.2, 16, 16);
+            const impactMaterial = new THREE.MeshBasicMaterial({
+                color: 0xffffff,
+                transparent: true,
+                opacity: 0
+            });
+            const impacts = [];
+            
+            for (let i = 0; i < 5; i++) {
+                const impact = new THREE.Mesh(impactGeometry, impactMaterial.clone());
+                impact.visible = false;
+                scene.add(impact);
+                impacts.push(impact);
+            }
+            
+            // Handle window resize
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            });
+            
+            // Get control elements
+            const intensityControl = document.getElementById('intensity');
+            const speedControl = document.getElementById('speed');
+            const colorControl = document.getElementById('color');
+            
+            // Animation variables
+            let time = 0;
+            let impactTimer = 0;
+            let activeImpacts = [];
+            
+            // Animation loop
+            const animate = () => {
+                requestAnimationFrame(animate);
+                
+                const delta = 0.016; // Approximate delta time for 60fps
+                const speed = parseFloat(speedControl.value);
+                const intensity = parseFloat(intensityControl.value);
+                
+                time += delta * speed;
+                
+                // Rotate shields
+                shieldGroup.rotation.x = time * 0.2;
+                shieldGroup.rotation.y = time * 0.3;
+                
+                // Animate particles
+                const positions = particles.attributes.position.array;
+                for (let i = 0; i < positions.length; i += 3) {
+                    // Create a subtle pulsing motion
+                    const radius = 3.3 + Math.sin(time + i) * 0.1 * intensity;
+                    const scale = 1 + Math.sin(time * 2 + i) * 0.05 * intensity;
+                    
+                    positions[i] *= scale;
+                    positions[i+1] *= scale;
+                    positions[i+2] *= scale;
+                    
+                    const len = Math.sqrt(
+                        positions[i] * positions[i] +
+                        positions[i+1] * positions[i+1] +
+                        positions[i+2] * positions[i+2]
+                    );
+                    
+                    positions[i] = positions[i] / len * radius;
+                    positions[i+1] = positions[i+1] / len * radius;
+                    positions[i+2] = positions[i+2] / len * radius;
+                }
+                particles.attributes.position.needsUpdate = true;
+                
+                // Animate shield layers
+                const pulse = Math.sin(time * 3) * 0.1 * intensity + 1;
+                shield1.scale.set(pulse, pulse, pulse);
+                shield2.scale.set(pulse * 0.98, pulse * 0.98, pulse * 0.98);
+                shield3.scale.set(pulse * 0.96, pulse * 0.96, pulse * 0.96);
+                
+                // Update impact effects
+                impactTimer += delta;
+                if (impactTimer > 0.5 && activeImpacts.length < 3) {
+                    createImpact();
+                    impactTimer = 0;
+                }
+                
+                for (const impact of activeImpacts) {
+                    impact.scale.x += delta * 5;
+                    impact.scale.y += delta * 5;
+                    impact.scale.z += delta * 5;
+                    impact.material.opacity -= delta * 2;
+                    
+                    if (impact.material.opacity <= 0) {
+                        impact.visible = false;
+                        activeImpacts = activeImpacts.filter(i => i !== impact);
+                    }
+                }
+                
+                // Adjust shield color based on control
+                const hue = parseFloat(colorControl.value) / 100;
+                const shieldColor = new THREE.Color().setHSL(hue, 0.8, 0.5);
+                shield1.material.color = shieldColor;
+                shield1.material.emissive = shieldColor;
+                
+                // Update controls
+                controls.update();
+                renderer.render(scene, camera);
+            };
+            
+            // Create impact effect
+            function createImpact() {
+                const availableImpacts = impacts.filter(impact => !impact.visible);
+                if (availableImpacts.length === 0) return;
+                
+                const impact = availableImpacts[0];
+                
+                // Random position on shield surface
+                const theta = Math.random() * Math.PI * 2;
+                const phi = Math.acos(2 * Math.random() - 1);
+                const radius = 3.2;
+                
+                impact.position.x = radius * Math.sin(phi) * Math.cos(theta);
+                impact.position.y = radius * Math.sin(phi) * Math.sin(theta);
+                impact.position.z = radius * Math.cos(phi);
+                
+                // Aim at center
+                impact.lookAt(0, 0, 0);
+                
+                // Reset scale and opacity
+                impact.scale.set(1, 1, 1);
+                impact.material.opacity = 0.8;
+                impact.visible = true;
+                
+                activeImpacts.push(impact);
+            }
+            
+            // Hide loading screen and start animation
+            setTimeout(() => {
+                document.getElementById('loading').style.display = 'none';
+                animate();
+            }, 1500);
+        });
+    </script>
+</body>
+</html>
