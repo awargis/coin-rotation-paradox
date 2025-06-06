@@ -1,0 +1,602 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>JEE Advanced: Insect Motion Problem - Cinematic Experience</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.0/p5.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;700&family=Orbitron:wght@700&display=swap" rel="stylesheet">
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      background: #000;
+      font-family: 'Montserrat', sans-serif;
+      color: white;
+    }
+
+    #universe {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100vh;
+      z-index: 1;
+    }
+
+    #title-card {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      z-index: 100;
+      background: rgba(0, 0, 0, 0.7);
+      backdrop-filter: blur(5px);
+      transition: all 1.5s ease;
+    }
+
+    #title-card.hidden {
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .title {
+      font-family: 'Orbitron', sans-serif;
+      font-size: 4rem;
+      margin-bottom: 2rem;
+      text-align: center;
+      text-transform: uppercase;
+      letter-spacing: 0.5rem;
+      color: #00f5d4;
+      text-shadow: 0 0 20px rgba(0, 245, 212, 0.7);
+      transform: translateY(50px);
+      opacity: 0;
+      animation: titleAppear 1.5s forwards 0.5s;
+    }
+
+    @keyframes titleAppear {
+      to {
+        transform: translateY(0);
+        opacity: 1;
+      }
+    }
+
+    #question-box {
+      background: rgba(10, 20, 30, 0.9);
+      border: 2px solid #00f5d4;
+      border-radius: 10px;
+      padding: 2rem;
+      max-width: 800px;
+      margin: 0 auto;
+      box-shadow: 0 0 30px rgba(0, 245, 212, 0.3);
+      transform: scale(0.8);
+      opacity: 0;
+      animation: questionAppear 1.5s forwards 1.5s;
+    }
+
+    @keyframes questionAppear {
+      to {
+        transform: scale(1);
+        opacity: 1;
+      }
+    }
+
+    .question-text {
+      font-size: 1.2rem;
+      line-height: 1.6;
+      margin-bottom: 1.5rem;
+      text-align: left;
+    }
+
+    .highlight {
+      color: #00f5d4;
+      font-weight: bold;
+    }
+
+    #start-button {
+      background: linear-gradient(45deg, #0061ff, #00f5d4);
+      border: none;
+      color: white;
+      padding: 1rem 3rem;
+      font-size: 1.2rem;
+      font-family: 'Orbitron', sans-serif;
+      border-radius: 50px;
+      cursor: pointer;
+      margin-top: 2rem;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      box-shadow: 0 0 20px rgba(0, 245, 212, 0.5);
+      transition: all 0.3s ease;
+      transform: translateY(50px);
+      opacity: 0;
+      animation: buttonAppear 1.5s forwards 2.5s;
+    }
+
+    @keyframes buttonAppear {
+      to {
+        transform: translateY(0);
+        opacity: 1;
+      }
+    }
+
+    #start-button:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 0 30px rgba(0, 245, 212, 0.8);
+    }
+
+    #animation-container {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100vh;
+      z-index: 2;
+      opacity: 0;
+      transition: opacity 2s ease;
+    }
+
+    #animation-container.visible {
+      opacity: 1;
+    }
+
+    #controls {
+      position: fixed;
+      bottom: 30px;
+      right: 30px;
+      background: rgba(10, 20, 30, 0.8);
+      border: 1px solid #00f5d4;
+      border-radius: 10px;
+      padding: 15px;
+      z-index: 10;
+      box-shadow: 0 0 20px rgba(0, 245, 212, 0.3);
+      backdrop-filter: blur(5px);
+      transform: translateY(100px);
+      opacity: 0;
+      transition: all 1s ease;
+    }
+
+    #controls.visible {
+      transform: translateY(0);
+      opacity: 1;
+    }
+
+    .control-button {
+      background: rgba(0, 245, 212, 0.2);
+      border: 1px solid #00f5d4;
+      color: white;
+      padding: 8px 15px;
+      margin: 0 5px;
+      border-radius: 5px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+
+    .control-button:hover {
+      background: rgba(0, 245, 212, 0.4);
+      transform: scale(1.05);
+    }
+
+    input[type="range"] {
+      -webkit-appearance: none;
+      width: 100%;
+      background: transparent;
+    }
+
+    input[type="range"]::-webkit-slider-runnable-track {
+      height: 8px;
+      background: linear-gradient(to right, #1e3c72, #00f5d4);
+      border-radius: 5px;
+    }
+
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      height: 16px;
+      width: 16px;
+      background: #fff;
+      border-radius: 50%;
+      margin-top: -4px;
+      box-shadow: 0 0 10px rgba(0, 245, 212, 0.8);
+      cursor: pointer;
+    }
+
+    .particle {
+      position: absolute;
+      background: #00f5d4;
+      border-radius: 50%;
+      pointer-events: none;
+    }
+
+    #info-display {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      background: rgba(10, 20, 30, 0.8);
+      border: 1px solid #00f5d4;
+      border-radius: 10px;
+      padding: 15px;
+      z-index: 10;
+      box-shadow: 0 0 20px rgba(0, 245, 212, 0.3);
+      backdrop-filter: blur(5px);
+    }
+
+    .info-item {
+      margin-bottom: 5px;
+    }
+
+    .info-value {
+      color: #00f5d4;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+  <!-- Title Card with Question -->
+  <div id="title-card">
+    <h1 class="title">JEE Advanced </h1>
+    <div id="question-box">
+      <p class="question-text">
+        <span class="highlight">Problem:</span> An insect starts at the point (1, 0) in the plane and moves as follows:<br><br>
+        - It moves 1 unit <span class="highlight">counterclockwise</span> on a circle of radius 1 centered at the origin.<br>
+        - It then moves <span class="highlight">2 units</span> counterclockwise on a circle of radius 2 centered at the origin.<br>
+        - It then moves <span class="highlight">3 units</span> counterclockwise on a circle of radius 3 centered at the origin, and so on.<br><br>
+        <span class="highlight">Question:</span> On which circle will the insect <span class="highlight">first cross</span> the positive x-axis again?
+      </p>
+      <button id="start-button">Begin Visualization</button>
+    </div>
+  </div>
+
+  <!-- Animation Container -->
+  <div id="animation-container"></div>
+
+  <!-- Controls -->
+  <div id="controls">
+    <button id="play-pause" class="control-button">▶ Play</button>
+    <button id="reset" class="control-button">↻ Reset</button>
+    <div style="margin-top: 10px;">
+      <label for="speed" style="display: block; margin-bottom: 5px; font-size: 0.9rem;">Speed:</label>
+      <input type="range" id="speed" min="0.5" max="3" value="1" step="0.1" style="width: 150px;">
+    </div>
+  </div>
+
+  <!-- Info Display -->
+  <div id="info-display">
+    <div class="info-item">Current Circle: <span id="current-circle" class="info-value">1</span></div>
+    <div class="info-item">Current Angle: <span id="current-angle" class="info-value">0.00</span> rad</div>
+    <div class="info-item">Total Angle: <span id="total-angle" class="info-value">0.00</span> rad</div>
+  </div>
+
+  <script>
+    // Create floating particles for background
+    function createParticles() {
+      const colors = ['rgba(0, 245, 212, 0.3)', 'rgba(0, 245, 212, 0.5)', 'rgba(0, 245, 212, 0.7)'];
+      for (let i = 0; i < 50; i++) {
+        const particle = document.createElement('div');
+        particle.className = 'particle';
+        particle.style.width = `${Math.random() * 5 + 2}px`;
+        particle.style.height = particle.style.width;
+        particle.style.left = `${Math.random() * 100}%`;
+        particle.style.top = `${Math.random() * 100}%`;
+        particle.style.opacity = Math.random() * 0.5 + 0.1;
+        particle.style.animation = `float ${Math.random() * 5 + 3}s infinite ease-in-out`;
+        particle.style.animationDelay = `${Math.random() * 5}s`;
+        particle.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+        document.body.appendChild(particle);
+      }
+    }
+
+    // Initialize title card
+    document.getElementById('start-button').addEventListener('click', function() {
+      // Hide title card
+      document.getElementById('title-card').classList.add('hidden');
+      
+      // Show animation after delay
+      setTimeout(() => {
+        document.getElementById('animation-container').classList.add('visible');
+        document.getElementById('controls').classList.add('visible');
+        initAnimation();
+      }, 1500);
+      
+      // Create background particles
+      createParticles();
+    });
+
+    // Animation variables
+    let currentCircle = 1;
+    let currentAngle = 0;
+    let totalAngle = 0;
+    let isPlaying = false;
+    let animationSpeed = 1;
+    let pathPoints = [];
+    let anglePositions = [];
+    let phase = 'moving';
+    let animationProgress = 0;
+    let trailPoints = [];
+    let myp5;
+    let zoomScale;
+
+    function initAnimation() {
+      myp5 = new p5(function(sketch) {
+        sketch.setup = function() {
+          const canvas = sketch.createCanvas(
+            document.getElementById('animation-container').clientWidth,
+            document.getElementById('animation-container').clientHeight
+          );
+          canvas.parent('animation-container');
+          sketch.angleMode(sketch.RADIANS);
+          zoomScale = sketch.height / 15;
+          resetAnimation();
+        };
+
+        sketch.draw = function() {
+          // Cosmic background
+          sketch.background(0, 10, 20, 30);
+          
+          // Draw from center
+          sketch.translate(sketch.width/2, sketch.height/2);
+          
+          // Draw axes with glow
+          drawAxes(sketch);
+          
+          // Draw circles (all 7 circles visible from start)
+          drawCircles(sketch);
+          
+          // Draw path
+          drawPath(sketch);
+          
+          // Draw angle lines
+          drawAngleLines(sketch);
+          
+          // Animation logic
+          if (isPlaying) {
+            animateInsect(sketch);
+          }
+          
+          // Calculate current position
+          const [x, y] = calculateCurrentPosition(sketch);
+          
+          // Draw trail
+          drawTrail(sketch);
+          
+          // Draw current position line
+          drawCurrentPositionLine(sketch, x, y);
+          
+          // Draw insect
+          drawInsect(sketch, x, y);
+          
+          // Update info display
+          updateInfoDisplay();
+        };
+
+        function drawAxes(s) {
+          s.stroke(100, 200, 255, 150);
+          s.strokeWeight(2);
+          s.drawingContext.shadowBlur = 15;
+          s.drawingContext.shadowColor = 'rgba(100, 200, 255, 0.5)';
+          s.line(-s.width/2, 0, s.width/2, 0);
+          s.line(0, -s.height/2, 0, s.height/2);
+          s.drawingContext.shadowBlur = 0;
+          
+          // Labels
+          s.fill(255);
+          s.noStroke();
+          s.textSize(16);
+          s.text('X', s.width/2 - 30, 10);
+          s.text('Y', 10, -s.height/2 + 30);
+        }
+
+        function drawCircles(s) {
+          // Draw all 7 circles from the start
+          const maxCircle = 7;
+          
+          for (let k = 1; k <= maxCircle; k++) {
+            const isCurrent = k === Math.round(currentCircle);
+            s.stroke(isCurrent ? '#00f5d4' : 'rgba(240, 240, 240, 0.5)');
+            s.strokeWeight(isCurrent ? 3 : 1);
+            s.drawingContext.shadowBlur = isCurrent ? 20 : 10;
+            s.drawingContext.shadowColor = isCurrent ? 'rgba(0, 245, 212, 0.5)' : 'rgba(240, 240, 240, 0.2)';
+            s.noFill();
+            s.circle(0, 0, k * zoomScale * 2);
+            s.drawingContext.shadowBlur = 0;
+            
+            // Labels
+            s.fill(isCurrent ? '#00f5d4' : 'rgba(255, 255, 255, 0.7)');
+            s.noStroke();
+            s.textSize(14);
+            s.text(`C${k}`, k * zoomScale + 20, 0);
+          }
+        }
+
+        function drawPath(s) {
+          s.stroke(0, 245, 212, 200);
+          s.strokeWeight(3);
+          s.drawingContext.shadowBlur = 10;
+          s.drawingContext.shadowColor = 'rgba(0, 245, 212, 0.5)';
+          s.noFill();
+          s.beginShape();
+          for (let pt of pathPoints) {
+            s.vertex(pt.x * zoomScale, pt.y * zoomScale);
+          }
+          s.endShape();
+          s.drawingContext.shadowBlur = 0;
+        }
+
+        function drawAngleLines(s) {
+          s.stroke(255, 255, 255, 100);
+          s.strokeWeight(1);
+          s.drawingContext.setLineDash([5, 5]);
+          for (let pos of anglePositions) {
+            let posX = s.cos(pos.angle) * pos.radius * zoomScale;
+            let posY = s.sin(pos.angle) * pos.radius * zoomScale;
+            s.line(0, 0, posX, posY);
+          }
+          s.drawingContext.setLineDash([]);
+        }
+
+        function animateInsect(s) {
+          let delta = s.deltaTime / 1000;
+
+          if (phase === 'moving') {
+            animationProgress += (0.02 * animationSpeed) * (delta * 60);
+            if (animationProgress >= 1) {
+              animationProgress = 0;
+              currentAngle -= 1;
+              totalAngle += 1;
+              anglePositions.push({ radius: currentCircle, angle: currentAngle });
+              phase = 'jumping';
+            } else {
+              let angleChange = -1 * animationProgress;
+              let tempAngle = currentAngle + angleChange;
+              let x = s.cos(tempAngle) * currentCircle;
+              let y = s.sin(tempAngle) * currentCircle;
+              pathPoints.push({ x, y, r: currentCircle });
+              trailPoints.push({ x: x * zoomScale, y: y * zoomScale, alpha: 255 });
+            }
+          } else if (phase === 'jumping') {
+            animationProgress += (0.015 * animationSpeed) * (delta * 60);
+            if (animationProgress >= 1) {
+              animationProgress = 0;
+              currentCircle += 1;
+              phase = 'moving';
+              
+              // Limit path points for performance
+              if (pathPoints.length > 1000) {
+                pathPoints = pathPoints.slice(-500);
+              }
+            } else {
+              let tempRadius = currentCircle + animationProgress;
+              let x = s.cos(currentAngle) * tempRadius;
+              let y = s.sin(currentAngle) * tempRadius;
+              pathPoints.push({ x, y, r: tempRadius });
+              trailPoints.push({ x: x * zoomScale, y: y * zoomScale, alpha: 255 });
+            }
+          }
+        }
+
+        function calculateCurrentPosition(s) {
+          let x, y;
+          if (phase === 'moving' && isPlaying) {
+            let angleChange = -1 * animationProgress;
+            let tempAngle = currentAngle + angleChange;
+            x = s.cos(tempAngle) * currentCircle;
+            y = s.sin(tempAngle) * currentCircle;
+          } else if (phase === 'jumping' && isPlaying) {
+            let tempRadius = currentCircle + animationProgress;
+            x = s.cos(currentAngle) * tempRadius;
+            y = s.sin(currentAngle) * tempRadius;
+          } else {
+            x = s.cos(currentAngle) * currentCircle;
+            y = s.sin(currentAngle) * currentCircle;
+          }
+          return [x, y];
+        }
+
+        function drawTrail(s) {
+          for (let i = trailPoints.length - 1; i >= 0; i--) {
+            let tp = trailPoints[i];
+            s.fill(0, 245, 212, tp.alpha);
+            s.noStroke();
+            s.circle(tp.x, tp.y, 5);
+            tp.alpha -= 3;
+            if (tp.alpha <= 0) trailPoints.splice(i, 1);
+          }
+        }
+
+        function drawCurrentPositionLine(s, x, y) {
+          s.stroke(255, 255, 255, 150);
+          s.strokeWeight(1);
+          s.drawingContext.setLineDash([5, 5]);
+          s.line(0, 0, x * zoomScale, y * zoomScale);
+          s.drawingContext.setLineDash([]);
+        }
+
+        function drawInsect(s, x, y) {
+          // Pulsing glow effect
+          let pulse = s.sin(s.frameCount * 0.1) * 5 + 15;
+          s.fill(255, 204, 0);
+          s.stroke(255, 255, 255, 200);
+          s.strokeWeight(2);
+          s.drawingContext.shadowBlur = pulse;
+          s.drawingContext.shadowColor = 'rgba(255, 204, 0, 0.8)';
+          s.circle(x * zoomScale, y * zoomScale, 10);
+          s.drawingContext.shadowBlur = 0;
+        }
+
+        function updateInfoDisplay() {
+          document.getElementById('current-circle').textContent = currentCircle.toFixed(1);
+          document.getElementById('current-angle').textContent = (currentAngle % (2 * Math.PI)).toFixed(2);
+          document.getElementById('total-angle').textContent = totalAngle.toFixed(2);
+        }
+
+        sketch.windowResized = function() {
+          sketch.resizeCanvas(
+            document.getElementById('animation-container').clientWidth,
+            document.getElementById('animation-container').clientHeight
+          );
+          zoomScale = sketch.height / 15;
+        };
+      });
+    }
+
+    function resetAnimation() {
+      currentCircle = 1;
+      currentAngle = 0;
+      totalAngle = 0;
+      isPlaying = false;
+      pathPoints = [{ x: 1, y: 0, r: 1 }];
+      anglePositions = [];
+      phase = 'moving';
+      animationProgress = 0;
+      trailPoints = [];
+      
+      // Update button text
+      document.getElementById('play-pause').textContent = '▶ Play';
+      
+      // Redraw the static state
+      if (myp5) {
+        myp5.redraw();
+      }
+      
+      // Update info display
+      document.getElementById('current-circle').textContent = '1';
+      document.getElementById('current-angle').textContent = '0.00';
+      document.getElementById('total-angle').textContent = '0.00';
+    }
+
+    // Event listeners for controls
+    document.getElementById('play-pause').addEventListener('click', function() {
+      isPlaying = !isPlaying;
+      this.textContent = isPlaying ? '⏸ Pause' : '▶ Play';
+      
+      if (isPlaying && myp5) {
+        myp5.loop();
+      } else if (myp5) {
+        myp5.noLoop();
+      }
+    });
+
+    document.getElementById('reset').addEventListener('click', function() {
+      resetAnimation();
+    });
+
+    document.getElementById('speed').addEventListener('input', function() {
+      animationSpeed = parseFloat(this.value);
+    });
+
+    // Handle window resize
+    window.addEventListener('resize', function() {
+      if (myp5) {
+        myp5.resizeCanvas(
+          document.getElementById('animation-container').clientWidth,
+          document.getElementById('animation-container').clientHeight
+        );
+      }
+    });
+  </script>
+</body>
+</html>
