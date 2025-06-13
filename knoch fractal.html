@@ -1,0 +1,577 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Enhanced Koch Snowflake Fractal Visualization</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            font-family: 'Roboto', Arial, sans-serif;
+            color: #ffffff;
+            background: #000;
+        }
+        #canvas-container {
+            width: 70%;
+            height: 100vh;
+            float: left;
+            position: relative;
+        }
+        #side-panel {
+            width: 30%;
+            height: 100vh;
+            float: right;
+            background: rgba(10, 10, 20, 0.85);
+            padding: 20px;
+            box-sizing: border-box;
+            overflow-y: auto;
+            border-left: 2px solid #1e90ff;
+        }
+        #side-panel h2 {
+            margin-top: 0;
+            font-size: 1.8em;
+            color: #1e90ff;
+            text-shadow: 0 0 5px #1e90ff;
+        }
+        #side-panel p {
+            margin: 10px 0;
+            opacity: 0;
+            transition: opacity 0.7s ease;
+            font-size: 1.1em;
+        }
+        #side-panel p.visible {
+            opacity: 1;
+        }
+        #controls {
+            position: absolute;
+            bottom: 30px;
+            left: 30px;
+            display: flex;
+            gap: 15px;
+            z-index: 100;
+        }
+        button {
+            padding: 10px 20px;
+            background: #1e90ff;
+            color: #fff;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background 0.3s, transform 0.1s;
+            box-shadow: 0 0 10px #1e90ff;
+            font-weight: bold;
+        }
+        button:hover {
+            background: #1c86ee;
+            transform: scale(1.05);
+        }
+        button:disabled {
+            background: #444;
+            cursor: not-allowed;
+            box-shadow: none;
+        }
+        #perimeter-visualization {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 10px 15px;
+            border-radius: 5px;
+            border: 1px solid #1e90ff;
+            font-size: 1.2em;
+            font-weight: bold;
+            z-index: 100;
+        }
+    </style>
+</head>
+<body>
+    <div id="canvas-container">
+        <div id="perimeter-visualization">Perimeter: 3.00</div>
+    </div>
+    <div id="side-panel">
+        <h2>Koch Snowflake Properties</h2>
+        <p id="stage">Stage: 0</p>
+        <p id="segments">Number of Segments (Sequence A): 3</p>
+        <p id="segment-length">Segment Length (Sequence B): 1</p>
+        <p id="perimeter">Perimeter (Sequence C): 3</p>
+        <p id="area">Area: 0.433</p>
+        <p id="sequence-a-desc">Sequence A (Segments): Geometric, Ratio 4, Grows Exponentially</p>
+        <p id="sequence-b-desc">Sequence B (Segment Length): Geometric, Ratio 1/3, Decreases Exponentially</p>
+        <p id="sequence-c-desc">Sequence C (Perimeter): Geometric, Ratio 4/3, Grows Exponentially</p>
+        <p id="perimeter-limit">Perimeter as n → ∞: ∞</p>
+        <p id="area-limit">Area as n → ∞: 0.6928 (2√3/5)</p>
+    </div>
+    <div id="controls">
+        <button id="play-pause">Play</button>
+        <button id="next">Next Stage</button>
+        <button id="prev">Previous Stage</button>
+        <button id="reset">Reset</button>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.134.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.134.0/examples/js/postprocessing/EffectComposer.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.134.0/examples/js/postprocessing/RenderPass.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.134.0/examples/js/postprocessing/ShaderPass.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.134.0/examples/js/postprocessing/UnrealBloomPass.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.134.0/examples/js/shaders/CopyShader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.134.0/examples/js/shaders/LuminosityHighPassShader.js"></script>
+    <script>
+        // Scene Setup
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth * 0.7 / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth * 0.7, window.innerHeight);
+        document.getElementById('canvas-container').appendChild(renderer.domElement);
+
+        camera.position.set(0, 0, 5);
+        const controls = new THREE.OrbitControls(camera, renderer.domElement);
+        controls.enablePan = false;
+        controls.minDistance = 2;
+        controls.maxDistance = 10;
+
+        // Post-Processing for Bloom Effect
+        const renderScene = new THREE.RenderPass(scene, camera);
+        const bloomPass = new THREE.UnrealBloomPass(
+            new THREE.Vector2(window.innerWidth * 0.7, window.innerHeight),
+            2.5,  // Increased Strength for bolder effect
+            0.6,  // Increased Radius
+            0.7   // Adjusted Threshold
+        );
+        const composer = new THREE.EffectComposer(renderer);
+        composer.addPass(renderScene);
+        composer.addPass(bloomPass);
+
+        // Background - Enhanced Starry Sky with Twinkle
+        const starsGeometry = new THREE.BufferGeometry();
+        const starsCount = 2000; // More stars for richer background
+        const starsPositions = new Float32Array(starsCount * 3);
+        const starsSizes = new Float32Array(starsCount);
+        const starsAlphas = new Float32Array(starsCount);
+        for (let i = 0; i < starsCount * 3; i += 3) {
+            starsPositions[i] = (Math.random() - 0.5) * 50;
+            starsPositions[i + 1] = (Math.random() - 0.5) * 50;
+            starsPositions[i + 2] = (Math.random() - 0.5) * 50;
+            starsSizes[i / 3] = Math.random() * 0.3 + 0.1; // Larger stars
+            starsAlphas[i / 3] = Math.random() * 0.8 + 0.2;
+        }
+        starsGeometry.setAttribute('position', new THREE.BufferAttribute(starsPositions, 3));
+        starsGeometry.setAttribute('size', new THREE.BufferAttribute(starsSizes, 1));
+        starsGeometry.setAttribute('alpha', new THREE.BufferAttribute(starsAlphas, 1));
+        const starsShaderMaterial = new THREE.ShaderMaterial({
+            vertexShader: `
+                attribute float size;
+                attribute float alpha;
+                varying float vSize;
+                varying float vAlpha;
+                void main() {
+                    vSize = size;
+                    vAlpha = alpha;
+                    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+                    gl_PointSize = size * (400.0 / -gl_Position.z); // Larger point size
+                }
+            `,
+            fragmentShader: `
+                varying float vSize;
+                varying float vAlpha;
+                uniform float time;
+                void main() {
+                    float dist = length(gl_PointCoord - vec2(0.5));
+                    if (dist > 0.5) discard;
+                    float intensity = 1.0 - dist * 2.0;
+                    float twinkle = sin(time * 2.0 + gl_PointCoord.x * 100.0) * 0.3 + 0.7;
+                    gl_FragColor = vec4(1.0, 1.0, 1.0, intensity * vAlpha * twinkle);
+                }
+            `,
+            uniforms: {
+                time: { value: 0 }
+            },
+            transparent: true
+        });
+        const stars = new THREE.Points(starsGeometry, starsShaderMaterial);
+        scene.add(stars);
+
+        // Lighting - Enhanced for bolder fractal
+        const ambientLight = new THREE.AmbientLight(0x404040, 0.7);
+        scene.add(ambientLight);
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 0.5);
+        directionalLight.position.set(1, 1, 1);
+        scene.add(directionalLight);
+        const backLight = new THREE.DirectionalLight(0x1e90ff, 0.3);
+        backLight.position.set(-1, -1, -1);
+        scene.add(backLight);
+
+        // Koch Curve Generation
+        const colors = [
+            new THREE.Color(0x1e90ff), // Blue
+            new THREE.Color(0x00ff7f), // Spring Green
+            new THREE.Color(0xffff00), // Yellow
+            new THREE.Color(0xff8c00), // Dark Orange
+            new THREE.Color(0xff4500)  // Orange Red
+        ];
+        let currentStage = 0;
+        let targetStage = 0;
+        let isAnimating = false;
+        let animationProgress = 0;
+        const maxStage = 5; // Increased max stage for more detail
+        const stages = [];
+
+        function generateKochCurve(points, depth) {
+            if (depth === 0) return points;
+            const newPoints = [];
+            for (let i = 0; i < points.length - 1; i++) {
+                const p0 = points[i], p1 = points[i + 1];
+                const pA = lerp(p0, p1, 1/3);
+                const pB = lerp(p0, p1, 2/3);
+                const mid = lerp(p0, p1, 0.5);
+                const dir = { x: p1.x - p0.x, y: p1.y - p0.y };
+                const len = Math.sqrt(dir.x * dir.x + dir.y * dir.y) / 3;
+                const peak = {
+                    x: mid.x + (Math.sqrt(3) / 2) * dir.y * len / Math.sqrt(dir.x * dir.x + dir.y * dir.y),
+                    y: mid.y - (Math.sqrt(3) / 2) * dir.x * len / Math.sqrt(dir.x * dir.x + dir.y * dir.y)
+                };
+                newPoints.push(p0, pA, peak, pB);
+            }
+            newPoints.push(points[points.length - 1]);
+            return generateKochCurve(newPoints, depth - 1);
+        }
+
+        function lerp(p0, p1, t) {
+            return {
+                x: p0.x + t * (p1.x - p0.x),
+                y: p0.y + t * (p1.y - p0.y)
+            };
+        }
+
+        // Initialize Stages with larger size
+        const sideLength = 3; // Increased size
+        const height = (sideLength * Math.sqrt(3)) / 2;
+        const initialPoints = [
+            { x: -sideLength / 2, y: -height / 3 },
+            { x: sideLength / 2, y: -height / 3 },
+            { x: 0, y: 2 * height / 3 },
+            { x: -sideLength / 2, y: -height / 3 }
+        ];
+        stages.push(initialPoints);
+
+        for (let i = 1; i <= maxStage; i++) {
+            stages.push(generateKochCurve(stages[i - 1], 1));
+        }
+
+        // Custom Shader for Glowing, Bold Lines with Gradient
+        const vertexShader = `
+            varying vec2 vUv;
+            varying vec3 vPosition;
+            void main() {
+                vUv = uv;
+                vPosition = position;
+                gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+            }
+        `;
+        const fragmentShader = `
+            uniform vec3 glowColor;
+            uniform float glowIntensity;
+            uniform vec3 secondaryColor;
+            uniform float time;
+            varying vec2 vUv;
+            varying vec3 vPosition;
+            
+            void main() {
+                float gradient = vPosition.x + vPosition.y;
+                gradient = sin(gradient * 2.0 + time) * 0.5 + 0.5;
+                vec3 color = mix(glowColor, secondaryColor, gradient);
+                
+                // Pulsing effect
+                float pulse = sin(time * 2.0) * 0.1 + 0.9;
+                
+                // Edge glow effect
+                float edge = smoothstep(0.45, 0.5, abs(vUv.x - 0.5));
+                edge += smoothstep(0.45, 0.5, abs(vUv.y - 0.5));
+                edge = clamp(edge, 0.0, 1.0);
+                
+                gl_FragColor = vec4(color * glowIntensity * pulse * (1.0 + edge * 0.5), 1.0);
+            }
+        `;
+        const material = new THREE.ShaderMaterial({
+            vertexShader: vertexShader,
+            fragmentShader: fragmentShader,
+            uniforms: {
+                glowColor: { value: colors[0].toArray() },
+                secondaryColor: { value: new THREE.Color(0x00ffff).toArray() },
+                glowIntensity: { value: 1.5 }, // Increased intensity
+                time: { value: 0 }
+            },
+            linewidth: 8 // Much bolder lines
+        });
+
+        // Use LineSegments with LineBasicMaterial for bolder lines
+        let geometry = new THREE.BufferGeometry();
+        let positions = new Float32Array(stages[0].length * 3);
+        for (let i = 0; i < stages[0].length; i++) {
+            positions[i * 3] = stages[0][i].x;
+            positions[i * 3 + 1] = stages[0][i].y;
+            positions[i * 3 + 2] = 0;
+        }
+        geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+        const line = new THREE.Line(geometry, material);
+        scene.add(line);
+
+        // Add perimeter visualization lines
+        const perimeterMaterial = new THREE.LineBasicMaterial({ 
+            color: 0xffffff, 
+            linewidth: 2,
+            transparent: true,
+            opacity: 0.7
+        });
+        let perimeterGeometry = new THREE.BufferGeometry();
+        let perimeterLine = new THREE.Line(perimeterGeometry, perimeterMaterial);
+        scene.add(perimeterLine);
+
+        function updatePerimeterVisualization(stage) {
+            const points = stages[stage];
+            const perimeterPositions = new Float32Array(points.length * 3);
+            
+            for (let i = 0; i < points.length; i++) {
+                perimeterPositions[i * 3] = points[i].x;
+                perimeterPositions[i * 3 + 1] = points[i].y;
+                perimeterPositions[i * 3 + 2] = 0.1; // Slightly above the main fractal
+            }
+            
+            perimeterGeometry.dispose();
+            perimeterGeometry = new THREE.BufferGeometry();
+            perimeterGeometry.setAttribute('position', new THREE.BufferAttribute(perimeterPositions, 3));
+            perimeterLine.geometry = perimeterGeometry;
+            
+            // Calculate perimeter length
+            let perimeter = 0;
+            for (let i = 0; i < points.length - 1; i++) {
+                const dx = points[i+1].x - points[i].x;
+                const dy = points[i+1].y - points[i].y;
+                perimeter += Math.sqrt(dx*dx + dy*dy);
+            }
+            
+            document.getElementById('perimeter-visualization').textContent = 
+                `Perimeter: ${perimeter.toFixed(2)} (Stage ${stage})`;
+        }
+
+        // Mathematical Calculations
+        function updateMathDisplay() {
+            const stage = Math.round(currentStage);
+            const segments = 3 * Math.pow(4, stage); // Sequence A
+            const segmentLength = Math.pow(1/3, stage); // Sequence B
+            const perimeter = 3 * Math.pow(4/3, stage); // Sequence C
+            const areaIncrease = (stage === 0) ? 0 : (1/3) * (9/5) * (1 - Math.pow(4/9, stage - 1));
+            const area = (Math.sqrt(3) / 4) * (1 + areaIncrease);
+
+            document.getElementById('stage').textContent = `Stage: ${stage}`;
+            document.getElementById('segments').textContent = `Number of Segments (Sequence A): ${segments}`;
+            document.getElementById('segment-length').textContent = `Segment Length (Sequence B): ${segmentLength.toFixed(6)}`;
+            document.getElementById('perimeter').textContent = `Perimeter (Sequence C): ${perimeter.toFixed(6)}`;
+            document.getElementById('area').textContent = `Area: ${area.toFixed(6)}`;
+
+            const elements = document.querySelectorAll('#side-panel p');
+            elements.forEach(el => el.classList.add('visible'));
+            
+            updatePerimeterVisualization(stage);
+        }
+
+        // Animation Logic
+        let pauseTime = 0;
+        const pauseDuration = 60; // ~1 second at 60fps
+        let cameraAnimationProgress = 0;
+        let reverseStages = [];
+
+        function animateTransition() {
+            if (!isAnimating) return;
+
+            if (pauseTime > 0) {
+                pauseTime--;
+                requestAnimationFrame(animateTransition);
+                return;
+            }
+
+            animationProgress += 0.02;
+            if (animationProgress >= 1) {
+                animationProgress = 0;
+                currentStage = targetStage;
+                pauseTime = pauseDuration;
+                cameraAnimationProgress = 0;
+
+                if (reverseStages.length > 0) {
+                    targetStage = reverseStages.shift();
+                } else if (currentStage < maxStage && document.getElementById('play-pause').textContent === 'Pause') {
+                    targetStage++;
+                } else {
+                    isAnimating = false;
+                    document.getElementById('play-pause').textContent = 'Play';
+                }
+            }
+
+            const fromStage = Math.floor(currentStage);
+            const toStage = reverseStages.length > 0 ? targetStage : Math.min(fromStage + 1, maxStage);
+
+            // Interpolate positions with proper fractal alignment
+            const fromPoints = stages[fromStage];
+            const toPoints = stages[toStage] || fromPoints;
+            const segmentsInFrom = fromPoints.length - 1;
+            const segmentsInTo = toPoints.length - 1;
+            const interpolatedPoints = [];
+            let pointIndex = 0;
+
+            for (let i = 0; i < segmentsInFrom; i++) {
+                const p0 = fromPoints[i];
+                const p1 = fromPoints[i + 1];
+                const segmentPoints = Math.floor((segmentsInTo / segmentsInFrom) * i);
+                const nextSegmentPoints = Math.floor((segmentsInTo / segmentsInFrom) * (i + 1));
+                const numPoints = nextSegmentPoints - segmentPoints;
+
+                interpolatedPoints.push(p0);
+                if (numPoints > 0) {
+                    for (let j = 0; j < numPoints; j++) {
+                        const t = (j + 1) / (numPoints + 1);
+                        const correspondingToIndex = segmentPoints + j + 1;
+                        if (correspondingToIndex < toPoints.length) {
+                            const interpolatedPoint = lerp(p0, toPoints[correspondingToIndex], animationProgress);
+                            interpolatedPoints.push(interpolatedPoint);
+                        }
+                    }
+                }
+            }
+            interpolatedPoints.push(fromPoints[fromPoints.length - 1]);
+
+            positions = new Float32Array(interpolatedPoints.length * 3);
+            for (let i = 0; i < interpolatedPoints.length; i++) {
+                positions[i * 3] = interpolatedPoints[i].x;
+                positions[i * 3 + 1] = interpolatedPoints[i].y;
+                positions[i * 3 + 2] = 0;
+            }
+            geometry.dispose();
+            geometry = new THREE.BufferGeometry();
+            geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+            line.geometry = geometry;
+
+            // Color Interpolation
+            const color = colors[fromStage].clone().lerp(colors[toStage] || colors[fromStage], animationProgress);
+            material.uniforms.glowColor.value = color.toArray();
+
+            // Cinematic Camera Animation
+            cameraAnimationProgress += 0.02;
+            const zoom = 5 - Math.sin(cameraAnimationProgress * Math.PI) * 1;
+            camera.position.z = zoom;
+            camera.lookAt(0, 0, 0);
+
+            updateMathDisplay();
+            requestAnimationFrame(animateTransition);
+        }
+
+        // User Interaction
+        document.getElementById('play-pause').addEventListener('click', () => {
+            if (isAnimating) {
+                isAnimating = false;
+                reverseStages = [];
+                document.getElementById('play-pause').textContent = 'Play';
+            } else if (targetStage < maxStage) {
+                isAnimating = true;
+                if (animationProgress === 0 && currentStage === targetStage) {
+                    targetStage = Math.min(targetStage + 1, maxStage);
+                }
+                document.getElementById('play-pause').textContent = 'Pause';
+                animateTransition();
+            }
+        });
+
+        document.getElementById('next').addEventListener('click', () => {
+            if (isAnimating || targetStage >= maxStage) return;
+            reverseStages = [];
+            currentStage = targetStage;
+            targetStage++;
+            animationProgress = 0;
+            pauseTime = 0;
+
+            // Jump directly to the next stage
+            const stagePoints = stages[targetStage];
+            positions = new Float32Array(stagePoints.length * 3);
+            for (let i = 0; i < stagePoints.length; i++) {
+                positions[i * 3] = stagePoints[i].x;
+                positions[i * 3 + 1] = stagePoints[i].y;
+                positions[i * 3 + 2] = 0;
+            }
+            geometry.dispose();
+            geometry = new THREE.BufferGeometry();
+            geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+            line.geometry = geometry;
+
+            material.uniforms.glowColor.value = colors[targetStage].toArray();
+            currentStage = targetStage;
+            updateMathDisplay();
+        });
+
+        document.getElementById('prev').addEventListener('click', () => {
+            if (isAnimating || targetStage <= 0) return;
+            isAnimating = true;
+            reverseStages = [];
+            for (let i = targetStage - 1; i >= 0; i--) {
+                reverseStages.push(i);
+            }
+            animationProgress = 0;
+            pauseTime = 0;
+            document.getElementById('play-pause').textContent = 'Pause';
+            animateTransition();
+        });
+
+        document.getElementById('reset').addEventListener('click', () => {
+            isAnimating = false;
+            reverseStages = [];
+            currentStage = 0;
+            targetStage = 0;
+            animationProgress = 0;
+            pauseTime = 0;
+            cameraAnimationProgress = 0;
+            camera.position.set(0, 0, 5);
+            material.uniforms.glowColor.value = colors[0].toArray();
+            positions = new Float32Array(stages[0].length * 3);
+            for (let i = 0; i < stages[0].length; i++) {
+                positions[i * 3] = stages[0][i].x;
+                positions[i * 3 + 1] = stages[0][i].y;
+                positions[i * 3 + 2] = 0;
+            }
+            geometry.dispose();
+            geometry = new THREE.BufferGeometry();
+            geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+            line.geometry = geometry;
+            document.getElementById('play-pause').textContent = 'Play';
+            updateMathDisplay();
+        });
+
+        // Render Loop
+        let time = 0;
+        function animate() {
+            requestAnimationFrame(animate);
+            controls.update();
+            composer.render();
+            
+            // Update time for animations
+            time += 0.01;
+            material.uniforms.time.value = time;
+            starsShaderMaterial.uniforms.time.value = time;
+            
+            // Rotate stars slightly for more dynamic background
+            stars.rotation.x += 0.0001;
+            stars.rotation.y += 0.0001;
+        }
+        animate();
+
+        // Handle window resize
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth * 0.7 / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth * 0.7, window.innerHeight);
+            composer.setSize(window.innerWidth * 0.7, window.innerHeight);
+        });
+
+        // Initial Display
+        updateMathDisplay();
+    </script>
+</body>
+</html>
