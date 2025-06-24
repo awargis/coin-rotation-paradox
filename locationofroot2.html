@@ -1,0 +1,801 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quadratic Roots Visualizer - Complete Edition</title>
+    <style>
+        body { margin: 0; overflow: hidden; font-family: 'Arial', sans-serif; color: white; background: #121212; }
+        #container { position: absolute; width: 100%; height: 100%; }
+        #info { position: absolute; top: 20px; left: 20px; background: rgba(0,0,0,0.7); padding: 15px; border-radius: 10px; max-width: 400px; z-index: 100; }
+        #controls { position: absolute; bottom: 20px; left: 20px; background: rgba(0,0,0,0.7); padding: 15px; border-radius: 10px; z-index: 100; }
+        .slider-container { margin: 10px 0; }
+        label { display: inline-block; width: 50px; }
+        input[type="range"] { width: 200px; }
+        .value-display { display: inline-block; width: 60px; text-align: right; }
+        #case-selector { margin-top: 15px; }
+        button { background: #4CAF50; border: none; color: white; padding: 8px 15px; margin: 5px; border-radius: 5px; cursor: pointer; transition: background 0.3s; }
+        button:hover { background: #45a049; }
+        button.active { background: #2196F3; }
+        #equation { font-size: 1.2em; margin-bottom: 10px; color: #4CAF50; }
+        #conditions { margin-top: 10px; font-size: 0.9em; color: #FF9800; }
+        #root-values { margin-top: 10px; font-size: 1em; color: #9C27B0; }
+        .math-condition { margin: 5px 0; padding: 5px; background: rgba(0,0,0,0.3); border-left: 3px solid #2196F3; }
+        @keyframes pulse { 0% { opacity: 0.5; } 50% { opacity: 1; } 100% { opacity: 0.5; } }
+        .pulse { animation: pulse 2s infinite; }
+        #audio-controls { margin-top: 10px; }
+        #hint-container { position: absolute; top: 20px; right: 20px; background: rgba(0,0,0,0.7); padding: 15px; border-radius: 10px; max-width: 300px; z-index: 100; }
+        #export-btn { margin-top: 10px; background: #FF9800; }
+        #history-btn { margin-top: 10px; background: #9C27B0; }
+    </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.11.4/gsap.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cannon.js/0.6.2/cannon.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/file-saver@2.0.5/dist/FileSaver.min.js"></script>
+</head>
+<body>
+    <div id="container"></div>
+    
+    <div id="info">
+        <h2>Quadratic Roots Visualizer</h2>
+        <div id="equation">f(x) = <span id="a-val">1</span>x² + <span id="b-val">0</span>x + <span id="c-val">0</span></div>
+        <div id="root-values">Roots: α = <span id="root1">0</span>, β = <span id="root2">0</span></div>
+        <div id="conditions"><div>Conditions for selected case will appear here</div></div>
+        <div id="audio-controls">
+            <button id="mute-btn">🔊 Sound On</button>
+        </div>
+        <button id="export-btn">📸 Export Screenshot</button>
+        <button id="history-btn">⏱ Show History</button>
+    </div>
+    
+            
+        <div id="hint-text">Adjust coefficients to see roots move</div>
+    </div>
+    
+    <div id="controls">
+        <div class="slider-container">
+            <label for="a">a:</label>
+            <input type="range" id="a" min="-5" max="5" step="0.1" value="1">
+            <span class="value-display" id="a-display">1</span>
+        </div>
+        <div class="slider-container">
+            <label for="b">b:</label>
+            <input type="range" id="b" min="-10" max="10" step="0.1" value="0">
+            <span class="value-display" id="b-display">0</span>
+        </div>
+        <div class="slider-container">
+            <label for="c">c:</label>
+            <input type="range" id="c" min="-10" max="10" step="0.1" value="0">
+            <span class="value-display" id="c-display">0</span>
+        </div>
+        
+        <div id="case-selector">
+            <h4>Root Location Cases:</h4>
+            <button id="case1" class="active">Both roots > k</button>
+            <button id="case2">Both roots < k</button>
+            <button id="case3">k between roots</button>
+            <button id="case4">Roots between k₁, k₂</button>
+            <button id="case5">One root between k₁, k₂</button>
+        </div>
+        
+        <div id="k-controls">
+            <div class="slider-container">
+                <label for="k">k:</label>
+                <input type="range" id="k" min="-5" max="5" step="0.1" value="0">
+                <span class="value-display" id="k-display">0</span>
+            </div>
+        </div>
+        
+        <div id="k1k2-controls" style="display:none;">
+            <div class="slider-container">
+                <label for="k1">k₁:</label>
+                <input type="range" id="k1" min="-5" max="5" step="0.1" value="-1">
+                <span class="value-display" id="k1-display">-1</span>
+            </div>
+            <div class="slider-container">
+                <label for="k2">k₂:</label>
+                <input type="range" id="k2" min="-5" max="5" step="0.1" value="1">
+                <span class="value-display" id="k2-display">1</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Load Three.js and all required dependencies -->
+    <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/build/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/examples/js/controls/OrbitControls.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/examples/js/postprocessing/EffectComposer.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/examples/js/postprocessing/RenderPass.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/examples/js/postprocessing/ShaderPass.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/examples/js/shaders/CopyShader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/examples/js/shaders/LuminosityHighPassShader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/examples/js/postprocessing/UnrealBloomPass.js"></script>
+
+    <script>
+        // ========== COMBINED PHASE 1 & 2 ENHANCEMENTS ========== //
+        
+        // 1. Cinematic Post-Processing (Phase 1)
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x121212);
+        
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.z = 15;
+        camera.position.y = 5;
+        
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(window.devicePixelRatio);
+        document.getElementById('container').appendChild(renderer.domElement);
+        
+        // Post-processing setup with bloom
+        const composer = new THREE.EffectComposer(renderer);
+        const renderPass = new THREE.RenderPass(scene, camera);
+        composer.addPass(renderPass);
+        
+        const bloomPass = new THREE.UnrealBloomPass(
+            new THREE.Vector2(window.innerWidth, window.innerHeight),
+            1.5, 0.4, 0.85
+        );
+        composer.addPass(bloomPass);
+        
+        // 2. Particle Systems for Roots (Phase 1)
+        const createRootParticles = (x, color) => {
+            const particles = new THREE.BufferGeometry();
+            const positions = new Float32Array(200 * 3);
+            const colors = new Float32Array(200 * 3);
+            
+            const particleColor = new THREE.Color(color);
+            
+            for (let i = 0; i < 200; i++) {
+                positions[i*3] = x + (Math.random() - 0.5) * 0.5;
+                positions[i*3+1] = (Math.random() - 0.5) * 0.5;
+                positions[i*3+2] = (Math.random() - 0.5) * 0.5;
+                
+                colors[i*3] = particleColor.r;
+                colors[i*3+1] = particleColor.g;
+                colors[i*3+2] = particleColor.b;
+            }
+            
+            particles.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+            particles.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+            
+            const particleMaterial = new THREE.PointsMaterial({
+                size: 0.05,
+                vertexColors: true,
+                transparent: true,
+                opacity: 0.8,
+                blending: THREE.AdditiveBlending
+            });
+            
+            return new THREE.Points(particles, particleMaterial);
+        };
+        
+        // 3. Animated Mathematical Conditions (Phase 1)
+        const animateConditions = (conditionsText, conditionsMet) => {
+            gsap.to("#conditions", {
+                duration: 0.3,
+                opacity: 0,
+                y: -10,
+                onComplete: () => {
+                    document.getElementById("conditions").innerHTML = conditionsText;
+                    gsap.from("#conditions .math-condition", {
+                        stagger: 0.1,
+                        y: 20,
+                        opacity: 0,
+                        duration: 0.5,
+                        ease: "back.out"
+                    });
+                    
+                    if (conditionsMet) {
+                        gsap.to("#conditions", {
+                            backgroundColor: "rgba(0,100,0,0.5)",
+                            duration: 0.5,
+                            yoyo: true,
+                            repeat: 1
+                        });
+                    }
+                }
+            });
+        };
+        
+        // 4. Interactive Number Line (Phase 1)
+        const createGlowingLine = (points, color, width, opacity) => {
+            const geometry = new THREE.BufferGeometry().setFromPoints(points);
+            const material = new THREE.LineBasicMaterial({ 
+                color: color,
+                linewidth: width,
+                transparent: true,
+                opacity: opacity
+            });
+            return new THREE.Line(geometry, material);
+        };
+        
+        // 5. Case-Specific Visual Feedback (Phase 1)
+        const setupCaseVisuals = (caseNumber) => {
+            // Camera animation
+            gsap.to(camera.position, {
+                z: 15 + (Math.random() * 2 - 1),
+                x: Math.random() * 2 - 1,
+                duration: 1,
+                ease: "elastic.out(1, 0.5)"
+            });
+            
+            // Toggle k/k1k2 controls
+            if (caseNumber <= 3) {
+                document.getElementById('k-controls').style.display = 'block';
+                document.getElementById('k1k2-controls').style.display = 'none';
+            } else {
+                document.getElementById('k-controls').style.display = 'none';
+                document.getElementById('k1k2-controls').style.display = 'block';
+            }
+        };
+        
+        // 6. Audio Feedback System (Phase 2)
+        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        let isMuted = false;
+        const playSound = (frequency, duration = 0.1, type = 'sine') => {
+            if (isMuted) return;
+            
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+            
+            oscillator.type = type;
+            oscillator.frequency.value = frequency;
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+            
+            gainNode.gain.setValueAtTime(0.5, audioContext.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + duration);
+            
+            oscillator.start();
+            oscillator.stop(audioContext.currentTime + duration);
+        };
+        
+        // 7. VR/AR Readiness (Phase 2)
+        const initXR = () => {
+            if ('xr' in navigator) {
+                navigator.xr.isSessionSupported('immersive-vr').then(supported => {
+                    if (supported) {
+                        console.log("VR is supported on this device");
+                    }
+                });
+            }
+        };
+        
+        // 8. Physics Integration (Phase 2)
+        const physicsWorld = new CANNON.World();
+        physicsWorld.gravity.set(0, -9.82, 0);
+        physicsWorld.broadphase = new CANNON.NaiveBroadphase();
+        physicsWorld.solver.iterations = 10;
+        
+        const rootBodies = [];
+        const syncPhysics = () => {
+            rootBodies.forEach((body, i) => {
+                if (rootSpheres[i]) {
+                    rootSpheres[i].position.copy(body.position);
+                    rootSpheres[i].quaternion.copy(body.quaternion);
+                }
+            });
+        };
+        
+        // 9. Dynamic Color Coding (Phase 2)
+        const updateRootColors = (conditionsMet) => {
+            rootSpheres.forEach(sphere => {
+                if (sphere.material) {
+                    gsap.to(sphere.material.color, {
+                        r: conditionsMet ? 0 : 1,
+                        g: conditionsMet ? 1 : 0.34,
+                        b: conditionsMet ? 0 : 0.13,
+                        duration: 0.5
+                    });
+                }
+            });
+        };
+        
+        // 10. Historical Graph Tracking (Phase 2)
+        const history = [];
+        const MAX_HISTORY = 5;
+        const saveState = () => {
+            const state = {
+                a: parseFloat(document.getElementById('a').value),
+                b: parseFloat(document.getElementById('b').value),
+                c: parseFloat(document.getElementById('c').value),
+                k: kValue,
+                k1: k1Value,
+                k2: k2Value,
+                case: currentCase,
+                timestamp: Date.now(),
+                roots: [...roots]
+            };
+            history.unshift(state);
+            if (history.length > MAX_HISTORY) history.pop();
+        };
+        
+        const showHistory = () => {
+            let historyText = "<h3>Recent States:</h3><ul>";
+            history.forEach((state, i) => {
+                historyText += `<li>${new Date(state.timestamp).toLocaleTimeString()}: 
+                    a=${state.a.toFixed(1)}, b=${state.b.toFixed(1)}, c=${state.c.toFixed(1)}
+                    Roots: ${state.roots.length ? state.roots.map(r => r.toFixed(2)).join(', ') : 'None'}</li>`;
+            });
+            historyText += "</ul>";
+            
+            const historyWindow = window.open("", "History", "width=400,height=300");
+            historyWindow.document.write(historyText);
+        };
+        
+        // ========== MAIN APPLICATION ========== //
+        
+        // Controls
+        const controls = new THREE.OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.05;
+        
+        // Lighting
+        const ambientLight = new THREE.AmbientLight(0x404040);
+        scene.add(ambientLight);
+        
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
+        directionalLight.position.set(1, 1, 1);
+        scene.add(directionalLight);
+        
+        // Add point light for root glow
+        const rootLight = new THREE.PointLight(0xff5722, 2, 5);
+        scene.add(rootLight);
+        
+        // Coordinate axes
+        const axesHelper = new THREE.AxesHelper(10);
+        scene.add(axesHelper);
+        
+        // Grid
+        const gridHelper = new THREE.GridHelper(20, 20, 0x555555, 0x333333);
+        scene.add(gridHelper);
+        
+        // Quadratic curve
+        let quadraticCurve = null;
+        let quadraticCurveGlow = null;
+        let roots = [];
+        let rootSpheres = [];
+        let rootParticles = [];
+        let kLine = null;
+        let k1Line = null, k2Line = null;
+        let kValue = 0;
+        let k1Value = -1, k2Value = 1;
+        let currentCase = 1;
+
+        // Initialize quadratic curve with all enhancements
+        function createQuadraticCurve(a, b, c) {
+            // Remove old curves
+            if (quadraticCurve) scene.remove(quadraticCurve);
+            if (quadraticCurveGlow) scene.remove(quadraticCurveGlow);
+            
+            const points = [];
+            for (let x = -10; x <= 10; x += 0.1) {
+                const y = a * x * x + b * x + c;
+                points.push(new THREE.Vector3(x, y, 0));
+            }
+            
+            // Main curve with glow effect (Phase 1)
+            const geometry = new THREE.BufferGeometry().setFromPoints(points);
+            const material = new THREE.LineBasicMaterial({
+                color: 0x4CAF50,
+                linewidth: 3,
+                transparent: true,
+                opacity: 0.8
+            });
+            quadraticCurve = new THREE.Line(geometry, material);
+            scene.add(quadraticCurve);
+            
+            // Glow effect
+            const glowMaterial = new THREE.LineBasicMaterial({
+                color: 0x4CAF50,
+                linewidth: 1,
+                transparent: true,
+                opacity: 0.3
+            });
+            quadraticCurveGlow = new THREE.Line(geometry.clone(), glowMaterial);
+            scene.add(quadraticCurveGlow);
+            
+            updateRoots(a, b, c);
+            saveState();
+        }
+
+        // Calculate and display roots with all enhancements
+        function updateRoots(a, b, c) {
+            // Clear old physics bodies (Phase 2)
+            rootBodies.forEach(body => physicsWorld.removeBody(body));
+            rootBodies.length = 0;
+            
+            // Remove old visuals
+            rootSpheres.forEach(sphere => scene.remove(sphere));
+            rootSpheres = [];
+            rootParticles.forEach(particles => scene.remove(particles));
+            rootParticles = [];
+            
+            // Calculate discriminant
+            const discriminant = b * b - 4 * a * c;
+            
+            if (discriminant >= 0) {
+                const sqrtDiscriminant = Math.sqrt(discriminant);
+                const root1 = (-b - sqrtDiscriminant) / (2 * a);
+                const root2 = (-b + sqrtDiscriminant) / (2 * a);
+                
+                roots = [root1, root2].sort((x, y) => x - y);
+                
+                // Create root spheres with halo effect (Phase 1)
+                const sphereGeometry = new THREE.SphereGeometry(0.2, 32, 32);
+                const sphereMaterial = new THREE.MeshBasicMaterial({ 
+                    color: 0xFF5722,
+                    transparent: true,
+                    opacity: 0.9
+                });
+                
+                // Halo effect
+                const haloGeometry = new THREE.SphereGeometry(0.3, 32, 32);
+                const haloMaterial = new THREE.MeshBasicMaterial({
+                    color: 0xFF5722,
+                    transparent: true,
+                    opacity: 0.3
+                });
+                
+                roots.forEach(root => {
+                    // Main sphere
+                    const sphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
+                    sphere.position.set(root, 0, 0);
+                    scene.add(sphere);
+                    rootSpheres.push(sphere);
+                    
+                    // Halo
+                    const halo = new THREE.Mesh(haloGeometry, haloMaterial);
+                    halo.position.set(root, 0, 0);
+                    scene.add(halo);
+                    rootSpheres.push(halo);
+                    
+                    // Particles (Phase 1)
+                    const particles = createRootParticles(root, 0xFF5722);
+                    scene.add(particles);
+                    rootParticles.push(particles);
+                    
+                    // Physics body (Phase 2)
+                    const sphereShape = new CANNON.Sphere(0.2);
+                    const sphereBody = new CANNON.Body({
+                        mass: 1,
+                        position: new CANNON.Vec3(root, 0, 0),
+                        shape: sphereShape
+                    });
+                    physicsWorld.addBody(sphereBody);
+                    rootBodies.push(sphereBody);
+                    
+                    // Animate appearance
+                    gsap.from(sphere.scale, { 
+                        x: 0, y: 0, z: 0, 
+                        duration: 0.5, 
+                        ease: "elastic.out(1, 0.5)" 
+                    });
+                });
+                
+                document.getElementById('root1').textContent = root1.toFixed(2);
+                document.getElementById('root2').textContent = root2.toFixed(2);
+                playSound(880); // Positive sound (Phase 2)
+            } else {
+                roots = [];
+                document.getElementById('root1').textContent = "No real roots";
+                document.getElementById('root2').textContent = "";
+                playSound(220); // Lower sound for no roots (Phase 2)
+                
+                // Show complex roots visualization (Phase 1)
+                const imaginaryPart = Math.sqrt(-discriminant) / (2 * Math.abs(a));
+                const complexPlane = new THREE.Mesh(
+                    new THREE.PlaneGeometry(5, 5),
+                    new THREE.MeshBasicMaterial({ 
+                        color: 0x9C27B0,
+                        side: THREE.DoubleSide,
+                        transparent: true,
+                        opacity: 0.3
+                    })
+                );
+                complexPlane.rotation.x = Math.PI / 2;
+                complexPlane.position.set(0, 0, 0);
+                scene.add(complexPlane);
+                rootSpheres.push(complexPlane);
+            }
+            
+            updateConditions();
+        }
+
+        // Update k line with glow effect (Phase 1)
+        function updateKLine() {
+            if (kLine) scene.remove(kLine);
+            
+            const points = [
+                new THREE.Vector3(kValue, -10, 0),
+                new THREE.Vector3(kValue, 10, 0)
+            ];
+            
+            kLine = createGlowingLine(points, 0x2196F3, 2, 0.8);
+            scene.add(kLine);
+            
+            // Add thicker glow line
+            const glowLine = createGlowingLine(points, 0x2196F3, 4, 0.3);
+            scene.add(glowLine);
+            
+            document.getElementById('k-display').textContent = kValue.toFixed(1);
+            updateConditions();
+        }
+
+        // Update k1 and k2 lines (Phase 1)
+        function updateK1K2Lines() {
+            if (k1Line) scene.remove(k1Line);
+            if (k2Line) scene.remove(k2Line);
+            
+            // K1 line
+            const points1 = [
+                new THREE.Vector3(k1Value, -10, 0),
+                new THREE.Vector3(k1Value, 10, 0)
+            ];
+            k1Line = createGlowingLine(points1, 0x9C27B0, 2, 0.8);
+            scene.add(k1Line);
+            
+            // K1 glow
+            const glowLine1 = createGlowingLine(points1, 0x9C27B0, 4, 0.3);
+            scene.add(glowLine1);
+            
+            // K2 line
+            const points2 = [
+                new THREE.Vector3(k2Value, -10, 0),
+                new THREE.Vector3(k2Value, 10, 0)
+            ];
+            k2Line = createGlowingLine(points2, 0x3F51B5, 2, 0.8);
+            scene.add(k2Line);
+            
+            // K2 glow
+            const glowLine2 = createGlowingLine(points2, 0x3F51B5, 4, 0.3);
+            scene.add(glowLine2);
+            
+            document.getElementById('k1-display').textContent = k1Value.toFixed(1);
+            document.getElementById('k2-display').textContent = k2Value.toFixed(1);
+            updateConditions();
+        }
+
+        // Update conditions display with all enhancements
+        function updateConditions() {
+            const a = parseFloat(document.getElementById('a').value);
+            const b = parseFloat(document.getElementById('b').value);
+            const c = parseFloat(document.getElementById('c').value);
+            
+            let conditionsText = "";
+            let conditionsMet = false;
+            
+            switch(currentCase) {
+                case 1: // Both roots > k
+                    const fk1 = a * kValue * kValue + b * kValue + c;
+                    const vertexX1 = -b / (2 * a);
+                    conditionsMet = (b*b - 4*a*c >= 0) && (a * fk1 > 0) && (vertexX1 > kValue);
+                    conditionsText = `
+                        <div class="math-condition ${(b*b - 4*a*c >= 0) ? 'pulse' : ''}">1. D ≥ 0: ${(b*b - 4*a*c).toFixed(2)} ${(b*b - 4*a*c >= 0) ? "✓" : "✗"}</div>
+                        <div class="math-condition ${(a * fk1 > 0) ? 'pulse' : ''}">2. a·f(k) > 0: ${fk1.toFixed(2)} ${(a * fk1 > 0) ? "✓" : "✗"}</div>
+                        <div class="math-condition ${(vertexX1 > kValue) ? 'pulse' : ''}">3. Vertex > k: ${vertexX1.toFixed(2)} > ${kValue.toFixed(1)} ${(vertexX1 > kValue) ? "✓" : "✗"}</div>
+                    `;
+                    break;
+                    
+                case 2: // Both roots < k
+                    const fk2 = a * kValue * kValue + b * kValue + c;
+                    const vertexX2 = -b / (2 * a);
+                    conditionsMet = (b*b - 4*a*c >= 0) && (a * fk2 > 0) && (vertexX2 < kValue);
+                    conditionsText = `
+                        <div class="math-condition ${(b*b - 4*a*c >= 0) ? 'pulse' : ''}">1. D ≥ 0: ${(b*b - 4*a*c).toFixed(2)} ${(b*b - 4*a*c >= 0) ? "✓" : "✗"}</div>
+                        <div class="math-condition ${(a * fk2 > 0) ? 'pulse' : ''}">2. a·f(k) > 0: ${fk2.toFixed(2)} ${(a * fk2 > 0) ? "✓" : "✗"}</div>
+                        <div class="math-condition ${(vertexX2 < kValue) ? 'pulse' : ''}">3. Vertex < k: ${vertexX2.toFixed(2)} < ${kValue.toFixed(1)} ${(vertexX2 < kValue) ? "✓" : "✗"}</div>
+                    `;
+                    break;
+                    
+                case 3: // k between roots
+                    const fk3 = a * kValue * kValue + b * kValue + c;
+                    conditionsMet = (b*b - 4*a*c > 0) && (a * fk3 < 0);
+                    conditionsText = `
+                        <div class="math-condition ${(b*b - 4*a*c > 0) ? 'pulse' : ''}">1. D > 0: ${(b*b - 4*a*c).toFixed(2)} ${(b*b - 4*a*c > 0) ? "✓" : "✗"}</div>
+                        <div class="math-condition ${(a * fk3 < 0) ? 'pulse' : ''}">2. a·f(k) < 0: ${fk3.toFixed(2)} ${(a * fk3 < 0) ? "✓" : "✗"}</div>
+                    `;
+                    break;
+                    
+                case 4: // Roots between k1 and k2
+                    const fk1_4 = a * k1Value * k1Value + b * k1Value + c;
+                    const fk2_4 = a * k2Value * k2Value + b * k2Value + c;
+                    const vertexX4 = -b / (2 * a);
+                    conditionsMet = (b*b - 4*a*c >= 0) && (a * fk1_4 > 0) && (a * fk2_4 > 0) && (k1Value < vertexX4 && vertexX4 < k2Value);
+                    conditionsText = `
+                        <div class="math-condition ${(b*b - 4*a*c >= 0) ? 'pulse' : ''}">1. D ≥ 0: ${(b*b - 4*a*c).toFixed(2)} ${(b*b - 4*a*c >= 0) ? "✓" : "✗"}</div>
+                        <div class="math-condition ${(a * fk1_4 > 0) ? 'pulse' : ''}">2. a·f(k₁) > 0: ${fk1_4.toFixed(2)} ${(a * fk1_4 > 0) ? "✓" : "✗"}</div>
+                        <div class="math-condition ${(a * fk2_4 > 0) ? 'pulse' : ''}">3. a·f(k₂) > 0: ${fk2_4.toFixed(2)} ${(a * fk2_4 > 0) ? "✓" : "✗"}</div>
+                        <div class="math-condition ${(k1Value < vertexX4 && vertexX4 < k2Value) ? 'pulse' : ''}">4. k₁ < Vertex < k₂: ${k1Value.toFixed(1)} < ${vertexX4.toFixed(2)} < ${k2Value.toFixed(1)} ${(k1Value < vertexX4 && vertexX4 < k2Value) ? "✓" : "✗"}</div>
+                    `;
+                    break;
+                    
+                case 5: // One root between k1 and k2
+                    const fk1_5 = a * k1Value * k1Value + b * k1Value + c;
+                    const fk2_5 = a * k2Value * k2Value + b * k2Value + c;
+                    conditionsMet = (fk1_5 * fk2_5 < 0);
+                    conditionsText = `
+                        <div class="math-condition ${(fk1_5 * fk2_5 < 0) ? 'pulse' : ''}">f(k₁)·f(k₂) < 0: ${(fk1_5 * fk2_5).toFixed(2)} ${(fk1_5 * fk2_5 < 0) ? "✓" : "✗"}</div>
+                    `;
+                    break;
+            }
+            
+            // Update colors based on conditions (Phase 2)
+            updateRootColors(conditionsMet);
+            
+            // Animate the conditions update (Phase 1)
+            animateConditions(conditionsText, conditionsMet);
+            
+            // Play sound based on conditions (Phase 2)
+            if (conditionsMet) {
+                playSound(1046.5, 0.3, 'square'); // High success sound
+            } else if (roots.length > 0) {
+                playSound(523.25, 0.2, 'sine'); // Medium sound
+            }
+            
+            // Update hint (Phase 2)
+            updateHint();
+        }
+
+        // Smart hints system (Phase 2)
+        function updateHint() {
+            const hints = [
+                "Try adjusting the coefficients to move the roots",
+                "Change the k value to test different conditions",
+                "Watch how the conditions change in real-time",
+                "Roots will turn green when conditions are met",
+                "Use the camera controls to explore the graph",
+                "The parabola's shape changes with coefficient 'a'",
+                "Positive 'a' makes the parabola open upwards",
+                "Negative 'a' makes the parabola open downwards"
+            ];
+            const randomHint = hints[Math.floor(Math.random() * hints.length)];
+            
+            gsap.to("#hint-text", {
+                duration: 0.3,
+                opacity: 0,
+                y: -10,
+                onComplete: () => {
+                    document.getElementById("hint-text").textContent = randomHint;
+                    gsap.from("#hint-text", {
+                        duration: 0.5,
+                        y: 20,
+                        opacity: 0
+                    });
+                }
+            });
+        }
+
+        // Event listeners
+        document.getElementById('a').addEventListener('input', function() {
+            const value = parseFloat(this.value);
+            document.getElementById('a-val').textContent = value.toFixed(1);
+            document.getElementById('a-display').textContent = value.toFixed(1);
+            createQuadraticCurve(value, 
+                               parseFloat(document.getElementById('b').value), 
+                               parseFloat(document.getElementById('c').value));
+        });
+        
+        document.getElementById('b').addEventListener('input', function() {
+            const value = parseFloat(this.value);
+            document.getElementById('b-val').textContent = value.toFixed(1);
+            document.getElementById('b-display').textContent = value.toFixed(1);
+            createQuadraticCurve(parseFloat(document.getElementById('a').value), 
+                               value, 
+                               parseFloat(document.getElementById('c').value));
+        });
+        
+        document.getElementById('c').addEventListener('input', function() {
+            const value = parseFloat(this.value);
+            document.getElementById('c-val').textContent = value.toFixed(1);
+            document.getElementById('c-display').textContent = value.toFixed(1);
+            createQuadraticCurve(parseFloat(document.getElementById('a').value), 
+                               parseFloat(document.getElementById('b').value), 
+                               value);
+        });
+        
+        document.getElementById('k').addEventListener('input', function() {
+            kValue = parseFloat(this.value);
+            updateKLine();
+            playSound(554.37, 0.05); // Slider sound
+        });
+        
+        document.getElementById('k1').addEventListener('input', function() {
+            k1Value = parseFloat(this.value);
+            updateK1K2Lines();
+            playSound(554.37, 0.05); // Slider sound
+        });
+        
+        document.getElementById('k2').addEventListener('input', function() {
+            k2Value = parseFloat(this.value);
+            updateK1K2Lines();
+            playSound(554.37, 0.05); // Slider sound
+        });
+        
+        // Case selector buttons
+        document.querySelectorAll('#case-selector button').forEach(button => {
+            button.addEventListener('click', function() {
+                document.querySelectorAll('#case-selector button').forEach(btn => btn.classList.remove('active'));
+                this.classList.add('active');
+                
+                currentCase = parseInt(this.id.replace('case', ''));
+                playSound(587.33, 0.1); // Button click sound
+                
+                // Case-specific visuals (Phase 1)
+                setupCaseVisuals(currentCase);
+                
+                updateConditions();
+            });
+        });
+
+        // Audio controls (Phase 2)
+        document.getElementById('mute-btn').addEventListener('click', function() {
+            isMuted = !isMuted;
+            this.textContent = isMuted ? "🔇 Sound Off" : "🔊 Sound On";
+            playSound(440, 0.1); // Feedback click
+        });
+
+        // Export functionality (Phase 2)
+        document.getElementById('export-btn').addEventListener('click', function() {
+            renderer.domElement.toBlob(function(blob) {
+                saveAs(blob, `quadratic-roots-${Date.now()}.png`);
+            });
+            playSound(659.25, 0.1, 'sine'); // Camera shutter sound
+        });
+
+        // History functionality (Phase 2)
+        document.getElementById('history-btn').addEventListener('click', function() {
+            showHistory();
+            playSound(392, 0.1); // History open sound
+        });
+
+        // Handle window resize
+        window.addEventListener('resize', function() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            composer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        // Physics simulation loop (Phase 2)
+        const timeStep = 1/60;
+        let lastCallTime;
+        const physicsLoop = (time) => {
+            requestAnimationFrame(physicsLoop);
+            
+            if (!lastCallTime) {
+                lastCallTime = time;
+                return;
+            }
+            
+            const delta = (time - lastCallTime) / 1000;
+            lastCallTime = time;
+            
+            // Step the physics world
+            physicsWorld.step(timeStep, delta, 10);
+            
+            // Sync physics with graphics
+            syncPhysics();
+        };
+
+        // Initialize XR (Phase 2)
+        initXR();
+
+        // Initial setup
+        createQuadraticCurve(1, 0, 0);
+        updateKLine();
+        updateHint();
+        
+        // Start physics loop (Phase 2)
+        requestAnimationFrame(physicsLoop);
+
+        // Main animation loop
+        function animate() {
+            requestAnimationFrame(animate);
+            controls.update();
+            composer.render();
+        }
+        
+        animate();
+    </script>
+</body>
+</html>

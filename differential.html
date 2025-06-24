@@ -1,0 +1,905 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Advanced Differential Visualization</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #1a2a6c, #0c1445, #1a2a6c);
+            color: #fff;
+            min-height: 100vh;
+            padding: 20px;
+            overflow-x: hidden;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        
+        header {
+            text-align: center;
+            padding: 30px 0;
+            margin-bottom: 20px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        header::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect x="0" y="0" width="100" height="100" fill="none" stroke="rgba(255,255,255,0.05)" stroke-width="1"/></svg>');
+            z-index: -1;
+        }
+        
+        h1 {
+            font-size: 3.2rem;
+            margin-bottom: 10px;
+            text-shadow: 0 0 15px rgba(255, 255, 255, 0.5);
+            background: linear-gradient(to right, #ff7e5f, #feb47b);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            position: relative;
+        }
+        
+        .subtitle {
+            font-size: 1.4rem;
+            max-width: 800px;
+            margin: 0 auto;
+            line-height: 1.6;
+            color: #e0e0ff;
+        }
+        
+        .content {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 30px;
+            margin-bottom: 40px;
+        }
+        
+        .graph-container {
+            flex: 1;
+            min-width: 700px;
+            background: rgba(0, 0, 0, 0.4);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .controls {
+            width: 100%;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+        }
+        
+        .control-group {
+            flex: 1;
+            min-width: 300px;
+        }
+        
+        .control-group h3 {
+            margin-bottom: 15px;
+            color: #ffb347;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .control-group h3 i {
+            font-size: 1.2rem;
+        }
+        
+        .slider-container {
+            margin-bottom: 15px;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 15px;
+            border-radius: 10px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            color: #e0e0ff;
+        }
+        
+        input[type="range"] {
+            width: 100%;
+            height: 10px;
+            border-radius: 5px;
+            background: #333;
+            outline: none;
+            -webkit-appearance: none;
+            background: linear-gradient(to right, #ff7e5f, #feb47b);
+        }
+        
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            background: white;
+            cursor: pointer;
+            box-shadow: 0 0 10px rgba(255, 126, 95, 0.7);
+            border: 2px solid #ff7e5f;
+        }
+        
+        select, button {
+            width: 100%;
+            padding: 10px;
+            border-radius: 8px;
+            background: rgba(0, 0, 0, 0.4);
+            border: 1px solid #ff7e5f;
+            color: white;
+            font-size: 1rem;
+            cursor: pointer;
+        }
+        
+        select option {
+            background: #1a2a6c;
+        }
+        
+        .info-panel {
+            flex: 1;
+            min-width: 300px;
+            background: rgba(0, 0, 0, 0.4);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        
+        .concept-card {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            padding: 20px;
+            transition: transform 0.3s ease, background 0.3s ease;
+            border-left: 3px solid #ff7e5f;
+        }
+        
+        .concept-card:hover {
+            background: rgba(255, 255, 255, 0.15);
+            transform: translateY(-5px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+        }
+        
+        .concept-card h3 {
+            color: #ffb347;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .concept-card h3 i {
+            font-size: 1.5rem;
+        }
+        
+        .concept-card p {
+            line-height: 1.7;
+            margin-bottom: 15px;
+            color: #e0e0ff;
+        }
+        
+        .formula {
+            font-family: 'Cambria Math', serif;
+            font-size: 1.3rem;
+            background: rgba(0, 0, 0, 0.4);
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+            margin: 15px 0;
+            border: 1px solid #ff7e5f;
+            color: #ffb347;
+        }
+        
+        .legend {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin-top: 20px;
+            padding: 15px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 10px;
+        }
+        
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .legend-color {
+            width: 25px;
+            height: 25px;
+            border-radius: 4px;
+        }
+        
+        .function-curve { background: #4e79a7; }
+        .tangent-line { background: #f28e2c; }
+        .dx-element { background: #e15759; }
+        .dy-element { background: #76b7b2; }
+        .delta-y { background: #59a14f; }
+        
+        footer {
+            text-align: center;
+            padding: 20px;
+            margin-top: 20px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 15px;
+            font-size: 0.9rem;
+            color: #a0a0ff;
+        }
+        
+        .graph {
+            width: 100%;
+            height: 500px;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 10px;
+            overflow: hidden;
+            position: relative;
+        }
+        
+        .point-info, .tooltip {
+            position: absolute;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 10px;
+            border-radius: 5px;
+            pointer-events: none;
+            font-size: 0.9rem;
+            min-width: 150px;
+            border: 1px solid #ff7e5f;
+        }
+        
+        .highlight {
+            color: #ffb347;
+            font-weight: bold;
+        }
+        
+        .zoom-controls {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.6);
+            border-radius: 8px;
+            padding: 10px;
+            display: flex;
+            gap: 10px;
+            z-index: 10;
+        }
+        
+        .zoom-btn {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: #ff7e5f;
+            color: white;
+            border: none;
+            font-size: 1.2rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+        }
+        
+        .zoom-btn:hover {
+            background: #feb47b;
+            transform: scale(1.1);
+        }
+        
+        .zoom-display {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 5px;
+            padding: 0 15px;
+            font-weight: bold;
+        }
+        
+        .function-info {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.6);
+            border-radius: 8px;
+            padding: 10px 15px;
+            z-index: 10;
+            border: 1px solid #4e79a7;
+        }
+        
+        .x-axis, .y-axis {
+            stroke: white;
+            stroke-width: 1;
+        }
+        
+        .x-axis text, .y-axis text {
+            fill: white;
+            font-size: 12px;
+        }
+        
+        .grid line {
+            stroke: rgba(255, 255, 255, 0.15);
+            stroke-dasharray: 2,2;
+        }
+        
+        @media (max-width: 1100px) {
+            .content {
+                flex-direction: column;
+            }
+            
+            .graph-container, .info-panel {
+                min-width: 100%;
+            }
+            
+            h1 {
+                font-size: 2.5rem;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            .controls {
+                flex-direction: column;
+            }
+            
+            .graph {
+                height: 400px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1><i class="fas fa-calculator"></i> Advanced Visualization of Differentials</h1>
+            <p class="subtitle">An interactive exploration of dx, dy, and the relationship between differentials and actual changes in functions</p>
+        </header>
+        
+        <div class="controls">
+            <div class="control-group">
+                <h3><i class="fas fa-chart-line"></i> Function Parameters</h3>
+                <div class="slider-container">
+                    <label for="function-select">Select Function:</label>
+                    <select id="function-select">
+                        <option value="quadratic">Quadratic: f(x) = x²</option>
+                        <option value="cubic">Cubic: f(x) = 0.25x³</option>
+                        <option value="sine">Sine: f(x) = 2·sin(x)</option>
+                        <option value="exponential">Exponential: f(x) = e^{x/2}</option>
+                        <option value="logarithmic">Logarithmic: f(x) = ln(x+1)</option>
+                    </select>
+                </div>
+                
+                <div class="slider-container">
+                    <label for="x-position">Point Position (x): <span id="x-value">2.00</span></label>
+                    <input type="range" id="x-position" min="0.5" max="4.5" step="0.01" value="2">
+                </div>
+            </div>
+            
+            <div class="control-group">
+                <h3><i class="fas fa-sliders-h"></i> Differential Control</h3>
+                <div class="slider-container">
+                    <label for="dx-slider">dx Value: <span id="dx-value">0.50</span></label>
+                    <input type="range" id="dx-slider" min="0.1" max="2" step="0.01" value="0.5">
+                </div>
+                
+                <div class="slider-container">
+                    <label for="zoom-slider">Zoom Level: <span id="zoom-value">1.0</span>x</label>
+                    <input type="range" id="zoom-slider" min="0.5" max="3" step="0.1" value="1">
+                </div>
+                <button id="reset-view">Reset View</button>
+            </div>
+        </div>
+        
+        <div class="content">
+            <div class="graph-container">
+                <h2><i class="fas fa-project-diagram"></i> Interactive Visualization</h2>
+                <div class="graph" id="d3-graph">
+                    <div class="zoom-controls">
+                        <button class="zoom-btn" id="zoom-out"><i class="fas fa-search-minus"></i></button>
+                        <div class="zoom-display" id="zoom-display">1.0x</div>
+                        <button class="zoom-btn" id="zoom-in"><i class="fas fa-search-plus"></i></button>
+                    </div>
+                    <div class="function-info" id="function-info">f(x) = x²</div>
+                </div>
+                <div class="legend">
+                    <div class="legend-item">
+                        <div class="legend-color function-curve"></div>
+                        <span>Function Curve</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color tangent-line"></div>
+                        <span>Tangent Line</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color dx-element"></div>
+                        <span>dx (Change in x)</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color dy-element"></div>
+                        <span>dy (Differential)</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color delta-y"></div>
+                        <span>Δy (Actual Change)</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="info-panel">
+                <div class="concept-card">
+                    <h3><i class="fas fa-lightbulb"></i> What is a Differential?</h3>
+                    <p>A differential represents an <span class="highlight">infinitely small change</span> in a variable. In calculus:</p>
+                    <div class="formula">dy = f'(x) · dx</div>
+                    <p>Where <span class="highlight">dx</span> is a small change in the input, and <span class="highlight">dy</span> is the corresponding change along the tangent line. This concept is fundamental for approximating changes in functions.</p>
+                </div>
+                
+                <div class="concept-card">
+                    <h3><i class="fas fa-exchange-alt"></i> Differential vs. Actual Change</h3>
+                    <p>The actual change in the function (Δy) is:</p>
+                    <div class="formula">Δy = f(x + dx) - f(x)</div>
+                    <p>While the differential (dy) is the change predicted by the derivative. For small dx, dy ≈ Δy, but as dx increases, the approximation becomes less accurate. The difference illustrates the function's curvature.</p>
+                </div>
+                
+                <div class="concept-card">
+                    <h3><i class="fas fa-drafting-compass"></i> Geometric Interpretation</h3>
+                    <p>Visually, <span class="highlight">dx</span> is a horizontal segment, <span class="highlight">dy</span> is the vertical change along the tangent line, while <span class="highlight">Δy</span> is the actual vertical change along the curve.</p>
+                    <p>The gap between dy and Δy represents the approximation error that results from the function's curvature at that point.</p>
+                </div>
+                
+                <div class="concept-card">
+                    <h3><i class="fas fa-rocket"></i> Applications of Differentials</h3>
+                    <p>Differentials are essential for:</p>
+                    <ul>
+                        <li>Linear approximations of complex functions</li>
+                        <li>Error propagation in scientific measurements</li>
+                        <li>Solving differential equations</li>
+                        <li>Understanding rates of change in physics</li>
+                        <li>Optimization problems in engineering</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+        
+        <footer>
+            <p>Advanced Calculus Visualization | Created with D3.js | Interactive Differential Explorer | © 2025</p>
+        </footer>
+    </div>
+
+    <script>
+        // Setup dimensions and margins
+        const margin = { top: 40, right: 30, bottom: 60, left: 60 };
+        const width = 700 - margin.left - margin.right;
+        const height = 500 - margin.top - margin.bottom;
+        
+        // Create SVG container
+        const svg = d3.select("#d3-graph")
+            .append("svg")
+            .attr("width", width + margin.left + margin.right)
+            .attr("height", height + margin.top + margin.bottom)
+            .call(d3.zoom().scaleExtent([0.5, 3]).on("zoom", zoomed))
+            .append("g")
+            .attr("transform", `translate(${margin.left},${margin.top})`);
+        
+        // Clip path to prevent drawing outside graph area
+        svg.append("defs").append("clipPath")
+            .attr("id", "clip")
+            .append("rect")
+            .attr("width", width)
+            .attr("height", height);
+        
+        // Initialize variables
+        let x0 = 2;
+        let dx = 0.5;
+        let zoomLevel = 1;
+        let panX = 0, panY = 0;
+        let selectedFunction = "quadratic";
+        
+        // Function definitions
+        const functions = {
+            quadratic: x => x * x,
+            cubic: x => Math.pow(x, 3) / 4,
+            sine: x => 2 * Math.sin(x),
+            exponential: x => Math.exp(x / 2),
+            logarithmic: x => Math.log(x + 1)
+        };
+        
+        // Derivative definitions
+        const derivatives = {
+            quadratic: x => 2 * x,
+            cubic: x => 3 * Math.pow(x, 2) / 4,
+            sine: x => 2 * Math.cos(x),
+            exponential: x => Math.exp(x / 2) / 2,
+            logarithmic: x => 1 / (x + 1)
+        };
+        
+        // Function names for display
+        const functionNames = {
+            quadratic: "f(x) = x²",
+            cubic: "f(x) = 0.25x³",
+            sine: "f(x) = 2·sin(x)",
+            exponential: "f(x) = e^{x/2}",
+            logarithmic: "f(x) = ln(x+1)"
+        };
+        
+        // Set up scales
+        let xScale = d3.scaleLinear()
+            .range([0, width]);
+            
+        let yScale = d3.scaleLinear()
+            .range([height, 0]);
+        
+        // Create axes
+        const xAxis = svg.append("g")
+            .attr("class", "x-axis")
+            .attr("transform", `translate(0,${height})`);
+            
+        const yAxis = svg.append("g")
+            .attr("class", "y-axis");
+        
+        // Add axis labels
+        svg.append("text")
+            .attr("class", "axis-label")
+            .attr("transform", `translate(${width/2},${height + 40})`)
+            .style("text-anchor", "middle")
+            .style("fill", "white")
+            .text("x");
+            
+        svg.append("text")
+            .attr("class", "axis-label")
+            .attr("transform", "rotate(-90)")
+            .attr("y", -50)
+            .attr("x", -height/2)
+            .style("text-anchor", "middle")
+            .style("fill", "white")
+            .text("f(x)");
+        
+        // Draw grid
+        const xGrid = svg.append("g")
+            .attr("class", "grid");
+            
+        const yGrid = svg.append("g")
+            .attr("class", "grid");
+        
+        // Tooltip
+        const tooltip = d3.select("#d3-graph")
+            .append("div")
+            .attr("class", "tooltip")
+            .style("opacity", 0);
+        
+        // Function to calculate y-domain based on function
+        function getYDomain(f, xDomain) {
+            const values = d3.range(xDomain[0], xDomain[1], 0.05).map(f);
+            const min = Math.min(...values, 0);
+            const max = Math.max(...values, 10);
+            const padding = (max - min) * 0.1;
+            return [min - padding, max + padding];
+        }
+        
+        // Function to update scales
+        function updateScales() {
+            const baseXDomain = [0, 5];
+            const centerX = 2.5;
+            const baseWidth = baseXDomain[1] - baseXDomain[0];
+            const newWidth = baseWidth / zoomLevel;
+            const xMin = centerX + panX - newWidth / 2;
+            const xMax = centerX + panX + newWidth / 2;
+            
+            xScale.domain([xMin, xMax]);
+            
+            const f = functions[selectedFunction];
+            yScale.domain(getYDomain(f, xScale.domain()));
+            
+            xAxis.call(d3.axisBottom(xScale));
+            yAxis.call(d3.axisLeft(yScale));
+            
+            xGrid.call(d3.axisBottom(xScale).tickSize(-height).tickFormat(""))
+                .selectAll("line")
+                .attr("stroke", "rgba(255, 255, 255, 0.15)");
+                
+            yGrid.call(d3.axisLeft(yScale).tickSize(-width).tickFormat(""))
+                .selectAll("line")
+                .attr("stroke", "rgba(255, 255, 255, 0.15)");
+        }
+        
+        // Function to update the visualization
+        function updateVisualization(transition = false) {
+            updateScales();
+            
+            // Clear previous elements
+            svg.selectAll(".function-curve").remove();
+            svg.selectAll(".tangent-line").remove();
+            svg.selectAll(".dx-element").remove();
+            svg.selectAll(".dy-element").remove();
+            svg.selectAll(".delta-y").remove();
+            svg.selectAll(".point").remove();
+            svg.selectAll(".info-text").remove();
+            
+            const f = functions[selectedFunction];
+            const df = derivatives[selectedFunction];
+            
+            // Calculate values
+            const y0 = f(x0);
+            const y1 = f(x0 + dx);
+            const dy = df(x0) * dx;
+            
+            // Update function info display
+            document.getElementById("function-info").textContent = functionNames[selectedFunction];
+            
+            // Draw function curve
+            const line = d3.line()
+                .x(d => xScale(d.x))
+                .y(d => yScale(f(d.x)))
+                .curve(d3.curveMonotoneX);
+            
+            const data = d3.range(xScale.domain()[0], xScale.domain()[1], 0.05).map(d => ({ x: d }));
+            
+            const curve = svg.append("path")
+                .datum(data)
+                .attr("class", "function-curve")
+                .attr("d", line)
+                .attr("fill", "none")
+                .attr("stroke", "#4e79a7")
+                .attr("stroke-width", 3)
+                .attr("clip-path", "url(#clip)");
+            
+            if (transition) curve.transition().duration(250).attr("d", line);
+            
+            // Add hover interaction
+            svg.append("rect")
+                .attr("width", width)
+                .attr("height", height)
+                .attr("fill", "none")
+                .attr("pointer-events", "all")
+                .on("mousemove", function(event) {
+                    const [x, y] = d3.pointer(event);
+                    const xVal = xScale.invert(x);
+                    const yVal = f(xVal);
+                    tooltip
+                        .style("opacity", 0.9)
+                        .html(`x: ${xVal.toFixed(2)}<br>f(x): ${yVal.toFixed(2)}`)
+                        .style("left", (event.pageX + 10) + "px")
+                        .style("top", (event.pageY - 28) + "px");
+                })
+                .on("mouseout", function() {
+                    tooltip.style("opacity", 0);
+                });
+            
+            // Draw tangent line
+            const slope = df(x0);
+            const tangent = [
+                { x: x0 - 1, y: y0 - slope * 1 },
+                { x: x0 + 1, y: y0 + slope * 1 }
+            ];
+            
+            const tangentLine = d3.line()
+                .x(d => xScale(d.x))
+                .y(d => yScale(d.y));
+            
+            const tangentPath = svg.append("path")
+                .datum(tangent)
+                .attr("class", "tangent-line")
+                .attr("d", tangentLine)
+                .attr("fill", "none")
+                .attr("stroke", "#f28e2c")
+                .attr("stroke-width", 2)
+                .attr("stroke-dasharray", "4,2")
+                .attr("clip-path", "url(#clip)");
+            
+            if (transition) tangentPath.transition().duration(250).attr("d", tangentLine);
+            
+            // Draw dx element (horizontal)
+            const dxLine = svg.append("line")
+                .attr("class", "dx-element")
+                .attr("x1", xScale(x0))
+                .attr("y1", yScale(y0))
+                .attr("x2", xScale(x0 + dx))
+                .attr("y2", yScale(y0))
+                .attr("stroke", "#e15759")
+                .attr("stroke-width", 3)
+                .attr("clip-path", "url(#clip)");
+            
+            if (transition) dxLine.transition().duration(250)
+                .attr("x1", xScale(x0))
+                .attr("x2", xScale(x0 + dx))
+                .attr("y1", yScale(y0))
+                .attr("y2", yScale(y0));
+            
+            // Draw dy element (vertical along tangent)
+            const dyLine = svg.append("line")
+                .attr("class", "dy-element")
+                .attr("x1", xScale(x0 + dx))
+                .attr("y1", yScale(y0))
+                .attr("x2", xScale(x0 + dx))
+                .attr("y2", yScale(y0 + dy))
+                .attr("stroke", "#76b7b2")
+                .attr("stroke-width", 3)
+                .attr("clip-path", "url(#clip)");
+            
+            if (transition) dyLine.transition().duration(250)
+                .attr("x1", xScale(x0 + dx))
+                .attr("x2", xScale(x0 + dx))
+                .attr("y1", yScale(y0))
+                .attr("y2", yScale(y0 + dy));
+            
+            // Draw Δy element (actual change)
+            const deltaYLine = svg.append("line")
+                .attr("class", "delta-y")
+                .attr("x1", xScale(x0 + dx))
+                .attr("y1", yScale(y0))
+                .attr("x2", xScale(x0 + dx))
+                .attr("y2", yScale(y1))
+                .attr("stroke", "#59a14f")
+                .attr("stroke-width", 3)
+                .attr("clip-path", "url(#clip)");
+            
+            if (transition) deltaYLine.transition().duration(250)
+                .attr("x1", xScale(x0 + dx))
+                .attr("x2", xScale(x0 + dx))
+                .attr("y1", yScale(y0))
+                .attr("y2", yScale(y1));
+            
+            // Draw points
+            const points = [
+                { x: x0, y: y0, color: "#ff6b6b" },
+                { x: x0 + dx, y: y0, color: "#ff6b6b" },
+                { x: x0 + dx, y: y0 + dy, color: "#4ecdc4" },
+                { x: x0 + dx, y: y1, color: "#1a936f" }
+            ];
+            
+            const circles = svg.selectAll(".point")
+                .data(points)
+                .enter()
+                .append("circle")
+                .attr("class", "point")
+                .attr("cx", d => xScale(d.x))
+                .attr("cy", d => yScale(d.y))
+                .attr("r", 7)
+                .attr("fill", d => d.color)
+                .attr("clip-path", "url(#clip)");
+            
+            if (transition) circles.transition().duration(250)
+                .attr("cx", d => xScale(d.x))
+                .attr("cy", d => yScale(d.y));
+            
+            // Add information text
+            const texts = [
+                { x: x0 + dx/2, y: y0 - 0.3, text: `dx = ${dx.toFixed(2)}`, color: "#e15759", anchor: "middle" },
+                { x: x0 + dx + 0.2, y: y0 + dy/2, text: `dy = ${dy.toFixed(2)}`, color: "#76b7b2", anchor: "start" },
+                { x: x0 + dx + 0.2, y: y0 + (y1 - y0)/2, text: `Δy = ${(y1 - y0).toFixed(2)}`, color: "#59a14f", anchor: "start" },
+                { x: x0, y: y0 + 0.5, text: `f(${x0.toFixed(2)}) = ${y0.toFixed(2)}`, color: "#ff6b6b", anchor: "middle" },
+                { x: x0 + 0.2, y: y0 - 0.5, text: `f'(${x0.toFixed(2)}) = ${df(x0).toFixed(2)}`, color: "#f28e2c", anchor: "start" }
+            ];
+            
+            const textElements = svg.selectAll(".info-text")
+                .data(texts)
+                .enter()
+                .append("text")
+                .attr("class", "info-text")
+                .attr("x", d => xScale(d.x))
+                .attr("y", d => yScale(d.y))
+                .attr("text-anchor", d => d.anchor)
+                .attr("fill", d => d.color)
+                .text(d => d.text)
+                .attr("clip-path", "url(#clip)");
+            
+            if (transition) textElements.transition().duration(250)
+                .attr("x", d => xScale(d.x))
+                .attr("y", d => yScale(d.y));
+        }
+        
+        // Zoom handler
+        function zoomed(event) {
+            zoomLevel = event.transform.k;
+            panX = event.transform.x / (width / 5); // Normalize to base domain
+            panY = event.transform.y / (height / 10);
+            
+            document.getElementById("zoom-value").textContent = zoomLevel.toFixed(1) + "x";
+            document.getElementById("zoom-slider").value = zoomLevel;
+            document.getElementById("zoom-display").textContent = zoomLevel.toFixed(1) + "x";
+            
+            updateVisualization(true);
+        }
+        
+        // Reset view
+        function resetView() {
+            zoomLevel = 1;
+            panX = 0;
+            panY = 0;
+            document.getElementById("zoom-value").textContent = "1.0x";
+            document.getElementById("zoom-slider").value = 1;
+            document.getElementById("zoom-display").textContent = "1.0x";
+            svg.transition().duration(500).call(d3.zoom().transform, d3.zoomIdentity);
+            updateVisualization(true);
+        }
+        
+        // Set up event listeners
+        document.getElementById("x-position").addEventListener("input", function() {
+            x0 = parseFloat(this.value);
+            document.getElementById("x-value").textContent = x0.toFixed(2);
+            updateVisualization(true);
+        });
+        
+        document.getElementById("dx-slider").addEventListener("input", function() {
+            dx = parseFloat(this.value);
+            document.getElementById("dx-value").textContent = dx.toFixed(2);
+            updateVisualization(true);
+        });
+        
+        document.getElementById("zoom-slider").addEventListener("input", function() {
+            zoomLevel = parseFloat(this.value);
+            document.getElementById("zoom-value").textContent = zoomLevel.toFixed(1) + "x";
+            document.getElementById("zoom-display").textContent = zoomLevel.toFixed(1) + "x";
+            svg.call(d3.zoom().transform, d3.zoomIdentity.scale(zoomLevel).translate(panX * (width / 5), panY * (height / 10)));
+            updateVisualization(true);
+        });
+        
+        document.getElementById("function-select").addEventListener("change", function() {
+            selectedFunction = this.value;
+            updateVisualization(true);
+        });
+        
+        // Zoom buttons
+        document.getElementById("zoom-in").addEventListener("click", function() {
+            zoomLevel = Math.min(3, zoomLevel + 0.1);
+            document.getElementById("zoom-value").textContent = zoomLevel.toFixed(1) + "x";
+            document.getElementById("zoom-slider").value = zoomLevel;
+            document.getElementById("zoom-display").textContent = zoomLevel.toFixed(1) + "x";
+            svg.call(d3.zoom().transform, d3.zoomIdentity.scale(zoomLevel).translate(panX * (width / 5), panY * (height / 10)));
+            updateVisualization(true);
+        });
+        
+        document.getElementById("zoom-out").addEventListener("click", function() {
+            zoomLevel = Math.max(0.5, zoomLevel - 0.1);
+            document.getElementById("zoom-value").textContent = zoomLevel.toFixed(1) + "x";
+            document.getElementById("zoom-slider").value = zoomLevel;
+            document.getElementById("zoom-display").textContent = zoomLevel.toFixed(1) + "x";
+            svg.call(d3.zoom().transform, d3.zoomIdentity.scale(zoomLevel).translate(panX * (width / 5), panY * (height / 10)));
+            updateVisualization(true);
+        });
+        
+        // Reset button
+        document.getElementById("reset-view").addEventListener("click", resetView);
+        
+        // Keyboard support for zoom
+        document.addEventListener("keydown", function(event) {
+            if (event.key === "+" || event.key === "=") {
+                document.getElementById("zoom-in").click();
+            } else if (event.key === "-") {
+                document.getElementById("zoom-out").click();
+            }
+        });
+        
+        // Initial render
+        updateVisualization();
+    </script>
+</body>
+</html>

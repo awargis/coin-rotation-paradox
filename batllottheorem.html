@@ -1,0 +1,987 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cinematic Ballot Theorem Visualization</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.9.1/gsap.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #0c0e1d, #1a1a2e);
+            color: #e6f7ff;
+            min-height: 100vh;
+            overflow-x: hidden;
+            perspective: 1000px;
+        }
+        
+        .particles {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            opacity: 0.3;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 30px;
+        }
+        
+        header {
+            text-align: center;
+            padding: 30px 0;
+            position: relative;
+            z-index: 10;
+        }
+        
+        .logo {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .logo i {
+            font-size: 2.8rem;
+            color: #4facfe;
+            text-shadow: 0 0 15px rgba(79, 172, 254, 0.7);
+        }
+        
+        h1 {
+            font-size: 3.5rem;
+            margin-bottom: 10px;
+            text-shadow: 0 3px 10px rgba(0, 0, 0, 0.5);
+            background: linear-gradient(90deg, #4facfe, #00f2fe);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            letter-spacing: 1px;
+        }
+        
+        .subtitle {
+            font-size: 1.4rem;
+            opacity: 0.85;
+            max-width: 800px;
+            margin: 0 auto 40px;
+            line-height: 1.7;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        }
+        
+        .content {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 40px;
+            margin-top: 20px;
+        }
+        
+        .visualization-container {
+            flex: 1;
+            min-width: 600px;
+            height: 600px;
+            position: relative;
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.5);
+            transform-style: preserve-3d;
+            transition: transform 0.5s ease;
+        }
+        
+        .visualization-container:hover {
+            transform: translateY(-5px) rotateX(1deg);
+        }
+        
+        #gridCanvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 2;
+        }
+        
+        .overlay-glow {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle at center, rgba(79, 172, 254, 0.1) 0%, transparent 70%);
+            z-index: 1;
+            pointer-events: none;
+        }
+        
+        .counter {
+            position: absolute;
+            top: 25px;
+            right: 25px;
+            background: rgba(10, 15, 35, 0.85);
+            padding: 18px 25px;
+            border-radius: 15px;
+            font-weight: bold;
+            font-size: 1.4rem;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4);
+            border: 1px solid rgba(100, 150, 255, 0.4);
+            z-index: 10;
+            backdrop-filter: blur(10px);
+        }
+        
+        .counter span {
+            color: #4facfe;
+            font-weight: 800;
+        }
+        
+        .legend {
+            position: absolute;
+            bottom: 25px;
+            left: 25px;
+            background: rgba(10, 15, 35, 0.85);
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4);
+            border: 1px solid rgba(100, 150, 255, 0.4);
+            z-index: 10;
+            backdrop-filter: blur(10px);
+        }
+        
+        .legend-item {
+            display: flex;
+            align-items: center;
+            margin: 15px 0;
+            font-size: 1.1rem;
+        }
+        
+        .color-box {
+            width: 25px;
+            height: 25px;
+            margin-right: 15px;
+            border-radius: 5px;
+            box-shadow: 0 0 10px currentColor;
+        }
+        
+        .controls {
+            width: 100%;
+            background: rgba(20, 25, 50, 0.85);
+            padding: 25px;
+            border-radius: 20px;
+            margin-bottom: 30px;
+            box-shadow: 0 12px 30px rgba(0, 0, 0, 0.4);
+            border: 1px solid rgba(100, 150, 255, 0.3);
+            backdrop-filter: blur(10px);
+            transform: translateZ(20px);
+        }
+        
+        .control-header {
+            text-align: center;
+            margin-bottom: 25px;
+            font-size: 1.8rem;
+            color: #4facfe;
+        }
+        
+        .control-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 30px;
+            justify-content: center;
+            margin-top: 15px;
+        }
+        
+        .control-item {
+            display: flex;
+            flex-direction: column;
+            min-width: 250px;
+            background: rgba(15, 20, 45, 0.7);
+            padding: 20px;
+            border-radius: 15px;
+            border: 1px solid rgba(100, 150, 255, 0.2);
+        }
+        
+        label {
+            margin-bottom: 12px;
+            font-weight: 600;
+            font-size: 1.2rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        label i {
+            color: #4facfe;
+        }
+        
+        input[type="range"] {
+            width: 100%;
+            height: 10px;
+            -webkit-appearance: none;
+            background: linear-gradient(90deg, #1a2a6c, #00f2fe);
+            border-radius: 5px;
+            outline: none;
+            margin: 15px 0;
+        }
+        
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 25px;
+            height: 25px;
+            border-radius: 50%;
+            background: #00f2fe;
+            cursor: pointer;
+            box-shadow: 0 0 15px rgba(0, 242, 254, 0.7);
+        }
+        
+        .value-display {
+            display: flex;
+            justify-content: space-between;
+            font-size: 1.1rem;
+            margin-top: 5px;
+        }
+        
+        .value-display span {
+            background: rgba(79, 172, 254, 0.2);
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-weight: 600;
+        }
+        
+        .button-group {
+            display: flex;
+            gap: 20px;
+            margin-top: 10px;
+            justify-content: center;
+            width: 100%;
+        }
+        
+        button {
+            background: linear-gradient(135deg, #1a2a6c, #00f2fe);
+            border: none;
+            color: white;
+            padding: 15px 35px;
+            border-radius: 50px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            letter-spacing: 0.5px;
+        }
+        
+        button:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 20px rgba(0, 242, 254, 0.4);
+        }
+        
+        button:active {
+            transform: translateY(0);
+        }
+        
+        .explanation {
+            flex: 1;
+            min-width: 350px;
+            background: rgba(20, 25, 50, 0.85);
+            padding: 35px;
+            border-radius: 20px;
+            box-shadow: 0 12px 30px rgba(0, 0, 0, 0.4);
+            line-height: 1.8;
+            font-size: 1.1rem;
+            border: 1px solid rgba(100, 150, 255, 0.3);
+            backdrop-filter: blur(10px);
+            transform: translateZ(20px);
+        }
+        
+        .explanation h2 {
+            margin-top: 0;
+            color: #4facfe;
+            border-bottom: 2px solid #00f2fe;
+            padding-bottom: 15px;
+            margin-bottom: 25px;
+            font-size: 2rem;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        
+        .theorem {
+            font-family: 'Georgia', serif;
+            font-size: 1.4rem;
+            background: linear-gradient(135deg, rgba(26, 42, 108, 0.5), rgba(0, 242, 254, 0.3));
+            padding: 25px;
+            border-radius: 15px;
+            margin: 25px 0;
+            text-align: center;
+            border: 1px solid rgba(100, 150, 255, 0.3);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .theorem:before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 4px;
+            background: linear-gradient(90deg, #1a2a6c, #00f2fe);
+        }
+        
+        .concept-list {
+            list-style: none;
+            margin: 25px 0;
+        }
+        
+        .concept-list li {
+            margin-bottom: 20px;
+            padding-left: 30px;
+            position: relative;
+        }
+        
+        .concept-list li:before {
+            content: "•";
+            color: #4facfe;
+            font-size: 2rem;
+            position: absolute;
+            left: 0;
+            top: -8px;
+        }
+        
+        .highlight {
+            background: rgba(79, 172, 254, 0.2);
+            padding: 2px 8px;
+            border-radius: 5px;
+            font-weight: 600;
+        }
+        
+        .pascals-connection {
+            background: rgba(0, 242, 254, 0.15);
+            padding: 20px;
+            border-radius: 15px;
+            margin: 25px 0;
+            border-left: 4px solid #00f2fe;
+        }
+        
+        @media (max-width: 1200px) {
+            .content {
+                flex-direction: column;
+            }
+            .visualization-container {
+                min-width: 100%;
+                height: 500px;
+            }
+            h1 {
+                font-size: 2.8rem;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            h1 {
+                font-size: 2.2rem;
+            }
+            .subtitle {
+                font-size: 1.1rem;
+            }
+            .visualization-container {
+                height: 400px;
+            }
+            .control-group {
+                gap: 15px;
+            }
+            .control-item {
+                min-width: 100%;
+            }
+        }
+        
+        /* Animation for the title */
+        @keyframes titleGlow {
+            0% { text-shadow: 0 0 10px rgba(79, 172, 254, 0.5); }
+            50% { text-shadow: 0 0 20px rgba(0, 242, 254, 0.8), 0 0 30px rgba(79, 172, 254, 0.6); }
+            100% { text-shadow: 0 0 10px rgba(79, 172, 254, 0.5); }
+        }
+        
+        /* Floating animation */
+        @keyframes float {
+            0% { transform: translateY(0px); }
+            50% { transform: translateY(-15px); }
+            100% { transform: translateY(0px); }
+        }
+        
+        .floating {
+            animation: float 6s ease-in-out infinite;
+        }
+        
+        .pulse {
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(0, 242, 254, 0.7); }
+            70% { box-shadow: 0 0 0 15px rgba(0, 242, 254, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(0, 242, 254, 0); }
+        }
+    </style>
+</head>
+<body>
+    <div class="particles" id="particles"></div>
+    
+    <div class="container">
+        <header>
+            <div class="logo floating">
+                <i class="fas fa-project-diagram"></i>
+                <i class="fas fa-calculator pulse"></i>
+                <i class="fas fa-chart-line"></i>
+            </div>
+            <h1>Ballot Theorem Visualization</h1>
+            <p class="subtitle">Explore the mathematical relationship between Pascal's Triangle and constrained grid paths. The Ballot Theorem elegantly solves the problem of counting paths that never cross the diagonal.</p>
+        </header>
+        
+        <div class="controls">
+            <h2 class="control-header"><i class="fas fa-sliders-h"></i> Configuration Panel</h2>
+            <div class="control-group">
+                <div class="control-item">
+                    <label for="aVotes"><i class="fas fa-user"></i> Candidate A Votes (Right Moves)</label>
+                    <input type="range" id="aVotes" min="1" max="10" value="5">
+                    <div class="value-display">
+                        <span>Min: 1</span>
+                        <span id="aValue">5</span>
+                        <span>Max: 10</span>
+                    </div>
+                </div>
+                
+                <div class="control-item">
+                    <label for="bVotes"><i class="fas fa-user"></i> Candidate B Votes (Up Moves)</label>
+                    <input type="range" id="bVotes" min="1" max="10" value="3">
+                    <div class="value-display">
+                        <span>Min: 1</span>
+                        <span id="bValue">3</span>
+                        <span>Max: 10</span>
+                    </div>
+                </div>
+                
+                <div class="control-item">
+                    <label for="strictMode"><i class="fas fa-filter"></i> Constraint Mode</label>
+                    <div style="display: flex; gap: 15px; margin-top: 15px;">
+                        <div>
+                            <input type="radio" id="strictMode" name="mode" value="strict" checked>
+                            <label for="strictMode" style="display: inline; margin: 0;">Strictly Above</label>
+                        </div>
+                        <div>
+                            <input type="radio" id="nonStrictMode" name="mode" value="non-strict">
+                            <label for="nonStrictMode" style="display: inline; margin: 0;">Allow Ties</label>
+                        </div>
+                    </div>
+                    
+                    <div class="button-group">
+                        <button id="animateBtn">
+                            <i class="fas fa-play"></i> Start Animation
+                        </button>
+                        <button id="resetBtn">
+                            <i class="fas fa-redo"></i> Reset
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="content">
+            <div class="visualization-container">
+                <canvas id="gridCanvas"></canvas>
+                <div class="overlay-glow"></div>
+                <div class="counter">
+                    Valid Paths: <span id="pathCount">0</span>/<span id="totalPaths">0</span>
+                </div>
+                <div class="legend">
+                    <div class="legend-item">
+                        <div class="color-box" style="background-color: #4facfe;"></div>
+                        <span>Valid Paths</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="color-box" style="background-color: #ff6b6b;"></div>
+                        <span>Invalid Paths</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="color-box" style="background-color: #00f2fe;"></div>
+                        <span>Current Path</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="explanation">
+                <h2><i class="fas fa-lightbulb"></i> Ballot Theorem Explained</h2>
+                
+                <p>The Ballot Theorem solves an elegant problem in combinatorics: If candidate A receives <span class="highlight">m</span> votes and candidate B receives <span class="highlight">n</span> votes (with <span class="highlight">m > n</span>), what is the probability that A is always ahead of B throughout the vote counting process?</p>
+                
+                <div class="theorem">
+                    Paths = <sup>(m - n)</sup>⁄<sub>(m + n)</sub> × <sup>(m + n)!</sup>⁄<sub>m!n!</sub>
+                </div>
+                
+                <h3><i class="fas fa-sitemap"></i> Grid Representation</h3>
+                <ul class="concept-list">
+                    <li>Each vote for candidate A is represented as a <span class="highlight">right move (→)</span></li>
+                    <li>Each vote for candidate B is represented as an <span class="highlight">up move (↑)</span></li>
+                    <li>The diagonal line <span class="highlight">y = x</span> represents the condition where both candidates have equal votes</li>
+                    <li>Paths must stay <span class="highlight">above the diagonal</span> to ensure candidate A is always ahead</li>
+                </ul>
+                
+                <div class="pascals-connection">
+                    <h3><i class="fas fa-triangle"></i> Pascal's Triangle Connection</h3>
+                    <p>Pascal's Triangle provides the binomial coefficients that count all possible paths without constraints. The Ballot Theorem provides a way to count only the paths that satisfy the diagonal constraint.</p>
+                    <p>For <span class="highlight" id="currentA">5</span> votes for A and <span class="highlight" id="currentB">3</span> votes for B, Pascal's Triangle gives <span class="highlight" id="pascalCount">56</span> total paths, while the Ballot Theorem calculates <span class="highlight" id="expectedPaths">14</span> valid paths.</p>
+                </div>
+                
+                <h3><i class="fas fa-exchange-alt"></i> Reflection Principle</h3>
+                <p>The key insight is that any path that touches or crosses the diagonal can be reflected to create a one-to-one correspondence with paths from (-1,1) to (m,n). This allows us to calculate the number of invalid paths.</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Configuration
+        const config = {
+            aVotes: 5,
+            bVotes: 3,
+            strictMode: true,
+            cellSize: 50,
+            animationSpeed: 300,
+            currentPath: 0,
+            currentStep: 0,
+            paths: [],
+            validPaths: [],
+            invalidPaths: [],
+            animationInterval: null
+        };
+
+        // DOM Elements
+        const elements = {
+            gridCanvas: document.getElementById('gridCanvas'),
+            aVotesInput: document.getElementById('aVotes'),
+            bVotesInput: document.getElementById('bVotes'),
+            aValue: document.getElementById('aValue'),
+            bValue: document.getElementById('bValue'),
+            strictMode: document.getElementById('strictMode'),
+            nonStrictMode: document.getElementById('nonStrictMode'),
+            animateBtn: document.getElementById('animateBtn'),
+            resetBtn: document.getElementById('resetBtn'),
+            pathCount: document.getElementById('pathCount'),
+            totalPaths: document.getElementById('totalPaths'),
+            currentA: document.getElementById('currentA'),
+            currentB: document.getElementById('currentB'),
+            expectedPaths: document.getElementById('expectedPaths'),
+            pascalCount: document.getElementById('pascalCount')
+        };
+
+        // Initialize canvas
+        const canvas = elements.gridCanvas;
+        const ctx = canvas.getContext('2d');
+        
+        // Initialize particles
+        initParticles();
+        
+        // Resize canvas to fit container
+        function resizeCanvas() {
+            const container = document.querySelector('.visualization-container');
+            canvas.width = container.clientWidth;
+            canvas.height = container.clientHeight;
+            renderGrid();
+        }
+
+        // Initialize
+        window.addEventListener('load', () => {
+            resizeCanvas();
+            window.addEventListener('resize', resizeCanvas);
+            calculatePaths();
+            updateUI();
+        });
+
+        // Event Listeners
+        elements.aVotesInput.addEventListener('input', () => {
+            config.aVotes = parseInt(elements.aVotesInput.value);
+            elements.aValue.textContent = config.aVotes;
+            resetAndRecalculate();
+        });
+
+        elements.bVotesInput.addEventListener('input', () => {
+            config.bVotes = parseInt(elements.bVotesInput.value);
+            elements.bValue.textContent = config.bVotes;
+            resetAndRecalculate();
+        });
+
+        elements.strictMode.addEventListener('change', () => {
+            config.strictMode = true;
+            resetAndRecalculate();
+        });
+
+        elements.nonStrictMode.addEventListener('change', () => {
+            config.strictMode = false;
+            resetAndRecalculate();
+        });
+
+        elements.animateBtn.addEventListener('click', () => {
+            if (config.animationInterval) {
+                pauseAnimation();
+            } else {
+                startAnimation();
+            }
+        });
+
+        elements.resetBtn.addEventListener('click', resetAndRecalculate);
+
+        // Path calculation using Ballot Theorem
+        function calculatePaths() {
+            config.paths = [];
+            config.validPaths = [];
+            config.invalidPaths = [];
+            config.currentPath = 0;
+            config.currentStep = 0;
+            
+            const m = config.aVotes;
+            const n = config.bVotes;
+            const strict = config.strictMode;
+            
+            // Calculate expected paths using Ballot Theorem formula
+            const totalPaths = binomial(m + n, m);
+            const validCount = Math.round(((m - n) / (m + n)) * totalPaths);
+            
+            // Update UI elements
+            elements.expectedPaths.textContent = validCount;
+            elements.totalPaths.textContent = totalPaths;
+            elements.currentA.textContent = m;
+            elements.currentB.textContent = n;
+            elements.pascalCount.textContent = totalPaths;
+            
+            // Generate all possible paths
+            generateAllPaths(0, 0, [], m, n);
+            classifyPaths();
+            elements.pathCount.textContent = config.validPaths.length;
+        }
+
+        function generateAllPaths(x, y, currentPath, m, n) {
+            if (x === m && y === n) {
+                config.paths.push([...currentPath]);
+                return;
+            }
+            
+            // Move right if possible
+            if (x < m) {
+                currentPath.push('right');
+                generateAllPaths(x + 1, y, currentPath, m, n);
+                currentPath.pop();
+            }
+            
+            // Move up if possible
+            if (y < n) {
+                currentPath.push('up');
+                generateAllPaths(x, y + 1, currentPath, m, n);
+                currentPath.pop();
+            }
+        }
+
+        function classifyPaths() {
+            config.validPaths = [];
+            config.invalidPaths = [];
+            const strict = config.strictMode;
+            
+            for (const path of config.paths) {
+                let x = 0, y = 0;
+                let valid = true;
+                
+                for (const move of path) {
+                    if (move === 'right') x++;
+                    else y++;
+                    
+                    // Check if we're above the diagonal
+                    if (strict ? y > x : y >= x) {
+                        valid = false;
+                        break;
+                    }
+                }
+                
+                if (valid) {
+                    config.validPaths.push(path);
+                } else {
+                    config.invalidPaths.push(path);
+                }
+            }
+        }
+
+        function binomial(n, k) {
+            if (k < 0 || k > n) return 0;
+            if (k === 0 || k === n) return 1;
+            
+            let result = 1;
+            for (let i = 1; i <= k; i++) {
+                result = result * (n - i + 1) / i;
+            }
+            return result;
+        }
+
+        // Rendering functions
+        function renderGrid() {
+            const width = canvas.width;
+            const height = canvas.height;
+            const m = config.aVotes;
+            const n = config.bVotes;
+            
+            // Clear canvas
+            ctx.clearRect(0, 0, width, height);
+            
+            // Draw background
+            drawBackground();
+            
+            // Calculate grid dimensions
+            const gridWidth = m * config.cellSize;
+            const gridHeight = n * config.cellSize;
+            const offsetX = (width - gridWidth) / 2;
+            const offsetY = (height - gridHeight) / 2;
+            
+            // Draw grid background with glass effect
+            ctx.fillStyle = 'rgba(15, 25, 45, 0.7)';
+            ctx.beginPath();
+            ctx.roundRect(offsetX - 15, offsetY - 15, gridWidth + 30, gridHeight + 30, 20);
+            ctx.fill();
+            
+            // Draw grid with glow effect
+            drawGrid(offsetX, offsetY, gridWidth, gridHeight, m, n);
+            
+            // Draw diagonal line with glow
+            drawDiagonal(offsetX, offsetY, m, n);
+            
+            // Draw start and end points
+            drawCircle(offsetX, offsetY, 8, '#00f2fe', true);
+            drawCircle(offsetX + m * config.cellSize, offsetY + n * config.cellSize, 8, '#ff6b6b', true);
+            
+            // Draw all paths
+            drawAllPaths(offsetX, offsetY);
+            
+            // Draw current path
+            if (config.validPaths.length > 0 && config.currentPath < config.validPaths.length) {
+                drawPath(config.validPaths[config.currentPath], offsetX, offsetY, '#00f2fe', config.currentStep, true);
+            }
+        }
+
+        function drawBackground() {
+            // Create gradient background
+            const gradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
+            gradient.addColorStop(0, 'rgba(10, 15, 40, 0.8)');
+            gradient.addColorStop(1, 'rgba(15, 30, 60, 0.6)');
+            
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+        }
+
+        function drawGrid(offsetX, offsetY, gridWidth, gridHeight, m, n) {
+            ctx.strokeStyle = 'rgba(100, 150, 255, 0.2)';
+            ctx.lineWidth = 1;
+            
+            // Draw vertical lines with glow
+            for (let i = 0; i <= m; i++) {
+                ctx.beginPath();
+                ctx.moveTo(offsetX + i * config.cellSize, offsetY);
+                ctx.lineTo(offsetX + i * config.cellSize, offsetY + gridHeight);
+                ctx.stroke();
+            }
+            
+            // Draw horizontal lines with glow
+            for (let j = 0; j <= n; j++) {
+                ctx.beginPath();
+                ctx.moveTo(offsetX, offsetY + j * config.cellSize);
+                ctx.lineTo(offsetX + gridWidth, offsetY + j * config.cellSize);
+                ctx.stroke();
+            }
+            
+            // Draw grid border
+            ctx.strokeStyle = 'rgba(100, 180, 255, 0.4)';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.roundRect(offsetX, offsetY, gridWidth, gridHeight, 5);
+            ctx.stroke();
+        }
+
+        function drawDiagonal(offsetX, offsetY, m, n) {
+            const minDim = Math.min(m, n);
+            
+            // Draw diagonal line with glow
+            ctx.strokeStyle = '#ff9a76';
+            ctx.lineWidth = 3;
+            ctx.shadowColor = '#ff9a76';
+            ctx.shadowBlur = 15;
+            ctx.beginPath();
+            ctx.moveTo(offsetX, offsetY);
+            ctx.lineTo(offsetX + minDim * config.cellSize, offsetY + minDim * config.cellSize);
+            ctx.stroke();
+            
+            // Reset shadow
+            ctx.shadowColor = 'transparent';
+            ctx.shadowBlur = 0;
+        }
+
+        function drawAllPaths(offsetX, offsetY) {
+            // Draw invalid paths
+            for (const path of config.invalidPaths) {
+                drawPath(path, offsetX, offsetY, 'rgba(255, 107, 107, 0.15)', path.length);
+            }
+            
+            // Draw valid paths
+            for (const path of config.validPaths) {
+                drawPath(path, offsetX, offsetY, 'rgba(79, 172, 254, 0.2)', path.length);
+            }
+        }
+
+        function drawPath(path, offsetX, offsetY, color, steps, isCurrent = false) {
+            ctx.beginPath();
+            
+            // Create gradient for current path
+            if (isCurrent) {
+                const gradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
+                gradient.addColorStop(0, '#4facfe');
+                gradient.addColorStop(1, '#00f2fe');
+                ctx.strokeStyle = gradient;
+                ctx.lineWidth = 5;
+                ctx.shadowColor = '#00f2fe';
+                ctx.shadowBlur = 15;
+            } else {
+                ctx.strokeStyle = color;
+                ctx.lineWidth = 3;
+            }
+            
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+            
+            let x = 0;
+            let y = 0;
+            ctx.moveTo(offsetX, offsetY);
+            
+            for (let i = 0; i < steps && i < path.length; i++) {
+                if (path[i] === 'right') x++;
+                else y++;
+                
+                ctx.lineTo(offsetX + x * config.cellSize, offsetY + y * config.cellSize);
+                
+                // Draw circles at each point for current path
+                if (isCurrent && i === steps - 1) {
+                    drawCircle(offsetX + x * config.cellSize, offsetY + y * config.cellSize, 6, '#00f2fe', true);
+                }
+            }
+            
+            ctx.stroke();
+            
+            // Reset shadow
+            ctx.shadowColor = 'transparent';
+            ctx.shadowBlur = 0;
+        }
+
+        function drawCircle(x, y, radius, color, glow = false) {
+            ctx.fillStyle = color;
+            if (glow) {
+                ctx.shadowColor = color;
+                ctx.shadowBlur = 15;
+            }
+            ctx.beginPath();
+            ctx.arc(x, y, radius, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Reset shadow
+            ctx.shadowColor = 'transparent';
+            ctx.shadowBlur = 0;
+        }
+
+        // Animation
+        function startAnimation() {
+            if (config.validPaths.length === 0) return;
+            
+            config.currentPath = 0;
+            config.currentStep = 0;
+            elements.animateBtn.innerHTML = '<i class="fas fa-pause"></i> Pause Animation';
+            
+            config.animationInterval = setInterval(() => {
+                config.currentStep++;
+                
+                if (config.currentStep > config.validPaths[config.currentPath].length + 5) {
+                    config.currentStep = 0;
+                    config.currentPath = (config.currentPath + 1) % config.validPaths.length;
+                    elements.pathCount.textContent = config.currentPath + 1;
+                }
+                
+                renderGrid();
+            }, config.animationSpeed);
+        }
+
+        function pauseAnimation() {
+            if (config.animationInterval) {
+                clearInterval(config.animationInterval);
+                config.animationInterval = null;
+                elements.animateBtn.innerHTML = '<i class="fas fa-play"></i> Start Animation';
+            }
+        }
+
+        // UI Updates
+        function updateUI() {
+            elements.pathCount.textContent = config.validPaths.length;
+            elements.totalPaths.textContent = config.paths.length;
+        }
+
+        function resetAndRecalculate() {
+            pauseAnimation();
+            calculatePaths();
+            renderGrid();
+        }
+
+        // Particle System for Background
+        function initParticles() {
+            const container = document.getElementById('particles');
+            const particles = [];
+            const particleCount = 100;
+            
+            for (let i = 0; i < particleCount; i++) {
+                const particle = document.createElement('div');
+                particle.style.position = 'absolute';
+                particle.style.width = Math.random() * 5 + 2 + 'px';
+                particle.style.height = particle.style.width;
+                particle.style.backgroundColor = `rgba(${Math.floor(Math.random() * 100 + 155)}, ${Math.floor(Math.random() * 100 + 155)}, 255, ${Math.random() * 0.5 + 0.1})`;
+                particle.style.borderRadius = '50%';
+                particle.style.left = Math.random() * 100 + '%';
+                particle.style.top = Math.random() * 100 + '%';
+                particle.style.boxShadow = '0 0 10px currentColor';
+                container.appendChild(particle);
+                particles.push({
+                    element: particle,
+                    x: parseFloat(particle.style.left),
+                    y: parseFloat(particle.style.top),
+                    speedX: (Math.random() - 0.5) * 0.2,
+                    speedY: (Math.random() - 0.5) * 0.2
+                });
+            }
+            
+            function animateParticles() {
+                for (const p of particles) {
+                    p.x += p.speedX;
+                    p.y += p.speedY;
+                    
+                    // Boundary checks
+                    if (p.x < 0 || p.x > 100) p.speedX *= -1;
+                    if (p.y < 0 || p.y > 100) p.speedY *= -1;
+                    
+                    p.element.style.left = p.x + '%';
+                    p.element.style.top = p.y + '%';
+                }
+                requestAnimationFrame(animateParticles);
+            }
+            
+            animateParticles();
+        }
+    </script>
+</body>
+</html>

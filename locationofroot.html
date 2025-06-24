@@ -1,0 +1,614 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quadratic Roots Visualizer - Cinematic Edition</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            font-family: 'Arial', sans-serif;
+            color: white;
+            background: #121212;
+        }
+        #container {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+        }
+        #info {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(0,0,0,0.7);
+            padding: 15px;
+            border-radius: 10px;
+            max-width: 400px;
+            z-index: 100;
+        }
+        #controls {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(0,0,0,0.7);
+            padding: 15px;
+            border-radius: 10px;
+            z-index: 100;
+        }
+        .slider-container {
+            margin: 10px 0;
+        }
+        label {
+            display: inline-block;
+            width: 50px;
+        }
+        input[type="range"] {
+            width: 200px;
+        }
+        .value-display {
+            display: inline-block;
+            width: 60px;
+            text-align: right;
+        }
+        #case-selector {
+            margin-top: 15px;
+        }
+        button {
+            background: #4CAF50;
+            border: none;
+            color: white;
+            padding: 8px 15px;
+            margin: 5px;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        button:hover {
+            background: #45a049;
+        }
+        button.active {
+            background: #2196F3;
+        }
+        #equation {
+            font-size: 1.2em;
+            margin-bottom: 10px;
+            color: #4CAF50;
+        }
+        #conditions {
+            margin-top: 10px;
+            font-size: 0.9em;
+            color: #FF9800;
+        }
+        #root-values {
+            margin-top: 10px;
+            font-size: 1em;
+            color: #9C27B0;
+        }
+        .math-condition {
+            margin: 5px 0;
+            padding: 5px;
+            background: rgba(0,0,0,0.3);
+            border-left: 3px solid #2196F3;
+        }
+        @keyframes pulse {
+            0% { opacity: 0.5; }
+            50% { opacity: 1; }
+            100% { opacity: 0.5; }
+        }
+        .pulse {
+            animation: pulse 2s infinite;
+        }
+    </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.11.4/gsap.min.js"></script>
+</head>
+<body>
+    <div id="container"></div>
+    
+    <div id="info">
+        <h2>Quadratic Roots Visualizer</h2>
+        <div id="equation">f(x) = <span id="a-val">1</span>x² + <span id="b-val">0</span>x + <span id="c-val">0</span></div>
+        <div id="root-values">Roots: α = <span id="root1">0</span>, β = <span id="root2">0</span></div>
+        <div id="conditions">
+            <div>Conditions for selected case will appear here</div>
+        </div>
+    </div>
+    
+    <div id="controls">
+        <div class="slider-container">
+            <label for="a">a:</label>
+            <input type="range" id="a" min="-5" max="5" step="0.1" value="1">
+            <span class="value-display" id="a-display">1</span>
+        </div>
+        <div class="slider-container">
+            <label for="b">b:</label>
+            <input type="range" id="b" min="-10" max="10" step="0.1" value="0">
+            <span class="value-display" id="b-display">0</span>
+        </div>
+        <div class="slider-container">
+            <label for="c">c:</label>
+            <input type="range" id="c" min="-10" max="10" step="0.1" value="0">
+            <span class="value-display" id="c-display">0</span>
+        </div>
+        
+        <div id="case-selector">
+            <h4>Root Location Cases:</h4>
+            <button id="case1" class="active">Both roots > k</button>
+            <button id="case2">Both roots < k</button>
+            <button id="case3">k between roots</button>
+            <button id="case4">Roots between k₁, k₂</button>
+            <button id="case5">One root between k₁, k₂</button>
+        </div>
+        
+        <div id="k-controls">
+            <div class="slider-container">
+                <label for="k">k:</label>
+                <input type="range" id="k" min="-5" max="5" step="0.1" value="0">
+                <span class="value-display" id="k-display">0</span>
+            </div>
+        </div>
+        
+        <div id="k1k2-controls" style="display:none;">
+            <div class="slider-container">
+                <label for="k1">k₁:</label>
+                <input type="range" id="k1" min="-5" max="5" step="0.1" value="-1">
+                <span class="value-display" id="k1-display">-1</span>
+            </div>
+            <div class="slider-container">
+                <label for="k2">k₂:</label>
+                <input type="range" id="k2" min="-5" max="5" step="0.1" value="1">
+                <span class="value-display" id="k2-display">1</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Load Three.js and all required dependencies -->
+    <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/build/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/examples/js/controls/OrbitControls.js"></script>
+    
+    <!-- Post-processing dependencies -->
+    <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/examples/js/shaders/CopyShader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/examples/js/shaders/LuminosityHighPassShader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/examples/js/postprocessing/EffectComposer.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/examples/js/postprocessing/RenderPass.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/examples/js/postprocessing/ShaderPass.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/examples/js/postprocessing/UnrealBloomPass.js"></script>
+
+    <script>
+        // Scene setup
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x121212);
+        
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.z = 15;
+        camera.position.y = 5;
+        
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(window.devicePixelRatio);
+        document.getElementById('container').appendChild(renderer.domElement);
+        
+        // Post-processing setup
+        const bloomParams = {
+            exposure: 1,
+            bloomStrength: 1.5,
+            bloomThreshold: 0,
+            bloomRadius: 0.5
+        };
+        
+        const renderScene = new THREE.RenderPass(scene, camera);
+        const bloomPass = new THREE.UnrealBloomPass(
+            new THREE.Vector2(window.innerWidth, window.innerHeight),
+            bloomParams.bloomStrength,
+            bloomParams.bloomRadius,
+            bloomParams.bloomThreshold
+        );
+        
+        const composer = new THREE.EffectComposer(renderer);
+        composer.addPass(renderScene);
+        composer.addPass(bloomPass);
+        
+        // Controls
+        const controls = new THREE.OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.05;
+        
+        // Lighting
+        const ambientLight = new THREE.AmbientLight(0x404040);
+        scene.add(ambientLight);
+        
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
+        directionalLight.position.set(1, 1, 1);
+        scene.add(directionalLight);
+        
+        // Add point light for root glow
+        const rootLight = new THREE.PointLight(0xff5722, 2, 5);
+        scene.add(rootLight);
+        
+        // Coordinate axes
+        const axesHelper = new THREE.AxesHelper(10);
+        scene.add(axesHelper);
+        
+        // Grid
+        const gridHelper = new THREE.GridHelper(20, 20, 0x555555, 0x333333);
+        scene.add(gridHelper);
+        
+        // Quadratic curve
+        let quadraticCurve = null;
+        let quadraticCurveGlow = null;
+        let roots = [];
+        let rootSpheres = [];
+        let rootParticles = [];
+        let kLine = null;
+        let k1Line = null, k2Line = null;
+        let kValue = 0;
+        let k1Value = -1, k2Value = 1;
+        let currentCase = 1;
+        
+        // Initialize quadratic curve (working version)
+        function createQuadraticCurve(a, b, c) {
+            // Remove old curves
+            if (quadraticCurve) scene.remove(quadraticCurve);
+            if (quadraticCurveGlow) scene.remove(quadraticCurveGlow);
+            
+            const points = [];
+            for (let x = -10; x <= 10; x += 0.1) {
+                const y = a * x * x + b * x + c;
+                points.push(new THREE.Vector3(x, y, 0));
+            }
+            
+            // Main curve (thick and semi-transparent)
+            const geometry = new THREE.BufferGeometry().setFromPoints(points);
+            const material = new THREE.LineBasicMaterial({
+                color: 0x4CAF50,
+                linewidth: 3,
+                transparent: true,
+                opacity: 0.8
+            });
+            quadraticCurve = new THREE.Line(geometry, material);
+            scene.add(quadraticCurve);
+            
+            // Glow effect (thinner and more transparent)
+            const glowMaterial = new THREE.LineBasicMaterial({
+                color: 0x4CAF50,
+                linewidth: 1,
+                transparent: true,
+                opacity: 0.3
+            });
+            quadraticCurveGlow = new THREE.Line(geometry.clone(), glowMaterial);
+            scene.add(quadraticCurveGlow);
+            
+            updateRoots(a, b, c);
+        }
+        
+        // Calculate and display roots with cinematic effects
+        function updateRoots(a, b, c) {
+            // Remove old root visuals
+            rootSpheres.forEach(sphere => scene.remove(sphere));
+            rootSpheres = [];
+            rootParticles.forEach(particles => scene.remove(particles));
+            rootParticles = [];
+            
+            // Calculate discriminant
+            const discriminant = b * b - 4 * a * c;
+            
+            if (discriminant >= 0) {
+                const sqrtDiscriminant = Math.sqrt(discriminant);
+                const root1 = (-b - sqrtDiscriminant) / (2 * a);
+                const root2 = (-b + sqrtDiscriminant) / (2 * a);
+                
+                roots = [root1, root2].sort((x, y) => x - y);
+                
+                // Create root spheres with glow
+                const sphereGeometry = new THREE.SphereGeometry(0.2, 32, 32);
+                const sphereMaterial = new THREE.MeshBasicMaterial({ 
+                    color: 0xFF5722,
+                    transparent: true,
+                    opacity: 0.9
+                });
+                
+                // Halo effect
+                const haloGeometry = new THREE.SphereGeometry(0.3, 32, 32);
+                const haloMaterial = new THREE.MeshBasicMaterial({
+                    color: 0xFF5722,
+                    transparent: true,
+                    opacity: 0.3
+                });
+                
+                roots.forEach(root => {
+                    // Main sphere
+                    const sphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
+                    sphere.position.set(root, 0, 0);
+                    scene.add(sphere);
+                    rootSpheres.push(sphere);
+                    
+                    // Halo
+                    const halo = new THREE.Mesh(haloGeometry, haloMaterial);
+                    halo.position.set(root, 0, 0);
+                    scene.add(halo);
+                    rootSpheres.push(halo);
+                    
+                    // Animate appearance
+                    gsap.from(sphere.scale, { 
+                        x: 0, y: 0, z: 0, 
+                        duration: 0.5, 
+                        ease: "elastic.out(1, 0.5)" 
+                    });
+                });
+                
+                document.getElementById('root1').textContent = root1.toFixed(2);
+                document.getElementById('root2').textContent = root2.toFixed(2);
+            } else {
+                roots = [];
+                document.getElementById('root1').textContent = "No real roots";
+                document.getElementById('root2').textContent = "";
+                
+                // Show complex roots visualization
+                const imaginaryPart = Math.sqrt(-discriminant) / (2 * Math.abs(a));
+                const complexPlane = new THREE.Mesh(
+                    new THREE.PlaneGeometry(5, 5),
+                    new THREE.MeshBasicMaterial({ 
+                        color: 0x9C27B0,
+                        side: THREE.DoubleSide,
+                        transparent: true,
+                        opacity: 0.3
+                    })
+                );
+                complexPlane.rotation.x = Math.PI / 2;
+                complexPlane.position.set(0, 0, 0);
+                scene.add(complexPlane);
+                
+                // Add to cleanup list
+                rootSpheres.push(complexPlane);
+            }
+            
+            updateConditions();
+        }
+        
+        // Create particle system for roots
+        function createRootParticles(x, color) {
+            const particles = new THREE.BufferGeometry();
+            const positions = new Float32Array(200 * 3);
+            const colors = new Float32Array(200 * 3);
+            
+            const particleColor = new THREE.Color(color);
+            
+            for (let i = 0; i < 200; i++) {
+                positions[i*3] = x + (Math.random() - 0.5) * 0.5;
+                positions[i*3+1] = (Math.random() - 0.5) * 0.5;
+                positions[i*3+2] = (Math.random() - 0.5) * 0.5;
+                
+                colors[i*3] = particleColor.r;
+                colors[i*3+1] = particleColor.g;
+                colors[i*3+2] = particleColor.b;
+            }
+            
+            particles.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+            particles.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+            
+            const particleMaterial = new THREE.PointsMaterial({
+                size: 0.05,
+                vertexColors: true,
+                transparent: true,
+                opacity: 0.8,
+                blending: THREE.AdditiveBlending
+            });
+            
+            return new THREE.Points(particles, particleMaterial);
+        }
+        
+        // Update k line with cinematic effects
+        function updateKLine() {
+            if (kLine) scene.remove(kLine);
+            
+            const points = [];
+            points.push(new THREE.Vector3(kValue, -10, 0));
+            points.push(new THREE.Vector3(kValue, 10, 0));
+            
+            const geometry = new THREE.BufferGeometry().setFromPoints(points);
+            const material = new THREE.LineBasicMaterial({ 
+                color: 0x2196F3, 
+                linewidth: 2,
+                transparent: true,
+                opacity: 0.8
+            });
+            kLine = new THREE.Line(geometry, material);
+            scene.add(kLine);
+            
+            // Add glow effect
+            const glowGeometry = new THREE.BufferGeometry().setFromPoints(points);
+            const glowMaterial = new THREE.LineBasicMaterial({
+                color: 0x2196F3,
+                linewidth: 4,
+                transparent: true,
+                opacity: 0.3
+            });
+            const glowLine = new THREE.Line(glowGeometry, glowMaterial);
+            scene.add(glowLine);
+            
+            document.getElementById('k-display').textContent = kValue.toFixed(1);
+            updateConditions();
+        }
+        
+        // Update conditions display with animations
+        function updateConditions() {
+            const a = parseFloat(document.getElementById('a').value);
+            const b = parseFloat(document.getElementById('b').value);
+            const c = parseFloat(document.getElementById('c').value);
+            
+            let conditionsText = "";
+            let conditionsMet = false;
+            
+            switch(currentCase) {
+                case 1: // Both roots > k
+                    const fk1 = a * kValue * kValue + b * kValue + c;
+                    const vertexX1 = -b / (2 * a);
+                    conditionsMet = (b*b - 4*a*c >= 0) && (a * fk1 > 0) && (vertexX1 > kValue);
+                    conditionsText = `
+                        <div class="math-condition ${(b*b - 4*a*c >= 0) ? 'pulse' : ''}">1. D ≥ 0: ${(b*b - 4*a*c).toFixed(2)} ${(b*b - 4*a*c >= 0) ? "✓" : "✗"}</div>
+                        <div class="math-condition ${(a * fk1 > 0) ? 'pulse' : ''}">2. a·f(k) > 0: ${fk1.toFixed(2)} ${(a * fk1 > 0) ? "✓" : "✗"}</div>
+                        <div class="math-condition ${(vertexX1 > kValue) ? 'pulse' : ''}">3. Vertex > k: ${vertexX1.toFixed(2)} > ${kValue.toFixed(1)} ${(vertexX1 > kValue) ? "✓" : "✗"}</div>
+                    `;
+                    break;
+                    
+                case 2: // Both roots < k
+                    const fk2 = a * kValue * kValue + b * kValue + c;
+                    const vertexX2 = -b / (2 * a);
+                    conditionsMet = (b*b - 4*a*c >= 0) && (a * fk2 > 0) && (vertexX2 < kValue);
+                    conditionsText = `
+                        <div class="math-condition ${(b*b - 4*a*c >= 0) ? 'pulse' : ''}">1. D ≥ 0: ${(b*b - 4*a*c).toFixed(2)} ${(b*b - 4*a*c >= 0) ? "✓" : "✗"}</div>
+                        <div class="math-condition ${(a * fk2 > 0) ? 'pulse' : ''}">2. a·f(k) > 0: ${fk2.toFixed(2)} ${(a * fk2 > 0) ? "✓" : "✗"}</div>
+                        <div class="math-condition ${(vertexX2 < kValue) ? 'pulse' : ''}">3. Vertex < k: ${vertexX2.toFloat(2)} < ${kValue.toFixed(1)} ${(vertexX2 < kValue) ? "✓" : "✗"}</div>
+                    `;
+                    break;
+                    
+                case 3: // k between roots
+                    const fk3 = a * kValue * kValue + b * kValue + c;
+                    conditionsMet = (b*b - 4*a*c > 0) && (a * fk3 < 0);
+                    conditionsText = `
+                        <div class="math-condition ${(b*b - 4*a*c > 0) ? 'pulse' : ''}">1. D > 0: ${(b*b - 4*a*c).toFixed(2)} ${(b*b - 4*a*c > 0) ? "✓" : "✗"}</div>
+                        <div class="math-condition ${(a * fk3 < 0) ? 'pulse' : ''}">2. a·f(k) < 0: ${fk3.toFixed(2)} ${(a * fk3 < 0) ? "✓" : "✗"}</div>
+                    `;
+                    break;
+            }
+            
+            // Animate the conditions update
+            gsap.to("#conditions", {
+                duration: 0.3,
+                opacity: 0,
+                y: -10,
+                onComplete: () => {
+                    document.getElementById("conditions").innerHTML = `
+                        <strong>Case ${currentCase} Conditions:</strong>
+                        ${conditionsText}
+                    `;
+                    gsap.from("#conditions .math-condition", {
+                        stagger: 0.1,
+                        y: 20,
+                        opacity: 0,
+                        duration: 0.5,
+                        ease: "back.out"
+                    });
+                    
+                    // Highlight the entire panel when conditions are met
+                    if (conditionsMet) {
+                        gsap.to("#conditions", {
+                            backgroundColor: "rgba(0,100,0,0.5)",
+                            duration: 0.5,
+                            yoyo: true,
+                            repeat: 1
+                        });
+                    }
+                }
+            });
+            
+            // Update root colors based on conditions
+            rootSpheres.forEach(sphere => {
+                if (sphere.material && sphere.material.color) {
+                    gsap.to(sphere.material.color, {
+                        r: conditionsMet ? 0 : 1,
+                        g: conditionsMet ? 1 : 0.34,
+                        b: conditionsMet ? 0 : 0.13,
+                        duration: 0.5
+                    });
+                }
+            });
+        }
+        
+        // Event listeners
+        document.getElementById('a').addEventListener('input', function() {
+            const value = parseFloat(this.value);
+            document.getElementById('a-val').textContent = value.toFixed(1);
+            document.getElementById('a-display').textContent = value.toFixed(1);
+            createQuadraticCurve(value, 
+                               parseFloat(document.getElementById('b').value), 
+                               parseFloat(document.getElementById('c').value));
+        });
+        
+        document.getElementById('b').addEventListener('input', function() {
+            const value = parseFloat(this.value);
+            document.getElementById('b-val').textContent = value.toFixed(1);
+            document.getElementById('b-display').textContent = value.toFixed(1);
+            createQuadraticCurve(parseFloat(document.getElementById('a').value), 
+                               value, 
+                               parseFloat(document.getElementById('c').value));
+        });
+        
+        document.getElementById('c').addEventListener('input', function() {
+            const value = parseFloat(this.value);
+            document.getElementById('c-val').textContent = value.toFixed(1);
+            document.getElementById('c-display').textContent = value.toFixed(1);
+            createQuadraticCurve(parseFloat(document.getElementById('a').value), 
+                               parseFloat(document.getElementById('b').value), 
+                               value);
+        });
+        
+        document.getElementById('k').addEventListener('input', function() {
+            kValue = parseFloat(this.value);
+            updateKLine();
+        });
+        
+        // Case selector buttons
+        document.querySelectorAll('#case-selector button').forEach(button => {
+            button.addEventListener('click', function() {
+                document.querySelectorAll('#case-selector button').forEach(btn => btn.classList.remove('active'));
+                this.classList.add('active');
+                
+                currentCase = parseInt(this.id.replace('case', ''));
+                
+                if (currentCase <= 3) {
+                    document.getElementById('k-controls').style.display = 'block';
+                    document.getElementById('k1k2-controls').style.display = 'none';
+                } else {
+                    document.getElementById('k-controls').style.display = 'none';
+                    document.getElementById('k1k2-controls').style.display = 'block';
+                }
+                
+                // Animate case transition
+                gsap.to(camera.position, {
+                    z: 15 + (Math.random() * 2 - 1),
+                    x: Math.random() * 2 - 1,
+                    duration: 1,
+                    ease: "elastic.out(1, 0.5)"
+                });
+                
+                updateConditions();
+            });
+        });
+        
+        // Handle window resize
+        window.addEventListener('resize', function() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            composer.setSize(window.innerWidth, window.innerHeight);
+        });
+        
+        // Initial setup
+        createQuadraticCurve(1, 0, 0);
+        updateKLine();
+        
+        // Animation loop
+        function animate() {
+            requestAnimationFrame(animate);
+            controls.update();
+            
+            // Update particle systems
+            if (rootParticles && rootParticles.length > 0) {
+                rootParticles.forEach(particles => {
+                    const positions = particles.geometry.attributes.position.array;
+                    for (let i = 0; i < positions.length; i += 3) {
+                        positions[i+1] += (Math.random() - 0.5) * 0.01;
+                        positions[i+2] += (Math.random() - 0.5) * 0.01;
+                    }
+                    particles.geometry.attributes.position.needsUpdate = true;
+                });
+            }
+            
+            composer.render();
+        }
+        
+        animate();
+    </script>
+</body>
+</html>

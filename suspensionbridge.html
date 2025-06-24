@@ -1,0 +1,888 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cinematic Suspension Bridge Simulator</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            font-family: 'Arial', sans-serif;
+            background: #000;
+            color: white;
+        }
+        #container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+        }
+        #bridgeCanvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+        #controls {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(0,0,0,0.7);
+            padding: 15px;
+            border-radius: 8px;
+            width: 300px;
+        }
+        #title {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            font-size: 24px;
+            background: rgba(0,0,0,0.7);
+            padding: 10px 15px;
+            border-radius: 8px;
+        }
+        #equation {
+            position: absolute;
+            top: 70px;
+            left: 20px;
+            background: rgba(0,0,0,0.7);
+            padding: 10px 15px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+        }
+        label {
+            display: block;
+            margin: 10px 0 5px;
+        }
+        input[type="range"] {
+            width: 100%;
+        }
+        .value-display {
+            float: right;
+        }
+        #time-control {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(0,0,0,0.7);
+            padding: 10px 15px;
+            border-radius: 8px;
+        }
+        #weather-control {
+            position: absolute;
+            top: 70px;
+            right: 20px;
+            background: rgba(0,0,0,0.7);
+            padding: 10px 15px;
+            border-radius: 8px;
+        }
+        button {
+            background: #3498db;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            margin: 5px 0;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        #camera-view {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(0,0,0,0.7);
+            padding: 10px 15px;
+            border-radius: 8px;
+        }
+    </style>
+</head>
+<body>
+    <div id="container">
+        <canvas id="bridgeCanvas"></canvas>
+        
+        <div id="title">Golden Gate Bridge Simulator</div>
+        <div id="equation">Parabola equation: y = a(x - h)² + k</div>
+        
+        <div id="time-control">
+            <div>Time of Day:</div>
+            <button id="sunrise">Sunrise</button>
+            <button id="day">Day</button>
+            <button id="sunset">Sunset</button>
+            <button id="night">Night</button>
+        </div>
+        
+        <div id="weather-control">
+            <div>Weather:</div>
+            <button id="clear">Clear</button>
+            <button id="cloudy">Cloudy</button>
+            <button id="rain">Rain</button>
+            <button id="storm">Storm</button>
+        </div>
+        
+        <div id="camera-view">
+            <div>Camera:</div>
+            <button id="view-side">Side View</button>
+            <button id="view-top">Top View</button>
+            <button id="view-drone">Drone View</button>
+            <button id="view-drive">Drive Across</button>
+        </div>
+        
+        <div id="controls">
+            <label>
+                Cable Tension: 
+                <input type="range" id="tension" min="0.0005" max="0.002" step="0.0001" value="0.0012">
+                <span class="value-display" id="tension-value">0.0012</span>
+            </label>
+            <label>
+                Wind Speed: 
+                <input type="range" id="wind" min="0" max="50" value="10">
+                <span class="value-display" id="wind-value">10 mph</span>
+            </label>
+            <label>
+                Traffic Density: 
+                <input type="range" id="traffic" min="0" max="100" value="50">
+                <span class="value-display" id="traffic-value">50%</span>
+            </label>
+            <button id="earthquake">Simulate Earthquake</button>
+        </div>
+    </div>
+
+    <script>
+        // Main canvas setup
+        const canvas = document.getElementById('bridgeCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        // Set canvas to full window size
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+        
+        // Simulation parameters
+        const params = {
+            tension: 0.0012,
+            windSpeed: 10,
+            trafficDensity: 50,
+            timeOfDay: 'day', // sunrise, day, sunset, night
+            weather: 'clear', // clear, cloudy, rain, storm
+            cameraView: 'side', // side, top, drone, drive
+            earthquake: false,
+            earthquakeTime: 0
+        };
+        
+        // DOM elements
+        const tensionSlider = document.getElementById('tension');
+        const windSlider = document.getElementById('wind');
+        const trafficSlider = document.getElementById('traffic');
+        const tensionValue = document.getElementById('tension-value');
+        const windValue = document.getElementById('wind-value');
+        const trafficValue = document.getElementById('traffic-value');
+        
+        // Update displayed values
+        function updateDisplays() {
+            tensionValue.textContent = params.tension.toFixed(4);
+            windValue.textContent = params.windSpeed + ' mph';
+            trafficValue.textContent = params.trafficDensity + '%';
+        }
+        
+        // Event listeners for sliders
+        tensionSlider.addEventListener('input', () => {
+            params.tension = parseFloat(tensionSlider.value);
+            updateDisplays();
+        });
+        
+        windSlider.addEventListener('input', () => {
+            params.windSpeed = parseInt(windSlider.value);
+            updateDisplays();
+        });
+        
+        trafficSlider.addEventListener('input', () => {
+            params.trafficDensity = parseInt(trafficSlider.value);
+            updateDisplays();
+        });
+        
+        // Time of day controls
+        document.getElementById('sunrise').addEventListener('click', () => { params.timeOfDay = 'sunrise'; });
+        document.getElementById('day').addEventListener('click', () => { params.timeOfDay = 'day'; });
+        document.getElementById('sunset').addEventListener('click', () => { params.timeOfDay = 'sunset'; });
+        document.getElementById('night').addEventListener('click', () => { params.timeOfDay = 'night'; });
+        
+        // Weather controls
+        document.getElementById('clear').addEventListener('click', () => { params.weather = 'clear'; });
+        document.getElementById('cloudy').addEventListener('click', () => { params.weather = 'cloudy'; });
+        document.getElementById('rain').addEventListener('click', () => { params.weather = 'rain'; });
+        document.getElementById('storm').addEventListener('click', () => { params.weather = 'storm'; });
+        
+        // Camera controls
+        document.getElementById('view-side').addEventListener('click', () => { params.cameraView = 'side'; });
+        document.getElementById('view-top').addEventListener('click', () => { params.cameraView = 'top'; });
+        document.getElementById('view-drone').addEventListener('click', () => { params.cameraView = 'drone'; });
+        document.getElementById('view-drive').addEventListener('click', () => { params.cameraView = 'drive'; });
+        
+        // Earthquake simulation
+        document.getElementById('earthquake').addEventListener('click', () => {
+            params.earthquake = true;
+            params.earthquakeTime = 0;
+            setTimeout(() => { params.earthquake = false; }, 5000);
+        });
+        
+        // Car class for traffic
+        class Car {
+            constructor(lane) {
+                this.lane = lane;
+                this.x = -100 - Math.random() * 500;
+                this.speed = 2 + Math.random() * 3;
+                this.color = `hsl(${Math.random() * 360}, 70%, 50%)`;
+                this.width = 40 + Math.random() * 20;
+                this.shake = 0;
+            }
+            
+            update() {
+                this.x += this.speed;
+                if (this.x > canvas.width + 100) {
+                    this.x = -100 - Math.random() * 200;
+                }
+                
+                // Apply wind effect
+                if (params.windSpeed > 20) {
+                    this.shake = Math.sin(Date.now() / 200) * (params.windSpeed - 20) / 10;
+                } else {
+                    this.shake *= 0.9;
+                }
+            }
+            
+            draw(ctx, bridgeY) {
+                const laneOffset = (this.lane - 2) * 30;
+                const y = bridgeY - 25 + this.shake;
+                
+                // Car body
+                ctx.fillStyle = this.color;
+                ctx.fillRect(this.x, y, this.width, 15);
+                ctx.fillRect(this.x + 5, y - 10, this.width - 10, 10);
+                
+                // Windows
+                ctx.fillStyle = 'rgba(200, 240, 255, 0.7)';
+                ctx.fillRect(this.x + 10, y - 8, 8, 5);
+                ctx.fillRect(this.x + this.width - 18, y - 8, 8, 5);
+                
+                // Wheels
+                ctx.fillStyle = '#111';
+                ctx.beginPath();
+                ctx.arc(this.x + 10, y + 15, 5, 0, Math.PI * 2);
+                ctx.arc(this.x + this.width - 10, y + 15, 5, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // Headlights at night
+                if (params.timeOfDay === 'night' || params.weather === 'rain' || params.weather === 'storm') {
+                    const lightGradient = ctx.createRadialGradient(
+                        this.x + this.width, y + 5, 0,
+                        this.x + this.width, y + 5, 30
+                    );
+                    lightGradient.addColorStop(0, 'rgba(255, 240, 180, 0.8)');
+                    lightGradient.addColorStop(1, 'rgba(255, 240, 180, 0)');
+                    ctx.fillStyle = lightGradient;
+                    ctx.fillRect(this.x + this.width, y - 15, 30, 30);
+                }
+            }
+        }
+        
+        // Create traffic
+        const traffic = [];
+        for (let i = 0; i < 20; i++) {
+            for (let lane = 1; lane <= 4; lane++) {
+                if (Math.random() > 0.5) {
+                    const car = new Car(lane);
+                    car.x = Math.random() * canvas.width * 2;
+                    traffic.push(car);
+                }
+            }
+        }
+        
+        // Cloud class
+        class Cloud {
+            constructor() {
+                this.x = Math.random() * canvas.width;
+                this.y = Math.random() * canvas.height * 0.4;
+                this.speed = 0.2 + Math.random() * 0.5;
+                this.size = 30 + Math.random() * 50;
+                this.puffs = [];
+                for (let i = 0; i < 5; i++) {
+                    this.puffs.push({
+                        x: Math.random() * 40 - 20,
+                        y: Math.random() * 20 - 10,
+                        r: 10 + Math.random() * 20
+                    });
+                }
+            }
+            
+            update() {
+                this.x += this.speed;
+                if (this.x > canvas.width + 100) {
+                    this.x = -100;
+                    this.y = Math.random() * canvas.height * 0.4;
+                }
+            }
+            
+            draw(ctx) {
+                ctx.save();
+                ctx.translate(this.x, this.y);
+                
+                ctx.fillStyle = params.weather === 'storm' ? 
+                    'rgba(100, 100, 120, 0.8)' : 'rgba(255, 255, 255, 0.8)';
+                
+                for (const puff of this.puffs) {
+                    ctx.beginPath();
+                    ctx.arc(puff.x, puff.y, puff.r, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+                
+                ctx.restore();
+            }
+        }
+        
+        // Create clouds
+        const clouds = [];
+        for (let i = 0; i < 10; i++) {
+            clouds.push(new Cloud());
+        }
+        
+        // Rain drop class
+        class RainDrop {
+            constructor() {
+                this.reset();
+                this.z = Math.random() * 5 + 1;
+                this.len = this.z * 5;
+                this.speed = this.z * 4;
+            }
+            
+            reset() {
+                this.x = Math.random() * canvas.width;
+                this.y = Math.random() * -canvas.height;
+            }
+            
+            update() {
+                this.y += this.speed;
+                this.x += params.windSpeed / 20;
+                
+                if (this.y > canvas.height || this.x > canvas.width) {
+                    this.reset();
+                    if (this.x > canvas.width) this.x = Math.random() * -50;
+                }
+            }
+            
+            draw(ctx) {
+                ctx.strokeStyle = `rgba(174, 194, 224, ${0.2 + this.z / 10})`;
+                ctx.lineWidth = this.z / 2;
+                ctx.beginPath();
+                ctx.moveTo(this.x, this.y);
+                ctx.lineTo(this.x - params.windSpeed / 5, this.y + this.len);
+                ctx.stroke();
+            }
+        }
+        
+        // Create rain
+        const rainDrops = [];
+        for (let i = 0; i < 200; i++) {
+            rainDrops.push(new RainDrop());
+        }
+        
+        // Lightning
+        let lightning = {
+            active: false,
+            alpha: 0,
+            segments: [],
+            timer: 0
+        };
+        
+        function createLightning() {
+            lightning.active = true;
+            lightning.alpha = 0.8;
+            lightning.segments = [];
+            
+            const startX = Math.random() * canvas.width;
+            const startY = 0;
+            const endX = startX + (Math.random() * 200 - 100);
+            const endY = canvas.height * 0.7;
+            
+            const segments = 10;
+            const points = [{x: startX, y: startY}];
+            
+            for (let i = 1; i <= segments; i++) {
+                const t = i / segments;
+                const x = lerp(startX, endX, t) + (Math.random() * 40 - 20);
+                const y = lerp(startY, endY, t);
+                points.push({x, y});
+            }
+            
+            for (let i = 0; i < points.length - 1; i++) {
+                const branchChance = i > 2 && i < points.length - 3 ? 0.3 : 0;
+                
+                if (Math.random() < branchChance) {
+                    const branchLength = 20 + Math.random() * 50;
+                    const angle = Math.random() * Math.PI * 2;
+                    const branchEnd = {
+                        x: points[i].x + Math.cos(angle) * branchLength,
+                        y: points[i].y + Math.sin(angle) * branchLength
+                    };
+                    
+                    lightning.segments.push({
+                        from: points[i],
+                        to: branchEnd,
+                        width: 1 + Math.random()
+                    });
+                }
+                
+                lightning.segments.push({
+                    from: points[i],
+                    to: points[i + 1],
+                    width: 1 + Math.random() * 2
+                });
+            }
+        }
+        
+        // Helper function
+        function lerp(a, b, t) {
+            return a + (b - a) * t;
+        }
+        
+        // Animation loop
+        function animate() {
+            // Clear canvas
+            ctx.fillStyle = getSkyColor();
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Draw sun/moon
+            drawSunMoon();
+            
+            // Update and draw clouds
+            if (params.weather !== 'clear') {
+                for (const cloud of clouds) {
+                    cloud.update();
+                    cloud.draw(ctx);
+                }
+            }
+            
+            // Draw distant landscape
+            drawLandscape();
+            
+            // Draw water
+            drawWater();
+            
+            // Update earthquake timer
+            if (params.earthquake) {
+                params.earthquakeTime += 0.1;
+            }
+            
+            // Update and draw bridge
+            drawBridge();
+            
+            // Update and draw traffic
+            updateTraffic();
+            drawTraffic();
+            
+            // Draw rain
+            if (params.weather === 'rain' || params.weather === 'storm') {
+                drawRain();
+            }
+            
+            // Draw lightning
+            if (params.weather === 'storm' && Math.random() < 0.01) {
+                createLightning();
+            }
+            drawLightning();
+            
+            requestAnimationFrame(animate);
+        }
+        
+        function getSkyColor() {
+            switch (params.timeOfDay) {
+                case 'sunrise':
+                    return '#FF7F50';
+                case 'day':
+                    return params.weather === 'storm' ? '#666699' : 
+                           params.weather === 'rain' ? '#778899' : 
+                           params.weather === 'cloudy' ? '#B0C4DE' : '#87CEEB';
+                case 'sunset':
+                    return '#FF4500';
+                case 'night':
+                    return '#0F0F2D';
+            }
+        }
+        
+        function drawSunMoon() {
+            const isDay = params.timeOfDay === 'day' || params.timeOfDay === 'sunrise' || params.timeOfDay === 'sunset';
+            const size = isDay ? 60 : 50;
+            
+            let x, y;
+            if (params.timeOfDay === 'sunrise') {
+                x = canvas.width * 0.2;
+                y = canvas.height * 0.8;
+            } else if (params.timeOfDay === 'sunset') {
+                x = canvas.width * 0.8;
+                y = canvas.height * 0.8;
+            } else {
+                x = canvas.width / 2;
+                y = isDay ? canvas.height * 0.3 : canvas.height * 0.2;
+            }
+            
+            if (isDay && params.weather === 'clear') {
+                // Sun with glow
+                const gradient = ctx.createRadialGradient(x, y, size, x, y, size * 3);
+                gradient.addColorStop(0, params.timeOfDay === 'sunset' ? '#FF8C00' : '#FFFF00');
+                gradient.addColorStop(1, 'rgba(255,255,0,0)');
+                
+                ctx.fillStyle = gradient;
+                ctx.beginPath();
+                ctx.arc(x, y, size * 3, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            
+            if ((isDay && params.weather === 'clear') || !isDay) {
+                // Sun/moon disk
+                ctx.fillStyle = isDay ? 
+                    (params.timeOfDay === 'sunset' ? '#FF4500' : '#FFFF00') : '#F5F5F5';
+                ctx.beginPath();
+                ctx.arc(x, y, size, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // Moon craters
+                if (!isDay) {
+                    ctx.fillStyle = '#D3D3D3';
+                    ctx.beginPath();
+                    ctx.arc(x - 15, y - 10, 8, 0, Math.PI * 2);
+                    ctx.arc(x + 10, y + 5, 5, 0, Math.PI * 2);
+                    ctx.arc(x + 15, y - 15, 10, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            }
+        }
+        
+        function drawLandscape() {
+            // Distant mountains
+            ctx.fillStyle = params.timeOfDay === 'night' ? '#1A1A2E' : 
+                           params.timeOfDay === 'sunset' ? '#2E1A1A' : '#2E461A';
+            
+            const mountainHeight = canvas.height * 0.4;
+            const waterLevel = canvas.height * 0.7;
+            
+            ctx.beginPath();
+            ctx.moveTo(0, waterLevel);
+            
+            // Create mountain silhouette
+            for (let x = 0; x < canvas.width; x += 50) {
+                const heightVariation = Math.sin(x / 200) * 50 + Math.cos(x / 300) * 30;
+                ctx.lineTo(x, waterLevel - mountainHeight + heightVariation);
+            }
+            
+            ctx.lineTo(canvas.width, waterLevel);
+            ctx.closePath();
+            ctx.fill();
+            
+            // City skyline
+            ctx.fillStyle = params.timeOfDay === 'night' ? '#000033' : '#333333';
+            const buildingBase = waterLevel - 20;
+            
+            for (let x = 0; x < canvas.width; x += 30) {
+                if (Math.random() > 0.7) {
+                    const width = 20 + Math.random() * 30;
+                    const height = 50 + Math.random() * 150;
+                    
+                    ctx.fillRect(x, buildingBase - height, width, height);
+                    
+                    // Windows at night
+                    if (params.timeOfDay === 'night') {
+                        ctx.fillStyle = '#FFD700';
+                        for (let wy = buildingBase - height + 10; wy < buildingBase - 10; wy += 15) {
+                            for (let wx = x + 5; wx < x + width - 5; wx += 10) {
+                                if (Math.random() > 0.3) {
+                                    ctx.fillRect(wx, wy, 5, 8);
+                                }
+                            }
+                        }
+                        ctx.fillStyle = '#333333';
+                    }
+                }
+            }
+        }
+        
+        function drawWater() {
+            const waterLevel = canvas.height * 0.7;
+            
+            // Water gradient
+            const waterGradient = ctx.createLinearGradient(0, waterLevel, 0, canvas.height);
+            waterGradient.addColorStop(0, params.timeOfDay === 'night' ? '#000066' : 
+                                      params.timeOfDay === 'sunset' ? '#8B4513' : '#1E90FF');
+            waterGradient.addColorStop(1, params.timeOfDay === 'night' ? '#000033' : 
+                                      params.timeOfDay === 'sunset' ? '#5D2906' : '#00008B');
+            
+            ctx.fillStyle = waterGradient;
+            ctx.fillRect(0, waterLevel, canvas.width, canvas.height - waterLevel);
+            
+            // Water waves
+            if (params.windSpeed > 5 || params.weather === 'rain' || params.weather === 'storm') {
+                ctx.strokeStyle = `rgba(255, 255, 255, ${params.weather === 'storm' ? 0.3 : 0.1})`;
+                ctx.lineWidth = 1;
+                
+                for (let y = waterLevel + 10; y < canvas.height; y += 20) {
+                    ctx.beginPath();
+                    ctx.moveTo(0, y);
+                    
+                    for (let x = 0; x < canvas.width; x += 10) {
+                        const waveHeight = (params.windSpeed / 30) * (5 + Math.sin(x / 50 + Date.now() / 1000) * 5);
+                        ctx.lineTo(x, y + waveHeight);
+                    }
+                    
+                    ctx.stroke();
+                }
+            }
+            
+            // Reflections
+            if (params.weather === 'clear') {
+                ctx.save();
+                ctx.globalAlpha = params.timeOfDay === 'night' ? 0.3 : 0.5;
+                
+                // Bridge reflection
+                const bridgeLeft = canvas.width * 0.2;
+                const bridgeRight = canvas.width * 0.8;
+                const bridgeTop = waterLevel - 150;
+                
+                ctx.beginPath();
+                ctx.moveTo(bridgeLeft, waterLevel);
+                
+                for (let x = bridgeLeft; x <= bridgeRight; x += 5) {
+                    const bridgeX = x - bridgeLeft;
+                    const normalY = bridgeTop - 100 - params.tension * Math.pow(bridgeX - (bridgeRight - bridgeLeft)/2, 2);
+                    const reflectedY = waterLevel + (normalY - bridgeTop);
+                    
+                    // Distort reflection with waves
+                    const waveOffset = Math.sin(x / 30 + Date.now() / 800) * 3;
+                    ctx.lineTo(x, reflectedY + waveOffset);
+                }
+                
+                ctx.lineTo(bridgeRight, waterLevel);
+                ctx.closePath();
+                
+                ctx.fillStyle = '#8B4513';
+                ctx.fill();
+                
+                ctx.restore();
+            }
+        }
+        
+        function drawBridge() {
+            const bridgeLeft = canvas.width * 0.2;
+            const bridgeRight = canvas.width * 0.8;
+            const bridgeWidth = bridgeRight - bridgeLeft;
+            const bridgeCenter = bridgeLeft + bridgeWidth / 2;
+            const bridgeTop = canvas.height * 0.7 - 150;
+            
+            // Earthquake effect
+            const quakeOffset = params.earthquake ? 
+                Math.sin(params.earthquakeTime * 5) * 20 + 
+                Math.sin(params.earthquakeTime * 13) * 10 : 0;
+            
+            // Draw suspension cables (main parabola)
+            ctx.strokeStyle = '#FFD700';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            
+            for (let x = bridgeLeft; x <= bridgeRight; x += 5) {
+                // Base parabola equation
+                let y = bridgeTop - 100 - params.tension * Math.pow(x - bridgeCenter, 2);
+                
+                // Add wind effect
+                if (params.windSpeed > 10) {
+                    const windEffect = Math.sin(x / 50 + Date.now() / 1000) * (params.windSpeed - 10);
+                    y += windEffect;
+                }
+                
+                // Add earthquake effect
+                y += quakeOffset * (1 - Math.abs(x - bridgeCenter) / (bridgeWidth / 2));
+                
+                if (x === bridgeLeft) ctx.moveTo(x, y);
+                else ctx.lineTo(x, y);
+            }
+            
+            ctx.stroke();
+            
+            // Draw vertical cables
+            ctx.strokeStyle = 'rgba(255, 215, 0, 0.7)';
+            ctx.lineWidth = 1;
+            
+            for (let x = bridgeLeft + 30; x <= bridgeRight - 30; x += 20) {
+                // Calculate cable top position with effects
+                let cableTopY = bridgeTop - 100 - params.tension * Math.pow(x - bridgeCenter, 2);
+                
+                if (params.windSpeed > 10) {
+                    const windEffect = Math.sin(x / 50 + Date.now() / 1000) * (params.windSpeed - 10);
+                    cableTopY += windEffect;
+                }
+                
+                cableTopY += quakeOffset * (1 - Math.abs(x - bridgeCenter) / (bridgeWidth / 2));
+                
+                const cableBottomY = bridgeTop + 20;
+                
+                ctx.beginPath();
+                ctx.moveTo(x, cableTopY);
+                ctx.lineTo(x, cableBottomY);
+                ctx.stroke();
+            }
+            
+            // Draw bridge deck
+            ctx.fillStyle = '#8B4513';
+            ctx.beginPath();
+            ctx.moveTo(bridgeLeft, bridgeTop + 20);
+            
+            for (let x = bridgeLeft; x <= bridgeRight; x += 5) {
+                let y = bridgeTop + 20;
+                
+                // Add earthquake effect to deck
+                y += quakeOffset * (1 - Math.abs(x - bridgeCenter) / (bridgeWidth / 2));
+                
+                ctx.lineTo(x, y);
+            }
+            
+            ctx.lineTo(bridgeRight, bridgeTop + 20);
+            ctx.lineTo(bridgeRight, bridgeTop + 40);
+            
+            for (let x = bridgeRight; x >= bridgeLeft; x -= 5) {
+                let y = bridgeTop + 40;
+                
+                // Add earthquake effect to underside
+                y += quakeOffset * (1 - Math.abs(x - bridgeCenter) / (bridgeWidth / 2));
+                
+                ctx.lineTo(x, y);
+            }
+            
+            ctx.lineTo(bridgeLeft, bridgeTop + 40);
+            ctx.closePath();
+            ctx.fill();
+            
+            // Draw bridge towers
+            ctx.fillStyle = '#B22222';
+            
+            // Left tower
+            ctx.beginPath();
+            ctx.moveTo(bridgeLeft + 20, bridgeTop + 40);
+            ctx.lineTo(bridgeLeft + 30, bridgeTop + 40);
+            ctx.lineTo(bridgeLeft + 30, bridgeTop - 200);
+            ctx.lineTo(bridgeLeft + 20, bridgeTop - 200);
+            ctx.closePath();
+            ctx.fill();
+            
+            // Right tower
+            ctx.beginPath();
+            ctx.moveTo(bridgeRight - 30, bridgeTop + 40);
+            ctx.lineTo(bridgeRight - 20, bridgeTop + 40);
+            ctx.lineTo(bridgeRight - 20, bridgeTop - 200);
+            ctx.lineTo(bridgeRight - 30, bridgeTop - 200);
+            ctx.closePath();
+            ctx.fill();
+            
+            // Tower cross beams
+            ctx.strokeStyle = '#8B0000';
+            ctx.lineWidth = 3;
+            
+            for (let y = bridgeTop - 180; y <= bridgeTop - 50; y += 30) {
+                // Left tower beams
+                ctx.beginPath();
+                ctx.moveTo(bridgeLeft + 10, y);
+                ctx.lineTo(bridgeLeft + 40, y);
+                ctx.stroke();
+                
+                // Right tower beams
+                ctx.beginPath();
+                ctx.moveTo(bridgeRight - 40, y);
+                ctx.lineTo(bridgeRight - 10, y);
+                ctx.stroke();
+            }
+            
+            // Road markings
+            if (params.trafficDensity > 0) {
+                ctx.strokeStyle = '#FFFFFF';
+                ctx.lineWidth = 2;
+                ctx.setLineDash([20, 20]);
+                
+                ctx.beginPath();
+                ctx.moveTo(bridgeLeft, bridgeTop + 30);
+                ctx.lineTo(bridgeRight, bridgeTop + 30);
+                ctx.stroke();
+                
+                ctx.setLineDash([]);
+            }
+        }
+        
+        function updateTraffic() {
+            // Adjust number of cars based on traffic density
+            const targetCarCount = Math.floor(params.trafficDensity / 5);
+            
+            while (traffic.length < targetCarCount) {
+                traffic.push(new Car(Math.floor(Math.random() * 4) + 1));
+            }
+            
+            while (traffic.length > targetCarCount && traffic.length > 0) {
+                traffic.pop();
+            }
+            
+            // Update cars
+            for (const car of traffic) {
+                car.update();
+            }
+        }
+        
+        function drawTraffic() {
+            if (params.trafficDensity === 0) return;
+            
+            const bridgeTop = canvas.height * 0.7 - 150;
+            const bridgeY = bridgeTop + 20;
+            
+            for (const car of traffic) {
+                car.draw(ctx, bridgeY);
+            }
+        }
+        
+        function drawRain() {
+            if (params.weather === 'rain' || params.weather === 'storm') {
+                for (const drop of rainDrops) {
+                    drop.update();
+                    drop.draw(ctx);
+                }
+            }
+        }
+        
+        function drawLightning() {
+            if (lightning.active) {
+                ctx.save();
+                ctx.globalAlpha = lightning.alpha;
+                ctx.strokeStyle = '#FFFFFF';
+                
+                for (const segment of lightning.segments) {
+                    ctx.lineWidth = segment.width;
+                    ctx.beginPath();
+                    ctx.moveTo(segment.from.x, segment.from.y);
+                    ctx.lineTo(segment.to.x, segment.to.y);
+                    ctx.stroke();
+                }
+                
+                ctx.restore();
+                
+                // Fade out lightning
+                lightning.alpha -= 0.05;
+                if (lightning.alpha <= 0) {
+                    lightning.active = false;
+                }
+                
+                // Flash effect for the whole scene
+                if (lightning.alpha > 0.5) {
+                    ctx.fillStyle = `rgba(255, 255, 255, ${(lightning.alpha - 0.5) * 0.4})`;
+                    ctx.fillRect(0, 0, canvas.width, canvas.height);
+                }
+            }
+        }
+        
+        // Start animation
+        animate();
+        updateDisplays();
+    </script>
+</body>
+</html>

@@ -1,0 +1,661 @@
+ <!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Calculus Adventure: Rolle's & MVT</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.7.1/gsap.min.js"></script>
+    <style>
+        body { 
+            margin: 0; 
+            overflow: hidden; 
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #1a2a6c, #b21f1f, #fdbb2d);
+        }
+        #container { 
+            position: relative; 
+            width: 100vw; 
+            height: 100vh; 
+        }
+        #dashboard {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            right: 20px;
+            background: rgba(0,0,0,0.7);
+            padding: 15px;
+            border-radius: 15px;
+            color: white;
+            z-index: 100;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 0 20px rgba(0,0,0,0.5);
+        }
+        #controls {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            right: 20px;
+            background: rgba(0,0,0,0.7);
+            padding: 15px;
+            border-radius: 15px;
+            color: white;
+            z-index: 100;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            backdrop-filter: blur(10px);
+        }
+        .control-group {
+            display: flex;
+            flex-direction: column;
+        }
+        button {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            margin: 5px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        button:hover {
+            background: #45a049;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 8px rgba(0,0,0,0.15);
+        }
+        button.active {
+            background: #2196F3;
+            box-shadow: 0 0 15px #2196F3;
+        }
+        input[type="range"] {
+            width: 100%;
+            margin: 10px 0;
+            -webkit-appearance: none;
+            height: 10px;
+            border-radius: 5px;
+            background: #ddd;
+            outline: none;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #4CAF50;
+            cursor: pointer;
+            box-shadow: 0 0 5px rgba(0,0,0,0.2);
+        }
+        #function-selector {
+            padding: 8px;
+            border-radius: 8px;
+            margin: 5px;
+            background: #333;
+            color: white;
+            border: 1px solid #555;
+        }
+        .value-display {
+            font-size: 1.2em;
+            font-weight: bold;
+            color: #4CAF50;
+            text-align: center;
+        }
+        #particles-js {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+        }
+        #celebration {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 200;
+            display: none;
+        }
+        .quiz-container {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0,0,0,0.9);
+            padding: 30px;
+            border-radius: 15px;
+            z-index: 300;
+            width: 80%;
+            max-width: 500px;
+            box-shadow: 0 0 30px rgba(0,150,255,0.5);
+            display: none;
+        }
+        .quiz-option {
+            background: #333;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .quiz-option:hover {
+            background: #444;
+            transform: translateX(5px);
+        }
+    </style>
+</head>
+<body>
+    <div id="particles-js"></div>
+    <div id="container">
+        <div id="dashboard">
+            <h1 style="margin: 0; color: #4CAF50;">Calculus Adventure</h1>
+            <div style="display: flex; justify-content: space-between;">
+                <div>
+                    <h2 id="theorem-title" style="color: #2196F3; margin-bottom: 5px;">Rolle's Theorem</h2>
+                    <p id="theorem-text" style="margin-top: 0;">
+                        If f is continuous on [a,b], differentiable on (a,b), and f(a) = f(b), 
+                        then there exists c ∈ (a,b) where f'(c) = 0.
+                    </p>
+                </div>
+                <div style="text-align: right;">
+                    <div style="font-size: 1.5em; margin-bottom: 10px;">
+                        f(x) = <span id="function-display">x³ - 2x</span>
+                    </div>
+                    <select id="function-selector">
+                        <option value="0">x³ - 2x</option>
+                        <option value="1">sin(x)</option>
+                        <option value="2">x²</option>
+                        <option value="3">x³ - x</option>
+                        <option value="4">cos(x)</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <div id="controls">
+            <div class="control-group">
+                <button id="rolles-btn" class="active">Rolle's Theorem</button>
+                <button id="mvt-btn">Mean Value Theorem</button>
+                <button id="quiz-btn">Take the Quiz!</button>
+            </div>
+            <div class="control-group">
+                <div>
+                    <label for="a-slider">Start point (a): <span id="a-value" class="value-display">-2.0</span></label>
+                    <input type="range" id="a-slider" min="-3" max="0" step="0.1" value="-2">
+                </div>
+                <div>
+                    <label for="b-slider">End point (b): <span id="b-value" class="value-display">2.0</span></label>
+                    <input type="range" id="b-slider" min="0" max="3" step="0.1" value="2">
+                </div>
+            </div>
+        </div>
+
+        <div id="celebration"></div>
+
+        <div class="quiz-container" id="quiz-container">
+            <h2 style="color: #4CAF50; text-align: center;">Calculus Quiz</h2>
+            <p id="quiz-question">Where does Rolle's Theorem guarantee a horizontal tangent?</p>
+            <div class="quiz-option" data-correct="true">At some point c between a and b</div>
+            <div class="quiz-option">At the midpoint between a and b</div>
+            <div class="quiz-option">Only if the function is symmetric</div>
+            <div class="quiz-option">At both endpoints a and b</div>
+            <div id="quiz-feedback" style="text-align: center; margin-top: 15px; color: #2196F3;"></div>
+        </div>
+    </div>
+
+    <script>
+        // Initialize Three.js scene
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x111122);
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.getElementById('container').appendChild(renderer.domElement);
+
+        // Add stars background
+        const starsGeometry = new THREE.BufferGeometry();
+        const starsMaterial = new THREE.PointsMaterial({
+            color: 0xffffff,
+            size: 0.1,
+            transparent: true,
+            opacity: 0.8
+        });
+        const starsVertices = [];
+        for (let i = 0; i < 1000; i++) {
+            starsVertices.push(
+                THREE.MathUtils.randFloatSpread(200),
+                THREE.MathUtils.randFloatSpread(200),
+                THREE.MathUtils.randFloatSpread(200)
+            );
+        }
+        starsGeometry.setAttribute('position', new THREE.Float32BufferAttribute(starsVertices, 3));
+        const stars = new THREE.Points(starsGeometry, starsMaterial);
+        scene.add(stars);
+
+        // Add glowing axes
+        const axesHelper = new THREE.AxesHelper(5);
+        scene.add(axesHelper);
+
+        // Lighting
+        const light = new THREE.DirectionalLight(0xffffff, 1);
+        light.position.set(1, 1, 1);
+        scene.add(light);
+        const ambientLight = new THREE.AmbientLight(0x404040);
+        scene.add(ambientLight);
+
+        // Add pulsing grid floor
+        const gridHelper = new THREE.GridHelper(20, 20, 0x555555, 0x333333);
+        scene.add(gridHelper);
+        gsap.to(gridHelper.material, { 
+            opacity: 0.3, 
+            duration: 2, 
+            repeat: -1, 
+            yoyo: true 
+        });
+
+        // Camera position
+        camera.position.z = 10;
+        camera.position.y = 3;
+        camera.lookAt(0, 0, 0);
+
+        // Available functions
+        const functions = [
+            { 
+                name: "x³ - 2x",
+                func: x => Math.pow(x, 3) - 2 * x,
+                derivative: x => 3 * Math.pow(x, 2) - 2
+            },
+            { 
+                name: "sin(x)",
+                func: x => Math.sin(x),
+                derivative: x => Math.cos(x)
+            },
+            { 
+                name: "x²",
+                func: x => Math.pow(x, 2),
+                derivative: x => 2 * x
+            },
+            { 
+                name: "x³ - x",
+                func: x => Math.pow(x, 3) - x,
+                derivative: x => 3 * Math.pow(x, 2) - 1
+            },
+            { 
+                name: "cos(x)",
+                func: x => Math.cos(x),
+                derivative: x => -Math.sin(x)
+            }
+        ];
+
+        let currentFunction = functions[0];
+        let a = -2, b = 2;
+
+        // Create function curve with glowing effect
+        const curvePoints = [];
+        for (let x = -3; x <= 3; x += 0.05) {
+            curvePoints.push(new THREE.Vector3(x, currentFunction.func(x), 0));
+        }
+        const curveGeometry = new THREE.BufferGeometry().setFromPoints(curvePoints);
+        const curveMaterial = new THREE.LineBasicMaterial({ 
+            color: 0x00ff00,
+            linewidth: 3
+        });
+        const curve = new THREE.Line(curveGeometry, curveMaterial);
+        scene.add(curve);
+
+        // Add glow effect to curve
+        const glowGeometry = new THREE.BufferGeometry().setFromPoints(curvePoints);
+        const glowMaterial = new THREE.LineBasicMaterial({
+            color: 0x00ff00,
+            linewidth: 1,
+            transparent: true,
+            opacity: 0.3
+        });
+        const glowLine = new THREE.Line(glowGeometry, glowMaterial);
+        scene.add(glowLine);
+        gsap.to(glowMaterial, {
+            opacity: 0.7,
+            duration: 2,
+            repeat: -1,
+            yoyo: true
+        });
+
+        // Create points for a and b
+        const pointGeometry = new THREE.SphereGeometry(0.1, 32, 32);
+        const pointMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+        const pointA = new THREE.Mesh(pointGeometry, pointMaterial);
+        const pointB = new THREE.Mesh(pointGeometry, pointMaterial);
+        scene.add(pointA);
+        scene.add(pointB);
+
+        // Create secant line
+        const secantLineGeometry = new THREE.BufferGeometry();
+        const secantLineMaterial = new THREE.LineBasicMaterial({ 
+            color: 0xffff00,
+            linewidth: 2
+        });
+        const secantLine = new THREE.Line(secantLineGeometry, secantLineMaterial);
+        scene.add(secantLine);
+
+        // Create tangent line
+        const tangentLineGeometry = new THREE.BufferGeometry();
+        const tangentLineMaterial = new THREE.LineBasicMaterial({ 
+            color: 0xff00ff,
+            linewidth: 2
+        });
+        const tangentLine = new THREE.Line(tangentLineGeometry, tangentLineMaterial);
+        scene.add(tangentLine);
+
+        // Create horizontal line for Rolle's
+        const horizontalLineGeometry = new THREE.BufferGeometry();
+        const horizontalLineMaterial = new THREE.LineBasicMaterial({ 
+            color: 0x00ffff,
+            linewidth: 2
+        });
+        const horizontalLine = new THREE.Line(horizontalLineGeometry, horizontalLineMaterial);
+        scene.add(horizontalLine);
+
+        // Update all visual elements
+        function updateVisuals() {
+            // Update points
+            pointA.position.set(a, currentFunction.func(a), 0);
+            pointB.position.set(b, currentFunction.func(b), 0);
+
+            // Update secant line
+            const secantPoints = [
+                new THREE.Vector3(a, currentFunction.func(a), 0),
+                new THREE.Vector3(b, currentFunction.func(b), 0)
+            ];
+            secantLineGeometry.setFromPoints(secantPoints);
+
+            // Update theorem text
+            document.getElementById('a-value').textContent = a.toFixed(1);
+            document.getElementById('b-value').textContent = b.toFixed(1);
+
+            if (document.getElementById('rolles-btn').classList.contains('active')) {
+                document.getElementById('theorem-title').textContent = "Rolle's Theorem";
+                document.getElementById('theorem-title').style.color = "#2196F3";
+                document.getElementById('theorem-text').innerHTML = `
+                    If <strong>f</strong> is continuous on <strong>[${a.toFixed(1)}, ${b.toFixed(1)}]</strong>, 
+                    differentiable on <strong>(${a.toFixed(1)}, ${b.toFixed(1)})</strong>, and 
+                    <strong>f(${a.toFixed(1)}) = f(${b.toFixed(1)})</strong>, then there exists 
+                    <strong style="color: #4CAF50">c ∈ (${a.toFixed(1)}, ${b.toFixed(1)})</strong> 
+                    where <strong style="color: #ff00ff">f'(c) = 0</strong>.
+                `;
+            } else {
+                document.getElementById('theorem-title').textContent = "Mean Value Theorem";
+                document.getElementById('theorem-title').style.color = "#4CAF50";
+                document.getElementById('theorem-text').innerHTML = `
+                    If <strong>f</strong> is continuous on <strong>[${a.toFixed(1)}, ${b.toFixed(1)}]</strong> 
+                    and differentiable on <strong>(${a.toFixed(1)}, ${b.toFixed(1)})</strong>, then there exists 
+                    <strong style="color: #ff00ff">c ∈ (${a.toFixed(1)}, ${b.toFixed(1)})</strong> 
+                    where <strong style="color: #ffff00">f'(c) = (f(${b.toFixed(1)}) - f(${a.toFixed(1)})) / (${b.toFixed(1)} - ${a.toFixed(1)})</strong>.
+                `;
+            }
+        }
+
+        // Animate Rolle's Theorem
+        function animateRolles() {
+            // Reset
+            tangentLine.visible = false;
+            horizontalLine.visible = true;
+            
+            // Find c where f'(c) = 0 (approximately)
+            let c = 0;
+            for (let x = a; x <= b; x += 0.01) {
+                if (Math.abs(currentFunction.derivative(x)) < 0.1) {
+                    c = x;
+                    break;
+                }
+            }
+
+            // Update horizontal line at f(c)
+            const horizontalPoints = [
+                new THREE.Vector3(a, currentFunction.func(c), 0),
+                new THREE.Vector3(b, currentFunction.func(c), 0)
+            ];
+            horizontalLineGeometry.setFromPoints(horizontalPoints);
+
+            // Animate tangent line becoming horizontal
+            const tangentPoints = [
+                new THREE.Vector3(c - 1, currentFunction.func(c), 0),
+                new THREE.Vector3(c + 1, currentFunction.func(c), 0)
+            ];
+            tangentLineGeometry.setFromPoints(tangentPoints);
+            tangentLine.visible = true;
+
+            // Highlight the point c
+            const highlightPoint = new THREE.Mesh(
+                new THREE.SphereGeometry(0.15, 32, 32),
+                new THREE.MeshBasicMaterial({ color: 0xffffff })
+            );
+            highlightPoint.position.set(c, currentFunction.func(c), 0);
+            scene.add(highlightPoint);
+
+            // Pulsing animation
+            gsap.to(highlightPoint.scale, { 
+                x: 1.5, y: 1.5, z: 1.5, 
+                duration: 1, 
+                yoyo: true, 
+                repeat: 1,
+                ease: "sine.inOut",
+                onComplete: () => scene.remove(highlightPoint)
+            });
+
+            // Camera animation
+            gsap.to(camera.position, {
+                x: c,
+                y: currentFunction.func(c) + 2,
+                z: 5,
+                duration: 1.5,
+                ease: "power2.inOut"
+            });
+        }
+
+        // Animate Mean Value Theorem
+        function animateMVT() {
+            // Reset
+            tangentLine.visible = true;
+            horizontalLine.visible = false;
+
+            // Calculate average slope
+            const slope = (currentFunction.func(b) - currentFunction.func(a)) / (b - a);
+
+            // Find c where f'(c) = slope (approximately)
+            let c = 0;
+            for (let x = a; x <= b; x += 0.01) {
+                if (Math.abs(currentFunction.derivative(x) - slope) < 0.1) {
+                    c = x;
+                    break;
+                }
+            }
+
+            // Update tangent line
+            const tangentPoints = [
+                new THREE.Vector3(c - 1, currentFunction.func(c) - slope * 1, 0),
+                new THREE.Vector3(c + 1, currentFunction.func(c) + slope * 1, 0)
+            ];
+            tangentLineGeometry.setFromPoints(tangentPoints);
+
+            // Highlight the point c
+            const highlightPoint = new THREE.Mesh(
+                new THREE.SphereGeometry(0.15, 32, 32),
+                new THREE.MeshBasicMaterial({ color: 0xffffff })
+            );
+            highlightPoint.position.set(c, currentFunction.func(c), 0);
+            scene.add(highlightPoint);
+
+            // Pulsing animation
+            gsap.to(highlightPoint.scale, { 
+                x: 1.5, y: 1.5, z: 1.5, 
+                duration: 1, 
+                yoyo: true, 
+                repeat: 1,
+                ease: "sine.inOut",
+                onComplete: () => scene.remove(highlightPoint)
+            });
+
+            // Camera animation
+            gsap.to(camera.position, {
+                x: (a + b) / 2,
+                y: (currentFunction.func(a) + currentFunction.func(b)) / 2 + 3,
+                z: 8,
+                duration: 1.5,
+                ease: "power2.inOut"
+            });
+        }
+
+        // Change function
+        function changeFunction(index) {
+            currentFunction = functions[index];
+            document.getElementById('function-display').textContent = currentFunction.name;
+            
+            // Update curve
+            const newPoints = [];
+            for (let x = -3; x <= 3; x += 0.05) {
+                newPoints.push(new THREE.Vector3(x, currentFunction.func(x), 0));
+            }
+            curveGeometry.setFromPoints(newPoints);
+            glowGeometry.setFromPoints(newPoints);
+            
+            updateVisuals();
+            if (document.getElementById('rolles-btn').classList.contains('active')) {
+                animateRolles();
+            } else {
+                animateMVT();
+            }
+        }
+
+        // Celebration effect
+        function showCelebration() {
+            const celebration = document.getElementById('celebration');
+            celebration.style.display = 'block';
+            
+            // Create confetti
+            for (let i = 0; i < 100; i++) {
+                const confetti = document.createElement('div');
+                confetti.style.position = 'absolute';
+                confetti.style.width = '10px';
+                confetti.style.height = '10px';
+                confetti.style.backgroundColor = `hsl(${Math.random() * 360}, 100%, 50%)`;
+                confetti.style.borderRadius = '50%';
+                confetti.style.left = `${Math.random() * 100}%`;
+                confetti.style.top = `${Math.random() * 100}%`;
+                confetti.style.transform = 'translate(-50%, -50%)';
+                celebration.appendChild(confetti);
+                
+                gsap.to(confetti, {
+                    y: '+=100',
+                    rotation: Math.random() * 360,
+                    opacity: 0,
+                    duration: 2,
+                    delay: Math.random(),
+                    onComplete: () => confetti.remove()
+                });
+            }
+            
+            setTimeout(() => {
+                celebration.style.display = 'none';
+                celebration.innerHTML = '';
+            }, 2000);
+        }
+
+        // Quiz functionality
+        function setupQuiz() {
+            const quizContainer = document.getElementById('quiz-container');
+            const options = document.querySelectorAll('.quiz-option');
+            const feedback = document.getElementById('quiz-feedback');
+            
+            document.getElementById('quiz-btn').addEventListener('click', () => {
+                quizContainer.style.display = 'block';
+                feedback.textContent = '';
+            });
+            
+            options.forEach(option => {
+                option.addEventListener('click', function() {
+                    if (this.dataset.correct === "true") {
+                        this.style.backgroundColor = '#4CAF50';
+                        feedback.textContent = 'Correct! Great job!';
+                        feedback.style.color = '#4CAF50';
+                        showCelebration();
+                    } else {
+                        this.style.backgroundColor = '#f44336';
+                        feedback.textContent = 'Not quite! Try again.';
+                        feedback.style.color = '#f44336';
+                    }
+                    
+                    setTimeout(() => {
+                        quizContainer.style.display = 'none';
+                        options.forEach(opt => {
+                            opt.style.backgroundColor = '#333';
+                        });
+                    }, 2000);
+                });
+            });
+        }
+
+        // Event listeners
+        document.getElementById('rolles-btn').addEventListener('click', function() {
+            this.classList.add('active');
+            document.getElementById('mvt-btn').classList.remove('active');
+            animateRolles();
+            updateVisuals();
+        });
+
+        document.getElementById('mvt-btn').addEventListener('click', function() {
+            this.classList.add('active');
+            document.getElementById('rolles-btn').classList.remove('active');
+            animateMVT();
+            updateVisuals();
+        });
+
+        document.getElementById('a-slider').addEventListener('input', function() {
+            a = parseFloat(this.value);
+            updateVisuals();
+            if (document.getElementById('rolles-btn').classList.contains('active')) {
+                animateRolles();
+            } else {
+                animateMVT();
+            }
+        });
+
+        document.getElementById('b-slider').addEventListener('input', function() {
+            b = parseFloat(this.value);
+            updateVisuals();
+            if (document.getElementById('rolles-btn').classList.contains('active')) {
+                animateRolles();
+            } else {
+                animateMVT();
+            }
+        });
+
+        document.getElementById('function-selector').addEventListener('change', function() {
+            changeFunction(parseInt(this.value));
+        });
+
+        // Initial setup
+        updateVisuals();
+        animateRolles();
+        setupQuiz();
+
+        // Animation loop
+        function animate() {
+            requestAnimationFrame(animate);
+            renderer.render(scene, camera);
+            stars.rotation.y += 0.0005;
+        }
+        animate();
+
+        // Handle window resize
+        window.addEventListener('resize', function() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,582 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Quadratic Equation: Projectile Motion</title>
+  <style>
+    body { margin: 0; overflow: hidden; font-family: 'Orbitron', sans-serif; }
+    canvas { display: block; }
+    #info {
+      position: absolute;
+      top: 20px;
+      left: 20px;
+      color: #fff;
+      background: rgba(0, 0, 0, 0.7);
+      padding: 15px;
+      border-radius: 10px;
+      font-size: 18px;
+      text-shadow: 0 0 5px #00f;
+      z-index: 10;
+    }
+    #equation { margin-top: 10px; font-size: 20px; color: #0ff; }
+    .gui-container {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      z-index: 10;
+    }
+    .dg.ac {
+      font-family: 'Orbitron', sans-serif !important;
+      color: #0ff !important;
+    }
+    .dg.main .controller .slider {
+      background: rgba(0, 255, 255, 0.2);
+    }
+    .dg.main .controller input[type=number] {
+      background: #000;
+      color: #0ff;
+    }
+    .dg.main .cr.function .property-name, .dg.main .cr.number .property-name {
+      color: #fff;
+    }
+    @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap');
+  </style>
+</head>
+<body>
+  <div id="info">
+    Quadratic Equation & Projectile Motion<br>
+    <div id="equation"></div>
+  </div>
+  <div class="gui-container"></div>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/dat-gui/0.7.7/dat.gui.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.10.4/gsap.min.js"></script>
+  <script src="https://threejs.org/examples/js/loaders/FontLoader.js"></script>
+  <script src="https://threejs.org/examples/js/geometries/TextGeometry.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      // Scene setup
+      const scene = new THREE.Scene();
+      const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+      const renderer = new THREE.WebGLRenderer({ antialias: true });
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      renderer.shadowMap.enabled = true;
+      renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+      document.body.appendChild(renderer.domElement);
+
+      // Lighting
+      const ambientLight = new THREE.AmbientLight(0x404040, 0.5);
+      scene.add(ambientLight);
+      const directionalLight = new THREE.DirectionalLight(0xffa500, 0.8);
+      directionalLight.position.set(50, 50, 50);
+      directionalLight.castShadow = true;
+      directionalLight.shadow.mapSize.width = 512;
+      directionalLight.shadow.mapSize.height = 512;
+      scene.add(directionalLight);
+
+      // Terrain with noise
+      const terrainGeometry = new THREE.PlaneGeometry(200, 200, 32, 32);
+      const vertices = terrainGeometry.attributes.position.array;
+      for (let i = 0; i < vertices.length; i += 3) {
+        vertices[i + 2] = Math.random() * 2;
+      }
+      terrainGeometry.attributes.position.needsUpdate = true;
+      terrainGeometry.computeVertexNormals();
+      const terrainMaterial = new THREE.MeshStandardMaterial({ color: 0x8b5a2b, roughness: 0.8, metalness: 0.2 });
+      const terrain = new THREE.Mesh(terrainGeometry, terrainMaterial);
+      terrain.rotation.x = -Math.PI / 2;
+      terrain.receiveShadow = true;
+      scene.add(terrain);
+
+      // Dynamic sky with clouds
+      const skyShader = {
+        uniforms: {
+          topColor: { value: new THREE.Color(0xff4500) },
+          bottomColor: { value: new THREE.Color(0x1e90ff) },
+          offset: { value: 0 },
+          exponent: { value: 0.6 },
+          time: { value: 0 }
+        },
+        vertexShader: `
+          varying vec3 vWorldPosition;
+          void main() {
+            vWorldPosition = (modelMatrix * vec4(position, 1.0)).xyz;
+            gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+          }
+        `,
+        fragmentShader: `
+          uniform vec3 topColor;
+          uniform vec3 bottomColor;
+          uniform float offset;
+          uniform float exponent;
+          uniform float time;
+          varying vec3 vWorldPosition;
+          float noise(vec3 p) {
+            return fract(sin(dot(p, vec3(127.1, 311.7, 74.7))) * 43758.5453);
+          }
+          void main() {
+            float h = normalize(vWorldPosition + offset).y;
+            vec3 pos = vWorldPosition * 0.01 + vec3(time * 0.1, 0, 0);
+            float cloud = noise(pos) * 0.2;
+            vec3 color = mix(bottomColor, topColor, max(pow(max(h, 0.0), exponent), 0.0));
+            gl_FragColor = vec4(color + vec3(cloud), 1.0);
+          }
+        `
+      };
+      const skyGeometry = new THREE.SphereGeometry(500, 32, 32);
+      const skyMaterial = new THREE.ShaderMaterial({
+        uniforms: skyShader.uniforms,
+        vertexShader: skyShader.vertexShader,
+        fragmentShader: skyShader.fragmentShader,
+        side: THREE.BackSide
+      });
+      const sky = new THREE.Mesh(skyGeometry, skyMaterial);
+      scene.add(sky);
+
+      // Enhanced missile model with fins
+      const missileGroup = new THREE.Group();
+      const bodyGeometry = new THREE.CylinderGeometry(0.2, 0.2, 2, 32);
+      const bodyMaterial = new THREE.MeshStandardMaterial({ color: 0x555555, metalness: 0.8, roughness: 0.4 });
+      const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
+      const noseGeometry = new THREE.ConeGeometry(0.2, 0.5, 32);
+      const nose = new THREE.Mesh(noseGeometry, bodyMaterial);
+      nose.position.y = 1.25;
+      // Add four fins
+      const finGeometry = new THREE.BoxGeometry(0.1, 0.3, 0.01);
+      const finMaterial = new THREE.MeshStandardMaterial({ color: 0x333333, metalness: 0.8, roughness: 0.4 });
+      for (let i = 0; i < 4; i++) {
+        const fin = new THREE.Mesh(finGeometry, finMaterial);
+        fin.position.set(
+          Math.cos((i * Math.PI) / 2) * 0.25,
+          -0.9,
+          Math.sin((i * Math.PI) / 2) * 0.25
+        );
+        fin.rotation.y = (i * Math.PI) / 2;
+        missileGroup.add(fin);
+      }
+      missileGroup.add(body, nose);
+      missileGroup.castShadow = true;
+      scene.add(missileGroup);
+      let missile = missileGroup;
+
+      // Particle system for exhaust
+      const particleCount = 150;
+      const particlesGeometry = new THREE.BufferGeometry();
+      const positions = new Float32Array(particleCount * 3);
+      const colors = new Float32Array(particleCount * 3);
+      for (let i = 0; i < particleCount * 3; i += 3) {
+        positions[i] = 0;
+        positions[i + 1] = 0;
+        positions[i + 2] = 0;
+        colors[i] = 1;
+        colors[i + 1] = Math.random() * 0.5 + 0.5;
+        colors[i + 2] = 0;
+      }
+      particlesGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+      particlesGeometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+      const particleMaterial = new THREE.PointsMaterial({
+        size: 0.4,
+        vertexColors: true,
+        transparent: true,
+        opacity: 0.0
+      });
+      const particles = new THREE.Points(particlesGeometry, particleMaterial);
+      scene.add(particles);
+
+      // Particle system for smoke trail
+      const smokeCount = 50;
+      const smokePositions = new Float32Array(smokeCount * 3);
+      const smokeColors = new Float32Array(smokeCount * 3);
+      for (let i = 0; i < smokeCount * 3; i += 3) {
+        smokePositions[i] = 0;
+        smokePositions[i + 1] = 0;
+        smokePositions[i + 2] = 0;
+        smokeColors[i] = 0.5;
+        smokeColors[i + 1] = 0.5;
+        smokeColors[i + 2] = 0.5;
+      }
+      const smokeGeometry = new THREE.BufferGeometry();
+      smokeGeometry.setAttribute('position', new THREE.BufferAttribute(smokePositions, 3));
+      smokeGeometry.setAttribute('color', new THREE.BufferAttribute(smokeColors, 3));
+      const smokeMaterial = new THREE.PointsMaterial({
+        size: 0.6,
+        vertexColors: true,
+        transparent: true,
+        opacity: 0.3
+      });
+      const smoke = new THREE.Points(smokeGeometry, smokeMaterial);
+      scene.add(smoke);
+
+      // Particle system for sparks
+      const sparkCount = 50;
+      const sparkPositions = new Float32Array(sparkCount * 3);
+      const sparkColors = new Float32Array(sparkCount * 3);
+      for (let i = 0; i < sparkCount * 3; i += 3) {
+        sparkPositions[i] = 0;
+        sparkPositions[i + 1] = 0;
+        sparkPositions[i + 2] = 0;
+        sparkColors[i] = 1;
+        sparkColors[i + 1] = 1;
+        sparkColors[i + 2] = 0.8;
+      }
+      const sparkGeometry = new THREE.BufferGeometry();
+      sparkGeometry.setAttribute('position', new THREE.BufferAttribute(sparkPositions, 3));
+      sparkGeometry.setAttribute('color', new THREE.BufferAttribute(sparkColors, 3));
+      const sparkMaterial = new THREE.PointsMaterial({
+        size: 0.2,
+        vertexColors: true,
+        transparent: true,
+        opacity: 0.0
+      });
+      const sparks = new THREE.Points(sparkGeometry, sparkMaterial);
+      scene.add(sparks);
+
+      // GUI controls
+      const params = {
+        angle: 45,
+        velocity: 20,
+        sound: false,
+        heatHaze: false,
+        launch: () => animateMissile(),
+        reset: () => {
+          params.angle = 45;
+          params.velocity = 20;
+          params.sound = false;
+          params.heatHaze = false;
+          gui.updateDisplay();
+          updateAnnotations();
+          updateTrajectory();
+        }
+      };
+      const gui = new dat.GUI({ autoPlace: false });
+      let guiContainer = document.querySelector('.gui-container');
+      if (!guiContainer) {
+        guiContainer = document.createElement('div');
+        guiContainer.className = 'gui-container';
+        document.body.appendChild(guiContainer);
+      }
+      guiContainer.appendChild(gui.domElement);
+      gui.add(params, 'angle', 10, 80).name('Launch Angle (°)').onChange(updateTrajectory);
+      gui.add(params, 'velocity', 10, 50).name('Initial Velocity (m/s)').onChange(updateTrajectory);
+      gui.add(params, 'sound').name('Sound Effects');
+      gui.add(params, 'heatHaze').name('Heat Haze');
+      gui.add(params, 'launch').name('Launch Missile');
+      gui.add(params, 'reset').name('Reset');
+
+      // Font loader
+      const fontLoader = new THREE.FontLoader();
+      let font;
+      fontLoader.load(
+        'https://threejs.org/examples/fonts/helvetiker_regular.typeface.json',
+        (loadedFont) => {
+          font = loadedFont;
+          updateAnnotations();
+          updateTrajectory();
+        },
+        undefined,
+        () => alert('Failed to load font. Annotations may not display.')
+      );
+
+      // Path visualization
+      let trajectoryLine, launchMarker, vertexMarker, impactMarker;
+      function updateTrajectory() {
+        if (trajectoryLine) scene.remove(trajectoryLine);
+        if (launchMarker) scene.remove(launchMarker);
+        if (vertexMarker) scene.remove(vertexMarker);
+        if (impactMarker) scene.remove(impactMarker);
+
+        const { timeOfFlight, range, maxHeight, vx, vy } = calculateTrajectory(params.angle, params.velocity);
+        const points = [];
+        for (let t = 0; t <= timeOfFlight; t += 0.05) {
+          const x = vx * t;
+          const y = vy * t - 0.5 * g * t * t;
+          points.push(new THREE.Vector3(x, y, 0));
+        }
+        const geometry = new THREE.BufferGeometry().setFromPoints(points);
+        const material = new THREE.LineDashedMaterial({
+          color: 0x00ff00,
+          linewidth: 2,
+          dashSize: 0.5,
+          gapSize: 0.5
+        });
+        trajectoryLine = new THREE.Line(geometry, material);
+        trajectoryLine.computeLineDistances();
+        scene.add(trajectoryLine);
+
+        // Markers
+        const markerMaterial = new THREE.SpriteMaterial({ color: 0x00ff00 });
+        launchMarker = new THREE.Sprite(markerMaterial);
+        launchMarker.scale.set(0.5, 0.5, 1);
+        launchMarker.position.set(0, 0, 0);
+        vertexMarker = new THREE.Sprite(markerMaterial);
+        vertexMarker.scale.set(0.5, 0.5, 1);
+        vertexMarker.position.set(range / 2, maxHeight, 0);
+        impactMarker = new THREE.Sprite(markerMaterial);
+        impactMarker.scale.set(0.5, 0.5, 1);
+        impactMarker.position.set(range, 0, 0);
+        scene.add(launchMarker, vertexMarker, impactMarker);
+        gsap.to(launchMarker.scale, { x: 0.6, y: 0.6, duration: 1, yoyo: true, repeat: -1 });
+        gsap.to(vertexMarker.scale, { x: 0.6, y: 0.6, duration: 1, yoyo: true, repeat: -1 });
+        gsap.to(impactMarker.scale, { x: 0.6, y: 0.6, duration: 1, yoyo: true, repeat: -1 });
+
+        updateAngleViewer();
+      }
+
+      // Angle visualization
+      let angleArc, angleText;
+      function updateAngleViewer() {
+        if (angleArc) scene.remove(angleArc);
+        if (angleText) scene.remove(angleText);
+
+        const angle = params.angle * Math.PI / 180;
+        const points = [];
+        for (let i = 0; i <= 50; i++) {
+          const theta = (i / 50) * angle;
+          points.push(new THREE.Vector3(Math.cos(theta) * 2, Math.sin(theta) * 2, 0));
+        }
+        const geometry = new THREE.BufferGeometry().setFromPoints(points);
+        const material = new THREE.LineBasicMaterial({ color: 0xff0000 });
+        angleArc = new THREE.Line(geometry, material);
+        scene.add(angleArc);
+
+        if (font) {
+          const textGeometry = new THREE.TextGeometry(`${params.angle.toFixed(1)}°`, {
+            font: font,
+            size: 0.3,
+            height: 0.05
+          });
+          const textMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+          angleText = new THREE.Mesh(textGeometry, textMaterial);
+          angleText.position.set(2.2, 0.5, 0);
+          scene.add(angleText);
+        }
+      }
+
+      // Sound effects (optional placeholder)
+      const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      let launchSound, explosionSound;
+      // Placeholder: Add your own audio URLs
+      // loadSound('path/to/launch.wav', (buffer) => { launchSound = buffer; });
+      // loadSound('path/to/explosion.wav', (buffer) => { explosionSound = buffer; });
+      function loadSound(url, callback) {
+        fetch(url)
+          .then(response => response.arrayBuffer())
+          .then(buffer => audioContext.decodeAudioData(buffer))
+          .then(decoded => callback(decoded))
+          .catch(() => console.warn('Sound loading failed'));
+      }
+
+      // Projectile motion
+      const g = 9.81;
+      let trajectoryPoints = [];
+      function calculateTrajectory(angleDeg, v0) {
+        const angle = angleDeg * Math.PI / 180;
+        const vx = v0 * Math.cos(angle);
+        const vy = v0 * Math.sin(angle);
+        const timeOfFlight = (2 * vy) / g;
+        const range = vx * timeOfFlight;
+        const maxHeight = (vy * vy) / (2 * g);
+        trajectoryPoints = [];
+        for (let t = 0; t <= timeOfFlight; t += 0.05) {
+          const x = vx * t;
+          const y = vy * t - 0.5 * g * t * t;
+          trajectoryPoints.push(new THREE.Vector3(x, y, 0));
+        }
+        return { timeOfFlight, range, maxHeight, vx, vy };
+      }
+
+      let annotations = [];
+      function updateAnnotations() {
+        annotations.forEach(a => scene.remove(a));
+        annotations = [];
+        if (!font) return;
+
+        const { range, maxHeight } = calculateTrajectory(params.angle, params.velocity);
+        const angle = params.angle * Math.PI / 180;
+
+        const a = -g / (2 * params.velocity * params.velocity * Math.cos(angle) * Math.cos(angle));
+        const b = Math.tan(angle);
+        document.getElementById('equation').innerHTML = `y = (${a.toFixed(4)})x² + (${b.toFixed(2)})x`;
+
+        const createText = (text, position, color = 0x00ffff) => {
+          const textGeometry = new THREE.TextGeometry(text, {
+            font: font,
+            size: 0.5,
+            height: 0.1
+          });
+          const textMaterial = new THREE.MeshBasicMaterial({ color });
+          const textMesh = new THREE.Mesh(textGeometry, textMaterial);
+          textMesh.position.copy(position);
+          textMesh.scale.set(0, 0, 0);
+          scene.add(textMesh);
+          annotations.push(textMesh);
+          gsap.to(textMesh.scale, { x: 1, y: 1, z: 1, duration: 1, ease: 'power2.out' });
+        };
+
+        createText('Launch', new THREE.Vector3(0, 0.5, 0));
+        createText('Vertex: Max Height', new THREE.Vector3(range / 2, maxHeight + 0.5, 0));
+        createText('Impact', new THREE.Vector3(range, 0.5, 0));
+      }
+
+      function animateMissile() {
+        if (!missile) return;
+        const { timeOfFlight, vx, vy } = calculateTrajectory(params.angle, params.velocity);
+        let t = 0;
+        missile.position.set(0, 0, 0);
+        missile.rotation.set(0, 0, 0);
+        particles.position.copy(missile.position);
+        smoke.position.copy(missile.position);
+        sparks.position.copy(missile.position);
+
+        // Reset particle positions
+        const sparkPositions = sparks.geometry.attributes.position.array;
+        for (let i = 0; i < sparkCount * 3; i += 3) {
+          sparkPositions[i] = 0;
+          sparkPositions[i + 1] = 0;
+          sparkPositions[i + 2] = 0;
+        }
+        sparks.geometry.attributes.position.needsUpdate = true;
+        const smokePositions = smoke.geometry.attributes.position.array;
+        for (let i = 0; i < smokeCount * 3; i += 3) {
+          smokePositions[i] = 0;
+          smokePositions[i + 1] = 0;
+          smokePositions[i + 2] = 0;
+        }
+        smoke.geometry.attributes.position.needsUpdate = true;
+
+        // Camera shake on launch
+        const originalCameraPos = camera.position.clone();
+        gsap.to(camera.position, {
+          x: -10,
+          y: 5,
+          z: 15,
+          duration: 1,
+          ease: 'power2.out',
+          onUpdate: () => {
+            if (t < 0.5) {
+              camera.position.x += (Math.random() - 0.5) * 0.2;
+              camera.position.y += (Math.random() - 0.5) * 0.2;
+            }
+          },
+          onComplete: () => camera.position.copy(originalCameraPos.set(-10, 5, 15))
+        });
+
+        if (params.sound && launchSound) {
+          const source = audioContext.createBufferSource();
+          source.buffer = launchSound;
+          source.connect(audioContext.destination);
+          source.start();
+        }
+
+        gsap.to(particleMaterial, { opacity: 1, duration: 0.5 });
+        gsap.to(smokeMaterial, { opacity: 0.3, duration: 0.5 });
+
+        function animate() {
+          if (t <= timeOfFlight) {
+            const x = vx * t;
+            const y = vy * t - 0.5 * g * t * t;
+            missile.position.set(x, y, 0);
+
+            // Orient missile along velocity vector
+            const velocity = new THREE.Vector3(vx, vy - g * t, 0).normalize();
+            const target = missile.position.clone().add(velocity);
+            missile.lookAt(target);
+            missile.rotateX(Math.PI / 2); // Adjust for model orientation (Y-up to Z-up)
+            // Add subtle wobble
+            missile.rotation.z += Math.sin(t * 5) * 0.02;
+
+            // Update particles from missile tail
+            const tailPos = new THREE.Vector3(0, -1, 0).applyQuaternion(missile.quaternion).add(missile.position);
+            particles.position.copy(tailPos);
+            smoke.position.copy(tailPos);
+
+            const positions = particles.geometry.attributes.position.array;
+            for (let i = 0; i < particleCount * 3; i += 3) {
+              positions[i] += (Math.random() - 0.5) * 0.2;
+              positions[i + 1] -= 0.15;
+              positions[i + 2] += (Math.random() - 0.5) * 0.2;
+            }
+            particles.geometry.attributes.position.needsUpdate = true;
+
+            const smokePositions = smoke.geometry.attributes.position.array;
+            for (let i = 0; i < smokeCount * 3; i += 3) {
+              smokePositions[i] += (Math.random() - 0.5) * 0.1;
+              smokePositions[i + 1] -= 0.05;
+              smokePositions[i + 2] += (Math.random() - 0.5) * 0.1;
+            }
+            smoke.geometry.attributes.position.needsUpdate = true;
+
+            camera.position.set(x - 10, y + 5, 15);
+            camera.lookAt(missile.position);
+            t += 0.016;
+            requestAnimationFrame(animate);
+          } else {
+            const sparkPositions = sparks.geometry.attributes.position.array;
+            for (let i = 0; i < sparkCount * 3; i += 3) {
+              sparkPositions[i] += (Math.random() - 0.5) * 5;
+              sparkPositions[i + 1] += (Math.random() - 0.5) * 5;
+              sparkPositions[i + 2] += (Math.random() - 0.5) * 5;
+            }
+            sparks.geometry.attributes.position.needsUpdate = true;
+            gsap.to(particleMaterial, { opacity: 0, duration: 1.5 });
+            gsap.to(smokeMaterial, { opacity: 0, duration: 2 });
+            gsap.to(sparkMaterial, { opacity: 1, duration: 0.5, yoyo: true, repeat: 1 });
+
+            // Camera shake on explosion
+            gsap.to(camera.position, {
+              x: '+=0.5',
+              y: '+=0.5',
+              duration: 0.3,
+              ease: 'power2.inOut',
+              repeat: 3,
+              yoyo: true,
+              onComplete: () => {
+                gsap.to(camera.position, {
+                  x: 0,
+                  y: 5,
+                  z: 20,
+                  duration: 2,
+                  ease: 'power2.out',
+                  onUpdate: () => camera.lookAt(new THREE.Vector3(0, 0, 0))
+                });
+              }
+            });
+
+            if (params.sound && explosionSound) {
+              const source = audioContext.createBufferSource();
+              source.buffer = explosionSound;
+              source.connect(audioContext.destination);
+              source.start();
+            }
+          }
+          renderer.render(scene, camera);
+        }
+        animate();
+        updateAnnotations();
+        updateTrajectory();
+      }
+
+      // Initial setup
+      camera.position.set(0, 5, 20);
+      camera.lookAt(new THREE.Vector3(0, 0, 0));
+      updateTrajectory();
+
+      // Animation loop
+      function animate() {
+        requestAnimationFrame(animate);
+        skyShader.uniforms.time.value += 0.01;
+        renderer.render(scene, camera);
+      }
+      animate();
+
+      // Window resize
+      window.addEventListener('resize', () => {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+      });
+    });
+  </script>
+</body>
+</html>
