@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sierpinski Fractal By Aditya Wargis</title>
+    <style>
+        body { 
+            margin: 0; 
+            overflow: hidden; 
+            background: #000;
+            font-family: 'Arial', sans-serif;
+        }
+        #canvas-container { 
+            position: absolute; 
+            width: 100%; 
+            height: 100%; 
+        }
+        #controls {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: white;
+            text-align: center;
+            z-index: 100;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 15px;
+            border-radius: 15px;
+            border: 1px solid rgba(0, 255, 255, 0.3);
+            box-shadow: 0 0 20px rgba(0, 255, 255, 0.2);
+        }
+        button {
+            background: rgba(0, 0, 0, 0.5);
+            color: cyan;
+            border: 1px solid cyan;
+            padding: 10px 20px;
+            margin: 5px;
+            cursor: pointer;
+            border-radius: 5px;
+            font-size: 16px;
+            transition: all 0.3s;
+            text-shadow: 0 0 5px cyan;
+        }
+        button:hover {
+            background: rgba(0, 255, 255, 0.2);
+            transform: scale(1.05);
+            box-shadow: 0 0 15px cyan;
+        }
+        #info {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: white;
+            z-index: 100;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 15px;
+            border-radius: 10px;
+            border: 1px solid rgba(0, 255, 255, 0.3);
+        }
+        #depth-slider {
+            width: 200px;
+            margin: 15px 5px;
+            -webkit-appearance: none;
+            height: 5px;
+            background: rgba(0, 255, 255, 0.2);
+            outline: none;
+        }
+        #depth-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 15px;
+            height: 15px;
+            border-radius: 50%;
+            background: cyan;
+            cursor: pointer;
+            box-shadow: 0 0 10px cyan;
+        }
+        .glow {
+            text-shadow: 0 0 10px cyan;
+        }
+    </style>
+</head>
+<body>
+    <div id="canvas-container"></div>
+    <div id="info">
+        <h2 class="glow">⚡ Sierpinski Fractal By Aditya Wargis</h2>
+        <p>Iteration: <span id="step" class="glow">0</span>/6</p>
+    </div>
+    <div id="controls">
+        <button id="prevBtn">◀ PREV</button>
+        <button id="nextBtn">NEXT ▶</button>
+        <button id="autoBtn">▶ AUTO-PLAY</button>
+        <button id="resetBtn">RESET</button>
+        <div>
+            <input type="range" id="depth-slider" min="0" max="6" value="0">
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/build/three.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.11.4/gsap.min.js"></script>
+
+    <script>
+        // ========== SCENE SETUP ==========
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(window.devicePixelRatio);
+        renderer.toneMapping = THREE.ACESFilmicToneMapping;
+        renderer.toneMappingExposure = 1.5;
+        document.getElementById('canvas-container').appendChild(renderer.domElement);
+
+        // ========== CINEMATIC LIGHTING ==========
+        // Ambient light
+        const ambientLight = new THREE.AmbientLight(0x222222);
+        scene.add(ambientLight);
+
+        // Main directional light (sun-like)
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 1.5);
+        directionalLight.position.set(5, 5, 5);
+        scene.add(directionalLight);
+
+        // Glowing fractal light
+        const fractalLight = new THREE.PointLight(0x00ffff, 5, 20);
+        fractalLight.position.set(0, 0, 5);
+        scene.add(fractalLight);
+
+        // ========== PARTICLES (QUANTUM DEBRIS) ==========
+        const particlesGeometry = new THREE.BufferGeometry();
+        const particlesCnt = 2000;
+        const posArray = new Float32Array(particlesCnt * 3);
+        const colorArray = new Float32Array(particlesCnt * 3);
+        
+        for (let i = 0; i < particlesCnt * 3; i++) {
+            posArray[i] = (Math.random() - 0.5) * 20;
+            colorArray[i] = Math.random() * 0.5 + 0.5; // Cyan-ish colors
+        }
+        
+        particlesGeometry.setAttribute('position', new THREE.BufferAttribute(posArray, 3));
+        particlesGeometry.setAttribute('color', new THREE.BufferAttribute(colorArray, 3));
+        
+        const particlesMaterial = new THREE.PointsMaterial({
+            size: 0.05,
+            vertexColors: true,
+            transparent: true,
+            opacity: 0.8,
+            blending: THREE.AdditiveBlending
+        });
+        
+        const particlesMesh = new THREE.Points(particlesGeometry, particlesMaterial);
+        scene.add(particlesMesh);
+
+        // ========== FRACTAL GENERATION ==========
+        let currentStep = 0;
+        const maxSteps = 6;
+        let fractalGroup = new THREE.Group();
+        scene.add(fractalGroup);
+
+        // Glowing line material
+        const lineMaterial = new THREE.LineBasicMaterial({ 
+            color: 0x00ffff,
+            linewidth: 2,
+            transparent: true,
+            opacity: 0.9,
+        });
+
+        // Create triangle with glow effect
+        function createTriangle(a, b, c) {
+            const geometry = new THREE.BufferGeometry().setFromPoints([a, b, c, a]);
+            const line = new THREE.Line(geometry, lineMaterial);
+            
+            // Add glow effect
+            const glowGeometry = new THREE.BufferGeometry().setFromPoints([a, b, c, a]);
+            const glowMaterial = new THREE.MeshBasicMaterial({ 
+                color: 0x00ffff, 
+                transparent: true, 
+                opacity: 0.2,
+                side: THREE.DoubleSide,
+                blending: THREE.AdditiveBlending
+            });
+            const glowMesh = new THREE.Mesh(glowGeometry, glowMaterial);
+            
+            const group = new THREE.Group();
+            group.add(line);
+            group.add(glowMesh);
+            return group;
+        }
+
+        // Recursive Sierpinski function
+        function sierpinski(a, b, c, depth) {
+            if (depth >= currentStep) {
+                fractalGroup.add(createTriangle(a, b, c));
+                return;
+            }
+
+            // Calculate midpoints
+            const ab = new THREE.Vector3().addVectors(a, b).multiplyScalar(0.5);
+            const bc = new THREE.Vector3().addVectors(b, c).multiplyScalar(0.5);
+            const ca = new THREE.Vector3().addVectors(c, a).multiplyScalar(0.5);
+
+            // Recursive subdivision
+            sierpinski(a, ab, ca, depth + 1);
+            sierpinski(ab, b, bc, depth + 1);
+            sierpinski(ca, bc, c, depth + 1);
+        }
+
+        // Generate fractal step
+        function generateStep(step) {
+            fractalGroup.clear();
+            const vertices = [
+                new THREE.Vector3(-1, -0.5, 0),
+                new THREE.Vector3(1, -0.5, 0),
+                new THREE.Vector3(0, 1, 0)
+            ];
+            sierpinski(...vertices, 0);
+            document.getElementById('step').textContent = step;
+            
+            // Pulse effect on change
+            gsap.to(fractalGroup.scale, { 
+                x: 1.1, 
+                y: 1.1, 
+                z: 1.1, 
+                duration: 0.2, 
+                yoyo: true, 
+                repeat: 1 
+            });
+        }
+
+        // ========== CINEMATIC CAMERA ==========
+        function updateCamera() {
+            const targetZ = 5 - (currentStep * 0.7);
+            gsap.to(camera.position, {
+                z: targetZ,
+                duration: 1,
+                ease: "power2.out"
+            });
+            
+            // Gentle camera movement
+            if (!window.cameraAnimation) {
+                window.cameraAnimation = gsap.to(camera.rotation, {
+                    y: Math.PI * 0.25,
+                    duration: 20,
+                    repeat: -1,
+                    yoyo: true,
+                    ease: "sine.inOut"
+                });
+            }
+        }
+
+        // ========== INTERACTIVE CONTROLS ==========
+        document.getElementById('nextBtn').addEventListener('click', () => {
+            if (currentStep < maxSteps) {
+                currentStep++;
+                generateStep(currentStep);
+                updateCamera();
+                document.getElementById('depth-slider').value = currentStep;
+            }
+        });
+
+        document.getElementById('prevBtn').addEventListener('click', () => {
+            if (currentStep > 0) {
+                currentStep--;
+                generateStep(currentStep);
+                updateCamera();
+                document.getElementById('depth-slider').value = currentStep;
+            }
+        });
+
+        document.getElementById('resetBtn').addEventListener('click', () => {
+            currentStep = 0;
+            generateStep(currentStep);
+            updateCamera();
+            document.getElementById('depth-slider').value = currentStep;
+        });
+
+        document.getElementById('depth-slider').addEventListener('input', (e) => {
+            currentStep = parseInt(e.target.value);
+            generateStep(currentStep);
+            updateCamera();
+        });
+
+        // Auto-play function
+        document.getElementById('autoBtn').addEventListener('click', function() {
+            const autoPlay = !this.autoPlay;
+            this.autoPlay = autoPlay;
+            this.textContent = autoPlay ? "⏸ PAUSE" : "▶ AUTO-PLAY";
+            
+            if (autoPlay) {
+                function playNext() {
+                    if (currentStep < maxSteps && this.autoPlay) {
+                        currentStep++;
+                        generateStep(currentStep);
+                        updateCamera();
+                        document.getElementById('depth-slider').value = currentStep;
+                        setTimeout(playNext, 1500);
+                    } else {
+                        this.autoPlay = false;
+                        this.textContent = "▶ AUTO-PLAY";
+                    }
+                }
+                playNext();
+            }
+        });
+
+        // Handle window resize
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        // Initial setup
+        generateStep(0);
+        camera.position.z = 5;
+
+        // Animation loop
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            // Rotate particles slowly
+            particlesMesh.rotation.y += 0.001;
+            
+            // Render scene
+            renderer.render(scene, camera);
+        }
+        animate();
+    </script>
+</body>
+</html>
