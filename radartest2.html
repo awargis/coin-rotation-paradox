@@ -1,0 +1,1203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Space Navigation: Astronaut to ISS</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background: #000;
+            color: #0af;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            overflow: hidden;
+            perspective: 1000px;
+        }
+        
+        #main-container {
+            width: 1280px;
+            height: 720px;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 0 50px rgba(0, 150, 255, 0.5);
+        }
+        
+        #spaceCanvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+        }
+        
+        .container {
+            position: relative;
+            z-index: 2;
+            display: grid;
+            grid-template-columns: 1fr 400px;
+            height: 100%;
+            padding: 20px;
+            gap: 20px;
+        }
+        
+        .dashboard {
+            background: rgba(0, 20, 40, 0.85);
+            border: 1px solid rgba(0, 200, 255, 0.3);
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 0 20px rgba(0, 200, 255, 0.2);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            backdrop-filter: blur(5px);
+        }
+        
+        .main-display {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .radar-container {
+            flex-grow: 1;
+            position: relative;
+            background: rgba(0, 10, 20, 0.9);
+            border: 1px solid rgba(0, 200, 255, 0.2);
+            border-radius: 8px;
+            overflow: hidden;
+            margin-bottom: 20px;
+        }
+        
+        .radar-title {
+            text-align: center;
+            padding: 10px;
+            background: rgba(0, 30, 60, 0.7);
+            border-bottom: 1px solid #0af;
+            font-size: 18px;
+            letter-spacing: 2px;
+            color: #0ff;
+            text-transform: uppercase;
+        }
+        
+        #radar {
+            position: absolute;
+            top: 50px;
+            left: 0;
+            width: 100%;
+            height: calc(100% - 50px);
+        }
+        
+        .controls {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 15px;
+            padding: 15px;
+            background: rgba(0, 15, 30, 0.8);
+            border-radius: 8px;
+            border: 1px solid rgba(0, 150, 255, 0.2);
+        }
+        
+        .control-group {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .control-label {
+            color: #7df;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+        
+        .value-display {
+            background: rgba(0, 30, 50, 0.7);
+            border: 1px solid #0af;
+            border-radius: 4px;
+            padding: 10px;
+            font-family: 'Courier New', monospace;
+            color: #0ff;
+            font-size: 16px;
+            text-align: center;
+        }
+        
+        .status-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            padding: 20px;
+            background: rgba(0, 15, 30, 0.8);
+            border-radius: 8px;
+            border: 1px solid rgba(0, 150, 255, 0.2);
+            margin-top: 20px;
+        }
+        
+        .status-row {
+            display: flex;
+            justify-content: space-between;
+        }
+        
+        .status-label {
+            color: #7df;
+        }
+        
+        .status-value {
+            color: #0ff;
+            font-weight: bold;
+        }
+        
+        .nav-instructions {
+            padding: 20px;
+            background: rgba(0, 20, 40, 0.8);
+            border-radius: 8px;
+            border: 1px solid rgba(0, 200, 255, 0.2);
+            line-height: 1.6;
+            margin-top: 20px;
+            font-size: 14px;
+            color: #adf;
+            flex-grow: 1;
+            overflow-y: auto;
+        }
+        
+        h1 {
+            text-align: center;
+            color: #0ff;
+            margin-bottom: 20px;
+            font-size: 28px;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+            text-shadow: 0 0 10px #0ff;
+        }
+        
+        .panel-title {
+            color: #0ff;
+            margin-bottom: 15px;
+            font-size: 20px;
+            text-align: center;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #0af;
+        }
+        
+        .progress-container {
+            width: 100%;
+            height: 20px;
+            background: rgba(0, 30, 60, 0.7);
+            border-radius: 10px;
+            overflow: hidden;
+            margin-top: 10px;
+            border: 1px solid #0af;
+        }
+        
+        .progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, #007, #0af);
+            width: 0%;
+            transition: width 0.5s;
+        }
+        
+        .hyperbolic-grid {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+        }
+        
+        .signal-strength {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .signal-bars {
+            display: flex;
+            gap: 3px;
+            height: 20px;
+            align-items: flex-end;
+        }
+        
+        .signal-bar {
+            width: 6px;
+            background: #0af;
+            transition: height 0.3s;
+        }
+        
+        .signal-bar:nth-child(1) { height: 5px; }
+        .signal-bar:nth-child(2) { height: 10px; }
+        .signal-bar:nth-child(3) { height: 15px; }
+        .signal-bar:nth-child(4) { height: 20px; }
+        
+        .blinking {
+            animation: blink 1s infinite;
+        }
+        
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+        
+        .warning {
+            color: #f90;
+            font-weight: bold;
+        }
+        
+        .critical {
+            color: #f00;
+            font-weight: bold;
+            animation: pulse 0.5s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        
+        .control-buttons {
+            display: flex;
+            gap: 15px;
+            margin-top: 20px;
+            justify-content: center;
+        }
+        
+        .control-button {
+            padding: 12px 25px;
+            border: none;
+            border-radius: 4px;
+            background: linear-gradient(to bottom, #0066cc, #003366);
+            color: #fff;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+            border: 1px solid #0af;
+            box-shadow: 0 0 10px rgba(0, 150, 255, 0.5);
+        }
+        
+        .control-button:hover {
+            background: linear-gradient(to bottom, #0088ff, #0055aa);
+            transform: translateY(-2px);
+            box-shadow: 0 0 15px rgba(0, 200, 255, 0.8);
+        }
+        
+        .control-button:active {
+            transform: translateY(1px);
+        }
+        
+        .control-button:disabled {
+            background: linear-gradient(to bottom, #333, #111);
+            color: #777;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        
+        .iss-model {
+            position: absolute;
+            top: 30px;
+            right: 30px;
+            z-index: 10;
+            width: 200px;
+            height: 150px;
+            background: rgba(0, 20, 40, 0.7);
+            border: 1px solid rgba(0, 200, 255, 0.3);
+            border-radius: 8px;
+            padding: 10px;
+            text-align: center;
+        }
+        
+        .iss-model-title {
+            color: #0ff;
+            margin-bottom: 5px;
+            font-size: 16px;
+        }
+        
+        .iss-canvas-container {
+            width: 100%;
+            height: 100px;
+            position: relative;
+        }
+        
+        #issCanvas {
+            width: 100%;
+            height: 100%;
+        }
+        
+        .distance-markers {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            display: flex;
+            gap: 10px;
+            z-index: 10;
+        }
+        
+        .marker {
+            padding: 8px 15px;
+            background: rgba(0, 30, 60, 0.7);
+            border: 1px solid #0af;
+            border-radius: 4px;
+            color: #0ff;
+            font-family: 'Courier New', monospace;
+        }
+        
+        .marker-label {
+            font-size: 12px;
+            color: #7df;
+            margin-bottom: 3px;
+        }
+        
+        .marker-value {
+            font-weight: bold;
+            font-size: 16px;
+        }
+        
+        .simulation-speed {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(0, 30, 60, 0.7);
+            border: 1px solid #0af;
+            border-radius: 4px;
+            padding: 10px;
+            z-index: 10;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        
+        .speed-label {
+            color: #7df;
+            margin-bottom: 5px;
+            font-size: 14px;
+        }
+        
+        .speed-value {
+            color: #0ff;
+            font-weight: bold;
+            font-size: 16px;
+            font-family: 'Courier New', monospace;
+        }
+        
+        .speed-controls {
+            display: flex;
+            gap: 10px;
+            margin-top: 5px;
+        }
+        
+        .speed-button {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            background: #0066cc;
+            color: white;
+            border: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+        }
+        
+        .speed-button:hover {
+            background: #0088ff;
+        }
+        
+        .astronaut-marker {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            padding: 8px 15px;
+            background: rgba(0, 30, 60, 0.7);
+            border: 1px solid #0af;
+            border-radius: 4px;
+            color: #0ff;
+            font-family: 'Courier New', monospace;
+            z-index: 10;
+        }
+        
+        .astronaut-label {
+            font-size: 12px;
+            color: #7df;
+            margin-bottom: 3px;
+        }
+        
+        .astronaut-value {
+            font-weight: bold;
+            font-size: 16px;
+        }
+        
+        /* Toggle button styling */
+        .visibility-toggle {
+            position: absolute;
+            top: 20px;
+            right: 250px;
+            z-index: 20;
+            padding: 8px 15px;
+            background: linear-gradient(to bottom, #0066cc, #003366);
+            color: white;
+            border: 1px solid #0af;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            box-shadow: 0 0 10px rgba(0, 150, 255, 0.5);
+            transition: all 0.3s;
+        }
+        
+        .visibility-toggle:hover {
+            background: linear-gradient(to bottom, #0088ff, #0055aa);
+            box-shadow: 0 0 15px rgba(0, 200, 255, 0.8);
+        }
+        
+        /* Hide text elements when .text-hidden class is applied */
+        .text-hidden h1,
+        .text-hidden .radar-title,
+        .text-hidden .control-label,
+        .text-hidden .value-display,
+        .text-hidden .status-label,
+        .text-hidden .status-value,
+        .text-hidden .panel-title,
+        .text-hidden .nav-instructions,
+        .text-hidden .iss-model-title,
+        .text-hidden .marker-label,
+        .text-hidden .marker-value,
+        .text-hidden .speed-label,
+        .text-hidden .speed-value,
+        .text-hidden .astronaut-label,
+        .text-hidden .astronaut-value {
+            display: none;
+        }
+        
+        /* Keep animation controls visible */
+        .text-hidden .control-buttons,
+        .text-hidden .simulation-speed,
+        .text-hidden .progress-container,
+        .text-hidden .progress-bar,
+        .text-hidden #radar,
+        .text-hidden #spaceCanvas,
+        .text-hidden .iss-canvas-container,
+        .text-hidden .radar-container {
+            display: block !important;
+            visibility: visible !important;
+        }
+        
+        /* Adjust layout when text is hidden */
+        .text-hidden .dashboard {
+            background: rgba(0, 20, 40, 0.1);
+            border: none;
+            box-shadow: none;
+        }
+        
+        .text-hidden .container {
+            grid-template-columns: 1fr;
+        }
+        
+        .text-hidden .dashboard:last-child {
+            display: none;
+        }
+        
+        .text-hidden .radar-container {
+            background: transparent;
+            border: none;
+        }
+        
+        .text-hidden .controls {
+            background: transparent;
+            border: none;
+        }
+        
+        .text-hidden .status-panel {
+            background: transparent;
+            border: none;
+        }
+        
+        .text-hidden .iss-model {
+            background: rgba(0, 20, 40, 0.1);
+            border: 1px solid rgba(0, 200, 255, 0.1);
+        }
+        
+        .text-hidden .distance-markers,
+        .text-hidden .astronaut-marker,
+        .text-hidden .simulation-speed {
+            background: rgba(0, 30, 60, 0.1);
+            border: 1px solid rgba(0, 200, 255, 0.1);
+        }
+    </style>
+</head>
+<body>
+    <button class="visibility-toggle" id="toggleText">Hide Text</button>
+    
+    <div id="main-container">
+        <canvas id="spaceCanvas"></canvas>
+        
+        <div class="container">
+            <div class="dashboard main-display">
+                <h1>ISS DOCKING NAVIGATION</h1>
+                <div class="radar-container">
+                    <div class="radar-title">HYPERBOLIC NAVIGATION RADAR</div>
+                    <canvas id="radar" width="700" height="500"></canvas>
+                    <div class="hyperbolic-grid"></div>
+                </div>
+                
+                <div class="controls">
+                    <div class="control-group">
+                        <div class="control-label">DISTANCE TO ISS</div>
+                        <div class="value-display" id="distance">124.6 km</div>
+                    </div>
+                    <div class="control-group">
+                        <div class="control-label">RELATIVE VELOCITY</div>
+                        <div class="value-display" id="velocity">12.4 m/s</div>
+                    </div>
+                    <div class="control-group">
+                        <div class="control-label">APPROACH ANGLE</div>
+                        <div class="value-display" id="angle">-3.2°</div>
+                    </div>
+                    <div class="control-group">
+                        <div class="control-label">SIGNAL STRENGTH</div>
+                        <div class="value-display">
+                            <div class="signal-strength">
+                                <div class="signal-bars">
+                                    <div class="signal-bar"></div>
+                                    <div class="signal-bar"></div>
+                                    <div class="signal-bar"></div>
+                                    <div class="signal-bar"></div>
+                                </div>
+                                <span>98%</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="status-panel">
+                    <div class="status-row">
+                        <span class="status-label">NAVIGATION SYSTEM</span>
+                        <span class="status-value blinking" id="navStatus">ACTIVE</span>
+                    </div>
+                    <div class="status-row">
+                        <span class="status-label">THRUSTER STATUS</span>
+                        <span class="status-value">NOMINAL</span>
+                    </div>
+                    <div class="status-row">
+                        <span class="status-label">DOCKING SEQUENCE</span>
+                        <span class="status-value">INITIATED</span>
+                    </div>
+                    <div class="status-row">
+                        <span class="status-label">TIME TO DOCKING</span>
+                        <span class="status-value" id="timeToDock">02:34</span>
+                    </div>
+                </div>
+                
+                <div class="progress-container">
+                    <div class="progress-bar" id="progressBar"></div>
+                </div>
+                
+                <div class="control-buttons">
+                    <button class="control-button" id="startBtn">START SIMULATION</button>
+                    <button class="control-button" id="pauseBtn" disabled>PAUSE</button>
+                    <button class="control-button" id="resetBtn">RESET</button>
+                </div>
+            </div>
+            
+            <div class="dashboard">
+                <div class="panel-title">NAVIGATION PROCEDURE</div>
+                <div class="nav-instructions">
+                    <p><span class="warning">Step 1:</span> Astronaut activates hyperbolic navigation system to locate ISS position.</p>
+                    <p><span class="warning">Step 2:</span> Radar emits hyperbolic wave signals that bounce off ISS structure.</p>
+                    <p><span class="warning">Step 3:</span> System calculates time difference between signal emissions and returns.</p>
+                    <p><span class="warning">Step 4:</span> Hyperbolic positioning determines precise ISS location relative to astronaut.</p>
+                    <p><span class="warning">Step 5:</span> Navigation computer calculates approach vector and velocity requirements.</p>
+                    <p><span class="warning">Step 6:</span> Astronaut makes micro-adjustments using EMU thrusters to align trajectory.</p>
+                    <p><span class="warning">Step 7:</span> Final approach initiated with continuous hyperbolic signal monitoring.</p>
+                    <p><span class="warning">Step 8:</span> Docking sequence engaged at 100m distance with ISS guidance systems.</p>
+                </div>
+                
+                <div class="panel-title">TECHNICAL SPECS</div>
+                <div class="nav-instructions">
+                    <p><span class="warning">Hyperbolic Radar:</span> Dual-frequency phase-comparison system</p>
+                    <p><span class="warning">Accuracy:</span> ±1.5cm at 1km distance</p>
+                    <p><span class="warning">Frequency:</span> 12.5 GHz (Ku-band)</p>
+                    <p><span class="warning">Range:</span> 500km maximum acquisition</p>
+                    <p><span class="warning">Refresh Rate:</span> 20Hz tracking update</p>
+                    <p><span class="warning">Power:</span> 28V DC @ 12A (336W peak)</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="iss-model">
+            <div class="iss-model-title">ISS MODEL</div>
+            <div class="iss-canvas-container">
+                <canvas id="issCanvas"></canvas>
+            </div>
+        </div>
+        
+        <div class="distance-markers">
+            <div class="marker">
+                <div class="marker-label">DISTANCE</div>
+                <div class="marker-value" id="distValue">124.6 km</div>
+            </div>
+            <div class="marker">
+                <div class="marker-label">TIME TO DOCK</div>
+                <div class="marker-value" id="timeValue">02:34</div>
+            </div>
+        </div>
+        
+        <div class="simulation-speed">
+            <div class="speed-label">SIMULATION SPEED</div>
+            <div class="speed-value" id="speedValue">1.0x</div>
+            <div class="speed-controls">
+                <button class="speed-button" id="speedDown">-</button>
+                <button class="speed-button" id="speedUp">+</button>
+            </div>
+        </div>
+        
+        <div class="astronaut-marker">
+            <div class="astronaut-label">ASTRONAUT STATUS</div>
+            <div class="astronaut-value" id="astronautStatus">APPROACHING</div>
+        </div>
+    </div>
+
+    <script>
+        // Set up Three.js scene for space background
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, 1280 / 720, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({
+            canvas: document.getElementById('spaceCanvas'),
+            antialias: true
+        });
+        
+        renderer.setSize(1280, 720);
+        renderer.setClearColor(0x000011);
+        
+        // Create stars
+        const starsGeometry = new THREE.BufferGeometry();
+        const starsMaterial = new THREE.PointsMaterial({
+            color: 0xffffff,
+            size: 0.15,
+            transparent: true,
+            opacity: 0.8
+        });
+        
+        const starsVertices = [];
+        for (let i = 0; i < 15000; i++) {
+            const x = THREE.MathUtils.randFloatSpread(2000);
+            const y = THREE.MathUtils.randFloatSpread(2000);
+            const z = THREE.MathUtils.randFloatSpread(2000);
+            starsVertices.push(x, y, z);
+        }
+        
+        starsGeometry.setAttribute('position', new THREE.Float32BufferAttribute(starsVertices, 3));
+        const starField = new THREE.Points(starsGeometry, starsMaterial);
+        scene.add(starField);
+        
+        // Create Earth
+        const earthGeometry = new THREE.SphereGeometry(50, 64, 64);
+        const earthTexture = new THREE.TextureLoader().load('https://raw.githubusercontent.com/mrdoob/three.js/master/examples/textures/planets/earth_atmos_2048.jpg');
+        const earthMaterial = new THREE.MeshBasicMaterial({ 
+            map: earthTexture,
+            transparent: true,
+            opacity: 0.9
+        });
+        const earth = new THREE.Mesh(earthGeometry, earthMaterial);
+        earth.position.set(-200, 100, -300);
+        scene.add(earth);
+        
+        // Create astronaut model
+        function createAstronaut() {
+            const group = new THREE.Group();
+            
+            // Body
+            const bodyGeometry = new THREE.BoxGeometry(8, 12, 8);
+            const bodyMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff });
+            const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
+            group.add(body);
+            
+            // Helmet
+            const helmetGeometry = new THREE.SphereGeometry(5, 16, 16);
+            const helmetMaterial = new THREE.MeshBasicMaterial({ 
+                color: 0xffffff,
+                transparent: true,
+                opacity: 0.7
+            });
+            const helmet = new THREE.Mesh(helmetGeometry, helmetMaterial);
+            helmet.position.y = 7;
+            group.add(helmet);
+            
+            // Backpack
+            const backpackGeometry = new THREE.BoxGeometry(10, 12, 6);
+            const backpackMaterial = new THREE.MeshBasicMaterial({ color: 0x444444 });
+            const backpack = new THREE.Mesh(backpackGeometry, backpackMaterial);
+            backpack.position.z = -4;
+            backpack.position.y = 0;
+            group.add(backpack);
+            
+            // Arms
+            const armGeometry = new THREE.BoxGeometry(3, 10, 3);
+            const leftArm = new THREE.Mesh(armGeometry, bodyMaterial);
+            leftArm.position.x = -7;
+            leftArm.position.y = 0;
+            group.add(leftArm);
+            
+            const rightArm = new THREE.Mesh(armGeometry, bodyMaterial);
+            rightArm.position.x = 7;
+            rightArm.position.y = 0;
+            group.add(rightArm);
+            
+            // Legs
+            const legGeometry = new THREE.BoxGeometry(3, 8, 3);
+            const leftLeg = new THREE.Mesh(legGeometry, bodyMaterial);
+            leftLeg.position.x = -3;
+            leftLeg.position.y = -10;
+            group.add(leftLeg);
+            
+            const rightLeg = new THREE.Mesh(legGeometry, bodyMaterial);
+            rightLeg.position.x = 3;
+            rightLeg.position.y = -10;
+            group.add(rightLeg);
+            
+            return group;
+        }
+        
+        // Create ISS model
+        function createISS() {
+            const group = new THREE.Group();
+            
+            // Main truss
+            const trussGeometry = new THREE.BoxGeometry(100, 5, 5);
+            const trussMaterial = new THREE.MeshBasicMaterial({ color: 0xaaaaaa });
+            const truss = new THREE.Mesh(trussGeometry, trussMaterial);
+            group.add(truss);
+            
+            // Solar panels
+            const panelGeometry = new THREE.BoxGeometry(40, 30, 1);
+            const panelMaterial = new THREE.MeshBasicMaterial({ 
+                color: 0x2266aa,
+                transparent: true,
+                opacity: 0.8
+            });
+            
+            const leftPanel = new THREE.Mesh(panelGeometry, panelMaterial);
+            leftPanel.position.x = -30;
+            leftPanel.position.z = 5;
+            group.add(leftPanel);
+            
+            const rightPanel = new THREE.Mesh(panelGeometry, panelMaterial);
+            rightPanel.position.x = 30;
+            rightPanel.position.z = 5;
+            group.add(rightPanel);
+            
+            // Modules
+            const moduleGeometry = new THREE.CylinderGeometry(4, 4, 20, 16);
+            const moduleMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff });
+            
+            const module1 = new THREE.Mesh(moduleGeometry, moduleMaterial);
+            module1.position.y = 5;
+            module1.position.x = -20;
+            module1.rotation.z = Math.PI/2;
+            group.add(module1);
+            
+            const module2 = new THREE.Mesh(moduleGeometry, moduleMaterial);
+            module2.position.y = 5;
+            module2.position.x = 20;
+            module2.rotation.z = Math.PI/2;
+            group.add(module2);
+            
+            return group;
+        }
+        
+        // Create astronaut and ISS
+        const astronaut = createAstronaut();
+        astronaut.position.set(0, 0, 0);
+        scene.add(astronaut);
+        
+        const iss = createISS();
+        iss.position.set(100, 30, -50);
+        scene.add(iss);
+        
+        // Set camera position
+        camera.position.set(50, 50, 150);
+        camera.lookAt(0, 0, 0);
+        
+        // Animation for scene
+        function animateScene() {
+            starField.rotation.y += 0.0001;
+            starField.rotation.x += 0.00005;
+            
+            earth.rotation.y += 0.001;
+            
+            // Rotate ISS slowly
+            iss.rotation.y += 0.002;
+            
+            renderer.render(scene, camera);
+            requestAnimationFrame(animateScene);
+        }
+        
+        animateScene();
+        
+        // Radar simulation
+        const radarCanvas = document.getElementById('radar');
+        const radarCtx = radarCanvas.getContext('2d');
+        const radarCenterX = radarCanvas.width / 2;
+        const radarCenterY = radarCanvas.height / 2;
+        const radarRadius = Math.min(radarCenterX, radarCenterY) - 20;
+        
+        let sweepAngle = 0;
+        let issX = radarCenterX + radarRadius * 0.4;
+        let issY = radarCenterY - radarRadius * 0.3;
+        let distance = 124.6;
+        let progress = 0;
+        let isRunning = false;
+        let simulationSpeed = 1.0;
+        
+        // Draw hyperbolic grid
+        function drawHyperbolicGrid() {
+            radarCtx.strokeStyle = 'rgba(0, 200, 255, 0.3)';
+            radarCtx.lineWidth = 1;
+            radarCtx.beginPath();
+            
+            // Draw hyperbolas
+            for (let i = 1; i <= 4; i++) {
+                const a = radarRadius * i * 0.2;
+                const b = radarRadius * i * 0.15;
+                
+                radarCtx.moveTo(radarCenterX - a, radarCenterY);
+                for (let angle = -Math.PI; angle <= Math.PI; angle += 0.05) {
+                    const x = radarCenterX - a * Math.cos(angle);
+                    const y = radarCenterY - b * Math.sin(angle);
+                    radarCtx.lineTo(x, y);
+                }
+                
+                radarCtx.moveTo(radarCenterX + a, radarCenterY);
+                for (let angle = -Math.PI; angle <= Math.PI; angle += 0.05) {
+                    const x = radarCenterX + a * Math.cos(angle);
+                    const y = radarCenterY - b * Math.sin(angle);
+                    radarCtx.lineTo(x, y);
+                }
+            }
+            
+            radarCtx.stroke();
+            
+            // Draw distance circles
+            radarCtx.strokeStyle = 'rgba(0, 150, 255, 0.2)';
+            radarCtx.lineWidth = 1;
+            for (let i = 1; i <= 5; i++) {
+                radarCtx.beginPath();
+                radarCtx.arc(radarCenterX, radarCenterY, radarRadius * i * 0.2, 0, Math.PI * 2);
+                radarCtx.stroke();
+            }
+            
+            // Draw axes
+            radarCtx.strokeStyle = 'rgba(0, 200, 255, 0.4)';
+            radarCtx.lineWidth = 1;
+            radarCtx.beginPath();
+            radarCtx.moveTo(radarCenterX, radarCenterY - radarRadius);
+            radarCtx.lineTo(radarCenterX, radarCenterY + radarRadius);
+            radarCtx.moveTo(radarCenterX - radarRadius, radarCenterY);
+            radarCtx.lineTo(radarCenterX + radarRadius, radarCenterY);
+            radarCtx.stroke();
+        }
+        
+        // Draw ISS position
+        function drawISS() {
+            // ISS main dot
+            radarCtx.beginPath();
+            radarCtx.arc(issX, issY, 6, 0, Math.PI * 2);
+            radarCtx.fillStyle = '#0ff';
+            radarCtx.fill();
+            
+            // ISS glow effect
+            const gradient = radarCtx.createRadialGradient(issX, issY, 0, issX, issY, 10);
+            gradient.addColorStop(0, '#0ff');
+            gradient.addColorStop(1, 'rgba(0, 255, 255, 0)');
+            
+            radarCtx.beginPath();
+            radarCtx.arc(issX, issY, 10, 0, Math.PI * 2);
+            radarCtx.fillStyle = gradient;
+            radarCtx.fill();
+            
+            // ISS position marker
+            radarCtx.font = '12px Arial';
+            radarCtx.fillStyle = '#0ff';
+            radarCtx.fillText('ISS', issX + 12, issY - 8);
+        }
+        
+        // Draw radar sweep
+        function drawSweep() {
+            // Fade previous sweep
+            radarCtx.fillStyle = 'rgba(0, 10, 20, 0.1)';
+            radarCtx.fillRect(0, 0, radarCanvas.width, radarCanvas.height);
+            
+            // Draw grid
+            drawHyperbolicGrid();
+            
+            // Draw sweep line
+            radarCtx.strokeStyle = 'rgba(0, 255, 200, 0.7)';
+            radarCtx.lineWidth = 2;
+            radarCtx.beginPath();
+            radarCtx.moveTo(radarCenterX, radarCenterY);
+            const endX = radarCenterX + radarRadius * Math.cos(sweepAngle);
+            const endY = radarCenterY + radarRadius * Math.sin(sweepAngle);
+            radarCtx.lineTo(endX, endY);
+            radarCtx.stroke();
+            
+            // Draw sweep glow
+            const gradient = radarCtx.createRadialGradient(
+                radarCenterX, radarCenterY, 0,
+                radarCenterX, radarCenterY, radarRadius
+            );
+            gradient.addColorStop(0, 'rgba(0, 255, 200, 0.5)');
+            gradient.addColorStop(1, 'rgba(0, 255, 200, 0)');
+            
+            radarCtx.beginPath();
+            radarCtx.moveTo(radarCenterX, radarCenterY);
+            radarCtx.arc(radarCenterX, radarCenterY, radarRadius, sweepAngle - 0.05, sweepAngle + 0.05);
+            radarCtx.closePath();
+            radarCtx.fillStyle = gradient;
+            radarCtx.fill();
+            
+            // Draw ISS when sweep passes near it
+            const angleToISS = Math.atan2(issY - radarCenterY, issX - radarCenterX);
+            const angleDiff = Math.abs(angleToISS - sweepAngle);
+            
+            if (angleDiff < 0.2 || angleDiff > Math.PI * 2 - 0.2) {
+                // Simulate radar hit
+                radarCtx.beginPath();
+                radarCtx.moveTo(radarCenterX, radarCenterY);
+                radarCtx.lineTo(issX, issY);
+                radarCtx.strokeStyle = 'rgba(0, 255, 150, 0.6)';
+                radarCtx.lineWidth = 1;
+                radarCtx.stroke();
+                
+                // Draw signal wave
+                radarCtx.beginPath();
+                radarCtx.arc(issX, issY, 15, 0, Math.PI * 2);
+                radarCtx.strokeStyle = 'rgba(0, 255, 150, 0.8)';
+                radarCtx.lineWidth = 2;
+                radarCtx.stroke();
+                
+                drawISS();
+            }
+            
+            // Update sweep angle
+            sweepAngle += 0.05 * simulationSpeed;
+            if (sweepAngle > Math.PI * 2) sweepAngle = 0;
+        }
+        
+        // Update simulation values
+        function updateSimulation() {
+            if (!isRunning) return;
+            
+            // Update distance and position
+            distance = Math.max(0.1, distance - 0.12 * simulationSpeed);
+            document.getElementById('distance').textContent = distance.toFixed(1) + ' km';
+            document.getElementById('distValue').textContent = distance.toFixed(1) + ' km';
+            
+            // Update velocity
+            const velocity = 12 + (124.6 - distance) * 0.08;
+            document.getElementById('velocity').textContent = velocity.toFixed(1) + ' m/s';
+            
+            // Update angle
+            const angle = -3.2 + (Math.sin(Date.now() / 3000) * 0.8);
+            document.getElementById('angle').textContent = angle.toFixed(1) + '°';
+            
+            // Update ISS position
+            issX = radarCenterX + (radarRadius * 0.4) * (distance / 124.6);
+            issY = radarCenterY - (radarRadius * 0.3) * (distance / 124.6);
+            
+            // Update progress
+            progress = 100 - (distance / 124.6 * 100);
+            document.getElementById('progressBar').style.width = progress + '%';
+            
+            // Update time to docking
+            const minutes = Math.floor(distance / 12.46 / 60);
+            const seconds = Math.floor(distance / 12.46) % 60;
+            const timeDisplay = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+            document.getElementById('timeToDock').textContent = timeDisplay;
+            document.getElementById('timeValue').textContent = timeDisplay;
+            
+            // Update astronaut status
+            if (distance > 50) {
+                document.getElementById('astronautStatus').textContent = "APPROACHING";
+            } else if (distance > 10) {
+                document.getElementById('astronautStatus').textContent = "FINAL APPROACH";
+            } else {
+                document.getElementById('astronautStatus').textContent = "DOCKING";
+            }
+            
+            // Update astronaut position in 3D scene
+            astronaut.position.x = 100 - (distance / 124.6 * 100);
+            astronaut.position.y = 30 - (distance / 124.6 * 30);
+            astronaut.position.z = -50 + (distance / 124.6 * 50);
+            
+            // Update camera to follow astronaut
+            camera.position.x = astronaut.position.x + 50;
+            camera.position.y = astronaut.position.y + 50;
+            camera.position.z = astronaut.position.z + 150;
+            camera.lookAt(astronaut.position.x, astronaut.position.y, astronaut.position.z);
+            
+            // Blink warning when close
+            if (distance < 10) {
+                document.getElementById('timeToDock').classList.add('warning');
+                document.getElementById('timeToDock').classList.remove('critical');
+            }
+            if (distance < 2) {
+                document.getElementById('timeToDock').classList.remove('warning');
+                document.getElementById('timeToDock').classList.add('critical');
+            }
+            
+            // Stop simulation when docked
+            if (distance <= 0.1) {
+                isRunning = false;
+                document.getElementById('startBtn').disabled = true;
+                document.getElementById('pauseBtn').disabled = true;
+                document.getElementById('pauseBtn').textContent = "PAUSED";
+                document.getElementById('navStatus').textContent = "DOCKED";
+                document.getElementById('navStatus').classList.add('warning');
+                document.getElementById('astronautStatus').textContent = "DOCKED SUCCESS";
+            }
+        }
+        
+        // Animation loop
+        function animateRadar() {
+            drawSweep();
+            drawISS();
+            if (isRunning) {
+                updateSimulation();
+            }
+            requestAnimationFrame(animateRadar);
+        }
+        
+        // Start animation
+        animateRadar();
+        
+        // Control buttons functionality
+        document.getElementById('startBtn').addEventListener('click', function() {
+            isRunning = true;
+            this.disabled = true;
+            document.getElementById('pauseBtn').disabled = false;
+            document.getElementById('pauseBtn').textContent = "PAUSE";
+        });
+        
+        document.getElementById('pauseBtn').addEventListener('click', function() {
+            isRunning = !isRunning;
+            this.textContent = isRunning ? "PAUSE" : "RESUME";
+            document.getElementById('startBtn').disabled = isRunning;
+        });
+        
+        document.getElementById('resetBtn').addEventListener('click', function() {
+            isRunning = false;
+            distance = 124.6;
+            progress = 0;
+            issX = radarCenterX + radarRadius * 0.4;
+            issY = radarCenterY - radarRadius * 0.3;
+            
+            // Reset astronaut position
+            astronaut.position.set(0, 0, 0);
+            
+            // Reset camera
+            camera.position.set(50, 50, 150);
+            camera.lookAt(0, 0, 0);
+            
+            // Reset UI
+            document.getElementById('startBtn').disabled = false;
+            document.getElementById('pauseBtn').disabled = true;
+            document.getElementById('pauseBtn').textContent = "PAUSE";
+            document.getElementById('navStatus').textContent = "ACTIVE";
+            document.getElementById('navStatus').classList.remove('warning', 'critical');
+            document.getElementById('timeToDock').classList.remove('warning', 'critical');
+            document.getElementById('astronautStatus').textContent = "APPROACHING";
+            document.getElementById('progressBar').style.width = '0%';
+            
+            // Reset values
+            updateSimulation();
+        });
+        
+        // Speed controls
+        document.getElementById('speedUp').addEventListener('click', function() {
+            simulationSpeed = Math.min(3.0, simulationSpeed + 0.25);
+            document.getElementById('speedValue').textContent = simulationSpeed.toFixed(1) + 'x';
+        });
+        
+        document.getElementById('speedDown').addEventListener('click', function() {
+            simulationSpeed = Math.max(0.25, simulationSpeed - 0.25);
+            document.getElementById('speedValue').textContent = simulationSpeed.toFixed(1) + 'x';
+        });
+        
+        // Simple ISS model for the panel
+        const issCanvas = document.getElementById('issCanvas');
+        const issCtx = issCanvas.getContext('2d');
+        
+        issCanvas.width = issCanvas.offsetWidth;
+        issCanvas.height = issCanvas.offsetHeight;
+        
+        function drawISSPanel() {
+            issCtx.clearRect(0, 0, issCanvas.width, issCanvas.height);
+            
+            // Draw ISS truss
+            issCtx.fillStyle = '#aaa';
+            issCtx.fillRect(issCanvas.width/2 - 50, issCanvas.height/2 - 3, 100, 6);
+            
+            // Draw solar panels
+            issCtx.fillStyle = 'rgba(34, 102, 170, 0.8)';
+            issCtx.fillRect(issCanvas.width/2 - 70, issCanvas.height/2 - 20, 40, 40);
+            issCtx.fillRect(issCanvas.width/2 + 30, issCanvas.height/2 - 20, 40, 40);
+            
+            // Draw modules
+            issCtx.fillStyle = '#fff';
+            issCtx.beginPath();
+            issCtx.arc(issCanvas.width/2 - 20, issCanvas.height/2, 8, 0, Math.PI * 2);
+            issCtx.fill();
+            
+            issCtx.beginPath();
+            issCtx.arc(issCanvas.width/2 + 20, issCanvas.height/2, 8, 0, Math.PI * 2);
+            issCtx.fill();
+            
+            // Rotate slowly
+            issCanvas.style.transform = `rotate(${Date.now() / 100}deg)`;
+            
+            requestAnimationFrame(drawISSPanel);
+        }
+        
+        drawISSPanel();
+        
+        // Text visibility toggle functionality
+        const toggleBtn = document.getElementById('toggleText');
+        let textVisible = true;
+        
+        toggleBtn.addEventListener('click', function() {
+            textVisible = !textVisible;
+            document.body.classList.toggle('text-hidden', !textVisible);
+            this.textContent = textVisible ? 'Hide Text' : 'Show Text';
+            
+            // Adjust UI elements when text is hidden
+            if (!textVisible) {
+                // Make background elements more transparent
+                document.querySelectorAll('.dashboard, .radar-container, .controls, .status-panel').forEach(el => {
+                    el.style.background = 'rgba(0, 20, 40, 0.1)';
+                    el.style.border = '1px solid rgba(0, 200, 255, 0.1)';
+                });
+                
+                // Hide the right dashboard completely
+                document.querySelector('.container').style.gridTemplateColumns = '1fr';
+                document.querySelector('.dashboard:last-child').style.display = 'none';
+            } else {
+                // Restore original styles
+                document.querySelectorAll('.dashboard, .radar-container, .controls, .status-panel').forEach(el => {
+                    el.style.background = '';
+                    el.style.border = '';
+                });
+                
+                // Show the right dashboard
+                document.querySelector('.container').style.gridTemplateColumns = '1fr 400px';
+                document.querySelector('.dashboard:last-child').style.display = '';
+            }
+        });
+    </script>
+</body>
+</html>

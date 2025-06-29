@@ -1,0 +1,1716 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Elliptical Reflection Simulator</title>
+    <style>
+        body { 
+            margin: 0; 
+            overflow: hidden; 
+            background: linear-gradient(to bottom, #0a0a1a, #1a1a2e);
+            color: white;
+            font-family: 'Arial', sans-serif;
+        }
+        #canvas-container {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+        }
+        .info-panel {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(0,0,0,0.7);
+            padding: 15px;
+            border-radius: 10px;
+            max-width: 400px;
+            backdrop-filter: blur(5px);
+            z-index: 100;
+            box-shadow: 0 0 20px rgba(0, 150, 255, 0.3);
+            transition: all 0.3s ease;
+        }
+        .info-panel:hover {
+            box-shadow: 0 0 30px rgba(0, 150, 255, 0.5);
+        }
+        .controls {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(0,0,0,0.7);
+            padding: 15px;
+            border-radius: 10px;
+            backdrop-filter: blur(5px);
+            z-index: 100;
+            box-shadow: 0 0 20px rgba(255, 200, 0, 0.3);
+            transition: all 0.3s ease;
+        }
+        .controls:hover {
+            box-shadow: 0 0 30px rgba(255, 200, 0, 0.5);
+        }
+        .slider-container {
+            margin: 10px 0;
+        }
+        button {
+            background: linear-gradient(to bottom, #3498db, #2980b9);
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 5px;
+            margin: 5px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+        button:hover {
+            background: linear-gradient(to bottom, #2980b9, #1a6ea8);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+        }
+        button:active {
+            transform: translateY(0);
+            box-shadow: 0 2px 3px rgba(0,0,0,0.2);
+        }
+        #equation {
+            font-size: 1.2em;
+            margin: 10px 0;
+            color: #f1c40f;
+            text-shadow: 0 0 5px rgba(241, 196, 15, 0.5);
+        }
+        .measurement {
+            position: absolute;
+            background: rgba(0,0,0,0.7);
+            padding: 5px;
+            border-radius: 5px;
+            font-size: 0.9em;
+            pointer-events: none;
+        }
+        #status-panel {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(0,0,0,0.7);
+            padding: 15px;
+            border-radius: 10px;
+            backdrop-filter: blur(5px);
+            z-index: 100;
+            box-shadow: 0 0 20px rgba(0, 255, 100, 0.3);
+            transition: all 0.3s ease;
+        }
+        #status-panel:hover {
+            box-shadow: 0 0 30px rgba(0, 255, 100, 0.5);
+        }
+        .focus-label {
+            position: absolute;
+            background: rgba(255,0,0,0.7);
+            padding: 5px 10px;
+            border-radius: 15px;
+            font-size: 0.9em;
+            pointer-events: none;
+            transform: translate(-50%, -50%);
+            text-shadow: 0 0 3px rgba(255,255,255,0.5);
+        }
+        #focus2-label {
+            background: rgba(0,0,255,0.7);
+        }
+        .application-panel {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(0,0,0,0.7);
+            padding: 15px;
+            border-radius: 10px;
+            max-width: 300px;
+            backdrop-filter: blur(5px);
+            z-index: 100;
+            box-shadow: 0 0 20px rgba(200, 0, 255, 0.3);
+            transition: all 0.3s ease;
+        }
+        .application-panel:hover {
+            box-shadow: 0 0 30px rgba(200, 0, 255, 0.5);
+        }
+        .application-title {
+            color: #f1c40f;
+            margin-top: 0;
+            text-shadow: 0 0 5px rgba(241, 196, 15, 0.5);
+        }
+        h2, h3 {
+            color: #f1c40f;
+            margin-top: 0;
+            text-shadow: 0 0 5px rgba(241, 196, 15, 0.5);
+        }
+        input[type="range"] {
+            width: 150px;
+            -webkit-appearance: none;
+            height: 8px;
+            border-radius: 4px;
+            background: linear-gradient(to right, #3498db, #f1c40f);
+            outline: none;
+            margin-right: 10px;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #fff;
+            cursor: pointer;
+            box-shadow: 0 0 5px rgba(0,0,0,0.5);
+        }
+        .tooltip {
+            position: absolute;
+            background: rgba(0,0,0,0.8);
+            padding: 8px 12px;
+            border-radius: 5px;
+            font-size: 0.9em;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.3s;
+            z-index: 200;
+            max-width: 200px;
+        }
+        button:hover .tooltip {
+            opacity: 1;
+        }
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.8);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+        .modal-content {
+            background: linear-gradient(to bottom, #1a1a2e, #0a0a1a);
+            padding: 20px;
+            border-radius: 10px;
+            max-width: 600px;
+            max-height: 80vh;
+            overflow-y: auto;
+            box-shadow: 0 0 30px rgba(0, 150, 255, 0.7);
+            border: 1px solid #3498db;
+        }
+        .close-modal {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            font-size: 24px;
+            cursor: pointer;
+            color: white;
+        }
+        .help-button {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: #f1c40f;
+            color: #0a0a1a;
+            border: none;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            font-weight: bold;
+            cursor: pointer;
+            z-index: 1000;
+        }
+    </style>
+</head>
+<body>
+    <div id="canvas-container"></div>
+    
+    <button id="help-button" class="help-button">?</button>
+    
+    <div id="status-panel">
+        <h3>Elliptical Reflection Simulator</h3>
+        <div id="bounce-display">Bounces: 0</div>
+        <div id="distance-display">Path Length: 0.00</div>
+        <div id="application-display">Mode: None</div>
+        <div id="focal-distance">Focal Distance: 4.00</div>
+    </div>
+    
+    <div class="info-panel">
+        <h2>Reflection Properties</h2>
+        <div id="equation">PF₁ + PF₂ = 10.0 (constant)</div>
+        <p>All paths from one focus reflect to the other, regardless of angle. This demonstrates the unique acoustic and optical properties of elliptical surfaces.</p>
+        <div id="eccentricity">Eccentricity: 0.80</div>
+    </div>
+    
+    <div class="application-panel">
+        <h3 class="application-title">Real-World Applications</h3>
+        <button id="show-whispering">Whispering Gallery</button>
+        <button id="show-telescope">Telescope Mirror</button>
+        <button id="show-lighting">Stage Lighting</button>
+        <button id="show-medical">Medical Devices</button>
+        <button id="reset-app">Reset Simulation</button>
+    </div>
+    
+    <div class="controls">
+        <h3>Controls</h3>
+        <div class="slider-container">
+            <label for="angle-slider">Emission Angle:</label>
+            <input type="range" id="angle-slider" min="0" max="360" step="1" value="45">
+            <span id="angle-value">45°</span>
+        </div>
+        <div class="slider-container">
+            <label for="a-slider">Semi-major axis (a):</label>
+            <input type="range" id="a-slider" min="3" max="8" step="0.1" value="5">
+            <span id="a-value">5.0</span>
+        </div>
+        <div class="slider-container">
+            <label for="b-slider">Semi-minor axis (b):</label>
+            <input type="range" id="b-slider" min="1" max="5" step="0.1" value="3">
+            <span id="b-value">3.0</span>
+        </div>
+        <div class="slider-container">
+            <label for="bounces-slider">Max Bounces:</label>
+            <input type="range" id="bounces-slider" min="1" max="10" step="1" value="1">
+            <span id="bounces-value">1</span>
+        </div>
+        <button id="emit-light">Emit Light <span class="tooltip">Emit a single light ray from F₁ at the selected angle</span></button>
+        <button id="multi-emit">Emit 5 Rays <span class="tooltip">Emit 5 rays at random angles to demonstrate the property</span></button>
+        <button id="fan-emit">Emit Fan (30°) <span class="tooltip">Emit a fan of rays within a 30-degree range</span></button>
+        <button id="clear-all">Clear All <span class="tooltip">Remove all rays from the simulation</span></button>
+    </div>
+    
+    <div id="focus1-label" class="focus-label">F₁</div>
+    <div id="focus2-label" class="focus-label">F₂</div>
+
+    <div id="help-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-modal">×</span>
+            <h2>Elliptical Reflection Simulator Help</h2>
+            <h3>About Ellipses</h3>
+            <p>An ellipse is a closed curve where the sum of the distances from any point on the curve to the two foci (F₁ and F₂) is constant. This property leads to interesting reflection characteristics:</p>
+            <ul>
+                <li>Any ray emitted from one focus will reflect to the other focus, regardless of the emission angle.</li>
+                <li>The constant sum of distances is equal to 2a, where 'a' is the semi-major axis.</li>
+                <li>The distance between foci is 2c, where c = √(a² - b²) and 'b' is the semi-minor axis.</li>
+            </ul>
+            
+            <h3>Controls</h3>
+            <ul>
+                <li><strong>Semi-major axis (a):</strong> Controls the longest radius of the ellipse.</li>
+                <li><strong>Semi-minor axis (b):</strong> Controls the shortest radius of the ellipse.</li>
+                <li><strong>Emission Angle:</strong> Sets the angle (in degrees) for emitted rays.</li>
+                <li><strong>Max Bounces:</strong> Sets how many times a ray will bounce inside the ellipse.</li>
+            </ul>
+            
+            <h3>Applications</h3>
+            <p>The simulator demonstrates several real-world applications of elliptical reflection:</p>
+            <ul>
+                <li><strong>Whispering Galleries:</strong> Sound waves reflect between foci, allowing whispers to be heard clearly across large spaces.</li>
+                <li><strong>Telescope Mirrors:</strong> Elliptical mirrors focus light from one focal point to another.</li>
+                <li><strong>Stage Lighting:</strong> Elliptical reflectors concentrate light from a bulb at one focus to a stage area at the other.</li>
+                <li><strong>Medical Devices:</strong> Elliptical reflectors are used in lithotripters to focus shock waves on kidney stones.</li>
+            </ul>
+            
+            <h3>Interaction</h3>
+            <p>Click and drag to rotate the view. Use the mouse wheel to zoom in and out.</p>
+        </div>
+    </div>
+
+    <!-- Three.js Library -->
+    <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/build/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/examples/js/controls/OrbitControls.js"></script>
+    
+    <script>
+        // Scene setup
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(window.devicePixelRatio);
+        document.getElementById('canvas-container').appendChild(renderer.domElement);
+
+        // Enhanced rendering
+        renderer.toneMapping = THREE.ReinhardToneMapping;
+        renderer.toneMappingExposure = 1.5;
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+        // Lighting
+        const ambientLight = new THREE.AmbientLight(0x404040, 0.8);
+        scene.add(ambientLight);
+        
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
+        directionalLight.position.set(5, 10, 7);
+        directionalLight.castShadow = true;
+        directionalLight.shadow.mapSize.width = 2048;
+        directionalLight.shadow.mapSize.height = 2048;
+        scene.add(directionalLight);
+
+        // Add subtle starfield background
+        function createStarfield() {
+            const starsGeometry = new THREE.BufferGeometry();
+            const starCount = 1000;
+            const positions = new Float32Array(starCount * 3);
+            
+            for (let i = 0; i < starCount; i++) {
+                const i3 = i * 3;
+                positions[i3] = (Math.random() - 0.5) * 2000;
+                positions[i3 + 1] = (Math.random() - 0.5) * 2000;
+                positions[i3 + 2] = (Math.random() - 0.5) * 2000;
+            }
+            
+            starsGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+            const starsMaterial = new THREE.PointsMaterial({
+                color: 0xffffff,
+                size: 1,
+                transparent: true,
+                opacity: 0.8
+            });
+            
+            const starField = new THREE.Points(starsGeometry, starsMaterial);
+            scene.add(starField);
+        }
+        
+        createStarfield();
+
+        // Parameters
+        let a = 5, b = 3;
+        let c = Math.sqrt(a*a - b*b);
+        let currentAngle = 45;
+        let maxBounces = 1;
+        let activeRays = [];
+        let focus1, focus2, ellipsoid;
+        let applicationMode = null;
+        let applicationObjects = [];
+        let gridHelper;
+        let intervals = [];
+
+        // Create coordinate grid helper
+        function createGridHelper() {
+            if (gridHelper) scene.remove(gridHelper);
+            
+            gridHelper = new THREE.GridHelper(20, 20, 0x555555, 0x333333);
+            gridHelper.position.y = -b;
+            scene.add(gridHelper);
+        }
+
+        // Create highly visible blue ellipsoid
+        function createEllipsoid() {
+            if (ellipsoid) scene.remove(ellipsoid);
+
+            const geometry = new THREE.SphereGeometry(1, 64, 64);
+            geometry.scale(a, b, b);
+            const material = new THREE.MeshPhysicalMaterial({
+                color: 0x1E90FF,
+                transparent: true,
+                opacity: 0.4,
+                transmission: 0.6,
+                roughness: 0,
+                metalness: 0.2,
+                clearcoat: 1,
+                side: THREE.DoubleSide,
+                envMapIntensity: 1,
+                ior: 1.5
+            });
+            
+            ellipsoid = new THREE.Mesh(geometry, material);
+            ellipsoid.rotation.x = Math.PI / 2;
+            ellipsoid.castShadow = true;
+            ellipsoid.receiveShadow = true;
+            scene.add(ellipsoid);
+
+            const wireframe = new THREE.LineSegments(
+                new THREE.EdgesGeometry(geometry),
+                new THREE.LineBasicMaterial({ color: 0x1E90FF, transparent: true, opacity: 0.5 })
+            );
+            wireframe.scale.copy(ellipsoid.scale);
+            wireframe.rotation.x = Math.PI / 2;
+            ellipsoid.add(wireframe);
+
+            document.getElementById('equation').textContent = `PF₁ + PF₂ = ${(2*a).toFixed(1)} (constant)`;
+            const eccentricity = c / a;
+            document.getElementById('eccentricity').textContent = `Eccentricity: ${eccentricity.toFixed(2)}`;
+            document.getElementById('focal-distance').textContent = `Focal Distance: ${(2*c).toFixed(2)}`;
+        }
+
+        // Create enhanced focus points
+        function createFocusPoints() {
+            if (focus1) scene.remove(focus1);
+            if (focus2) scene.remove(focus2);
+
+            c = Math.sqrt(a*a - b*b);
+            
+            const focusGeometry = new THREE.SphereGeometry(0.3, 32, 32);
+            const focusMaterial = new THREE.MeshBasicMaterial({ 
+                color: 0xff3333,
+                transparent: true,
+                opacity: 0.9
+            });
+            
+            focus1 = new THREE.Mesh(focusGeometry, focusMaterial.clone());
+            focus1.position.set(-c, 0, 0);
+            
+            focus2 = new THREE.Mesh(focusGeometry, focusMaterial.clone());
+            focus2.material.color.setHex(0x3333ff);
+            focus2.position.set(c, 0, 0);
+            
+            scene.add(focus1);
+            scene.add(focus2);
+
+            addPulsingGlow(focus1, 0xff0000);
+            addPulsingGlow(focus2, 0x0000ff);
+
+            updateFocusLabels();
+        }
+
+        function addPulsingGlow(obj, color) {
+            const glowGeometry = new THREE.SphereGeometry(0.6, 32, 32);
+            const glowMaterial = new THREE.MeshBasicMaterial({
+                color: color,
+                transparent: true,
+                opacity: 0.5,
+                blending: THREE.AdditiveBlending
+            });
+            const glow = new THREE.Mesh(glowGeometry, glowMaterial);
+            obj.add(glow);
+            
+            let pulseDir = 1;
+            function pulse() {
+                if (glow.scale.x > 1.5) pulseDir = -1;
+                if (glow.scale.x < 1) pulseDir = 1;
+                glow.scale.x += 0.02 * pulseDir;
+                glow.scale.y = glow.scale.z = glow.scale.x;
+                requestAnimationFrame(pulse);
+            }
+            pulse();
+        }
+
+        function updateFocusLabels() {
+            const pos1 = focus1.position.clone().project(camera);
+            const pos2 = focus2.position.clone().project(camera);
+            
+            document.getElementById('focus1-label').style.left = 
+                `${(pos1.x * 0.5 + 0.5) * window.innerWidth}px`;
+            document.getElementById('focus1-label').style.top = 
+                `${(-pos1.y * 0.5 + 0.5) * window.innerHeight}px`;
+            
+            document.getElementById('focus2-label').style.left = 
+                `${(pos2.x * 0.5 + 0.5) * window.innerWidth}px`;
+            document.getElementById('focus2-label').style.top = 
+                `${(-pos2.y * 0.5 + 0.5) * window.innerHeight}px`;
+        }
+
+        // Calculate intersection with ellipsoid
+        function intersectEllipsoid(origin, direction) {
+            const a2 = a * a, b2 = b * b;
+            const dx = direction.x, dy = direction.y, dz = direction.z;
+            const ox = origin.x, oy = origin.y, oz = origin.z;
+            
+            const A = (dx*dx)/a2 + (dy*dy)/b2 + (dz*dz)/b2;
+            const B = 2*(ox*dx/a2 + oy*dy/b2 + oz*dz/b2);
+            const C = (ox*ox)/a2 + (oy*oy)/b2 + (oz*oz)/b2 - 1;
+            
+            const discriminant = B*B - 4*A*C;
+            if (discriminant < 0) return null;
+            
+            const t = (-B + Math.sqrt(discriminant)) / (2*A);
+            if (t <= 0) return null;
+            
+            const point = new THREE.Vector3(
+                ox + t*dx,
+                oy + t*dy,
+                oz + t*dz
+            );
+            
+            const normal = new THREE.Vector3(
+                point.x/a2,
+                point.y/b2,
+                point.z/b2
+            ).normalize();
+            
+            return { point, normal };
+        }
+
+        // Calculate reflection path with multiple bounces
+        function calculateReflectionPath(start, direction, maxBounces) {
+            const path = [start];
+            let currentDir = direction.clone();
+            let currentPos = start.clone();
+            
+            for (let i = 0; i < maxBounces; i++) {
+                const hit = intersectEllipsoid(currentPos, currentDir);
+                if (!hit) break;
+                
+                path.push(hit.point);
+                currentDir = currentDir.sub(hit.normal.clone().multiplyScalar(2 * currentDir.dot(hit.normal))).normalize();
+                currentPos = hit.point;
+            }
+            
+            // Ensure the final segment goes to focus2
+            if (path.length > 1) {
+                currentDir = new THREE.Vector3().subVectors(focus2.position, currentPos).normalize();
+                const endPoint = focus2.position.clone();
+                path.push(endPoint);
+            }
+            
+            return path;
+        }
+
+        // Create a light ray with color transition from red to blue
+        function createLightRay(angleDeg) {
+            const angleRad = THREE.MathUtils.degToRad(angleDeg);
+            const start = focus1.position.clone();
+            const initialDir = new THREE.Vector3(
+                Math.cos(angleRad),
+                Math.sin(angleRad),
+                0
+            ).normalize();
+            
+            const path = calculateReflectionPath(start, initialDir, maxBounces);
+            if (path.length < 2) return;
+            
+            const segments = [];
+            const glows = [];
+            const sparks = new THREE.Group();
+            
+            // First segment: F1 to reflection point (red)
+            const firstSegmentPoints = [path[0], path[1]];
+            const firstSegmentGeometry = new THREE.BufferGeometry().setFromPoints(firstSegmentPoints);
+            const firstSegmentMaterial = new THREE.LineBasicMaterial({ 
+                color: 0xff0000,
+                linewidth: 2
+            });
+            const firstSegment = new THREE.Line(firstSegmentGeometry, firstSegmentMaterial);
+            scene.add(firstSegment);
+            
+            const firstGlowGeometry = new THREE.BufferGeometry().setFromPoints(firstSegmentPoints);
+            const firstGlowMaterial = new THREE.LineBasicMaterial({
+                color: 0xff0000,
+                transparent: true,
+                opacity: 0.5,
+                linewidth: 8
+            });
+            const firstGlow = new THREE.Line(firstGlowGeometry, firstGlowMaterial);
+            scene.add(firstGlow);
+            
+            segments.push(firstSegment);
+            glows.push(firstGlow);
+            
+            // Second segment: reflection point to F2 (blue)
+            const secondSegmentPoints = [path[1], path[2]];
+            const secondSegmentGeometry = new THREE.BufferGeometry().setFromPoints(secondSegmentPoints);
+            const secondSegmentMaterial = new THREE.LineBasicMaterial({ 
+                color: 0x0000ff,
+                linewidth: 2
+            });
+            const secondSegment = new THREE.Line(secondSegmentGeometry, secondSegmentMaterial);
+            scene.add(secondSegment);
+            
+            const secondGlowGeometry = new THREE.BufferGeometry().setFromPoints(secondSegmentPoints);
+            const secondGlowMaterial = new THREE.LineBasicMaterial({
+                color: 0x0000ff,
+                transparent: true,
+                opacity: 0.5,
+                linewidth: 8
+            });
+            const secondGlow = new THREE.Line(secondGlowGeometry, secondGlowMaterial);
+            scene.add(secondGlow);
+            
+            segments.push(secondSegment);
+            glows.push(secondGlow);
+            
+            // Add spark at reflection point
+            const spark = createSpark(path[1], 0xffffff);
+            sparks.add(spark);
+            scene.add(sparks);
+            
+            activeRays.push({
+                segments: segments,
+                glows: glows,
+                sparks: sparks,
+                path: path,
+                progress: 0,
+                speed: 0.005,
+                segmentsCount: path.length - 1
+            });
+            
+            document.getElementById('bounce-display').textContent = `Bounces: ${path.length - 2}`;
+            
+            return {path, segments, glows, sparks};
+        }
+
+        function createSpark(position, color = 0xffffff) {
+            const geometry = new THREE.SphereGeometry(0.15, 16, 16);
+            const material = new THREE.MeshBasicMaterial({ 
+                color: color,
+                transparent: true,
+                opacity: 1
+            });
+            const spark = new THREE.Mesh(geometry, material);
+            spark.position.copy(position);
+            
+            spark.scale.set(0.1, 0.1, 0.1);
+            let scale = 0.1;
+            let growing = true;
+            
+            function animateSpark() {
+                if (growing) {
+                    scale += 0.15;
+                    if (scale >= 1.5) growing = false;
+                } else {
+                    scale -= 0.1;
+                    if (scale <= 0) {
+                        scene.remove(spark);
+                        return;
+                    }
+                }
+                
+                spark.scale.set(scale, scale, scale);
+                material.opacity = scale/1.5;
+                requestAnimationFrame(animateSpark);
+            }
+            
+            animateSpark();
+            return spark;
+        }
+
+        // Animate all active rays
+        function animateRays() {
+            for (let i = activeRays.length - 1; i >= 0; i--) {
+                const ray = activeRays[i];
+                ray.progress += ray.speed;
+                
+                if (ray.progress >= 1) {
+                    ray.segments.forEach(segment => scene.remove(segment));
+                    ray.glows.forEach(glow => scene.remove(glow));
+                    if (ray.sparks) scene.remove(ray.sparks);
+                    activeRays.splice(i, 1);
+                    continue;
+                }
+                
+                const segmentProgress = ray.progress * ray.segmentsCount;
+                const segmentIndex = Math.floor(segmentProgress);
+                const t = segmentProgress - segmentIndex;
+                
+                if (segmentIndex < ray.path.length - 1) {
+                    const start = ray.path[segmentIndex];
+                    const end = ray.path[segmentIndex + 1];
+                    const currentPos = new THREE.Vector3().lerpVectors(start, end, t);
+                    
+                    ray.glows[segmentIndex].material.opacity = 0.5 * (1 - ray.progress);
+                    
+                    if (segmentIndex === ray.segmentsCount - 1) {
+                        let pathLength = 0;
+                        for (let j = 0; j < segmentIndex; j++) {
+                            pathLength += ray.path[j].distanceTo(ray.path[j+1]);
+                        }
+                        pathLength += start.distanceTo(currentPos);
+                        document.getElementById('distance-display').textContent = 
+                            `Path Length: ${pathLength.toFixed(2)}`;
+                    }
+                }
+            }
+        }
+
+        // Helper function to create a particle-based sound wave
+        function createParticleSoundWave(start, direction, targetFocus) {
+            const path = calculateReflectionPath(start, direction, 1);
+            if (path.length < 2) return;
+
+            const particleCount = 20;
+            const particles = new THREE.Group();
+            const positions = [];
+            const velocities = [];
+            const opacities = [];
+
+            // Create particles along the initial direction
+            for (let i = 0; i < particleCount; i++) {
+                const particleGeometry = new THREE.SphereGeometry(0.05, 8, 8);
+                const particleMaterial = new THREE.MeshBasicMaterial({
+                    color: 0x87CEEB, // Light sky blue for sound waves
+                    transparent: true,
+                    opacity: 0.8
+                });
+                const particle = new THREE.Mesh(particleGeometry, particleMaterial);
+                particle.position.copy(start);
+                particles.add(particle);
+
+                positions.push(particle.position.clone());
+                velocities.push(direction.clone().multiplyScalar(0.05));
+                opacities.push(0.8);
+            }
+            scene.add(particles);
+            applicationObjects.push(particles);
+
+            let progress = 0;
+            let currentSegment = 0;
+
+            function animateParticles() {
+                progress += 0.02;
+                if (progress >= 1) {
+                    scene.remove(particles);
+                    return;
+                }
+
+                for (let i = 0; i < particleCount; i++) {
+                    const particle = particles.children[i];
+                    const pos = positions[i];
+                    const vel = velocities[i];
+
+                    pos.add(vel);
+
+                    // Check if particle has reached the reflection point
+                    if (currentSegment === 0 && pos.distanceTo(path[1]) < 0.1) {
+                        currentSegment = 1;
+                        vel.copy(new THREE.Vector3().subVectors(targetFocus.position, pos).normalize().multiplyScalar(0.05));
+                    }
+
+                    particle.position.copy(pos);
+                    opacities[i] -= 0.01;
+                    particle.material.opacity = opacities[i];
+
+                    if (opacities[i] <= 0) {
+                        particles.remove(particle);
+                    }
+                }
+
+                requestAnimationFrame(animateParticles);
+            }
+
+            animateParticles();
+        }
+
+        // WHISPERING GALLERY APPLICATION
+        function showWhisperingGallery() {
+            try {
+                resetScene();
+                applicationMode = 'whispering';
+                document.getElementById('application-display').textContent = "Mode: Whispering Gallery";
+
+                // Create a dome-like structure (upper half of the ellipsoid)
+                const domeGeometry = new THREE.SphereGeometry(1, 64, 64, 0, Math.PI * 2, 0, Math.PI / 2);
+                domeGeometry.scale(a, b, b);
+                const domeMaterial = new THREE.MeshPhongMaterial({
+                    color: 0xD3D3D3, // Light gray to mimic stone
+                    side: THREE.DoubleSide,
+                    shininess: 20,
+                    opacity: 0.9,
+                    transparent: true
+                });
+                const dome = new THREE.Mesh(domeGeometry, domeMaterial);
+                dome.rotation.x = Math.PI / 2;
+                dome.position.y = 0;
+                dome.castShadow = true;
+                dome.receiveShadow = true;
+                scene.add(dome);
+                applicationObjects.push(dome);
+
+                // Create a tiled floor
+                const floorGeometry = new THREE.CircleGeometry(a * 1.2, 32);
+                const floorMaterial = new THREE.MeshPhongMaterial({
+                    color: 0x808080, // Gray tiles
+                    shininess: 30
+                });
+                const floor = new THREE.Mesh(floorGeometry, floorMaterial);
+                floor.rotation.x = -Math.PI / 2;
+                floor.position.y = -b;
+                floor.receiveShadow = true;
+                scene.add(floor);
+                applicationObjects.push(floor);
+
+                // Create figures near the foci, positioned closer to the ellipsoid edge
+                const figureGeometry = new THREE.CylinderGeometry(0.2, 0.3, 1, 8);
+                const headGeometry = new THREE.SphereGeometry(0.25, 16, 16);
+                const figureMaterial = new THREE.MeshPhongMaterial({ color: 0xffffff });
+
+                // Figure 1 (speaker) near F1
+                const body1 = new THREE.Mesh(figureGeometry, figureMaterial);
+                body1.position.set(-c * 0.8, -b + 0.5, 0); // Slightly off F1, near the edge
+                body1.castShadow = true;
+
+                const head1 = new THREE.Mesh(headGeometry, figureMaterial);
+                head1.position.set(-c * 0.8, -b + 1.2, 0);
+                head1.castShadow = true;
+
+                // Figure 2 (listener) near F2
+                const body2 = new THREE.Mesh(figureGeometry, figureMaterial);
+                body2.position.set(c * 0.8, -b + 0.5, 0); // Slightly off F2, near the edge
+                body2.castShadow = true;
+
+                const head2 = new THREE.Mesh(headGeometry, figureMaterial);
+                head2.position.set(c * 0.8, -b + 1.2, 0);
+                head2.castShadow = true;
+
+                // Orient figures to face each other
+                body1.lookAt(body2.position);
+                body2.lookAt(body1.position);
+                head1.lookAt(head2.position);
+                head2.lookAt(head1.position);
+
+                [body1, head1, body2, head2].forEach(obj => {
+                    scene.add(obj);
+                    applicationObjects.push(obj);
+                });
+
+                // Add pulsing aura around the speaker's head to indicate whispering
+                const auraGeometry = new THREE.SphereGeometry(0.4, 16, 16);
+                const auraMaterial = new THREE.MeshBasicMaterial({
+                    color: 0x87CEEB,
+                    transparent: true,
+                    opacity: 0.5,
+                    blending: THREE.AdditiveBlending
+                });
+                const aura = new THREE.Mesh(auraGeometry, auraMaterial);
+                aura.position.copy(head1.position);
+                scene.add(aura);
+                applicationObjects.push(aura);
+
+                let pulseDir = 1;
+                const pulseInterval = setInterval(() => {
+                    if (aura.scale.x > 1.5) pulseDir = -1;
+                    if (aura.scale.x < 1) pulseDir = 1;
+                    aura.scale.x += 0.02 * pulseDir;
+                    aura.scale.y = aura.scale.z = aura.scale.x;
+                }, 16);
+                intervals.push(pulseInterval);
+
+                // Animate the listener's head to indicate listening (subtle tilt)
+                let tiltAngle = 0;
+                const tiltInterval = setInterval(() => {
+                    tiltAngle += 0.05;
+                    head2.rotation.z = Math.sin(tiltAngle) * 0.1;
+                }, 16);
+                intervals.push(tiltInterval);
+
+                // Emit sound waves with a delay
+                let waveIndex = 0;
+                const emitWaveInterval = setInterval(() => {
+                    if (waveIndex >= 8) {
+                        clearInterval(emitWaveInterval);
+                        return;
+                    }
+                    const angle = Math.random() * Math.PI * 2;
+                    const direction = new THREE.Vector3(
+                        Math.cos(angle),
+                        Math.sin(angle),
+                        0
+                    ).normalize();
+                    createParticleSoundWave(new THREE.Vector3(-c * 0.8, -b + 1.2, 0), direction, focus2);
+                    waveIndex++;
+                }, 600); // Delay between waves
+                intervals.push(emitWaveInterval);
+
+                const label = createTextLabel("Whispering Gallery Effect", 0, b + 2, 0);
+                applicationObjects.push(label);
+            } catch (error) {
+                console.error("Error in showWhisperingGallery:", error);
+            }
+        }
+
+        // TELESCOPE MIRROR APPLICATION
+        function showTelescopeMirror() {
+            try {
+                resetScene();
+                applicationMode = 'telescope';
+                document.getElementById('application-display').textContent = "Mode: Telescope Mirror";
+                
+                const tubeGeometry = new THREE.CylinderGeometry(0.8, 1.5, 4, 32);
+                const tubeMaterial = new THREE.MeshPhongMaterial({ 
+                    color: 0x333333,
+                    side: THREE.DoubleSide
+                });
+                const tube = new THREE.Mesh(tubeGeometry, tubeMaterial);
+                tube.position.set(0, 0, -3);
+                tube.rotation.x = Math.PI/2;
+                
+                const eyepieceGeometry = new THREE.SphereGeometry(0.3, 16, 16);
+                const eyepieceMaterial = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
+                const eyepiece = new THREE.Mesh(eyepieceGeometry, eyepieceMaterial);
+                eyepiece.position.copy(focus2.position);
+                eyepiece.position.z -= 3;
+                
+                [tube, eyepiece].forEach(obj => {
+                    scene.add(obj);
+                    applicationObjects.push(obj);
+                });
+                
+                for (let i = 0; i < 12; i++) {
+                    const y = -a + (i * 2*a/11);
+                    const start = new THREE.Vector3(-15, y, -3);
+                    const direction = new THREE.Vector3(1, 0, 0);
+                    
+                    const path = calculateReflectionPath(start, direction, 1);
+                    if (path.length < 2) continue;
+                    
+                    const segments = [];
+                    const glows = [];
+                    
+                    // First segment: start to reflection point (yellow)
+                    const firstSegmentPoints = [path[0], path[1]];
+                    const firstSegmentGeometry = new THREE.BufferGeometry().setFromPoints(firstSegmentPoints);
+                    const firstSegmentMaterial = new THREE.LineBasicMaterial({ color: 0xffff00 });
+                    const firstSegment = new THREE.Line(firstSegmentGeometry, firstSegmentMaterial);
+                    scene.add(firstSegment);
+                    
+                    const firstGlowGeometry = new THREE.BufferGeometry().setFromPoints(firstSegmentPoints);
+                    const firstGlowMaterial = new THREE.LineBasicMaterial({
+                        color: 0xffff00,
+                        transparent: true,
+                        opacity: 0.5,
+                        linewidth: 8
+                    });
+                    const firstGlow = new THREE.Line(firstGlowGeometry, firstGlowMaterial);
+                    scene.add(firstGlow);
+                    
+                    segments.push(firstSegment);
+                    glows.push(firstGlow);
+                    
+                    // Second segment: reflection point to F2 (blue)
+                    const secondSegmentPoints = [path[1], path[2]];
+                    const secondSegmentGeometry = new THREE.BufferGeometry().setFromPoints(secondSegmentPoints);
+                    const secondSegmentMaterial = new THREE.LineBasicMaterial({ color: 0x0000ff });
+                    const secondSegment = new THREE.Line(secondSegmentGeometry, secondSegmentMaterial);
+                    scene.add(secondSegment);
+                    
+                    const secondGlowGeometry = new THREE.BufferGeometry().setFromPoints(secondSegmentPoints);
+                    const secondGlowMaterial = new THREE.LineBasicMaterial({
+                        color: 0x0000ff,
+                        transparent: true,
+                        opacity: 0.5,
+                        linewidth: 8
+                    });
+                    const secondGlow = new THREE.Line(secondGlowGeometry, secondGlowMaterial);
+                    scene.add(secondGlow);
+                    
+                    segments.push(secondSegment);
+                    glows.push(secondGlow);
+                    
+                    activeRays.push({
+                        segments: segments,
+                        glows: glows,
+                        path: path,
+                        progress: 0,
+                        speed: 0.01,
+                        segmentsCount: path.length - 1
+                    });
+                    applicationObjects.push(...segments, ...glows);
+                }
+                
+                const label = createTextLabel("Telescope Mirror Design", 0, b + 1, 0);
+                applicationObjects.push(label);
+            } catch (error) {
+                console.error("Error in showTelescopeMirror:", error);
+            }
+        }
+
+        // STAGE LIGHTING APPLICATION
+        function showStageLighting() {
+            try {
+                resetScene();
+                applicationMode = 'lighting';
+                document.getElementById('application-display').textContent = "Mode: Stage Lighting";
+                maxBounces = 1;
+
+                // Create stage floor
+                const stageGeometry = new THREE.BoxGeometry(12, 0.2, 6);
+                const stageMaterial = new THREE.MeshPhongMaterial({ 
+                    color: 0x333333,
+                    roughness: 0.8
+                });
+                const stage = new THREE.Mesh(stageGeometry, stageMaterial);
+                stage.position.set(0, -b - 0.1, 0);
+                stage.receiveShadow = true;
+                scene.add(stage);
+                applicationObjects.push(stage);
+
+                // Create a backdrop (curtain)
+                const backdropGeometry = new THREE.PlaneGeometry(12, 6);
+                const backdropMaterial = new THREE.MeshPhongMaterial({
+                    color: 0x8B0000, // Dark red curtain color
+                    side: THREE.DoubleSide,
+                    shininess: 10
+                });
+                const backdrop = new THREE.Mesh(backdropGeometry, backdropMaterial);
+                backdrop.position.set(0, -b + 3, -3);
+                backdrop.rotation.y = Math.PI;
+                scene.add(backdrop);
+                applicationObjects.push(backdrop);
+
+                // Create performer at F2
+                const performerGeometry = new THREE.CylinderGeometry(0.3, 0.4, 1.5, 8);
+                const performerMaterial = new THREE.MeshPhongMaterial({ color: 0xFFD700 }); // Gold color for visibility
+                const performer = new THREE.Mesh(performerGeometry, performerMaterial);
+                performer.position.copy(focus2.position);
+                performer.position.y += 0.8;
+                performer.castShadow = true;
+                scene.add(performer);
+                applicationObjects.push(performer);
+
+                // Create spotlight fixture at F1
+                const spotlightFixtureGeometry = new THREE.ConeGeometry(0.5, 1, 16);
+                const spotlightFixtureMaterial = new THREE.MeshPhongMaterial({ color: 0x555555 });
+                const spotlightFixture = new THREE.Mesh(spotlightFixtureGeometry, spotlightFixtureMaterial);
+                spotlightFixture.position.copy(focus1.position);
+                spotlightFixture.rotation.x = Math.PI; // Point downward
+                spotlightFixture.castShadow = true;
+                scene.add(spotlightFixture);
+                applicationObjects.push(spotlightFixture);
+
+                // Add a SpotLight at F1 pointing toward the ellipsoid
+                const spotLight = new THREE.SpotLight(0xFFFACD, 2, 15, Math.PI/6, 0.5); // Warm white, intensity 2, angle 30 degrees
+                spotLight.position.copy(focus1.position);
+                spotLight.target.position.set(0, 0, 0); // Point toward the center of the ellipsoid
+                spotLight.castShadow = true;
+                scene.add(spotLight);
+                scene.add(spotLight.target);
+                applicationObjects.push(spotLight, spotLight.target);
+
+                // Emit focused light beams from F1 to F2
+                const beamAngleRange = 15; // 15 degrees total spread
+                const rayCount = 5; // Fewer rays for a focused beam
+                for (let i = 0; i < rayCount; i++) {
+                    const angle = -beamAngleRange/2 + (i * beamAngleRange/(rayCount-1));
+                    const angleRad = THREE.MathUtils.degToRad(angle);
+
+                    const start = focus1.position.clone();
+                    const direction = new THREE.Vector3(
+                        Math.cos(angleRad),
+                        Math.sin(angleRad),
+                        0
+                    ).normalize();
+
+                    const path = calculateReflectionPath(start, direction, 1);
+                    if (path.length < 2) continue;
+
+                    const segments = [];
+                    const glows = [];
+
+                    // First segment: F1 to ellipsoid (warm white)
+                    const firstSegmentPoints = [path[0], path[1]];
+                    const firstSegmentGeometry = new THREE.BufferGeometry().setFromPoints(firstSegmentPoints);
+                    const firstSegmentMaterial = new THREE.LineBasicMaterial({ color: 0xFFFACD });
+                    const firstSegment = new THREE.Line(firstSegmentGeometry, firstSegmentMaterial);
+                    scene.add(firstSegment);
+
+                    const firstGlowGeometry = new THREE.BufferGeometry().setFromPoints(firstSegmentPoints);
+                    const firstGlowMaterial = new THREE.LineBasicMaterial({
+                        color: 0xFFFACD,
+                        transparent: true,
+                        opacity: 0.5,
+                        linewidth: 8
+                    });
+                    const firstGlow = new THREE.Line(firstGlowGeometry, firstGlowMaterial);
+                    scene.add(firstGlow);
+
+                    segments.push(firstSegment);
+                    glows.push(firstGlow);
+
+                    // Second segment: ellipsoid to F2 (same color)
+                    const secondSegmentPoints = [path[1], path[2]];
+                    const secondSegmentGeometry = new THREE.BufferGeometry().setFromPoints(secondSegmentPoints);
+                    const secondSegmentMaterial = new THREE.LineBasicMaterial({ color: 0xFFFACD });
+                    const secondSegment = new THREE.Line(secondSegmentGeometry, secondSegmentMaterial);
+                    scene.add(secondSegment);
+
+                    const secondGlowGeometry = new THREE.BufferGeometry().setFromPoints(secondSegmentPoints);
+                    const secondGlowMaterial = new THREE.LineBasicMaterial({
+                        color: 0xFFFACD,
+                        transparent: true,
+                        opacity: 0.5,
+                        linewidth: 8
+                    });
+                    const secondGlow = new THREE.Line(secondGlowGeometry, secondGlowMaterial);
+                    scene.add(secondGlow);
+
+                    segments.push(secondSegment);
+                    glows.push(secondGlow);
+
+                    activeRays.push({
+                        segments: segments,
+                        glows: glows,
+                        path: path,
+                        progress: 0,
+                        speed: 0.01,
+                        segmentsCount: path.length - 1
+                    });
+                    applicationObjects.push(...segments, ...glows);
+                }
+
+                // Animate performer (gentle sway)
+                let swayAngle = 0;
+                const swayInterval = setInterval(() => {
+                    swayAngle += 0.05;
+                    performer.rotation.z = Math.sin(swayAngle) * 0.1;
+                }, 16);
+                intervals.push(swayInterval);
+
+                const label = createTextLabel("Stage Lighting System", 0, b + 2, 0);
+                applicationObjects.push(label);
+            } catch (error) {
+                console.error("Error in showStageLighting:", error);
+            }
+        }
+
+        // Helper function to create a particle-based shock wave with realistic convergence
+        function createShockWave(start, direction, targetFocus) {
+            const path = calculateReflectionPath(start, direction, 1);
+            if (path.length < 2) return;
+
+            const particleCount = 25; // Increased for denser wave
+            const particles = new THREE.Group();
+            const positions = [];
+            const velocities = [];
+            const opacities = [];
+            const spreads = []; // To simulate spherical wavefront spread
+
+            // Create particles with an initial spread
+            for (let i = 0; i < particleCount; i++) {
+                const particleGeometry = new THREE.SphereGeometry(0.05, 8, 8);
+                const particleMaterial = new THREE.MeshBasicMaterial({
+                    color: 0xE0E0E0, // Light gray for shock waves
+                    transparent: true,
+                    opacity: 0.7
+                });
+                const particle = new THREE.Mesh(particleGeometry, particleMaterial);
+                particle.position.copy(start);
+                particles.add(particle);
+
+                positions.push(particle.position.clone());
+                velocities.push(direction.clone().multiplyScalar(0.05));
+
+                // Add a slight perpendicular offset to simulate spherical wavefront
+                const perpendicular = new THREE.Vector3(-direction.y, direction.x, 0).normalize();
+                const spreadOffset = perpendicular.multiplyScalar((Math.random() - 0.5) * 0.3); // Initial spread
+                spreads.push(spreadOffset);
+                opacities.push(0.7);
+            }
+            scene.add(particles);
+            applicationObjects.push(particles);
+
+            let progress = 0;
+            let currentSegment = 0;
+
+            function animateParticles() {
+                progress += 0.02;
+                if (progress >= 1) {
+                    scene.remove(particles);
+                    // Add ripple effect and convergence aura at the stone
+                    if (progress >= 0.99) {
+                        createRippleEffect(targetFocus.position);
+                        createConvergenceAura(targetFocus.position);
+                    }
+                    return;
+                }
+
+                for (let i = 0; i < particleCount; i++) {
+                    const particle = particles.children[i];
+                    const pos = positions[i];
+                    const vel = velocities[i];
+                    const spread = spreads[i];
+
+                    // Calculate the base position along the path
+                    pos.add(vel);
+
+                    // Check if particle has reached the reflection point
+                    if (currentSegment === 0 && pos.distanceTo(path[1]) < 0.1) {
+                        currentSegment = 1;
+                        vel.copy(new THREE.Vector3().subVectors(targetFocus.position, pos).normalize().multiplyScalar(0.05));
+                        // Reset spread for the second segment
+                        spreads[i] = new THREE.Vector3(0, 0, 0);
+                    }
+
+                    // Apply dynamic spread that narrows as particles approach F2
+                    if (currentSegment === 1) {
+                        const distanceToTarget = pos.distanceTo(targetFocus.position);
+                        const maxSpreadDistance = path[1].distanceTo(targetFocus.position);
+                        const spreadFactor = distanceToTarget / maxSpreadDistance; // 1 at reflection point, 0 at F2
+                        const currentSpread = spread.clone().multiplyScalar(spreadFactor * 0.5); // Reduce spread as we near F2
+                        pos.add(currentSpread);
+
+                        // Slow down particles as they approach F2 to emphasize convergence
+                        const speedFactor = Math.max(0.3, distanceToTarget / maxSpreadDistance); // Slow down to 30% speed near F2
+                        vel.multiplyScalar(speedFactor);
+                    } else {
+                        // Initial segment: apply the initial spread
+                        pos.add(spread.clone().multiplyScalar(1 - progress));
+                    }
+
+                    particle.position.copy(pos);
+                    opacities[i] -= 0.01;
+                    particle.material.opacity = opacities[i];
+
+                    if (opacities[i] <= 0) {
+                        particles.remove(particle);
+                    }
+                }
+
+                requestAnimationFrame(animateParticles);
+            }
+
+            animateParticles();
+        }
+
+        // Helper function to create a dynamic ripple effect at the stone
+        function createRippleEffect(position) {
+            const rippleCount = 3; // Multiple concentric ripples
+            for (let i = 0; i < rippleCount; i++) {
+                setTimeout(() => {
+                    const rippleGeometry = new THREE.RingGeometry(0.1 + i * 0.1, 0.3 + i * 0.1, 32);
+                    const rippleMaterial = new THREE.MeshBasicMaterial({
+                        color: new THREE.Color(0xFFFFFF).lerp(new THREE.Color(0xFFFF00), i / rippleCount), // White to yellow gradient
+                        transparent: true,
+                        opacity: 0.8,
+                        side: THREE.DoubleSide
+                    });
+                    const ripple = new THREE.Mesh(rippleGeometry, rippleMaterial);
+                    ripple.position.copy(position);
+                    ripple.rotation.x = Math.PI / 2;
+                    scene.add(ripple);
+                    applicationObjects.push(ripple);
+
+                    let scale = 0.3 + i * 0.1;
+                    let opacity = 0.8;
+                    function animateRipple() {
+                        scale += 0.05;
+                        opacity -= 0.02;
+                        if (opacity <= 0) {
+                            scene.remove(ripple);
+                            return;
+                        }
+                        ripple.scale.set(scale, scale, 1);
+                        ripple.material.opacity = opacity;
+                        requestAnimationFrame(animateRipple);
+                    }
+                    animateRipple();
+                }, i * 100); // Stagger the ripples
+            }
+        }
+
+        // Helper function to create a convergence aura at the focus
+        function createConvergenceAura(position) {
+            const auraGeometry = new THREE.SphereGeometry(0.3, 16, 16);
+            const auraMaterial = new THREE.MeshBasicMaterial({
+                color: 0xFFFF00, // Yellow glow for energy concentration
+                transparent: true,
+                opacity: 0.8,
+                blending: THREE.AdditiveBlending
+            });
+            const aura = new THREE.Mesh(auraGeometry, auraMaterial);
+            aura.position.copy(position);
+            scene.add(aura);
+            applicationObjects.push(aura);
+
+            let scale = 1;
+            let opacity = 0.8;
+            function animateAura() {
+                scale += 0.05;
+                opacity -= 0.05;
+                if (opacity <= 0) {
+                    scene.remove(aura);
+                    return;
+                }
+                aura.scale.set(scale, scale, scale);
+                aura.material.opacity = opacity;
+                requestAnimationFrame(animateAura);
+            }
+            animateAura();
+        }
+
+        // Helper function to create debris when the stone fragments
+        function createDebris(position, fragmentCount) {
+            const debrisGroup = new THREE.Group();
+            for (let i = 0; i < fragmentCount; i++) {
+                const debrisGeometry = new THREE.SphereGeometry(0.05, 8, 8);
+                const debrisMaterial = new THREE.MeshPhongMaterial({ color: 0xFFFFFF });
+                const debris = new THREE.Mesh(debrisGeometry, debrisMaterial);
+                debris.position.copy(position);
+                debrisGroup.add(debris);
+
+                const direction = new THREE.Vector3(
+                    (Math.random() - 0.5) * 0.5,
+                    (Math.random() - 0.5) * 0.5,
+                    (Math.random() - 0.5) * 0.5
+                ).normalize().multiplyScalar(0.03);
+                debris.userData.velocity = direction;
+            }
+            scene.add(debrisGroup);
+            applicationObjects.push(debrisGroup);
+
+            function animateDebris() {
+                debrisGroup.children.forEach((debris, index) => {
+                    debris.position.add(debris.userData.velocity);
+                    debris.scale.multiplyScalar(0.95);
+                    if (debris.scale.x < 0.01) {
+                        debrisGroup.remove(debris);
+                    }
+                });
+                if (debrisGroup.children.length === 0) {
+                    scene.remove(debrisGroup);
+                    return;
+                }
+                requestAnimationFrame(animateDebris);
+            }
+            animateDebris();
+        }
+
+        // MEDICAL APPLICATION (LITHOTRIPTER)
+        function showMedicalApplication() {
+            try {
+                resetScene();
+                applicationMode = 'medical';
+                document.getElementById('application-display').textContent = "Mode: Medical Lithotripter";
+                maxBounces = 1;
+
+                // Create a detailed medical table with a water layer
+                const tableBaseGeometry = new THREE.BoxGeometry(6, 0.3, 2);
+                const tableBaseMaterial = new THREE.MeshPhongMaterial({ 
+                    color: 0x888888,
+                    roughness: 0.7
+                });
+                const tableBase = new THREE.Mesh(tableBaseGeometry, tableBaseMaterial);
+                tableBase.position.set(0, -b - 0.15, 0);
+                tableBase.receiveShadow = true;
+
+                const tableSurfaceGeometry = new THREE.BoxGeometry(5.8, 0.1, 1.8);
+                const tableSurfaceMaterial = new THREE.MeshPhongMaterial({
+                    color: 0xADD8E6, // Light blue to represent water cushion
+                    transparent: true,
+                    opacity: 0.6,
+                    shininess: 50
+                });
+                const tableSurface = new THREE.Mesh(tableSurfaceGeometry, tableSurfaceMaterial);
+                tableSurface.position.set(0, -b + 0.05, 0);
+                tableSurface.receiveShadow = true;
+
+                [tableBase, tableSurface].forEach(obj => {
+                    scene.add(obj);
+                    applicationObjects.push(obj);
+                });
+
+                // Create a detailed patient model (torso, head, arms, legs)
+                const torsoGeometry = new THREE.CylinderGeometry(0.5, 0.7, 2, 16);
+                const patientMaterial = new THREE.MeshPhongMaterial({
+                    color: 0xFFDDD2, // Skin tone
+                    transparent: true,
+                    opacity: 0.5 // Transparency to show shock waves passing through
+                });
+                const torso = new THREE.Mesh(torsoGeometry, patientMaterial);
+                torso.position.set(0, -b + 1, 0);
+                torso.rotation.z = Math.PI / 2;
+
+                const headGeometry = new THREE.SphereGeometry(0.3, 16, 16);
+                const head = new THREE.Mesh(headGeometry, patientMaterial);
+                head.position.set(-1.2, -b + 1, 0);
+
+                const armGeometry = new THREE.CylinderGeometry(0.15, 0.15, 1.2, 8);
+                const leftArm = new THREE.Mesh(armGeometry, patientMaterial);
+                leftArm.position.set(0, -b + 1, 0.8);
+                leftArm.rotation.x = Math.PI / 6;
+
+                const rightArm = new THREE.Mesh(armGeometry, patientMaterial);
+                rightArm.position.set(0, -b + 1, -0.8);
+                rightArm.rotation.x = -Math.PI / 6;
+
+                const legGeometry = new THREE.CylinderGeometry(0.2, 0.2, 1.5, 8);
+                const leftLeg = new THREE.Mesh(legGeometry, patientMaterial);
+                leftLeg.position.set(1.2, -b + 0.75, 0.3);
+                leftLeg.rotation.x = Math.PI / 4;
+
+                const rightLeg = new THREE.Mesh(legGeometry, patientMaterial);
+                rightLeg.position.set(1.2, -b + 0.75, -0.3);
+                rightLeg.rotation.x = -Math.PI / 4;
+
+                [torso, head, leftArm, rightArm, leftLeg, rightLeg].forEach(obj => {
+                    scene.add(obj);
+                    applicationObjects.push(obj);
+                });
+
+                // Create kidney stone at F2
+                let stoneSize = 0.15;
+                const stoneGeometry = new THREE.SphereGeometry(stoneSize, 16, 16);
+                const stoneMaterial = new THREE.MeshPhongMaterial({ 
+                    color: 0xFFFFFF,
+                    emissive: 0xFFFF00,
+                    emissiveIntensity: 0.5
+                });
+                const stone = new THREE.Mesh(stoneGeometry, stoneMaterial);
+                stone.position.copy(focus2.position);
+                scene.add(stone);
+                applicationObjects.push(stone);
+
+                // Add an ultrasound probe above the patient
+                const probeGeometry = new THREE.CylinderGeometry(0.1, 0.2, 0.5, 16);
+                const probeMaterial = new THREE.MeshPhongMaterial({ color: 0x555555 });
+                const probe = new THREE.Mesh(probeGeometry, probeMaterial);
+                probe.position.set(0, -b + 2, 0);
+                probe.rotation.x = Math.PI / 2;
+                scene.add(probe);
+                applicationObjects.push(probe);
+
+                // Add a dotted line to represent ultrasound imaging
+                const ultrasoundPoints = [
+                    probe.position,
+                    stone.position
+                ];
+                const ultrasoundGeometry = new THREE.BufferGeometry().setFromPoints(ultrasoundPoints);
+                const ultrasoundMaterial = new THREE.LineDashedMaterial({
+                    color: 0x00FF00,
+                    dashSize: 0.1,
+                    gapSize: 0.1
+                });
+                const ultrasoundLine = new THREE.Line(ultrasoundGeometry, ultrasoundMaterial);
+                ultrasoundLine.computeLineDistances();
+                scene.add(ultrasoundLine);
+                applicationObjects.push(ultrasoundLine);
+
+                // Add shock wave emitters
+                const emitterCount = 8;
+                const emitters = [];
+                for (let i = 0; i < emitterCount; i++) {
+                    const angle = (i / emitterCount) * Math.PI * 2;
+                    const radius = a * 1.5;
+                    const x = Math.cos(angle) * radius;
+                    const z = Math.sin(angle) * radius;
+
+                    const emitterGeometry = new THREE.ConeGeometry(0.3, 0.8, 16);
+                    emitterGeometry.rotateX(Math.PI / 2);
+                    const emitterMaterial = new THREE.MeshBasicMaterial({ color: 0xFF0000 });
+                    const emitter = new THREE.Mesh(emitterGeometry, emitterMaterial);
+                    emitter.position.set(x, 0, z);
+                    emitter.lookAt(focus2.position);
+
+                    scene.add(emitter);
+                    applicationObjects.push(emitter);
+                    emitters.push(emitter);
+
+                    // Add a label for the emitter
+                    const emitterLabel = createTextLabel("Shock Wave Source", x, 1, z);
+                    applicationObjects.push(emitterLabel);
+                }
+
+                // Add a label for the stone
+                const stoneLabel = createTextLabel("Kidney Stone at F₂", focus2.position.x, focus2.position.y + 1, focus2.position.z);
+                applicationObjects.push(stoneLabel);
+
+                // Add a counter label for shock waves
+                const counterLabel = createTextLabel("Shock Waves Applied: 0", 0, b + 2, 0);
+                applicationObjects.push(counterLabel);
+                let shockWaveCount = 0;
+
+                // Emit shock waves and simulate fragmentation
+                let emitterIndex = 0;
+                const emitInterval = setInterval(() => {
+                    const emitter = emitters[emitterIndex];
+                    const direction = new THREE.Vector3().subVectors(
+                        focus2.position,
+                        emitter.position
+                    ).normalize();
+
+                    createShockWave(emitter.position, direction, focus2);
+                    shockWaveCount++;
+                    counterLabel.material.map = createTextLabelTexture(`Shock Waves Applied: ${shockWaveCount}`);
+
+                    // Simulate stone fragmentation after 5 shock waves
+                    if (shockWaveCount >= 5 && stoneSize > 0) {
+                        stoneSize -= 0.03; // Reduce stone size
+                        stone.scale.setScalar(stoneSize / 0.15);
+                        createDebris(stone.position, 5); // Create debris particles
+
+                        if (stoneSize <= 0.05) {
+                            scene.remove(stone);
+                            const completeLabel = createTextLabel("Stone Fragmented!", 0, b + 1, 0);
+                            scene.add(completeLabel);
+                            applicationObjects.push(completeLabel);
+                            clearInterval(emitInterval);
+                        }
+                    }
+
+                    emitterIndex = (emitterIndex + 1) % emitters.length;
+                }, 600); // Slower emission for realism
+
+                intervals.push(emitInterval);
+
+                const mainLabel = createTextLabel("Medical Lithotripter", 0, b + 3, 0);
+                applicationObjects.push(mainLabel);
+            } catch (error) {
+                console.error("Error in showMedicalApplication:", error);
+            }
+        }
+
+        // Create simple text label using Sprite
+        function createTextLabel(text, x, y, z) {
+            const canvas = document.createElement('canvas');
+            const context = canvas.getContext('2d');
+            canvas.width = 256;
+            canvas.height = 64;
+            context.font = '20px Arial';
+            context.fillStyle = 'white';
+            context.textAlign = 'center';
+            context.fillText(text, 128, 40);
+            
+            const texture = new THREE.CanvasTexture(canvas);
+            const spriteMaterial = new THREE.SpriteMaterial({ map: texture });
+            const sprite = new THREE.Sprite(spriteMaterial);
+            sprite.position.set(x, y, z);
+            sprite.scale.set(4, 1, 1);
+            scene.add(sprite);
+            
+            return sprite;
+        }
+
+        // Helper function to create texture for text labels (used for updating counter)
+        function createTextLabelTexture(text) {
+            const canvas = document.createElement('canvas');
+            const context = canvas.getContext('2d');
+            canvas.width = 256;
+            canvas.height = 64;
+            context.font = '20px Arial';
+            context.fillStyle = 'white';
+            context.textAlign = 'center';
+            context.fillText(text, 128, 40);
+            return new THREE.CanvasTexture(canvas);
+        }
+
+        // Initialize scene
+        createEllipsoid();
+        createFocusPoints();
+        createGridHelper();
+
+        // Camera controls
+        camera.position.set(0, 10, 10);
+        const controls = new THREE.OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.05;
+        controls.minDistance = 5;
+        controls.maxDistance = 50;
+
+        // Animation loop
+        function animate() {
+            requestAnimationFrame(animate);
+            animateRays();
+            updateFocusLabels();
+            controls.update();
+            renderer.render(scene, camera);
+        }
+        animate();
+
+        // Event listeners
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        document.getElementById('angle-slider').addEventListener('input', function() {
+            currentAngle = parseFloat(this.value);
+            document.getElementById('angle-value').textContent = `${currentAngle}°`;
+        });
+
+        document.getElementById('a-slider').addEventListener('input', function() {
+            a = parseFloat(this.value);
+            document.getElementById('a-value').textContent = a.toFixed(1);
+            updateEllipseParameters();
+        });
+
+        document.getElementById('b-slider').addEventListener('input', function() {
+            b = parseFloat(this.value);
+            document.getElementById('b-value').textContent = b.toFixed(1);
+            updateEllipseParameters();
+        });
+
+        document.getElementById('bounces-slider').addEventListener('input', function() {
+            maxBounces = parseInt(this.value);
+            document.getElementById('bounces-value').textContent = maxBounces;
+        });
+
+        document.getElementById('emit-light').addEventListener('click', function() {
+            createLightRay(currentAngle);
+        });
+
+        document.getElementById('multi-emit').addEventListener('click', function() {
+            for (let i = 0; i < 5; i++) {
+                setTimeout(() => {
+                    createLightRay(Math.random() * 360);
+                }, i * 200);
+            }
+        });
+
+        document.getElementById('fan-emit').addEventListener('click', function() {
+            for (let i = 0; i < 15; i++) {
+                setTimeout(() => {
+                    createLightRay(currentAngle - 15 + (i * 2));
+                }, i * 100);
+            }
+        });
+
+        document.getElementById('clear-all').addEventListener('click', resetScene);
+
+        document.getElementById('show-whispering').addEventListener('click', showWhisperingGallery);
+        document.getElementById('show-telescope').addEventListener('click', showTelescopeMirror);
+        document.getElementById('show-lighting').addEventListener('click', showStageLighting);
+        document.getElementById('show-medical').addEventListener('click', showMedicalApplication);
+        document.getElementById('reset-app').addEventListener('click', resetScene);
+
+        const helpModal = document.getElementById('help-modal');
+        const helpButton = document.getElementById('help-button');
+        const closeModal = document.querySelector('.close-modal');
+
+        helpButton.addEventListener('click', () => {
+            helpModal.style.display = 'flex';
+        });
+
+        closeModal.addEventListener('click', () => {
+            helpModal.style.display = 'none';
+        });
+
+        window.addEventListener('click', (event) => {
+            if (event.target === helpModal) {
+                helpModal.style.display = 'none';
+            }
+        });
+
+        function updateEllipseParameters() {
+            c = Math.sqrt(a*a - b*b);
+            const eccentricity = c / a;
+            document.getElementById('eccentricity').textContent = `Eccentricity: ${eccentricity.toFixed(2)}`;
+            document.getElementById('focal-distance').textContent = `Focal Distance: ${(2*c).toFixed(2)}`;
+            document.getElementById('equation').textContent = `PF₁ + PF₂ = ${(2*a).toFixed(1)} (constant)`;
+            
+            if (applicationMode) {
+                switch(applicationMode) {
+                    case 'whispering': showWhisperingGallery(); break;
+                    case 'telescope': showTelescopeMirror(); break;
+                    case 'lighting': showStageLighting(); break;
+                    case 'medical': showMedicalApplication(); break;
+                }
+            } else {
+                createEllipsoid();
+                createFocusPoints();
+            }
+        }
+
+        function resetScene() {
+            activeRays.forEach(ray => {
+                if (ray.segments) {
+                    ray.segments.forEach(segment => scene.remove(segment));
+                    ray.glows.forEach(glow => scene.remove(glow));
+                }
+                if (ray.sparks) scene.remove(ray.sparks);
+            });
+            activeRays = [];
+            
+            applicationObjects.forEach(obj => scene.remove(obj));
+            applicationObjects = [];
+            
+            intervals.forEach(interval => clearInterval(interval));
+            intervals = [];
+            
+            createEllipsoid();
+            createFocusPoints();
+            createGridHelper();
+            
+            document.getElementById('bounce-display').textContent = `Bounces: 0`;
+            document.getElementById('distance-display').textContent = `Path Length: 0.00`;
+            document.getElementById('application-display').textContent = "Mode: None";
+            applicationMode = null;
+        }
+    </script>
+</body>
+</html>
