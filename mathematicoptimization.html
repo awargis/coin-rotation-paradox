@@ -1,0 +1,898 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MATHEMATICAL OPTIMIZER: A Cinematic Experience</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            font-family: 'Chakra Petch', sans-serif;
+            color: white;
+            background: #000;
+            user-select: none;
+        }
+        #canvas-container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+        }
+        #ui-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 100;
+        }
+        #hud {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(0,0,0,0.7);
+            padding: 20px;
+            border-radius: 10px;
+            border: 1px solid #00ffff;
+            box-shadow: 0 0 20px rgba(0,255,255,0.5);
+            max-width: 300px;
+            pointer-events: auto;
+        }
+        #controls {
+            position: absolute;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 15px;
+            background: rgba(0,0,0,0.7);
+            padding: 15px;
+            border-radius: 10px;
+            border: 1px solid #ff0058;
+            box-shadow: 0 0 15px rgba(255,0,88,0.5);
+            pointer-events: auto;
+        }
+        button, select {
+            background: linear-gradient(145deg, #1a1a1a, #333);
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-family: 'Chakra Petch';
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            box-shadow: 0 0 10px rgba(0,255,255,0.3);
+            transition: all 0.3s;
+            min-width: 120px;
+        }
+        button:hover {
+            background: linear-gradient(145deg, #333, #1a1a1a);
+            box-shadow: 0 0 20px rgba(0,255,255,0.7);
+        }
+        button:active {
+            transform: scale(0.95);
+        }
+        select {
+            appearance: none;
+            background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='white'%3e%3cpath d='M7 10l5 5 5-5z'/%3e%3c/svg%3e");
+            background-repeat: no-repeat;
+            background-position: right 10px center;
+            background-size: 20px;
+            padding-right: 40px;
+        }
+        .slider-container {
+            margin: 15px 0;
+        }
+        .slider-container label {
+            display: block;
+            margin-bottom: 8px;
+            color: #00ffff;
+            font-size: 14px;
+        }
+        input[type="range"] {
+            width: 100%;
+            height: 6px;
+            background: #333;
+            border-radius: 3px;
+            outline: none;
+            appearance: none;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #ff0058;
+            cursor: pointer;
+            box-shadow: 0 0 5px rgba(255,0,88,0.8);
+        }
+        .value-display {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 5px;
+            font-size: 12px;
+        }
+        #optimization-progress {
+            height: 4px;
+            background: linear-gradient(90deg, #ff0058, #00ffff);
+            width: 0%;
+            border-radius: 2px;
+            margin-top: 15px;
+            transition: width 0.5s cubic-bezier(0.65, 0, 0.35, 1);
+        }
+        #narrative {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 70%;
+            text-align: center;
+            font-size: 24px;
+            text-shadow: 0 0 10px #00ffff;
+            opacity: 0;
+            transition: opacity 1s;
+            pointer-events: none;
+        }
+        #data-vis {
+            position: absolute;
+            right: 30px;
+            top: 30px;
+            width: 250px;
+            height: 150px;
+            background: rgba(0,0,0,0.5);
+            border: 1px solid #00ffff;
+            border-radius: 8px;
+            padding: 15px;
+            box-shadow: 0 0 20px rgba(0,255,255,0.3);
+        }
+        #particle-canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 10;
+        }
+        @keyframes pulse {
+            0% { opacity: 0.3; }
+            50% { opacity: 1; }
+            100% { opacity: 0.3; }
+        }
+        .pulse {
+            animation: pulse 2s infinite;
+        }
+        @font-face {
+            font-family: 'Chakra Petch';
+            src: url('https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;700&display=swap');
+        }
+    </style>
+    <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div id="canvas-container">
+        <canvas id="particle-canvas"></canvas>
+        <div id="ui-container">
+            <div id="hud">
+                <h2 style="color: #00ffff; margin-top: 0; text-shadow: 0 0 10px #00ffff;">MATHEMATICAL OPTIMIZER</h2>
+                <div class="slider-container">
+                    <label for="volume-slider">TARGET VOLUME</label>
+                    <input type="range" id="volume-slider" min="500" max="5000" value="1000" step="100">
+                    <div class="value-display">
+                        <span>500</span>
+                        <span id="volume-value">1000</span>
+                        <span>5000</span>
+                    </div>
+                </div>
+                <div class="slider-container">
+                    <label for="material-slider">MATERIAL COST</label>
+                    <input type="range" id="material-slider" min="1" max="20" value="10" step="1">
+                    <div class="value-display">
+                        <span>$1</span>
+                        <span id="material-value">$10</span>
+                        <span>$20</span>
+                    </div>
+                </div>
+                <div style="margin-top: 25px;">
+                    <label style="color: #ff0058;">CURRENT DIMENSIONS</label>
+                    <p id="dimensions" style="font-size: 18px; margin: 5px 0;">L: 10.00, W: 10.00, H: 10.00</p>
+                </div>
+                <div style="margin-top: 15px;">
+                    <label>SURFACE AREA: <span id="surface-area">600.00</span> units²</label>
+                    <div id="optimization-progress"></div>
+                </div>
+                <div style="margin-top: 15px; font-size: 18px;">
+                    <label>TOTAL COST: </label>
+                    <span id="total-cost" style="color: #ff0058;">$6000.00</span>
+                </div>
+            </div>
+            <div id="data-vis">
+                <canvas id="chart"></canvas>
+            </div>
+            <div id="controls">
+                <button id="optimize-btn" class="pulse">⚡ OPTIMIZE</button>
+                <select id="shape-select">
+                    <option value="box">BOX</option>
+                    <option value="cylinder">CYLINDER</option>
+                    <option value="sphere">SPHERE</option>
+                </select>
+                <button id="reset-btn">RESET</button>
+            </div>
+            <div id="narrative">
+                <p>IN A WORLD OF WASTE... ONE ALGORITHM STANDS BETWEEN CHAOS AND PERFECTION</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Libraries -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.7.1/gsap.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.5.1/chart.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+    
+    <script>
+        // ========================
+        // CINEMATIC INTRODUCTION
+        // ========================
+        function playOpeningSequence() {
+            const narrative = document.getElementById('narrative');
+            
+            const lines = [
+                "IN A WORLD OF WASTE...",
+                "WHERE RESOURCES ARE LIMITED...",
+                "ONE ALGORITHM STANDS BETWEEN CHAOS AND PERFECTION",
+                "THE MATHEMATICAL OPTIMIZER"
+            ];
+            
+            let currentLine = 0;
+            
+            function showNextLine() {
+                if (currentLine >= lines.length) {
+                    gsap.to(narrative, { opacity: 0, duration: 1 });
+                    return;
+                }
+                
+                narrative.textContent = lines[currentLine];
+                gsap.fromTo(narrative, 
+                    { opacity: 0, y: 20 },
+                    { opacity: 1, y: 0, duration: 1, onComplete: () => {
+                        setTimeout(() => {
+                            gsap.to(narrative, { opacity: 0, duration: 1, onComplete: showNextLine });
+                        }, 2000);
+                    }}
+                );
+                
+                currentLine++;
+            }
+            
+            // Start the sequence
+            showNextLine();
+            
+            // Play cinematic sound
+            const synth = new Tone.PolySynth(Tone.Synth).toDestination();
+            const now = Tone.now();
+            synth.triggerAttackRelease("C2", "8n", now);
+            synth.triggerAttackRelease("G2", "8n", now + 0.5);
+            synth.triggerAttackRelease("C3", "8n", now + 1);
+        }
+
+        // ========================
+        // MAIN VISUALIZATION CODE
+        // ========================
+        // Initialize Three.js scene with advanced effects
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x000000);
+        scene.fog = new THREE.FogExp2(0x000000, 0.02);
+        
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.set(15, 15, 15);
+        
+        const renderer = new THREE.WebGLRenderer({ 
+            antialias: true,
+            powerPreference: "high-performance"
+        });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        renderer.outputEncoding = THREE.sRGBEncoding;
+        document.getElementById('canvas-container').prepend(renderer.domElement);
+
+        // Add orbit controls with damping
+        const controls = new THREE.OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.05;
+        controls.screenSpacePanning = false;
+        controls.maxPolarAngle = Math.PI * 0.9;
+        controls.minDistance = 5;
+        controls.maxDistance = 50;
+
+        // Advanced lighting setup
+        const ambientLight = new THREE.AmbientLight(0x404040, 0.5);
+        scene.add(ambientLight);
+        
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
+        directionalLight.position.set(5, 10, 7);
+        directionalLight.castShadow = true;
+        directionalLight.shadow.mapSize.width = 2048;
+        directionalLight.shadow.mapSize.height = 2048;
+        directionalLight.shadow.camera.near = 0.5;
+        directionalLight.shadow.camera.far = 50;
+        scene.add(directionalLight);
+        
+        const pointLight = new THREE.PointLight(0xff0058, 2, 20);
+        pointLight.position.set(0, 5, 5);
+        pointLight.castShadow = true;
+        scene.add(pointLight);
+        
+        const fillLight = new THREE.HemisphereLight(0x00ffff, 0xff0058, 0.3);
+        scene.add(fillLight);
+
+        // Grid and axes helpers
+        const gridHelper = new THREE.GridHelper(30, 30, 0x333333, 0x222222);
+        scene.add(gridHelper);
+        
+        const axesHelper = new THREE.AxesHelper(10);
+        scene.add(axesHelper);
+
+        // Particle system for transformations
+        const particleCanvas = document.getElementById('particle-canvas');
+        const particleCtx = particleCanvas.getContext('2d');
+        particleCanvas.width = window.innerWidth;
+        particleCanvas.height = window.innerHeight;
+        
+        let particles = [];
+        
+        function createParticles(x, y, count, color) {
+            for (let i = 0; i < count; i++) {
+                particles.push({
+                    x: x,
+                    y: y,
+                    size: Math.random() * 5 + 2,
+                    speedX: (Math.random() - 0.5) * 10,
+                    speedY: (Math.random() - 0.5) * 10,
+                    color: color,
+                    life: 100,
+                    decay: Math.random() * 3 + 1
+                });
+            }
+        }
+        
+        function updateParticles() {
+            particleCtx.clearRect(0, 0, particleCanvas.width, particleCanvas.height);
+            
+            for (let i = 0; i < particles.length; i++) {
+                const p = particles[i];
+                
+                particleCtx.fillStyle = p.color;
+                particleCtx.globalAlpha = p.life / 100;
+                particleCtx.beginPath();
+                particleCtx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+                particleCtx.fill();
+                
+                p.x += p.speedX;
+                p.y += p.speedY;
+                p.life -= p.decay;
+                
+                if (p.life <= 0) {
+                    particles.splice(i, 1);
+                    i--;
+                }
+            }
+        }
+
+        // Initialize shape variables
+        let currentShape = null;
+        let currentShapeType = 'box';
+        let targetVolume = 1000;
+        let materialCost = 10;
+        let isOptimizing = false;
+
+        // Create a shape with advanced materials
+        function createShape(type, dimensions) {
+            // Remove existing shape if any
+            if (currentShape) {
+                scene.remove(currentShape);
+            }
+            
+            // Create explosion effect
+            if (currentShape) {
+                const pos = currentShape.position.clone().project(camera);
+                const x = (pos.x * 0.5 + 0.5) * window.innerWidth;
+                const y = (-(pos.y * 0.5) + 0.5) * window.innerHeight;
+                createParticles(x, y, 200, `rgba(0, ${Math.random() > 0.5 ? 255 : 200}, 255, 0.8)`);
+            }
+
+            let geometry;
+            switch(type) {
+                case 'box':
+                    geometry = new THREE.BoxGeometry(
+                        dimensions.width, 
+                        dimensions.height, 
+                        dimensions.depth,
+                        10, 10, 10  // More segments for better deformation
+                    );
+                    break;
+                case 'cylinder':
+                    geometry = new THREE.CylinderGeometry(
+                        dimensions.radius,
+                        dimensions.radius,
+                        dimensions.height,
+                        32,  // More segments for smoother curves
+                        1,   // No radial segments
+                        false // Not open ended
+                    );
+                    geometry.rotateX(Math.PI / 2); // Stand it upright
+                    break;
+                case 'sphere':
+                    geometry = new THREE.SphereGeometry(
+                        dimensions.radius,
+                        64,  // High resolution
+                        64
+                    );
+                    break;
+            }
+
+            // Create advanced material with holographic effect
+            const material = new THREE.MeshPhysicalMaterial({
+                color: 0x00aaff,
+                metalness: 0.7,
+                roughness: 0.3,
+                clearcoat: 0.5,
+                clearcoatRoughness: 0.2,
+                transmission: 0.7, // Glass-like effect
+                thickness: 0.5,
+                ior: 1.5,
+                specularIntensity: 1,
+                envMapIntensity: 1,
+                transparent: true,
+                opacity: 0.9,
+                side: THREE.DoubleSide
+            });
+
+            currentShape = new THREE.Mesh(geometry, material);
+            currentShape.castShadow = true;
+            currentShape.receiveShadow = true;
+            
+            // Position above ground
+            currentShape.position.y = type === 'box' ? dimensions.height/2 : 
+                                    type === 'cylinder' ? dimensions.height/2 : 0;
+            
+            // Add wireframe
+            const wireframe = new THREE.LineSegments(
+                new THREE.EdgesGeometry(geometry),
+                new THREE.LineBasicMaterial({ 
+                    color: 0xffffff, 
+                    linewidth: 1,
+                    transparent: true,
+                    opacity: 0.5
+                })
+            );
+            currentShape.add(wireframe);
+            
+            scene.add(currentShape);
+            
+            // Create particle effect for new shape
+            const pos = currentShape.position.clone().project(camera);
+            const x = (pos.x * 0.5 + 0.5) * window.innerWidth;
+            const y = (-(pos.y * 0.5) + 0.5) * window.innerHeight;
+            createParticles(x, y, 300, `rgba(255, ${Math.random() > 0.5 ? 0 : 88}, 136, 0.8)`);
+            
+            return currentShape;
+        }
+
+        // Calculate optimal dimensions with cinematic effects
+        function optimizeDimensions(volume, shapeType) {
+            let dimensions = {};
+            let surfaceArea = 0;
+            let cost = 0;
+
+            switch(shapeType) {
+                case 'box':
+                    // Optimal cube
+                    const side = Math.cbrt(volume);
+                    dimensions = { width: side, height: side, depth: side };
+                    surfaceArea = 6 * side * side;
+                    break;
+
+                case 'cylinder':
+                    // Optimal cylinder (h = 2r)
+                    const radius = Math.cbrt(volume / (2 * Math.PI));
+                    const height = 2 * radius;
+                    dimensions = { radius: radius, height: height };
+                    surfaceArea = 2 * Math.PI * radius * (radius + height);
+                    break;
+
+                case 'sphere':
+                    // Optimal sphere
+                    const radiusSphere = Math.cbrt((3 * volume) / (4 * Math.PI));
+                    dimensions = { radius: radiusSphere };
+                    surfaceArea = 4 * Math.PI * radiusSphere * radiusSphere;
+                    break;
+            }
+            
+            cost = surfaceArea * materialCost;
+            
+            return {
+                dimensions: dimensions,
+                surfaceArea: surfaceArea,
+                cost: cost
+            };
+        }
+
+        // Update UI with cinematic animations
+        function updateUI(dimensions, surfaceArea, cost) {
+            // Animate value changes
+            gsap.to("#volume-value", { 
+                innerText: targetVolume, 
+                duration: 0.5,
+                snap: { innerText: 1 },
+                onUpdate: function() {
+                    document.getElementById('volume-value').textContent = Math.floor(this.targets()[0].innerText);
+                }
+            });
+            
+            gsap.to("#material-value", { 
+                innerText: materialCost, 
+                duration: 0.5,
+                snap: { innerText: 1 }
+            });
+            
+            if (currentShapeType === 'box') {
+                gsap.to("#dimensions", { 
+                    innerText: `L: ${dimensions.width.toFixed(2)}, W: ${dimensions.depth.toFixed(2)}, H: ${dimensions.height.toFixed(2)}`,
+                    duration: 0.7
+                });
+            } else if (currentShapeType === 'cylinder') {
+                gsap.to("#dimensions", { 
+                    innerText: `R: ${dimensions.radius.toFixed(2)}, H: ${dimensions.height.toFixed(2)}`,
+                    duration: 0.7
+                });
+            } else {
+                gsap.to("#dimensions", { 
+                    innerText: `R: ${dimensions.radius.toFixed(2)}`,
+                    duration: 0.7
+                });
+            }
+            
+            gsap.to("#surface-area", { 
+                innerText: surfaceArea.toFixed(2),
+                duration: 0.7
+            });
+            
+            gsap.to("#total-cost", { 
+                innerText: `$${cost.toFixed(2)}`,
+                duration: 0.7,
+                color: cost < 5000 ? "#00ffaa" : "#ff0058",
+                onUpdate: function() {
+                    document.getElementById('total-cost').style.textShadow = `0 0 10px ${this.targets()[0].color}`;
+                }
+            });
+        }
+
+        // Animate the optimization process with cinematic effects
+        function animateOptimization(startDims, optimalDims, shapeType) {
+            if (isOptimizing) return;
+            isOptimizing = true;
+            
+            document.getElementById('optimize-btn').classList.remove('pulse');
+            document.getElementById('optimize-btn').textContent = "OPTIMIZING...";
+            
+            const duration = 3; // seconds
+            const startTime = Date.now();
+            
+            // Create a temporary shape for morphing
+            const tempShape = currentShape.clone();
+            scene.add(tempShape);
+            currentShape.visible = false;
+            
+            // Get start values
+            let startValues;
+            if (shapeType === 'box') {
+                startValues = {
+                    width: startDims.width,
+                    height: startDims.height,
+                    depth: startDims.depth
+                };
+            } else if (shapeType === 'cylinder') {
+                startValues = {
+                    radius: startDims.radius,
+                    height: startDims.height
+                };
+            } else {
+                startValues = {
+                    radius: startDims.radius
+                };
+            }
+            
+            // Play optimization sound
+            const synth = new Tone.PolySynth(Tone.Synth).toDestination();
+            const now = Tone.now();
+            synth.triggerAttackRelease("C3", "2n", now, 0.5);
+            synth.triggerAttackRelease("G3", "2n", now + 0.5, 0.5);
+            synth.triggerAttackRelease("E4", "1n", now + 1, 0.5);
+            
+            // Animation loop
+            function update() {
+                const elapsed = (Date.now() - startTime) / 1000;
+                const progress = Math.min(elapsed / duration, 1);
+                
+                // Update progress bar
+                document.getElementById('optimization-progress').style.width = `${progress * 100}%`;
+                
+                // Interpolate dimensions
+                let currentDims = {};
+                for (const key in startValues) {
+                    currentDims[key] = startValues[key] + 
+                        (optimalDims[key] - startValues[key]) * progress;
+                }
+                
+                // Update temp shape scale
+                if (shapeType === 'box') {
+                    tempShape.scale.set(
+                        currentDims.width / startDims.width,
+                        currentDims.height / startDims.height,
+                        currentDims.depth / startDims.depth
+                    );
+                } else if (shapeType === 'cylinder') {
+                    tempShape.scale.set(
+                        currentDims.radius / startDims.radius,
+                        currentDims.height / startDims.height,
+                        currentDims.radius / startDims.radius
+                    );
+                } else {
+                    tempShape.scale.set(
+                        currentDims.radius / startDims.radius,
+                        currentDims.radius / startDims.radius,
+                        currentDims.radius / startDims.radius
+                    );
+                }
+                
+                // Position above ground
+                tempShape.position.y = shapeType === 'box' ? currentDims.height/2 : 
+                                     shapeType === 'cylinder' ? currentDims.height/2 : 0;
+                
+                // Calculate intermediate values
+                let currentSurfaceArea, currentCost;
+                if (shapeType === 'box') {
+                    currentSurfaceArea = 2 * (
+                        currentDims.width * currentDims.height +
+                        currentDims.width * currentDims.depth +
+                        currentDims.height * currentDims.depth
+                    );
+                } else if (shapeType === 'cylinder') {
+                    currentSurfaceArea = 2 * Math.PI * currentDims.radius * 
+                        (currentDims.radius + currentDims.height);
+                } else {
+                    currentSurfaceArea = 4 * Math.PI * currentDims.radius * currentDims.radius;
+                }
+                currentCost = currentSurfaceArea * materialCost;
+                
+                updateUI(currentDims, currentSurfaceArea, currentCost);
+                
+                // Camera animation
+                if (progress < 0.5) {
+                    // Zoom in during first half
+                    camera.position.lerp(
+                        new THREE.Vector3(
+                            optimalDims.width ? optimalDims.width * 1.5 : optimalDims.radius * 2,
+                            optimalDims.height ? optimalDims.height * 1.5 : optimalDims.radius * 2,
+                            optimalDims.depth ? optimalDims.depth * 1.5 : optimalDims.radius * 2
+                        ),
+                        0.05
+                    );
+                } else {
+                    // Circle around during second half
+                    const angle = progress * Math.PI * 2;
+                    camera.position.x = Math.cos(angle) * 15;
+                    camera.position.z = Math.sin(angle) * 15;
+                    camera.position.y = 10;
+                }
+                
+                // Create particle effects during transition
+                if (Math.random() < 0.3) {
+                    const pos = tempShape.position.clone().project(camera);
+                    const x = (pos.x * 0.5 + 0.5) * window.innerWidth;
+                    const y = (-(pos.y * 0.5) + 0.5) * window.innerHeight;
+                    createParticles(x, y, 5, `rgba(${Math.floor(progress * 255)}, ${Math.floor((1-progress) * 255)}, 255, 0.8)`);
+                }
+                
+                if (progress < 1) {
+                    requestAnimationFrame(update);
+                } else {
+                    // Animation complete
+                    scene.remove(tempShape);
+                    createShape(shapeType, optimalDims);
+                    currentShape.visible = true;
+                    isOptimizing = false;
+                    
+                    // Final celebration effects
+                    const pos = currentShape.position.clone().project(camera);
+                    const x = (pos.x * 0.5 + 0.5) * window.innerWidth;
+                    const y = (-(pos.y * 0.5) + 0.5) * window.innerHeight;
+                    createParticles(x, y, 500, `rgba(0, 255, ${Math.random() > 0.5 ? 200 : 255}, 0.8)`);
+                    
+                    // Play victory sound
+                    synth.triggerAttackRelease("C5", "8n", Tone.now(), 0.3);
+                    synth.triggerAttackRelease("G5", "8n", Tone.now() + 0.1, 0.3);
+                    synth.triggerAttackRelease("C6", "8n", Tone.now() + 0.2, 0.3);
+                    
+                    document.getElementById('optimize-btn').textContent = "OPTIMIZE";
+                    document.getElementById('optimize-btn').classList.add('pulse');
+                    
+                    // Flash the shape gold
+                    currentShape.material.color.setHex(0xffd700);
+                    gsap.to(currentShape.material, {
+                        color: new THREE.Color(0x00aaff),
+                        duration: 2,
+                        ease: "power2.out"
+                    });
+                    
+                    // Calculate final values
+                    const finalResult = optimizeDimensions(targetVolume, shapeType);
+                    updateUI(finalResult.dimensions, finalResult.surfaceArea, finalResult.cost);
+                }
+            }
+            
+            update();
+        }
+
+        // Initialize with a box
+        const initialDimensions = { width: 10, height: 10, depth: 10 };
+        createShape('box', initialDimensions);
+        updateUI(initialDimensions, 600, 6000);
+
+        // Set up chart
+        const chartCtx = document.getElementById('chart').getContext('2d');
+        const chart = new Chart(chartCtx, {
+            type: 'line',
+            data: {
+                labels: ['Box', 'Cylinder', 'Sphere'],
+                datasets: [{
+                    label: 'Surface Area',
+                    data: [600, 0, 0],
+                    borderColor: '#00ffff',
+                    backgroundColor: 'rgba(0, 255, 255, 0.1)',
+                    tension: 0.4,
+                    fill: true
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        grid: {
+                            color: 'rgba(255, 255, 255, 0.1)'
+                        },
+                        ticks: {
+                            color: '#fff'
+                        }
+                    },
+                    x: {
+                        grid: {
+                            color: 'rgba(255, 255, 255, 0.1)'
+                        },
+                        ticks: {
+                            color: '#fff'
+                        }
+                    }
+                }
+            }
+        });
+
+        // Update chart when shape changes
+        function updateChart() {
+            const box = optimizeDimensions(targetVolume, 'box');
+            const cylinder = optimizeDimensions(targetVolume, 'cylinder');
+            const sphere = optimizeDimensions(targetVolume, 'sphere');
+            
+            chart.data.datasets[0].data = [
+                box.surfaceArea,
+                cylinder.surfaceArea,
+                sphere.surfaceArea
+            ];
+            chart.update();
+        }
+
+        // Event listeners
+        document.getElementById('volume-slider').addEventListener('input', function() {
+            targetVolume = parseInt(this.value);
+            document.getElementById('volume-value').textContent = targetVolume;
+            updateChart();
+        });
+
+        document.getElementById('material-slider').addEventListener('input', function() {
+            materialCost = parseInt(this.value);
+            document.getElementById('material-value').textContent = materialCost;
+        });
+
+        document.getElementById('shape-select').addEventListener('change', function() {
+            currentShapeType = this.value;
+            const result = optimizeDimensions(targetVolume, currentShapeType);
+            createShape(currentShapeType, result.dimensions);
+            updateUI(result.dimensions, result.surfaceArea, result.cost);
+            updateChart();
+        });
+
+        document.getElementById('optimize-btn').addEventListener('click', function() {
+            if (isOptimizing) return;
+            
+            const currentDims = currentShapeType === 'box' ? 
+                { width: currentShape.scale.x * 10, height: currentShape.scale.y * 10, depth: currentShape.scale.z * 10 } :
+                currentShapeType === 'cylinder' ? 
+                { radius: currentShape.scale.x * 5, height: currentShape.scale.y * 10 } :
+                { radius: currentShape.scale.x * 5 };
+            
+            const optimal = optimizeDimensions(targetVolume, currentShapeType);
+            animateOptimization(currentDims, optimal.dimensions, currentShapeType);
+            updateChart();
+        });
+
+        document.getElementById('reset-btn').addEventListener('click', function() {
+            if (isOptimizing) return;
+            
+            if (currentShapeType === 'box') {
+                const initialDims = { width: 10, height: 10, depth: 10 };
+                createShape('box', initialDims);
+                updateUI(initialDims, 600, 6000);
+            } else if (currentShapeType === 'cylinder') {
+                const initialDims = { radius: 5, height: 10 };
+                createShape('cylinder', initialDims);
+                const sa = 2 * Math.PI * 5 * (5 + 10);
+                updateUI(initialDims, sa, sa * materialCost);
+            } else {
+                const initialDims = { radius: 5 };
+                createShape('sphere', initialDims);
+                const sa = 4 * Math.PI * 5 * 5;
+                updateUI(initialDims, sa, sa * materialCost);
+            }
+            
+            targetVolume = 1000;
+            document.getElementById('volume-slider').value = 1000;
+            document.getElementById('volume-value').textContent = 1000;
+            updateChart();
+            
+            // Camera reset
+            gsap.to(camera.position, {
+                x: 15,
+                y: 15,
+                z: 15,
+                duration: 1,
+                ease: "power2.inOut",
+                onUpdate: () => camera.lookAt(0, 0, 0)
+            });
+        });
+
+        // Animation loop
+        function animate() {
+            requestAnimationFrame(animate);
+            controls.update();
+            renderer.render(scene, camera);
+            updateParticles();
+        }
+        
+        // Start animations
+        animate();
+        playOpeningSequence();
+        
+        // Handle window resize
+        window.addEventListener('resize', function() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            particleCanvas.width = window.innerWidth;
+            particleCanvas.height = window.innerHeight;
+        });
+    </script>
+</body>
+</html>

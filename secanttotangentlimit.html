@@ -1,0 +1,862 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Realistic Derivative Visualization</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #1a2a6c, #2c3e50);
+            color: #ecf0f1;
+            min-height: 100vh;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            overflow-x: hidden;
+        }
+        
+        header {
+            text-align: center;
+            margin-bottom: 20px;
+            max-width: 800px;
+            padding: 0 20px;
+        }
+        
+        h1 {
+            font-size: 2.8rem;
+            margin-bottom: 10px;
+            background: linear-gradient(to right, #3498db, #2ecc71);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+        
+        .subtitle {
+            font-size: 1.4rem;
+            color: #bdc3c7;
+            margin-bottom: 20px;
+        }
+        
+        .container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            max-width: 1200px;
+            width: 100%;
+            justify-content: center;
+        }
+        
+        .animation-container {
+            flex: 1;
+            min-width: 600px;
+            background: rgba(30, 40, 60, 0.7);
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+            overflow: hidden;
+            position: relative;
+        }
+        
+        .canvas-container {
+            position: relative;
+            width: 100%;
+            height: 500px;
+            background: rgba(25, 35, 55, 0.9);
+            overflow: hidden;
+        }
+        
+        canvas {
+            display: block;
+        }
+        
+        .controls {
+            width: 300px;
+            background: rgba(30, 40, 60, 0.7);
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        
+        .control-group {
+            background: rgba(40, 50, 70, 0.6);
+            border-radius: 10px;
+            padding: 15px;
+            border: 1px solid rgba(100, 120, 150, 0.3);
+        }
+        
+        h2 {
+            color: #3498db;
+            margin-bottom: 15px;
+            font-size: 1.4rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .slider-container {
+            margin-bottom: 15px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #bdc3c7;
+        }
+        
+        input[type="range"] {
+            width: 100%;
+            height: 8px;
+            border-radius: 4px;
+            background: #2c3e50;
+            outline: none;
+            -webkit-appearance: none;
+        }
+        
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #3498db;
+            cursor: pointer;
+            box-shadow: 0 0 5px rgba(0, 0, 0, 0.5);
+        }
+        
+        select, button {
+            width: 100%;
+            padding: 12px;
+            border-radius: 8px;
+            border: none;
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-bottom: 10px;
+            text-align: center;
+        }
+        
+        button {
+            background: #2ecc71;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+        
+        button:hover {
+            transform: translateY(-2px);
+            filter: brightness(1.1);
+        }
+        
+        button:active {
+            transform: translateY(1px);
+        }
+        
+        select {
+            background: #9b59b6;
+        }
+        
+        .button-group {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .button-group button {
+            flex: 1;
+        }
+        
+        .value-display {
+            background: rgba(44, 62, 80, 0.7);
+            padding: 12px;
+            border-radius: 8px;
+            text-align: center;
+            font-family: monospace;
+            font-size: 1.1rem;
+            margin-top: 10px;
+            border: 1px solid rgba(100, 120, 150, 0.3);
+        }
+        
+        .concept-explanation {
+            max-width: 800px;
+            background: rgba(30, 40, 60, 0.7);
+            border-radius: 15px;
+            padding: 25px;
+            margin-top: 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+        }
+        
+        .concept-explanation h3 {
+            color: #3498db;
+            margin-bottom: 15px;
+            font-size: 1.6rem;
+            text-align: center;
+        }
+        
+        .concept-explanation p {
+            margin-bottom: 15px;
+            line-height: 1.6;
+            text-align: justify;
+        }
+        
+        .math-equation {
+            font-family: monospace;
+            background: rgba(44, 62, 80, 0.7);
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+            margin: 20px 0;
+            font-size: 1.2rem;
+            border: 1px solid rgba(100, 120, 150, 0.3);
+        }
+        
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+        
+        .status-active {
+            background-color: #2ecc71;
+            box-shadow: 0 0 8px #2ecc71;
+        }
+        
+        .status-inactive {
+            background-color: #e74c3c;
+        }
+        
+        .annotation {
+            position: absolute;
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-size: 14px;
+            pointer-events: none;
+            z-index: 10;
+            max-width: 200px;
+            text-align: center;
+            backdrop-filter: blur(5px);
+        }
+        
+        @media (max-width: 950px) {
+            .container {
+                flex-direction: column;
+                align-items: center;
+            }
+            
+            .animation-container, .controls {
+                width: 100%;
+                min-width: unset;
+            }
+            
+            h1 {
+                font-size: 2.2rem;
+            }
+            
+            .subtitle {
+                font-size: 1.1rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1><i class="fas fa-calculator"></i> Derivative Visualization</h1>
+        <p class="subtitle">The derivative as the limit of secant slopes when Δx approaches zero</p>
+    </header>
+    
+    <div class="container">
+        <div class="animation-container">
+            <div class="canvas-container">
+                <canvas id="animationCanvas" width="800" height="500"></canvas>
+                <div id="dxAnnotation" class="annotation" style="display: none;"></div>
+                <div id="slopeAnnotation" class="annotation" style="display: none;"></div>
+            </div>
+        </div>
+        
+        <div class="controls">
+            <div class="control-group">
+                <h2><span class="status-indicator status-active"></span> <i class="fas fa-chart-line"></i> Function Selection</h2>
+                <select id="functionSelector">
+                    <option value="quadratic">f(x) = 0.5x²</option>
+                    <option value="sine">f(x) = sin(x)</option>
+                    <option value="sqrt">f(x) = √x</option>
+                    <option value="exponential">f(x) = eˣ</option>
+                    <option value="cubic">f(x) = 0.1x³</option>
+                </select>
+            </div>
+            
+            <div class="control-group">
+                <h2><span class="status-indicator status-active"></span> <i class="fas fa-ruler"></i> Δx Control</h2>
+                <div class="slider-container">
+                    <label for="dxSlider">Δx Value: <span id="dxValue">0.50</span></label>
+                    <input type="range" id="dxSlider" min="0.01" max="1.5" step="0.01" value="0.5">
+                </div>
+                <div class="button-group">
+                    <button id="autoDxBtn" style="background: #3498db;">
+                        <i class="fas fa-sync-alt"></i> Auto Δx Mode
+                    </button>
+                    <button id="resetDxBtn" style="background: #9b59b6;">
+                        <i class="fas fa-undo"></i> Reset Δx
+                    </button>
+                </div>
+            </div>
+            
+            <div class="control-group">
+                <h2><span class="status-indicator status-active"></span> <i class="fas fa-car"></i> Vehicle Controls</h2>
+                <div class="button-group">
+                    <button id="pauseBtn">
+                        <i class="fas fa-pause"></i> Pause
+                    </button>
+                    <button id="resetBtn">
+                        <i class="fas fa-redo"></i> Reset
+                    </button>
+                </div>
+                <div class="slider-container">
+                    <label for="speedSlider">Speed: <span id="speedValue">1.0</span>x</label>
+                    <input type="range" id="speedSlider" min="0.1" max="2" step="0.1" value="1">
+                </div>
+            </div>
+            
+            <div class="control-group">
+                <h2><span class="status-indicator status-active"></span> <i class="fas fa-drafting-compass"></i> Tangent Line Info</h2>
+                <div class="value-display">
+                    <i class="fas fa-arrow-trend-up"></i> Slope: dy/dx = <span id="slopeValue">0.00</span>
+                </div>
+                <div class="value-display">
+                    <i class="fas fa-square-root-variable"></i> Equation: y = <span id="equationValue">0x + 0</span>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="concept-explanation">
+        <h3><i class="fas fa-lightbulb"></i> Understanding the Derivative Concept</h3>
+        <p>The derivative of a function represents the <strong>instantaneous rate of change</strong> at a specific point. It's visually represented by the slope of the tangent line touching the curve at that point.</p>
+        
+        <p>This animation demonstrates how the derivative is mathematically defined as a limit:</p>
+        
+        <div class="math-equation">
+            f'(x) = \lim_{\Delta x \to 0} \frac{f(x + \Delta x) - f(x)}{\Delta x}
+        </div>
+        
+        <p>As Δx approaches zero, the secant line (blue) between points (x, f(x)) and (x+Δx, f(x+Δx)) becomes the tangent line (red). Notice how:</p>
+        <ul style="margin-left: 30px; margin-bottom: 15px;">
+            <li>The secant line rotates and changes slope as Δx decreases</li>
+            <li>The point Q moves closer to point P along the curve</li>
+            <li>When Δx approaches zero, the secant and tangent lines become indistinguishable</li>
+        </ul>
+        <p>The vehicle's speed varies with the slope to emphasize the rate of change - moving faster on steeper slopes.</p>
+    </div>
+
+    <script>
+        // Canvas setup
+        const canvas = document.getElementById('animationCanvas');
+        const ctx = canvas.getContext('2d');
+        const dxAnnotation = document.getElementById('dxAnnotation');
+        const slopeAnnotation = document.getElementById('slopeAnnotation');
+        
+        // Animation parameters
+        let carX = 0;
+        let deltaX = 0.5;
+        let animationSpeed = 1.0;
+        let isPaused = false;
+        let autoDxMode = false;
+        let autoDxDirection = -1; // -1 = decreasing, 1 = increasing
+        let lastTimestamp = 0;
+        
+        // Function definitions
+        const functions = {
+            quadratic: {
+                func: x => 0.5 * x * x,
+                deriv: x => x,
+                xMin: -4,
+                xMax: 4,
+                yMin: -1,
+                yMax: 8,
+                display: "0.5x²"
+            },
+            sine: {
+                func: x => Math.sin(x),
+                deriv: x => Math.cos(x),
+                xMin: -Math.PI,
+                xMax: Math.PI,
+                yMin: -1.5,
+                yMax: 1.5,
+                display: "sin(x)"
+            },
+            sqrt: {
+                func: x => Math.sqrt(Math.abs(x)),
+                deriv: x => 0.5 / Math.sqrt(Math.abs(x)),
+                xMin: 0.1,
+                xMax: 5,
+                yMin: -0.5,
+                yMax: 3,
+                display: "√x"
+            },
+            exponential: {
+                func: x => Math.exp(x),
+                deriv: x => Math.exp(x),
+                xMin: -2,
+                xMax: 2,
+                yMin: -0.5,
+                yMax: 8,
+                display: "eˣ"
+            },
+            cubic: {
+                func: x => 0.1 * Math.pow(x, 3),
+                deriv: x => 0.3 * Math.pow(x, 2),
+                xMin: -3,
+                xMax: 3,
+                yMin: -3,
+                yMax: 3,
+                display: "0.1x³"
+            }
+        };
+        
+        let currentFunction = 'quadratic';
+        
+        // DOM elements
+        const functionSelector = document.getElementById('functionSelector');
+        const dxSlider = document.getElementById('dxSlider');
+        const dxValue = document.getElementById('dxValue');
+        const autoDxBtn = document.getElementById('autoDxBtn');
+        const resetDxBtn = document.getElementById('resetDxBtn');
+        const pauseBtn = document.getElementById('pauseBtn');
+        const resetBtn = document.getElementById('resetBtn');
+        const speedSlider = document.getElementById('speedSlider');
+        const speedValue = document.getElementById('speedValue');
+        const slopeValue = document.getElementById('slopeValue');
+        const equationValue = document.getElementById('equationValue');
+        const statusIndicators = document.querySelectorAll('.status-indicator');
+        
+        // Event listeners
+        functionSelector.addEventListener('change', (e) => {
+            currentFunction = e.target.value;
+            resetAnimation();
+            updateStatusIndicators();
+        });
+        
+        dxSlider.addEventListener('input', (e) => {
+            deltaX = parseFloat(e.target.value);
+            dxValue.textContent = deltaX.toFixed(2);
+            autoDxMode = false;
+            autoDxBtn.innerHTML = '<i class="fas fa-sync-alt"></i> Auto Δx Mode';
+            updateStatusIndicators();
+        });
+        
+        autoDxBtn.addEventListener('click', () => {
+            autoDxMode = !autoDxMode;
+            autoDxBtn.innerHTML = autoDxMode ? 
+                '<i class="fas fa-stop"></i> Stop Auto Δx' : 
+                '<i class="fas fa-sync-alt"></i> Auto Δx Mode';
+            updateStatusIndicators();
+        });
+        
+        resetDxBtn.addEventListener('click', () => {
+            deltaX = 0.5;
+            dxSlider.value = deltaX;
+            dxValue.textContent = deltaX.toFixed(2);
+            autoDxMode = false;
+            autoDxBtn.innerHTML = '<i class="fas fa-sync-alt"></i> Auto Δx Mode';
+            updateStatusIndicators();
+        });
+        
+        pauseBtn.addEventListener('click', () => {
+            isPaused = !isPaused;
+            pauseBtn.innerHTML = isPaused ? 
+                '<i class="fas fa-play"></i> Resume' : 
+                '<i class="fas fa-pause"></i> Pause';
+            updateStatusIndicators();
+        });
+        
+        resetBtn.addEventListener('click', () => {
+            resetAnimation();
+            updateStatusIndicators();
+        });
+        
+        speedSlider.addEventListener('input', (e) => {
+            animationSpeed = parseFloat(e.target.value);
+            speedValue.textContent = animationSpeed.toFixed(1);
+        });
+        
+        // Update status indicators
+        function updateStatusIndicators() {
+            statusIndicators.forEach(indicator => {
+                if (isPaused) {
+                    indicator.classList.remove('status-active');
+                    indicator.classList.add('status-inactive');
+                } else {
+                    indicator.classList.remove('status-inactive');
+                    indicator.classList.add('status-active');
+                }
+            });
+        }
+        
+        // Reset animation state
+        function resetAnimation() {
+            const func = functions[currentFunction];
+            carX = func.xMin + 0.5; // Start slightly inside the domain
+            isPaused = false;
+            pauseBtn.innerHTML = '<i class="fas fa-pause"></i> Pause';
+            autoDxMode = false;
+            autoDxBtn.innerHTML = '<i class="fas fa-sync-alt"></i> Auto Δx Mode';
+            updateStatusIndicators();
+        }
+        
+        // Convert math coordinates to canvas pixels
+        function mathToPixel(x, y) {
+            const func = functions[currentFunction];
+            const pixelX = ((x - func.xMin) / (func.xMax - func.xMin)) * canvas.width;
+            const pixelY = canvas.height - ((y - func.yMin) / (func.yMax - func.yMin)) * canvas.height;
+            return { x: pixelX, y: pixelY };
+        }
+        
+        // Draw the coordinate grid
+        function drawGrid() {
+            const func = functions[currentFunction];
+            ctx.strokeStyle = 'rgba(100, 100, 100, 0.3)';
+            ctx.lineWidth = 1;
+            
+            // Vertical grid lines
+            for (let x = Math.ceil(func.xMin); x <= Math.floor(func.xMax); x++) {
+                if (x === 0) continue; // Skip x=0 to avoid double line
+                const pixel = mathToPixel(x, 0);
+                ctx.beginPath();
+                ctx.moveTo(pixel.x, 0);
+                ctx.lineTo(pixel.x, canvas.height);
+                ctx.stroke();
+                
+                // X-axis labels
+                ctx.fillStyle = 'rgba(200, 200, 200, 0.7)';
+                ctx.font = '12px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText(x.toString(), pixel.x, canvas.height - 10);
+            }
+            
+            // Horizontal grid lines
+            for (let y = Math.ceil(func.yMin); y <= Math.floor(func.yMax); y++) {
+                if (y === 0) continue; // Skip y=0
+                const pixel = mathToPixel(0, y);
+                ctx.beginPath();
+                ctx.moveTo(0, pixel.y);
+                ctx.lineTo(canvas.width, pixel.y);
+                ctx.stroke();
+                
+                // Y-axis labels
+                ctx.fillStyle = 'rgba(200, 200, 200, 0.7)';
+                ctx.font = '12px Arial';
+                ctx.textAlign = 'right';
+                ctx.fillText(y.toString(), 30, pixel.y + 4);
+            }
+            
+            // Draw axes
+            ctx.strokeStyle = 'rgba(200, 200, 200, 0.8)';
+            ctx.lineWidth = 2;
+            
+            // X-axis
+            const xAxisY = mathToPixel(0, 0).y;
+            ctx.beginPath();
+            ctx.moveTo(0, xAxisY);
+            ctx.lineTo(canvas.width, xAxisY);
+            ctx.stroke();
+            
+            // Y-axis
+            const yAxisX = mathToPixel(0, 0).x;
+            ctx.beginPath();
+            ctx.moveTo(yAxisX, 0);
+            ctx.lineTo(yAxisX, canvas.height);
+            ctx.stroke();
+            
+            // Origin label
+            ctx.fillStyle = 'rgba(200, 200, 200, 0.7)';
+            ctx.font = '14px Arial';
+            ctx.textAlign = 'right';
+            ctx.fillText('0', yAxisX - 5, xAxisY + 15);
+        }
+        
+        // Draw the function curve
+        function drawCurve() {
+            const func = functions[currentFunction];
+            ctx.beginPath();
+            ctx.lineWidth = 3;
+            ctx.strokeStyle = '#4A90E2';
+            
+            const step = (func.xMax - func.xMin) / 500;
+            let firstPoint = true;
+            
+            for (let x = func.xMin; x <= func.xMax; x += step) {
+                const mathY = func.func(x);
+                
+                if (isFinite(mathY)) {
+                    const pixel = mathToPixel(x, mathY);
+                    
+                    if (firstPoint) {
+                        ctx.moveTo(pixel.x, pixel.y);
+                        firstPoint = false;
+                    } else {
+                        ctx.lineTo(pixel.x, pixel.y);
+                    }
+                }
+            }
+            
+            ctx.stroke();
+        }
+        
+        // Draw the car at current position
+        function drawCar() {
+            const func = functions[currentFunction];
+            const mathY = func.func(carX);
+            const carPixel = mathToPixel(carX, mathY);
+            
+            // Calculate rotation angle from derivative
+            const slope = func.deriv(carX);
+            const angle = Math.atan(-slope * (func.yMax - func.yMin) / (func.xMax - func.xMin) * canvas.height / canvas.width);
+            
+            ctx.save();
+            ctx.translate(carPixel.x, carPixel.y);
+            ctx.rotate(angle);
+            
+            // Car body
+            ctx.fillStyle = '#2ecc71';
+            ctx.beginPath();
+            ctx.moveTo(0, 0);
+            ctx.lineTo(-15, -8);
+            ctx.lineTo(15, -8);
+            ctx.closePath();
+            ctx.fill();
+            
+            // Car details
+            ctx.fillStyle = '#e74c3c';
+            ctx.beginPath();
+            ctx.arc(-8, -8, 3, 0, Math.PI * 2);
+            ctx.fill();
+            
+            ctx.beginPath();
+            ctx.arc(8, -8, 3, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Car top
+            ctx.fillStyle = '#3498db';
+            ctx.fillRect(-8, -15, 16, 7);
+            
+            ctx.restore();
+            
+            // Label car position
+            ctx.fillStyle = '#2ecc71';
+            ctx.font = '14px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText('P', carPixel.x, carPixel.y - 25);
+        }
+        
+        // Draw tangent line at car position
+        function drawTangent() {
+            const func = functions[currentFunction];
+            const mathY = func.func(carX);
+            const slope = func.deriv(carX);
+            
+            // Calculate car pixel position
+            const carPixel = mathToPixel(carX, mathY);
+            
+            // Update slope and equation displays
+            const slopeText = slope.toFixed(2);
+            slopeValue.textContent = slopeText;
+            
+            const intercept = mathY - slope * carX;
+            const interceptText = intercept.toFixed(2);
+            equationValue.textContent = `${slopeText}x ${intercept >= 0 ? '+' : ''}${interceptText}`;
+            
+            // Calculate tangent line endpoints
+            const startX = carX - 1.5;
+            const startY = func.func(carX) + slope * (startX - carX);
+            const endX = carX + 1.5;
+            const endY = func.func(carX) + slope * (endX - carX);
+            
+            const startPixel = mathToPixel(startX, startY);
+            const endPixel = mathToPixel(endX, endY);
+            
+            // Draw tangent line
+            ctx.beginPath();
+            ctx.moveTo(startPixel.x, startPixel.y);
+            ctx.lineTo(endPixel.x, endPixel.y);
+            ctx.strokeStyle = '#E74C3C';
+            ctx.lineWidth = 3;
+            ctx.stroke();
+            
+            // Draw slope triangle
+            const triangleSize = 40;
+            const run = triangleSize;
+            const rise = slope * run * (func.yMax - func.yMin) / (func.xMax - func.xMin) * canvas.height / canvas.width;
+            
+            ctx.strokeStyle = 'rgba(231, 76, 60, 0.7)';
+            ctx.lineWidth = 2;
+            
+            // Horizontal leg
+            ctx.beginPath();
+            ctx.moveTo(carPixel.x, carPixel.y);
+            ctx.lineTo(carPixel.x + run, carPixel.y);
+            ctx.stroke();
+            
+            // Vertical leg
+            ctx.beginPath();
+            ctx.moveTo(carPixel.x + run, carPixel.y);
+            ctx.lineTo(carPixel.x + run, carPixel.y + rise);
+            ctx.stroke();
+            
+            // Hypotenuse
+            ctx.beginPath();
+            ctx.moveTo(carPixel.x, carPixel.y);
+            ctx.lineTo(carPixel.x + run, carPixel.y + rise);
+            ctx.stroke();
+            
+            // Slope annotation
+            const slopePos = mathToPixel(carX + 0.8, mathY + slope * 0.8);
+            slopeAnnotation.style.display = 'block';
+            slopeAnnotation.style.left = (slopePos.x + 20) + 'px';
+            slopeAnnotation.style.top = (slopePos.y - 20) + 'px';
+            slopeAnnotation.innerHTML = `Slope: ${slopeText}<br>dy/dx = f'(x)`;
+        }
+        
+        // Draw secant line
+        function drawSecant() {
+            const func = functions[currentFunction];
+            const mathY1 = func.func(carX);
+            const mathY2 = func.func(carX + deltaX);
+            
+            const pixel1 = mathToPixel(carX, mathY1);
+            const pixel2 = mathToPixel(carX + deltaX, mathY2);
+            
+            // Draw secant line
+            ctx.beginPath();
+            ctx.moveTo(pixel1.x, pixel1.y);
+            ctx.lineTo(pixel2.x, pixel2.y);
+            ctx.strokeStyle = '#9B59B6';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+            
+            // Draw Δx marker
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.7)';
+            ctx.setLineDash([5, 3]);
+            ctx.beginPath();
+            ctx.moveTo(pixel1.x, pixel1.y);
+            ctx.lineTo(pixel2.x, pixel1.y);
+            ctx.stroke();
+            ctx.setLineDash([]);
+            
+            // Draw Δy marker
+            ctx.beginPath();
+            ctx.moveTo(pixel2.x, pixel1.y);
+            ctx.lineTo(pixel2.x, pixel2.y);
+            ctx.stroke();
+            
+            // Δx label
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+            ctx.font = '14px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText('Δx', (pixel1.x + pixel2.x)/2, pixel1.y + 20);
+            
+            // Δy label
+            ctx.textAlign = 'left';
+            ctx.fillText('Δy', pixel2.x + 5, (pixel1.y + pixel2.y)/2);
+            
+            // Point labels
+            ctx.fillStyle = '#9B59B6';
+            ctx.textAlign = 'center';
+            ctx.fillText('Q', pixel2.x, pixel2.y - 25);
+            
+            // Δx annotation
+            dxAnnotation.style.display = 'block';
+            dxAnnotation.style.left = ((pixel1.x + pixel2.x)/2) + 'px';
+            dxAnnotation.style.top = (pixel1.y + 30) + 'px';
+            dxAnnotation.innerHTML = `Δx = ${deltaX.toFixed(2)}`;
+        }
+        
+        // Draw function info
+        function drawInfo() {
+            const func = functions[currentFunction];
+            
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+            ctx.font = '18px Arial';
+            ctx.textAlign = 'left';
+            ctx.fillText(`f(x) = ${func.display}`, 20, 30);
+            
+            ctx.font = '16px monospace';
+            ctx.fillText(`Position: (${carX.toFixed(2)}, ${func.func(carX).toFixed(2)})`, 20, 60);
+            
+            ctx.textAlign = 'right';
+            ctx.fillText('Tangent Line', canvas.width - 20, 30);
+            ctx.fillText('Secant Line', canvas.width - 20, 60);
+            
+            // Legend markers
+            ctx.fillStyle = '#E74C3C';
+            ctx.fillRect(canvas.width - 100, 20, 20, 5);
+            ctx.fillStyle = '#9B59B6';
+            ctx.fillRect(canvas.width - 100, 50, 20, 5);
+        }
+        
+        // Animation loop
+        function animate(timestamp) {
+            if (!lastTimestamp) lastTimestamp = timestamp;
+            const deltaTime = (timestamp - lastTimestamp) / 1000;
+            lastTimestamp = timestamp;
+            
+            // Clear canvas
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // Update values if not paused
+            if (!isPaused) {
+                // Move car - speed varies with slope magnitude
+                const func = functions[currentFunction];
+                const slopeFactor = Math.min(2.0, 1 + 0.5 * Math.abs(func.deriv(carX)));
+                carX += 0.3 * animationSpeed * slopeFactor * deltaTime;
+                
+                // Reset car if it goes beyond the right edge
+                if (carX > func.xMax) {
+                    carX = func.xMin;
+                }
+                
+                // Handle auto Δx mode
+                if (autoDxMode) {
+                    deltaX += autoDxDirection * 0.3 * deltaTime;
+                    
+                    if (deltaX <= 0.01) {
+                        autoDxDirection = 1;
+                    } else if (deltaX >= 1.5) {
+                        autoDxDirection = -1;
+                    }
+                    
+                    dxSlider.value = deltaX;
+                    dxValue.textContent = deltaX.toFixed(2);
+                }
+            }
+            
+            // Draw all elements
+            drawGrid();
+            drawCurve();
+            drawSecant();
+            drawTangent();
+            drawCar();
+            drawInfo();
+            
+            requestAnimationFrame(animate);
+        }
+        
+        // Initialize animation
+        resetAnimation();
+        animate();
+    </script>
+</body>
+</html>
