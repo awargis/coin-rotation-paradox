@@ -15,8 +15,7 @@
         body {
             background: linear-gradient(135deg, #0c1a3a, #1a3d6d, #0a1c32);
             color: #fff;
-            overflow: hidden;
-            height: 100vh;
+            min-height: 100vh; /* Changed from height: 100vh and removed overflow: hidden */
         }
         
         .container {
@@ -58,7 +57,8 @@
             flex: 1;
             padding: 20px;
             gap: 20px;
-            height: calc(100% - 160px);
+            /* Removed fixed height to let flexbox manage it */
+            overflow: hidden; /* Added to contain children within the flex layout */
         }
         
         .visualization {
@@ -80,6 +80,7 @@
             box-shadow: 0 0 20px rgba(0, 100, 255, 0.3);
             display: flex;
             flex-direction: column;
+            overflow-y: auto; /* ⭐ FIX: Allows this panel to scroll if content is too tall */
         }
         
         .panel-title {
@@ -744,6 +745,9 @@
                 if (isAnimating) return;
                 isAnimating = true;
                 lastTime = null;
+                if (!startTime) {
+                    startTime = performance.now() - (distance / (walkingSpeed / 60) * 1000);
+                }
                 animationId = requestAnimationFrame(updatePosition);
                 statusDisplay.textContent = "Animation running...";
                 startBtn.textContent = "Resume";
@@ -786,7 +790,7 @@
             function createParticles() {
                 // Create floating particles in light cone
                 setInterval(() => {
-                    if (!isAnimating) return;
+                    if (!isAnimating && Math.random() > 0.1) return; // Reduce particles when paused
                     
                     const particle = document.createElement('div');
                     particle.className = 'particle';
@@ -812,10 +816,12 @@
             
             function createDistanceMarkers() {
                 // Create distance markers on the ground
-                for (let i = 0; i <= 20; i++) {
+                const vizWidth = document.querySelector('.visualization').offsetWidth;
+                const numMarkers = Math.floor((vizWidth - lampX) / (10 * scale * 5))
+                for (let i = 0; i <= numMarkers * 5; i+=5) {
                     const marker = document.createElement('div');
                     marker.className = 'marker';
-                    marker.style.left = `${lampX + i * 50}px`;
+                    marker.style.left = `${lampX + i * 10 * scale}px`;
                     marker.textContent = `${i * 10}m`;
                     distanceMarkers.appendChild(marker);
                 }
@@ -838,7 +844,12 @@
             
             // Initialize
             resetAnimation();
-            window.addEventListener('resize', updateDashedLine);
+            window.addEventListener('resize', () => {
+                updateDashedLine();
+                // Optionally re-create markers on resize
+                distanceMarkers.innerHTML = '';
+                createDistanceMarkers();
+            });
         });
     </script>
 </body>
