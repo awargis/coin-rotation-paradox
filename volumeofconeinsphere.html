@@ -1,0 +1,774 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cinematic Math: Cylinder in Cone Optimization</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.7.1/dist/gsap.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/katex@0.15.1/dist/katex.min.js"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.15.1/dist/katex.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Exo+2:wght@300;400;600&display=swap" rel="stylesheet">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      background: linear-gradient(135deg, #0c0e1d, #1a1d3a);
+      color: #e0f7ff;
+      font-family: 'Exo 2', sans-serif;
+      overflow: hidden;
+      height: 100vh;
+      perspective: 1000px;
+    }
+
+    .container {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      height: 100vh;
+      position: relative;
+      overflow: hidden;
+    }
+
+    #scene-container {
+      position: relative;
+      overflow: hidden;
+      background: radial-gradient(circle at center, #0a0e2a 0%, #050716 70%);
+    }
+
+    #scene {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+    }
+
+    #ui-panel {
+      padding: 30px;
+      display: flex;
+      flex-direction: column;
+      background: rgba(10, 12, 35, 0.7);
+      backdrop-filter: blur(10px);
+      border-left: 1px solid rgba(0, 195, 255, 0.2);
+      box-shadow: -5px 0 30px rgba(0, 100, 255, 0.2);
+      position: relative;
+      overflow-y: auto;
+    }
+
+    .title-container {
+      text-align: center;
+      margin-bottom: 30px;
+      position: relative;
+    }
+
+    .title {
+      font-family: 'Orbitron', sans-serif;
+      font-size: 2.8rem;
+      font-weight: 900;
+      text-transform: uppercase;
+      letter-spacing: 3px;
+      background: linear-gradient(to right, #00e5ff, #00ff95);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      text-shadow: 0 0 20px rgba(0, 255, 242, 0.5);
+      margin-bottom: 10px;
+      position: relative;
+      z-index: 2;
+    }
+
+    .subtitle {
+      font-size: 1.2rem;
+      color: #8ae6ff;
+      max-width: 600px;
+      margin: 0 auto;
+      line-height: 1.6;
+    }
+
+    .math-section {
+      background: rgba(5, 10, 30, 0.6);
+      border-radius: 15px;
+      padding: 25px;
+      margin-bottom: 30px;
+      border: 1px solid rgba(0, 195, 255, 0.3);
+      box-shadow: 0 0 30px rgba(0, 100, 255, 0.2);
+    }
+
+    .section-title {
+      font-family: 'Orbitron', sans-serif;
+      color: #00e5ff;
+      font-size: 1.5rem;
+      margin-bottom: 20px;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      display: flex;
+      align-items: center;
+    }
+
+    .section-title svg {
+      margin-right: 10px;
+    }
+
+    .math-content {
+      font-size: 1.1rem;
+      line-height: 1.8;
+      color: #c0f0ff;
+    }
+
+    .katex-equation {
+      background: rgba(0, 20, 40, 0.6);
+      padding: 15px;
+      border-radius: 10px;
+      margin: 15px 0;
+      border-left: 3px solid #00e5ff;
+      overflow-x: auto;
+    }
+
+    .controls {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .slider-container {
+      background: rgba(5, 15, 35, 0.7);
+      padding: 20px;
+      border-radius: 12px;
+      border: 1px solid rgba(0, 195, 255, 0.3);
+    }
+
+    .slider-label {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 10px;
+      color: #00e5ff;
+      font-weight: 600;
+    }
+
+    .slider-value {
+      font-family: 'Orbitron', sans-serif;
+      color: #00ff95;
+    }
+
+    input[type="range"] {
+      width: 100%;
+      height: 10px;
+      -webkit-appearance: none;
+      background: linear-gradient(to right, #005a7a, #00c3ff);
+      border-radius: 5px;
+      outline: none;
+      box-shadow: 0 0 10px rgba(0, 195, 255, 0.3);
+    }
+
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 25px;
+      height: 25px;
+      border-radius: 50%;
+      background: #00e5ff;
+      cursor: pointer;
+      box-shadow: 0 0 15px rgba(0, 229, 255, 0.8);
+      border: 2px solid white;
+    }
+
+    .data-display {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 15px;
+      margin-top: 20px;
+    }
+
+    .data-box {
+      background: rgba(5, 15, 35, 0.7);
+      padding: 15px;
+      border-radius: 10px;
+      text-align: center;
+      border: 1px solid rgba(0, 195, 255, 0.3);
+    }
+
+    .data-label {
+      color: #8ae6ff;
+      font-size: 0.9rem;
+      margin-bottom: 5px;
+    }
+
+    .data-value {
+      font-family: 'Orbitron', sans-serif;
+      font-size: 1.5rem;
+      color: #00ff95;
+      text-shadow: 0 0 10px rgba(0, 255, 149, 0.5);
+    }
+
+    .highlight {
+      color: #ff00d4;
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0% { text-shadow: 0 0 5px rgba(255, 0, 212, 0.5); }
+      50% { text-shadow: 0 0 20px rgba(255, 0, 212, 0.8); }
+      100% { text-shadow: 0 0 5px rgba(255, 0, 212, 0.5); }
+    }
+
+    .optimal-marker {
+      position: absolute;
+      top: 50%;
+      left: 0;
+      transform: translateY(-50%);
+      background: rgba(255, 0, 212, 0.2);
+      width: 4px;
+      height: 80px;
+      border-radius: 2px;
+      box-shadow: 0 0 15px rgba(255, 0, 212, 0.7);
+    }
+
+    .graph-container {
+      background: rgba(5, 10, 30, 0.6);
+      border-radius: 15px;
+      padding: 25px;
+      margin-top: 20px;
+      border: 1px solid rgba(0, 195, 255, 0.3);
+      position: relative;
+      height: 300px;
+    }
+
+    canvas {
+      width: 100%;
+      height: 100%;
+    }
+
+    .vignette {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      box-shadow: inset 0 0 200px rgba(0, 0, 0, 0.9);
+      pointer-events: none;
+      z-index: 10;
+    }
+
+    .particles {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 1;
+    }
+
+    .glow {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      top: 0;
+      left: 0;
+      background: radial-gradient(circle at center, rgba(0, 229, 255, 0.1) 0%, transparent 70%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .scene-label {
+      position: absolute;
+      color: white;
+      font-family: 'Orbitron', sans-serif;
+      text-shadow: 0 0 10px rgba(0, 229, 255, 0.8);
+      z-index: 5;
+      font-size: 1.2rem;
+    }
+
+    .scene-label.cone-label {
+      top: 20%;
+      left: 15%;
+    }
+
+    .scene-label.cylinder-label {
+      top: 45%;
+      left: 60%;
+    }
+
+    .max-indicator {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      color: #ff00d4;
+      font-family: 'Orbitron', sans-serif;
+      font-size: 1.8rem;
+      text-transform: uppercase;
+      text-align: center;
+      opacity: 0;
+      text-shadow: 0 0 20px rgba(255, 0, 212, 0.8);
+      z-index: 20;
+    }
+
+    .max-indicator .sub {
+      font-size: 1.2rem;
+      margin-top: 10px;
+    }
+
+    @media (max-width: 1100px) {
+      .container {
+        grid-template-columns: 1fr;
+        grid-template-rows: 50vh auto;
+      }
+      #ui-panel {
+        border-left: none;
+        border-top: 1px solid rgba(0, 195, 255, 0.2);
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div id="scene-container">
+      <canvas id="scene"></canvas>
+      <div class="scene-label cone-label">CONE<br>R = 3.0</div>
+      <div class="scene-label cylinder-label">CYLINDER</div>
+      <div class="max-indicator">
+        MAXIMUM AREA!
+        <div class="sub">Diameter = Cone Radius</div>
+      </div>
+      <div class="vignette"></div>
+      <div class="glow"></div>
+      <div class="particles" id="particles"></div>
+    </div>
+    
+    <div id="ui-panel">
+      <div class="title-container">
+        <div class="title">OPTIMIZATION REVEALED</div>
+        <div class="subtitle">A cylinder inscribed in a cone has maximum curved surface area when its diameter equals the cone's base radius</div>
+      </div>
+      
+      <div class="math-section">
+        <div class="section-title">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#00e5ff" stroke-width="2">
+            <path d="M5 12h14"></path>
+            <path d="M12 5l7 7-7 7"></path>
+          </svg>
+          MATHEMATICAL INSIGHT
+        </div>
+        <div class="math-content">
+          <p>Consider a cone with height <b>H</b> and base radius <b>R</b>. A cylinder is inscribed with height <b>h</b> and radius <b>r</b>.</p>
+          
+          <div class="katex-equation">
+            \text{Using similar triangles: } \frac{r}{R} = \frac{H - h}{H} \implies r = R \left(1 - \frac{h}{H}\right)
+          </div>
+          
+          <p>The curved surface area (CSA) of the cylinder is:</p>
+          
+          <div class="katex-equation">
+            \text{CSA} = 2\pi r h = 2\pi R \left(1 - \frac{h}{H}\right) h
+          </div>
+          
+          <p>To maximize the CSA, we take the derivative with respect to h and set it to zero:</p>
+          
+          <div class="katex-equation">
+            \frac{d}{dh} \left[ 2\pi R \left(h - \frac{h^2}{H}\right) \right] = 2\pi R \left(1 - \frac{2h}{H}\right) = 0
+          </div>
+          
+          <p>Solving gives the optimal height:</p>
+          
+          <div class="katex-equation">
+            h = \frac{H}{2} \implies r = R \left(1 - \frac{1}{2}\right) = \frac{R}{2}
+          </div>
+          
+          <p>Thus, the cylinder diameter is <b>2r = R</b>, which equals the cone's base radius.</p>
+        </div>
+      </div>
+      
+      <div class="controls">
+        <div class="slider-container">
+          <div class="slider-label">
+            <span>Cylinder Height: <span class="slider-value" id="height-value">1.00</span></span>
+            <span>Optimal: <span class="highlight">3.00</span></span>
+          </div>
+          <input type="range" id="height-slider" min="0.1" max="5.9" step="0.01" value="1.0">
+          
+          <div class="slider-label" style="margin-top: 20px;">
+            <span>Cylinder Radius: <span class="slider-value" id="radius-value">2.00</span></span>
+            <span>Optimal: <span class="highlight">1.50</span></span>
+          </div>
+          <input type="range" id="radius-slider" min="0.1" max="2.9" step="0.01" value="2.0">
+        </div>
+        
+        <div class="data-display">
+          <div class="data-box">
+            <div class="data-label">CURVED SURFACE AREA</div>
+            <div class="data-value" id="csa-value">37.70</div>
+          </div>
+          <div class="data-box">
+            <div class="data-label">MAXIMUM AREA</div>
+            <div class="data-value">56.55</div>
+          </div>
+          <div class="data-box">
+            <div class="data-label">CYLINDER DIAMETER</div>
+            <div class="data-value" id="diameter-value">4.00</div>
+          </div>
+          <div class="data-box">
+            <div class="data-label">CONE RADIUS</div>
+            <div class="data-value">3.00</div>
+          </div>
+        </div>
+      </div>
+      
+      <div class="graph-container">
+        <div class="section-title">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#00e5ff" stroke-width="2">
+            <path d="M3 3v18h18"></path>
+            <path d="M19 9l-5 5-4-4-3 3"></path>
+          </svg>
+          CURVED SURFACE AREA FUNCTION
+        </div>
+        <canvas id="graph"></canvas>
+        <div class="optimal-marker"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Constants
+    const CONE_HEIGHT = 6;
+    const CONE_RADIUS = 3;
+    const OPTIMAL_HEIGHT = CONE_HEIGHT / 2;
+    const OPTIMAL_RADIUS = CONE_RADIUS / 2;
+    const MAX_CSA = 2 * Math.PI * OPTIMAL_RADIUS * OPTIMAL_HEIGHT;
+
+    // Three.js setup
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x050716);
+    scene.fog = new THREE.Fog(0x050716, 15, 30);
+
+    const camera = new THREE.PerspectiveCamera(50, window.innerWidth / (window.innerHeight/2), 0.1, 1000);
+    camera.position.set(0, 3, 10);
+
+    const renderer = new THREE.WebGLRenderer({ 
+      canvas: document.getElementById('scene'),
+      antialias: true,
+      alpha: true
+    });
+    renderer.setSize(document.getElementById('scene-container').offsetWidth, 
+                    document.getElementById('scene-container').offsetHeight);
+    renderer.setPixelRatio(window.devicePixelRatio);
+
+    // Lighting
+    const ambientLight = new THREE.AmbientLight(0x222255, 0.5);
+    scene.add(ambientLight);
+
+    const directionalLight = new THREE.DirectionalLight(0x00aaff, 1);
+    directionalLight.position.set(5, 10, 7);
+    scene.add(directionalLight);
+
+    const pointLight = new THREE.PointLight(0x00ffff, 2, 30);
+    pointLight.position.set(0, 10, 5);
+    scene.add(pointLight);
+
+    // Create cone
+    const coneGeometry = new THREE.ConeGeometry(CONE_RADIUS, CONE_HEIGHT, 64, 1, true);
+    const coneMaterial = new THREE.MeshPhongMaterial({
+      color: 0x0066ff,
+      transparent: true,
+      opacity: 0.3,
+      shininess: 100,
+      specular: 0x00ffff,
+      wireframe: false
+    });
+    const cone = new THREE.Mesh(coneGeometry, coneMaterial);
+    cone.position.y = CONE_HEIGHT / 2;
+    scene.add(cone);
+
+    // Create cylinder
+    let cylinderRadius = 2.0;
+    let cylinderHeight = 1.0;
+    const cylinderGeometry = new THREE.CylinderGeometry(cylinderRadius, cylinderRadius, cylinderHeight, 64);
+    const cylinderMaterial = new THREE.MeshPhongMaterial({
+      color: 0xff00cc,
+      shininess: 100,
+      specular: 0xff88ff,
+      emissive: 0x330022
+    });
+    const cylinder = new THREE.Mesh(cylinderGeometry, cylinderMaterial);
+    cylinder.position.y = cylinderHeight / 2;
+    scene.add(cylinder);
+
+    // Add coordinate axes
+    const axesHelper = new THREE.AxesHelper(5);
+    scene.add(axesHelper);
+
+    // Add grid
+    const gridHelper = new THREE.GridHelper(20, 20, 0x0088ff, 0x004477);
+    gridHelper.position.y = 0;
+    scene.add(gridHelper);
+
+    // Particle system for effects
+    function createParticles() {
+      const particles = [];
+      const container = document.getElementById('particles');
+      
+      for (let i = 0; i < 100; i++) {
+        const particle = document.createElement('div');
+        particle.style.position = 'absolute';
+        particle.style.width = `${Math.random() * 3 + 1}px`;
+        particle.style.height = particle.style.width;
+        particle.style.backgroundColor = i % 3 === 0 ? '#00e5ff' : (i % 3 === 1 ? '#ff00d4' : '#00ff95');
+        particle.style.borderRadius = '50%';
+        particle.style.opacity = Math.random() * 0.5 + 0.1;
+        particle.style.left = `${Math.random() * 100}%`;
+        particle.style.top = `${Math.random() * 100}%`;
+        container.appendChild(particle);
+        particles.push({
+          element: particle,
+          x: Math.random() * 100,
+          y: Math.random() * 100,
+          speed: Math.random() * 0.5 + 0.1
+        });
+      }
+      
+      return particles;
+    }
+
+    const particles = createParticles();
+
+    // Function to calculate cylinder radius based on height
+    function calculateRadius(height) {
+      return CONE_RADIUS * (1 - height / CONE_HEIGHT);
+    }
+
+    // Function to calculate curved surface area
+    function calculateCSA(radius, height) {
+      return 2 * Math.PI * radius * height;
+    }
+
+    // Update cylinder dimensions
+    function updateCylinder(height, radius) {
+      cylinder.geometry.dispose();
+      cylinder.geometry = new THREE.CylinderGeometry(radius, radius, height, 64);
+      cylinder.position.y = height / 2;
+      
+      // Update UI values
+      document.getElementById('height-value').textContent = height.toFixed(2);
+      document.getElementById('radius-value').textContent = radius.toFixed(2);
+      document.getElementById('diameter-value').textContent = (radius * 2).toFixed(2);
+      document.getElementById('csa-value').textContent = calculateCSA(radius, height).toFixed(2);
+      
+      // Check if we're at optimal point
+      const isOptimal = Math.abs(radius - OPTIMAL_RADIUS) < 0.05;
+      const maxIndicator = document.querySelector('.max-indicator');
+      
+      if (isOptimal) {
+        cylinderMaterial.emissive = new THREE.Color(0x660044);
+        cylinderMaterial.color = new THREE.Color(0xff00cc);
+        maxIndicator.style.opacity = 1;
+        
+        // Emit particles
+        gsap.fromTo(maxIndicator, 
+          { scale: 0.5, opacity: 0 },
+          { scale: 1, opacity: 1, duration: 0.5, ease: "power2.out" }
+        );
+      } else {
+        cylinderMaterial.emissive = new THREE.Color(0x330022);
+        maxIndicator.style.opacity = 0;
+      }
+      
+      // Update graph
+      updateGraph(height);
+    }
+
+    // Graph setup
+    const graphCanvas = document.getElementById('graph');
+    const graphCtx = graphCanvas.getContext('2d');
+    graphCanvas.width = graphCanvas.offsetWidth;
+    graphCanvas.height = graphCanvas.offsetHeight;
+
+    // Draw graph
+    function drawGraph() {
+      graphCtx.clearRect(0, 0, graphCanvas.width, graphCanvas.height);
+      
+      // Draw grid
+      graphCtx.strokeStyle = 'rgba(0, 195, 255, 0.2)';
+      graphCtx.lineWidth = 1;
+      
+      // Vertical lines
+      for (let x = 0; x <= graphCanvas.width; x += graphCanvas.width / 10) {
+        graphCtx.beginPath();
+        graphCtx.moveTo(x, 0);
+        graphCtx.lineTo(x, graphCanvas.height);
+        graphCtx.stroke();
+      }
+      
+      // Horizontal lines
+      for (let y = 0; y <= graphCanvas.height; y += graphCanvas.height / 5) {
+        graphCtx.beginPath();
+        graphCtx.moveTo(0, y);
+        graphCtx.lineTo(graphCanvas.width, y);
+        graphCtx.stroke();
+      }
+      
+      // Draw curve
+      graphCtx.beginPath();
+      graphCtx.strokeStyle = '#00e5ff';
+      graphCtx.lineWidth = 3;
+      
+      for (let h = 0.1; h < CONE_HEIGHT; h += 0.1) {
+        const r = calculateRadius(h);
+        const csa = calculateCSA(r, h);
+        const x = (h / CONE_HEIGHT) * graphCanvas.width;
+        const y = graphCanvas.height - (csa / MAX_CSA) * graphCanvas.height * 0.9;
+        
+        if (h === 0.1) {
+          graphCtx.moveTo(x, y);
+        } else {
+          graphCtx.lineTo(x, y);
+        }
+      }
+      
+      graphCtx.stroke();
+      
+      // Draw axis labels
+      graphCtx.fillStyle = '#8ae6ff';
+      graphCtx.font = '12px "Exo 2", sans-serif';
+      graphCtx.textAlign = 'center';
+      graphCtx.fillText('Height (h)', graphCanvas.width / 2, graphCanvas.height - 10);
+      
+      graphCtx.save();
+      graphCtx.translate(10, graphCanvas.height / 2);
+      graphCtx.rotate(-Math.PI / 2);
+      graphCtx.fillText('Curved Surface Area', 0, 0);
+      graphCtx.restore();
+    }
+
+    // Update graph with current point
+    function updateGraph(height) {
+      drawGraph();
+      
+      const r = calculateRadius(height);
+      const csa = calculateCSA(r, height);
+      const x = (height / CONE_HEIGHT) * graphCanvas.width;
+      const y = graphCanvas.height - (csa / MAX_CSA) * graphCanvas.height * 0.9;
+      
+      // Draw current point
+      graphCtx.beginPath();
+      graphCtx.arc(x, y, 8, 0, Math.PI * 2);
+      graphCtx.fillStyle = Math.abs(r - OPTIMAL_RADIUS) < 0.05 ? '#ff00d4' : '#00ff95';
+      graphCtx.fill();
+      
+      graphCtx.beginPath();
+      graphCtx.arc(x, y, 5, 0, Math.PI * 2);
+      graphCtx.fillStyle = 'white';
+      graphCtx.fill();
+    }
+
+    // Initialize sliders
+    const heightSlider = document.getElementById('height-slider');
+    const radiusSlider = document.getElementById('radius-slider');
+    
+    // Set initial values
+    updateCylinder(cylinderHeight, cylinderRadius);
+    drawGraph();
+    
+    // Slider event listeners
+    heightSlider.addEventListener('input', function() {
+      const height = parseFloat(this.value);
+      const radius = calculateRadius(height);
+      radiusSlider.value = radius;
+      updateCylinder(height, radius);
+    });
+    
+    radiusSlider.addEventListener('input', function() {
+      const radius = parseFloat(this.value);
+      // Solve for height from radius
+      const height = CONE_HEIGHT * (1 - radius / CONE_RADIUS);
+      heightSlider.value = height;
+      updateCylinder(height, radius);
+    });
+
+    // Animation loop
+    function animateParticles() {
+      particles.forEach(p => {
+        p.y += p.speed;
+        if (p.y > 100) p.y = -10;
+        p.element.style.top = `${p.y}%`;
+      });
+      
+      requestAnimationFrame(animateParticles);
+    }
+    
+    animateParticles();
+
+    // Camera animation
+    let time = 0;
+    function animateCamera() {
+      time += 0.005;
+      camera.position.x = Math.sin(time) * 5;
+      camera.position.z = 10 + Math.cos(time) * 2;
+      camera.lookAt(0, CONE_HEIGHT/3, 0);
+      requestAnimationFrame(animateCamera);
+    }
+    
+    animateCamera();
+
+    // Render loop
+    function animate() {
+      renderer.render(scene, camera);
+      requestAnimationFrame(animate);
+    }
+    
+    animate();
+
+    // Handle window resize
+    window.addEventListener('resize', function() {
+      camera.aspect = document.getElementById('scene-container').offsetWidth / 
+                       document.getElementById('scene-container').offsetHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(document.getElementById('scene-container').offsetWidth, 
+                      document.getElementById('scene-container').offsetHeight);
+      
+      graphCanvas.width = graphCanvas.offsetWidth;
+      graphCanvas.height = graphCanvas.offsetHeight;
+      drawGraph();
+      updateGraph(parseFloat(heightSlider.value));
+    });
+
+    // Auto-demo mode
+    let demoMode = true;
+    let demoDirection = 1;
+    
+    function autoDemo() {
+      if (!demoMode) return;
+      
+      let currentHeight = parseFloat(heightSlider.value);
+      currentHeight += 0.02 * demoDirection;
+      
+      if (currentHeight > 5.9) demoDirection = -1;
+      if (currentHeight < 0.1) demoDirection = 1;
+      
+      heightSlider.value = currentHeight;
+      const radius = calculateRadius(currentHeight);
+      radiusSlider.value = radius;
+      updateCylinder(currentHeight, radius);
+      
+      setTimeout(autoDemo, 50);
+    }
+    
+    autoDemo();
+    
+    // Toggle demo mode when interacting with sliders
+    [heightSlider, radiusSlider].forEach(slider => {
+      slider.addEventListener('mousedown', () => demoMode = false);
+      slider.addEventListener('touchstart', () => demoMode = false);
+    });
+
+    // Initialize KaTeX rendering
+    document.querySelectorAll('.katex-equation').forEach(el => {
+      katex.render(el.textContent, el, {
+        throwOnError: false,
+        displayMode: true
+      });
+    });
+  </script>
+</body>
+</html>
