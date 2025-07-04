@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Advanced Differential Visualization with Ultra Zoom</title>
+    <title>Advanced Differential Visualization with Full Screen</title>
     <script src="https://d3js.org/d3.v7.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
@@ -84,6 +84,21 @@
             box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
             position: relative;
             overflow: hidden;
+            transition: all 0.3s ease;
+        }
+        
+        .graph-container.fullscreen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: 10000;
+            border-radius: 0;
+            padding: 20px;
+            margin: 0;
+            max-width: none;
+            max-height: none;
         }
         
         .controls {
@@ -287,7 +302,7 @@
         .zoom-controls {
             position: absolute;
             top: 20px;
-            right: 20px;
+            right: 80px;
             background: rgba(0, 0, 0, 0.6);
             border-radius: 8px;
             padding: 10px;
@@ -400,6 +415,30 @@
             border: 1px solid #4ecdc4;
         }
         
+        .fullscreen-btn {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: #ff7e5f;
+            color: white;
+            border: none;
+            font-size: 1.2rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+            z-index: 10;
+        }
+        
+        .fullscreen-btn:hover {
+            background: #feb47b;
+            transform: scale(1.1);
+        }
+        
         @media (max-width: 1100px) {
             .content {
                 flex-direction: column;
@@ -425,6 +464,15 @@
             
             .zoom-hint {
                 display: none;
+            }
+            
+            .zoom-controls {
+                top: 70px;
+                right: 20px;
+            }
+            
+            .fullscreen-btn {
+                top: 70px;
             }
         }
     </style>
@@ -472,8 +520,11 @@
         </div>
         
         <div class="content">
-            <div class="graph-container">
+            <div class="graph-container" id="graph-container">
                 <h2><i class="fas fa-project-diagram"></i> Interactive Visualization</h2>
+                <button class="fullscreen-btn" id="fullscreen-btn" title="Toggle Full Screen">
+                    <i class="fas fa-expand"></i>
+                </button>
                 <div class="graph" id="d3-graph">
                     <div class="zoom-controls">
                         <button class="zoom-btn" id="zoom-out"><i class="fas fa-search-minus"></i></button>
@@ -482,7 +533,7 @@
                     </div>
                     <div class="function-info" id="function-info">f(x) = x²</div>
                     <div class="zoom-hint">
-                        <i class="fas fa-lightbulb"></i> Scroll to zoom • Drag to pan
+                        <i class="fas fa-lightbulb"></i> Scroll to zoom • Drag to pan • Press F for full screen
                     </div>
                     <div class="pan-controls">
                         <div></div>
@@ -927,6 +978,43 @@
             updateVisualization(true);
         }
         
+        // Fullscreen toggle function
+        function toggleFullscreen() {
+            const container = document.getElementById('graph-container');
+            const button = document.getElementById('fullscreen-btn');
+            
+            if (!container.classList.contains('fullscreen')) {
+                // Enter fullscreen
+                container.classList.add('fullscreen');
+                button.innerHTML = '<i class="fas fa-compress"></i>';
+                button.title = 'Exit Full Screen';
+                
+                // Adjust SVG dimensions to fit full screen
+                const newWidth = window.innerWidth - 40;
+                const newHeight = window.innerHeight - 40;
+                
+                d3.select("#d3-graph svg")
+                    .attr("width", newWidth)
+                    .attr("height", newHeight - 60); // Account for header
+                
+                // Update the graph to fit the new dimensions
+                updateVisualization(true);
+            } else {
+                // Exit fullscreen
+                container.classList.remove('fullscreen');
+                button.innerHTML = '<i class="fas fa-expand"></i>';
+                button.title = 'Enter Full Screen';
+                
+                // Restore original SVG dimensions
+                d3.select("#d3-graph svg")
+                    .attr("width", width + margin.left + margin.right)
+                    .attr("height", height + margin.top + margin.bottom);
+                
+                // Update the graph
+                updateVisualization(true);
+            }
+        }
+        
         // Set up event listeners
         document.getElementById("x-position").addEventListener("input", function() {
             x0 = parseFloat(this.value);
@@ -982,7 +1070,10 @@
         document.getElementById("pan-right").addEventListener("click", () => pan(-1, 0));
         document.getElementById("center-view").addEventListener("click", resetView);
         
-        // Keyboard support for zoom and pan
+        // Fullscreen button
+        document.getElementById("fullscreen-btn").addEventListener("click", toggleFullscreen);
+        
+        // Keyboard support for zoom, pan, and fullscreen
         document.addEventListener("keydown", function(event) {
             if (event.key === "+" || event.key === "=") {
                 document.getElementById("zoom-in").click();
@@ -998,6 +1089,8 @@
                 pan(-1, 0);
             } else if (event.key === "0") {
                 resetView();
+            } else if (event.key === "f" || event.key === "F") {
+                toggleFullscreen();
             }
         });
         
