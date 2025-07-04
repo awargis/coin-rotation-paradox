@@ -1,0 +1,991 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Differentiability Visualizer: The Road of Mathematical Smoothness</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.8.0/math.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #1a2a6c, #2c3e50);
+            color: #fff;
+            min-height: 100vh;
+            overflow-x: hidden;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        
+        header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 20px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 20px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        }
+        
+        h1 {
+            font-size: 2.8rem;
+            margin-bottom: 10px;
+            background: linear-gradient(to right, #ff8a00, #da1b60);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+        
+        .subtitle {
+            font-size: 1.4rem;
+            color: #a0d2eb;
+            margin-bottom: 20px;
+        }
+        
+        .content {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 25px;
+        }
+        
+        .visualization-panel {
+            flex: 1;
+            min-width: 700px;
+            background: rgba(0, 10, 30, 0.7);
+            border-radius: 20px;
+            padding: 25px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(100, 150, 255, 0.2);
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .controls-panel {
+            width: 350px;
+            background: rgba(0, 15, 40, 0.8);
+            border-radius: 20px;
+            padding: 25px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(100, 180, 255, 0.2);
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
+        }
+        
+        .canvas-container {
+            position: relative;
+            width: 100%;
+            height: 500px;
+            background: rgba(0, 5, 20, 0.9);
+            border-radius: 15px;
+            overflow: hidden;
+            border: 1px solid rgba(80, 130, 255, 0.3);
+        }
+        
+        #graphCanvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+        
+        .zoom-window {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            width: 200px;
+            height: 200px;
+            background: rgba(0, 0, 0, 0.7);
+            border-radius: 10px;
+            border: 2px solid #ff8a00;
+            overflow: hidden;
+            z-index: 10;
+        }
+        
+        #zoomCanvas {
+            width: 100%;
+            height: 100%;
+        }
+        
+        .car-container {
+            position: absolute;
+            transform: translate(-50%, -50%);
+            z-index: 20;
+            transition: left 0.1s linear, top 0.1s linear;
+        }
+        
+        .car {
+            width: 60px;
+            height: 30px;
+            background: linear-gradient(45deg, #ff3366, #ff8a00);
+            border-radius: 10px 10px 5px 5px;
+            position: relative;
+            box-shadow: 0 5px 15px rgba(255, 50, 100, 0.4);
+            transform: rotate(0deg);
+        }
+        
+        .car::before {
+            content: '';
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            background: #1a2a6c;
+            border-radius: 50%;
+            top: 25px;
+            left: 10px;
+            box-shadow: 0 0 10px rgba(100, 200, 255, 0.7);
+        }
+        
+        .car::after {
+            content: '';
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            background: #1a2a6c;
+            border-radius: 50%;
+            top: 25px;
+            right: 10px;
+            box-shadow: 0 0 10px rgba(100, 200, 255, 0.7);
+        }
+        
+        .car-top {
+            position: absolute;
+            width: 30px;
+            height: 15px;
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 5px 15px 5px 5px;
+            top: -15px;
+            left: 15px;
+        }
+        
+        .hud {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.6);
+            border-radius: 10px;
+            padding: 15px;
+            border: 1px solid rgba(100, 200, 255, 0.3);
+            font-family: 'Courier New', monospace;
+            z-index: 10;
+        }
+        
+        .hud-item {
+            margin: 5px 0;
+            display: flex;
+        }
+        
+        .hud-label {
+            color: #a0d2eb;
+            width: 130px;
+        }
+        
+        .hud-value {
+            color: #ffcc00;
+        }
+        
+        .section-title {
+            font-size: 1.4rem;
+            color: #ff8a00;
+            margin: 20px 0 15px;
+            padding-bottom: 8px;
+            border-bottom: 2px solid rgba(255, 138, 0, 0.3);
+        }
+        
+        .stage-controls {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+            margin-bottom: 25px;
+        }
+        
+        .stage-btn {
+            padding: 14px;
+            background: linear-gradient(135deg, #1a2a6c, #4a00e0);
+            border: none;
+            border-radius: 10px;
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+        }
+        
+        .stage-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
+            background: linear-gradient(135deg, #2a3a8c, #5a20e0);
+        }
+        
+        .stage-btn.active {
+            background: linear-gradient(135deg, #ff8a00, #da1b60);
+            box-shadow: 0 0 15px rgba(255, 138, 0, 0.5);
+        }
+        
+        .stage-btn i {
+            margin-right: 8px;
+            font-size: 1.2rem;
+        }
+        
+        .math-display {
+            background: rgba(0, 0, 0, 0.4);
+            border-radius: 10px;
+            padding: 15px;
+            margin: 15px 0;
+            font-family: 'Courier New', monospace;
+            border-left: 3px solid #ff8a00;
+        }
+        
+        .math-equation {
+            font-size: 1.4rem;
+            color: #ffcc00;
+            text-align: center;
+            margin: 10px 0;
+        }
+        
+        .explanation {
+            background: rgba(20, 40, 80, 0.5);
+            border-radius: 10px;
+            padding: 20px;
+            margin: 20px 0;
+            line-height: 1.6;
+            border: 1px solid rgba(100, 150, 255, 0.2);
+        }
+        
+        .concept-title {
+            color: #ff8a00;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+        }
+        
+        .concept-title i {
+            margin-right: 10px;
+            font-size: 1.3rem;
+        }
+        
+        .property-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+            margin: 15px 0;
+        }
+        
+        .property-card {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 10px;
+            padding: 15px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .property-card.diff {
+            border-top: 4px solid #4CAF50;
+        }
+        
+        .property-card.non-diff {
+            border-top: 4px solid #F44336;
+        }
+        
+        .property-title {
+            font-weight: bold;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+        }
+        
+        .property-title i {
+            margin-right: 8px;
+        }
+        
+        .slider-container {
+            margin: 20px 0;
+        }
+        
+        .slider-label {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+        }
+        
+        input[type="range"] {
+            width: 100%;
+            height: 8px;
+            border-radius: 5px;
+            background: rgba(100, 150, 255, 0.2);
+            outline: none;
+            -webkit-appearance: none;
+        }
+        
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #ff8a00;
+            cursor: pointer;
+            box-shadow: 0 0 10px rgba(255, 138, 0, 0.7);
+        }
+        
+        .controls-row {
+            display: flex;
+            gap: 15px;
+            margin: 20px 0;
+        }
+        
+        .control-btn {
+            flex: 1;
+            padding: 12px;
+            background: rgba(100, 150, 255, 0.2);
+            border: 1px solid rgba(100, 150, 255, 0.4);
+            border-radius: 8px;
+            color: white;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-align: center;
+        }
+        
+        .control-btn:hover {
+            background: rgba(100, 150, 255, 0.4);
+            transform: translateY(-2px);
+        }
+        
+        .control-btn i {
+            margin-right: 8px;
+        }
+        
+        footer {
+            text-align: center;
+            margin-top: 30px;
+            padding: 20px;
+            color: #a0d2eb;
+            font-size: 0.9rem;
+        }
+        
+        @media (max-width: 1100px) {
+            .content {
+                flex-direction: column;
+            }
+            
+            .visualization-panel, .controls-panel {
+                min-width: 100%;
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1><i class="fas fa-road"></i> Differentiability Visualizer</h1>
+            <p class="subtitle">Experience the mathematical concepts of smoothness, corners, and discontinuities</p>
+        </header>
+        
+        <div class="content">
+            <div class="visualization-panel">
+                <h2><i class="fas fa-chart-line"></i> Function Visualization</h2>
+                <div class="canvas-container">
+                    <canvas id="graphCanvas"></canvas>
+                    <div class="car-container" id="carContainer">
+                        <div class="car">
+                            <div class="car-top"></div>
+                        </div>
+                    </div>
+                    <div class="hud">
+                        <div class="hud-item">
+                            <span class="hud-label">Position x:</span>
+                            <span class="hud-value" id="positionX">0.00</span>
+                        </div>
+                        <div class="hud-item">
+                            <span class="hud-label">Position y:</span>
+                            <span class="hud-value" id="positionY">0.00</span>
+                        </div>
+                        <div class="hud-item">
+                            <span class="hud-label">Derivative:</span>
+                            <span class="hud-value" id="derivativeValue">0.00</span>
+                        </div>
+                        <div class="hud-item">
+                            <span class="hud-label">Status:</span>
+                            <span class="hud-value" id="statusValue">Smooth</span>
+                        </div>
+                    </div>
+                    <div class="zoom-window">
+                        <canvas id="zoomCanvas"></canvas>
+                    </div>
+                </div>
+                
+                <div class="math-display">
+                    <div class="math-equation" id="functionDisplay">f(x) = x²</div>
+                    <div class="math-equation" id="derivativeDisplay">f'(x) = 2x</div>
+                </div>
+                
+                <div class="explanation">
+                    <div class="concept-title">
+                        <i class="fas fa-lightbulb"></i> Current Concept: <span id="conceptTitle">Smooth Function</span>
+                    </div>
+                    <p id="conceptExplanation">A smooth function has no sharp turns or breaks. At every point, we can draw a unique tangent line. As we zoom in, the function appears more and more linear. This is the essence of differentiability.</p>
+                </div>
+            </div>
+            
+            <div class="controls-panel">
+                <h2><i class="fas fa-sliders-h"></i> Controls</h2>
+                
+                <div class="section-title"><i class="fas fa-road"></i> Function Stages</div>
+                <div class="stage-controls">
+                    <button class="stage-btn active" data-stage="smooth">
+                        <i class="fas fa-hill-ridge"></i> Smooth Curve
+                    </button>
+                    <button class="stage-btn" data-stage="corner">
+                        <i class="fas fa-crop-alt"></i> Corner
+                    </button>
+                    <button class="stage-btn" data-stage="jump">
+                        <i class="fas fa-gap"></i> Jump Discontinuity
+                    </button>
+                    <button class="stage-btn" data-stage="vertical">
+                        <i class="fas fa-mountain"></i> Vertical Tangent
+                    </button>
+                </div>
+                
+                <div class="section-title"><i class="fas fa-cogs"></i> Parameters</div>
+                <div class="slider-container">
+                    <div class="slider-label">
+                        <span>Car Position: <span id="positionValue">0.0</span></span>
+                    </div>
+                    <input type="range" id="positionSlider" min="-5" max="5" step="0.01" value="0">
+                </div>
+                
+                <div class="slider-container">
+                    <div class="slider-label">
+                        <span>Zoom Level: <span id="zoomValue">1x</span></span>
+                    </div>
+                    <input type="range" id="zoomSlider" min="1" max="50" step="1" value="1">
+                </div>
+                
+                <div class="controls-row">
+                    <button class="control-btn" id="playBtn">
+                        <i class="fas fa-play"></i> Play
+                    </button>
+                    <button class="control-btn" id="pauseBtn">
+                        <i class="fas fa-pause"></i> Pause
+                    </button>
+                    <button class="control-btn" id="resetBtn">
+                        <i class="fas fa-redo"></i> Reset
+                    </button>
+                </div>
+                
+                <div class="section-title"><i class="fas fa-brain"></i> Differentiability Properties</div>
+                <div class="property-grid">
+                    <div class="property-card diff">
+                        <div class="property-title"><i class="fas fa-check-circle"></i> Differentiable</div>
+                        <ul>
+                            <li>Smooth curve</li>
+                            <li>No sharp corners</li>
+                            <li>Continuous</li>
+                            <li>Defined derivative</li>
+                        </ul>
+                    </div>
+                    <div class="property-card non-diff">
+                        <div class="property-title"><i class="fas fa-times-circle"></i> Non-Differentiable</div>
+                        <ul>
+                            <li>Sharp corners</li>
+                            <li>Discontinuities</li>
+                            <li>Vertical tangents</li>
+                            <li>Oscillations</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <footer>
+            <p>Differentiability Visualizer | Mathematical Concept Visualization | Created with HTML5 Canvas</p>
+        </footer>
+    </div>
+
+    <script>
+        // Canvas setup
+        const graphCanvas = document.getElementById('graphCanvas');
+        const zoomCanvas = document.getElementById('zoomCanvas');
+        const ctx = graphCanvas.getContext('2d');
+        const zoomCtx = zoomCanvas.getContext('2d');
+        
+        // Car element
+        const carContainer = document.getElementById('carContainer');
+        
+        // Controls
+        const positionSlider = document.getElementById('positionSlider');
+        const zoomSlider = document.getElementById('zoomSlider');
+        const playBtn = document.getElementById('playBtn');
+        const pauseBtn = document.getElementById('pauseBtn');
+        const resetBtn = document.getElementById('resetBtn');
+        const stageButtons = document.querySelectorAll('.stage-btn');
+        
+        // Display elements
+        const positionX = document.getElementById('positionX');
+        const positionY = document.getElementById('positionY');
+        const derivativeValue = document.getElementById('derivativeValue');
+        const statusValue = document.getElementById('statusValue');
+        const functionDisplay = document.getElementById('functionDisplay');
+        const derivativeDisplay = document.getElementById('derivativeDisplay');
+        const conceptTitle = document.getElementById('conceptTitle');
+        const conceptExplanation = document.getElementById('conceptExplanation');
+        const positionValue = document.getElementById('positionValue');
+        const zoomValue = document.getElementById('zoomValue');
+        
+        // Canvas dimensions
+        let width, height;
+        let zoomWidth = 200, zoomHeight = 200;
+        
+        // Graph parameters
+        let xMin = -5, xMax = 5;
+        let yMin = -2, yMax = 8;
+        let zoomLevel = 1;
+        let carPosition = 0;
+        let isPlaying = false;
+        let currentStage = 'smooth';
+        let animationId = null;
+        
+        // Initialize canvas
+        function initCanvas() {
+            width = graphCanvas.parentElement.clientWidth;
+            height = graphCanvas.parentElement.clientHeight;
+            
+            graphCanvas.width = width;
+            graphCanvas.height = height;
+            
+            zoomCanvas.width = zoomWidth;
+            zoomCanvas.height = zoomHeight;
+            
+            drawGraph();
+        }
+        
+        // Draw the graph
+        function drawGraph() {
+            // Clear canvas
+            ctx.clearRect(0, 0, width, height);
+            
+            // Draw grid
+            drawGrid();
+            
+            // Draw axes
+            drawAxes();
+            
+            // Draw function
+            drawFunction();
+            
+            // Draw tangent line
+            drawTangent();
+            
+            // Draw car
+            drawCar();
+            
+            // Draw zoom window
+            drawZoom();
+        }
+        
+        // Draw grid
+        function drawGrid() {
+            ctx.strokeStyle = 'rgba(100, 150, 255, 0.1)';
+            ctx.lineWidth = 1;
+            
+            // Vertical grid lines
+            for (let x = xMin; x <= xMax; x++) {
+                if (x === 0) continue;
+                const pixelX = toPixelX(x);
+                ctx.beginPath();
+                ctx.moveTo(pixelX, 0);
+                ctx.lineTo(pixelX, height);
+                ctx.stroke();
+            }
+            
+            // Horizontal grid lines
+            for (let y = yMin; y <= yMax; y++) {
+                if (y === 0) continue;
+                const pixelY = toPixelY(y);
+                ctx.beginPath();
+                ctx.moveTo(0, pixelY);
+                ctx.lineTo(width, pixelY);
+                ctx.stroke();
+            }
+        }
+        
+        // Draw axes
+        function drawAxes() {
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.7)';
+            ctx.lineWidth = 2;
+            
+            // X-axis
+            const xAxisY = toPixelY(0);
+            ctx.beginPath();
+            ctx.moveTo(0, xAxisY);
+            ctx.lineTo(width, xAxisY);
+            ctx.stroke();
+            
+            // Y-axis
+            const yAxisX = toPixelX(0);
+            ctx.beginPath();
+            ctx.moveTo(yAxisX, 0);
+            ctx.lineTo(yAxisX, height);
+            ctx.stroke();
+            
+            // Draw axis labels
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+            ctx.font = '14px Arial';
+            ctx.textAlign = 'center';
+            
+            // X-axis labels
+            for (let x = xMin; x <= xMax; x++) {
+                if (x === 0) continue;
+                const pixelX = toPixelX(x);
+                ctx.fillText(x.toString(), pixelX, xAxisY + 20);
+            }
+            
+            // Y-axis labels
+            for (let y = yMin; y <= yMax; y++) {
+                if (y === 0) continue;
+                const pixelY = toPixelY(y);
+                ctx.fillText(y.toString(), yAxisX - 20, pixelY);
+            }
+            
+            // Origin label
+            ctx.fillText('0', yAxisX - 15, xAxisY + 20);
+        }
+        
+        // Draw the function
+        function drawFunction() {
+            ctx.beginPath();
+            ctx.strokeStyle = '#ff8a00';
+            ctx.lineWidth = 3;
+            
+            const step = (xMax - xMin) / width * 2;
+            
+            for (let x = xMin; x <= xMax; x += step) {
+                const y = calculateFunction(x);
+                
+                if (Math.abs(y) > 100) {
+                    ctx.stroke();
+                    ctx.beginPath();
+                    continue;
+                }
+                
+                const pixelX = toPixelX(x);
+                const pixelY = toPixelY(y);
+                
+                if (x === xMin) {
+                    ctx.moveTo(pixelX, pixelY);
+                } else {
+                    ctx.lineTo(pixelX, pixelY);
+                }
+            }
+            
+            ctx.stroke();
+            
+            // Draw discontinuity if needed
+            if (currentStage === 'jump') {
+                ctx.beginPath();
+                ctx.strokeStyle = '#ff3366';
+                ctx.lineWidth = 2;
+                ctx.setLineDash([5, 5]);
+                const jumpX = toPixelX(0);
+                ctx.moveTo(jumpX, toPixelY(calculateFunction(-0.01)));
+                ctx.lineTo(jumpX, toPixelY(calculateFunction(0.01)));
+                ctx.stroke();
+                ctx.setLineDash([]);
+            }
+        }
+        
+        // Calculate function value based on current stage
+        function calculateFunction(x) {
+            switch(currentStage) {
+                case 'smooth':
+                    return x*x; // x²
+                case 'corner':
+                    return Math.abs(x); // |x|
+                case 'jump':
+                    if (x < 0) return x*x + 1;
+                    return 2*x - 1;
+                case 'vertical':
+                    return Math.sign(x) * Math.pow(Math.abs(x), 1/3); // ∛x
+                default:
+                    return x*x;
+            }
+        }
+        
+        // Draw tangent line at current position
+        function drawTangent() {
+            const x = carPosition;
+            const y = calculateFunction(x);
+            
+            // Calculate derivative numerically
+            const h = 0.001;
+            const derivative = (calculateFunction(x + h) - calculateFunction(x)) / h;
+            
+            // Only draw tangent if derivative is finite
+            if (isFinite(derivative)) {
+                const tangentLength = 2;
+                
+                const x1 = x - tangentLength;
+                const y1 = y - derivative * tangentLength;
+                const x2 = x + tangentLength;
+                const y2 = y + derivative * tangentLength;
+                
+                ctx.beginPath();
+                ctx.strokeStyle = '#4CAF50';
+                ctx.lineWidth = 2;
+                ctx.moveTo(toPixelX(x1), toPixelY(y1));
+                ctx.lineTo(toPixelX(x2), toPixelY(y2));
+                ctx.stroke();
+                
+                // Update HUD
+                derivativeValue.textContent = derivative.toFixed(2);
+            } else {
+                derivativeValue.textContent = "Undefined";
+            }
+        }
+        
+        // Draw the car
+        function drawCar() {
+            const x = carPosition;
+            const y = calculateFunction(x);
+            
+            const pixelX = toPixelX(x);
+            const pixelY = toPixelY(y);
+            
+            // Position the car
+            carContainer.style.left = pixelX + 'px';
+            carContainer.style.top = pixelY + 'px';
+            
+            // Calculate derivative for car rotation
+            const h = 0.001;
+            const derivative = (calculateFunction(x + h) - calculateFunction(x)) / h;
+            const angle = Math.atan(derivative) * 180 / Math.PI;
+            carContainer.style.transform = `translate(-50%, -50%) rotate(${angle}deg)`;
+            
+            // Update HUD
+            positionX.textContent = x.toFixed(2);
+            positionY.textContent = y.toFixed(2);
+            positionValue.textContent = x.toFixed(2);
+            
+            // Update status
+            if (currentStage === 'smooth') {
+                statusValue.textContent = "Smooth";
+                statusValue.style.color = "#4CAF50";
+            } else if (currentStage === 'corner' && Math.abs(x) < 0.1) {
+                statusValue.textContent = "Corner!";
+                statusValue.style.color = "#FF9800";
+            } else if (currentStage === 'jump' && Math.abs(x) < 0.1) {
+                statusValue.textContent = "Discontinuity!";
+                statusValue.style.color = "#F44336";
+            } else if (currentStage === 'vertical' && Math.abs(x) < 0.1) {
+                statusValue.textContent = "Vertical Tangent!";
+                statusValue.style.color = "#FF9800";
+            } else {
+                statusValue.textContent = "Smooth";
+                statusValue.style.color = "#4CAF50";
+            }
+        }
+        
+        // Draw zoom window
+        function drawZoom() {
+            zoomCtx.clearRect(0, 0, zoomWidth, zoomHeight);
+            
+            const x = carPosition;
+            const y = calculateFunction(x);
+            const zoomFactor = zoomLevel * 10;
+            const zoomRange = 2 / zoomFactor;
+            
+            const zoomXMin = x - zoomRange;
+            const zoomXMax = x + zoomRange;
+            const zoomYMin = y - zoomRange;
+            const zoomYMax = y + zoomRange;
+            
+            // Draw function in zoom window
+            zoomCtx.beginPath();
+            zoomCtx.strokeStyle = '#ff8a00';
+            zoomCtx.lineWidth = 2;
+            
+            const step = (zoomXMax - zoomXMin) / zoomWidth * 2;
+            
+            for (let xVal = zoomXMin; xVal <= zoomXMax; xVal += step) {
+                const yVal = calculateFunction(xVal);
+                const pixelX = ((xVal - zoomXMin) / (zoomXMax - zoomXMin)) * zoomWidth;
+                const pixelY = zoomHeight - ((yVal - zoomYMin) / (zoomYMax - zoomYMin)) * zoomHeight;
+                
+                if (xVal === zoomXMin) {
+                    zoomCtx.moveTo(pixelX, pixelY);
+                } else {
+                    zoomCtx.lineTo(pixelX, pixelY);
+                }
+            }
+            
+            zoomCtx.stroke();
+            
+            // Draw tangent line in zoom window
+            const h = 0.001;
+            const derivative = (calculateFunction(x + h) - calculateFunction(x)) / h;
+            
+            if (isFinite(derivative)) {
+                const tangentLength = zoomRange;
+                
+                const x1 = x - tangentLength;
+                const y1 = y - derivative * tangentLength;
+                const x2 = x + tangentLength;
+                const y2 = y + derivative * tangentLength;
+                
+                const pixelX1 = ((x1 - zoomXMin) / (zoomXMax - zoomXMin)) * zoomWidth;
+                const pixelY1 = zoomHeight - ((y1 - zoomYMin) / (zoomYMax - zoomYMin)) * zoomHeight;
+                const pixelX2 = ((x2 - zoomXMin) / (zoomXMax - zoomXMin)) * zoomWidth;
+                const pixelY2 = zoomHeight - ((y2 - zoomYMin) / (zoomYMax - zoomYMin)) * zoomHeight;
+                
+                zoomCtx.beginPath();
+                zoomCtx.strokeStyle = '#4CAF50';
+                zoomCtx.lineWidth = 1;
+                zoomCtx.moveTo(pixelX1, pixelY1);
+                zoomCtx.lineTo(pixelX2, pixelY2);
+                zoomCtx.stroke();
+            }
+            
+            // Draw center point
+            const centerX = zoomWidth / 2;
+            const centerY = zoomHeight / 2;
+            
+            zoomCtx.beginPath();
+            zoomCtx.fillStyle = '#FF3366';
+            zoomCtx.arc(centerX, centerY, 3, 0, Math.PI * 2);
+            zoomCtx.fill();
+            
+            // Draw zoom border
+            zoomCtx.strokeStyle = '#ff8a00';
+            zoomCtx.lineWidth = 2;
+            zoomCtx.strokeRect(0, 0, zoomWidth, zoomHeight);
+        }
+        
+        // Convert x value to pixel coordinate
+        function toPixelX(x) {
+            return ((x - xMin) / (xMax - xMin)) * width;
+        }
+        
+        // Convert y value to pixel coordinate
+        function toPixelY(y) {
+            return height - ((y - yMin) / (yMax - yMin)) * height;
+        }
+        
+        // Animation function
+        function animate() {
+            if (!isPlaying) return;
+            
+            carPosition += 0.02;
+            if (carPosition > xMax) carPosition = xMin;
+            
+            positionSlider.value = carPosition;
+            drawGraph();
+            
+            animationId = requestAnimationFrame(animate);
+        }
+        
+        // Event listeners
+        positionSlider.addEventListener('input', () => {
+            carPosition = parseFloat(positionSlider.value);
+            drawGraph();
+        });
+        
+        zoomSlider.addEventListener('input', () => {
+            zoomLevel = parseInt(zoomSlider.value);
+            zoomValue.textContent = zoomLevel + 'x';
+            drawGraph();
+        });
+        
+        playBtn.addEventListener('click', () => {
+            isPlaying = true;
+            animate();
+        });
+        
+        pauseBtn.addEventListener('click', () => {
+            isPlaying = false;
+            if (animationId) cancelAnimationFrame(animationId);
+        });
+        
+        resetBtn.addEventListener('click', () => {
+            carPosition = 0;
+            positionSlider.value = 0;
+            zoomLevel = 1;
+            zoomSlider.value = 1;
+            zoomValue.textContent = '1x';
+            isPlaying = false;
+            if (animationId) cancelAnimationFrame(animationId);
+            drawGraph();
+        });
+        
+        stageButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                // Update active button
+                stageButtons.forEach(btn => btn.classList.remove('active'));
+                button.classList.add('active');
+                
+                // Set current stage
+                currentStage = button.dataset.stage;
+                
+                // Reset position
+                carPosition = 0;
+                positionSlider.value = 0;
+                
+                // Update function display
+                switch(currentStage) {
+                    case 'smooth':
+                        functionDisplay.innerHTML = 'f(x) = x²';
+                        derivativeDisplay.innerHTML = "f'(x) = 2x";
+                        conceptTitle.textContent = "Smooth Function";
+                        conceptExplanation.textContent = "A smooth function has no sharp turns or breaks. At every point, we can draw a unique tangent line. As we zoom in, the function appears more and more linear. This is the essence of differentiability.";
+                        yMin = -2;
+                        yMax = 8;
+                        break;
+                    case 'corner':
+                        functionDisplay.innerHTML = 'f(x) = |x|';
+                        derivativeDisplay.innerHTML = "f'(x) = sign(x) [except at 0]";
+                        conceptTitle.textContent = "Corner Point";
+                        conceptExplanation.textContent = "At x=0, this function has a sharp corner. The left-hand derivative is -1 and the right-hand derivative is +1. Since they don't match, the function is not differentiable at this point.";
+                        yMin = -1;
+                        yMax = 5;
+                        break;
+                    case 'jump':
+                        functionDisplay.innerHTML = 'f(x) = { x²+1 if x<0; 2x-1 if x≥0 }';
+                        derivativeDisplay.innerHTML = "Discontinuous at x=0";
+                        conceptTitle.textContent = "Jump Discontinuity";
+                        conceptExplanation.textContent = "At x=0, there's a sudden jump in the function value. The function is discontinuous at this point, which automatically means it's not differentiable. You can't draw a tangent line across a gap!";
+                        yMin = -1;
+                        yMax = 5;
+                        break;
+                    case 'vertical':
+                        functionDisplay.innerHTML = 'f(x) = ∛x';
+                        derivativeDisplay.innerHTML = "f'(x) = 1/(3x^{2/3}) → ∞ at x=0";
+                        conceptTitle.textContent = "Vertical Tangent";
+                        conceptExplanation.textContent = "As we approach x=0, the slope becomes infinitely steep. The function is continuous, but the derivative approaches infinity, so it's not differentiable at this point. The tangent line becomes vertical.";
+                        yMin = -2;
+                        yMax = 2;
+                        break;
+                }
+                
+                drawGraph();
+            });
+        });
+        
+        // Initialize
+        window.addEventListener('load', initCanvas);
+        window.addEventListener('resize', initCanvas);
+    </script>
+</body>
+</html>
