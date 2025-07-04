@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Advanced Differential Visualization</title>
+    <title>Advanced Differential Visualization with Ultra Zoom</title>
     <script src="https://d3js.org/d3.v7.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
@@ -352,6 +352,54 @@
             stroke-dasharray: 2,2;
         }
         
+        .pan-controls {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.6);
+            border-radius: 8px;
+            padding: 10px;
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            grid-template-rows: repeat(3, 1fr);
+            gap: 5px;
+            z-index: 10;
+        }
+        
+        .pan-btn {
+            width: 30px;
+            height: 30px;
+            border-radius: 4px;
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            border: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
+        }
+        
+        .pan-btn:hover {
+            background: #ff7e5f;
+        }
+        
+        .pan-btn.center {
+            background: rgba(255, 255, 255, 0.2);
+        }
+        
+        .zoom-hint {
+            position: absolute;
+            top: 20px;
+            right: 150px;
+            background: rgba(0, 0, 0, 0.6);
+            border-radius: 8px;
+            padding: 8px 15px;
+            font-size: 0.9rem;
+            z-index: 10;
+            border: 1px solid #4ecdc4;
+        }
+        
         @media (max-width: 1100px) {
             .content {
                 flex-direction: column;
@@ -374,6 +422,10 @@
             .graph {
                 height: 400px;
             }
+            
+            .zoom-hint {
+                display: none;
+            }
         }
     </style>
 </head>
@@ -381,7 +433,7 @@
     <div class="container">
         <header>
             <h1><i class="fas fa-calculator"></i> Advanced Visualization of Differentials</h1>
-            <p class="subtitle">An interactive exploration of dx, dy, and the relationship between differentials and actual changes in functions</p>
+            <p class="subtitle">Interactive exploration with ultra zoom capabilities - see the infinitesimal nature of dx and dy</p>
         </header>
         
         <div class="controls">
@@ -413,7 +465,7 @@
                 
                 <div class="slider-container">
                     <label for="zoom-slider">Zoom Level: <span id="zoom-value">1.0</span>x</label>
-                    <input type="range" id="zoom-slider" min="0.5" max="3" step="0.1" value="1">
+                    <input type="range" id="zoom-slider" min="0.1" max="100" step="0.1" value="1">
                 </div>
                 <button id="reset-view">Reset View</button>
             </div>
@@ -429,6 +481,20 @@
                         <button class="zoom-btn" id="zoom-in"><i class="fas fa-search-plus"></i></button>
                     </div>
                     <div class="function-info" id="function-info">f(x) = x²</div>
+                    <div class="zoom-hint">
+                        <i class="fas fa-lightbulb"></i> Scroll to zoom • Drag to pan
+                    </div>
+                    <div class="pan-controls">
+                        <div></div>
+                        <button class="pan-btn" id="pan-up"><i class="fas fa-arrow-up"></i></button>
+                        <div></div>
+                        <button class="pan-btn" id="pan-left"><i class="fas fa-arrow-left"></i></button>
+                        <button class="pan-btn center" id="center-view"><i class="fas fa-crosshairs"></i></button>
+                        <button class="pan-btn" id="pan-right"><i class="fas fa-arrow-right"></i></button>
+                        <div></div>
+                        <button class="pan-btn" id="pan-down"><i class="fas fa-arrow-down"></i></button>
+                        <div></div>
+                    </div>
                 </div>
                 <div class="legend">
                     <div class="legend-item">
@@ -456,6 +522,17 @@
             
             <div class="info-panel">
                 <div class="concept-card">
+                    <h3><i class="fas fa-search-plus"></i> Ultra Zoom Capabilities</h3>
+                    <p>Explore the infinitesimal nature of calculus with our enhanced ultra zoom:</p>
+                    <ul>
+                        <li>Zoom up to <span class="highlight">100x</span> to see the details of differentials</li>
+                        <li>Pan around the graph to examine any region</li>
+                        <li>Zoom to cursor for precise examination</li>
+                        <li>View how dx and dy become increasingly accurate as you zoom in</li>
+                    </ul>
+                </div>
+                
+                <div class="concept-card">
                     <h3><i class="fas fa-lightbulb"></i> What is a Differential?</h3>
                     <p>A differential represents an <span class="highlight">infinitely small change</span> in a variable. In calculus:</p>
                     <div class="formula">dy = f'(x) · dx</div>
@@ -467,12 +544,6 @@
                     <p>The actual change in the function (Δy) is:</p>
                     <div class="formula">Δy = f(x + dx) - f(x)</div>
                     <p>While the differential (dy) is the change predicted by the derivative. For small dx, dy ≈ Δy, but as dx increases, the approximation becomes less accurate. The difference illustrates the function's curvature.</p>
-                </div>
-                
-                <div class="concept-card">
-                    <h3><i class="fas fa-drafting-compass"></i> Geometric Interpretation</h3>
-                    <p>Visually, <span class="highlight">dx</span> is a horizontal segment, <span class="highlight">dy</span> is the vertical change along the tangent line, while <span class="highlight">Δy</span> is the actual vertical change along the curve.</p>
-                    <p>The gap between dy and Δy represents the approximation error that results from the function's curvature at that point.</p>
                 </div>
                 
                 <div class="concept-card">
@@ -505,7 +576,7 @@
             .append("svg")
             .attr("width", width + margin.left + margin.right)
             .attr("height", height + margin.top + margin.bottom)
-            .call(d3.zoom().scaleExtent([0.5, 3]).on("zoom", zoomed))
+            .call(d3.zoom().scaleExtent([0.1, 100]).on("zoom", zoomed))
             .append("g")
             .attr("transform", `translate(${margin.left},${margin.top})`);
         
@@ -841,6 +912,21 @@
             updateVisualization(true);
         }
         
+        // Pan function
+        function pan(directionX, directionY) {
+            const panAmount = 0.3 / zoomLevel;
+            panX += directionX * panAmount;
+            panY += directionY * panAmount;
+            
+            // Update the zoom transform to reflect new pan position
+            const transform = d3.zoomIdentity
+                .scale(zoomLevel)
+                .translate(panX * (width / 5), panY * (height / 10));
+            
+            svg.call(d3.zoom().transform, transform);
+            updateVisualization(true);
+        }
+        
         // Set up event listeners
         document.getElementById("x-position").addEventListener("input", function() {
             x0 = parseFloat(this.value);
@@ -869,7 +955,7 @@
         
         // Zoom buttons
         document.getElementById("zoom-in").addEventListener("click", function() {
-            zoomLevel = Math.min(3, zoomLevel + 0.1);
+            zoomLevel = Math.min(100, zoomLevel * 1.5);
             document.getElementById("zoom-value").textContent = zoomLevel.toFixed(1) + "x";
             document.getElementById("zoom-slider").value = zoomLevel;
             document.getElementById("zoom-display").textContent = zoomLevel.toFixed(1) + "x";
@@ -878,7 +964,7 @@
         });
         
         document.getElementById("zoom-out").addEventListener("click", function() {
-            zoomLevel = Math.max(0.5, zoomLevel - 0.1);
+            zoomLevel = Math.max(0.1, zoomLevel / 1.5);
             document.getElementById("zoom-value").textContent = zoomLevel.toFixed(1) + "x";
             document.getElementById("zoom-slider").value = zoomLevel;
             document.getElementById("zoom-display").textContent = zoomLevel.toFixed(1) + "x";
@@ -889,12 +975,29 @@
         // Reset button
         document.getElementById("reset-view").addEventListener("click", resetView);
         
-        // Keyboard support for zoom
+        // Pan buttons
+        document.getElementById("pan-up").addEventListener("click", () => pan(0, 1));
+        document.getElementById("pan-down").addEventListener("click", () => pan(0, -1));
+        document.getElementById("pan-left").addEventListener("click", () => pan(1, 0));
+        document.getElementById("pan-right").addEventListener("click", () => pan(-1, 0));
+        document.getElementById("center-view").addEventListener("click", resetView);
+        
+        // Keyboard support for zoom and pan
         document.addEventListener("keydown", function(event) {
             if (event.key === "+" || event.key === "=") {
                 document.getElementById("zoom-in").click();
             } else if (event.key === "-") {
                 document.getElementById("zoom-out").click();
+            } else if (event.key === "ArrowUp") {
+                pan(0, 1);
+            } else if (event.key === "ArrowDown") {
+                pan(0, -1);
+            } else if (event.key === "ArrowLeft") {
+                pan(1, 0);
+            } else if (event.key === "ArrowRight") {
+                pan(-1, 0);
+            } else if (event.key === "0") {
+                resetView();
             }
         });
         
