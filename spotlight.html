@@ -1,0 +1,894 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Spotlight Related Rates Animation</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #0c1445, #1a237e);
+            color: #fff;
+            min-height: 100vh;
+            overflow-x: hidden;
+            display: flex;
+            flex-direction: column;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1400px;
+            width: 100%;
+            margin: 0 auto;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        
+        header {
+            text-align: center;
+            padding: 20px;
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        
+        h1 {
+            font-size: 3rem;
+            margin-bottom: 15px;
+            background: linear-gradient(to right, #FFD700, #FFA500);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            position: relative;
+            display: inline-block;
+        }
+        
+        h1::after {
+            content: '';
+            position: absolute;
+            bottom: -10px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 80%;
+            height: 4px;
+            background: linear-gradient(to right, transparent, #FFD700, transparent);
+        }
+        
+        .subtitle {
+            font-size: 1.3rem;
+            max-width: 800px;
+            margin: 10px auto 20px;
+            color: #ddd;
+            line-height: 1.6;
+        }
+        
+        .content {
+            display: flex;
+            width: 100%;
+            gap: 30px;
+            flex-wrap: wrap;
+        }
+        
+        .animation-container {
+            flex: 3;
+            min-width: 800px;
+            background: rgba(0, 0, 0, 0.4);
+            border-radius: 15px;
+            padding: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+            backdrop-filter: blur(5px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+        
+        .toggle-panel {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.6);
+            border-radius: 30px;
+            padding: 10px 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            z-index: 10;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .toggle-panel:hover {
+            background: rgba(0, 0, 0, 0.8);
+            transform: translateY(-2px);
+        }
+        
+        .toggle-panel i {
+            color: #FFD700;
+            font-size: 1.2rem;
+        }
+        
+        #canvas-container {
+            position: relative;
+            width: 100%;
+            height: 600px;
+            background: rgba(0, 10, 20, 0.7);
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+        }
+        
+        canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+        
+        .controls {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            padding: 20px;
+            flex-wrap: wrap;
+            width: 100%;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 10px;
+            margin-top: 15px;
+        }
+        
+        button {
+            background: linear-gradient(to right, #3498db, #2980b9);
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 50px;
+            cursor: pointer;
+            font-size: 1.1rem;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        button:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 6px 15px rgba(0, 0, 0, 0.4);
+        }
+        
+        button:active {
+            transform: translateY(1px);
+        }
+        
+        #pause-btn {
+            background: linear-gradient(to right, #e74c3c, #c0392b);
+        }
+        
+        #reset-btn {
+            background: linear-gradient(to right, #2ecc71, #27ae60);
+        }
+        
+        .info-panel {
+            flex: 1;
+            min-width: 300px;
+            background: rgba(0, 0, 0, 0.4);
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+            backdrop-filter: blur(5px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: transform 0.4s ease, opacity 0.4s ease;
+        }
+        
+        .info-panel.hidden {
+            transform: translateX(20px);
+            opacity: 0;
+            display: none;
+        }
+        
+        .panel-title {
+            font-size: 1.8rem;
+            margin-bottom: 20px;
+            color: #FFD700;
+            text-align: center;
+            position: relative;
+            padding-bottom: 10px;
+        }
+        
+        .panel-title::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 60%;
+            height: 3px;
+            background: linear-gradient(to right, transparent, #FFD700, transparent);
+        }
+        
+        .info-content {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        
+        .variables {
+            background: rgba(0, 30, 60, 0.5);
+            padding: 20px;
+            border-radius: 10px;
+        }
+        
+        .variable {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .variable:last-child {
+            border-bottom: none;
+        }
+        
+        .var-name {
+            font-weight: bold;
+            color: #FFD700;
+        }
+        
+        .var-value {
+            font-family: 'Courier New', monospace;
+            font-size: 1.2rem;
+        }
+        
+        .formula {
+            background: rgba(0, 30, 60, 0.5);
+            padding: 20px;
+            border-radius: 10px;
+            font-size: 1.1rem;
+            line-height: 1.6;
+        }
+        
+        .formula-title {
+            font-weight: bold;
+            color: #FFD700;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .math {
+            font-family: 'Courier New', monospace;
+            background: rgba(0, 0, 0, 0.3);
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+            margin: 10px 0;
+            font-size: 1.3rem;
+            color: #FFD700;
+            border: 1px solid rgba(255, 215, 0, 0.3);
+        }
+        
+        .explanation {
+            font-size: 1.05rem;
+            color: #ddd;
+            line-height: 1.7;
+        }
+        
+        .key {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin-top: 20px;
+            justify-content: center;
+        }
+        
+        .key-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.95rem;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 8px 15px;
+            border-radius: 30px;
+        }
+        
+        .key-color {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+        }
+        
+        .beam-color {
+            background: rgba(255, 255, 100, 0.6);
+        }
+        
+        .man-color {
+            background: #4CAF50;
+        }
+        
+        .arc-color {
+            background: #FFD700;
+        }
+        
+        .ground-color {
+            background: #888;
+        }
+        
+        .spotlight-color {
+            background: #FFA500;
+        }
+        
+        footer {
+            text-align: center;
+            padding: 20px;
+            margin-top: 20px;
+            color: #aaa;
+            font-size: 0.9rem;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        @media (max-width: 1200px) {
+            .animation-container {
+                min-width: 100%;
+            }
+            
+            .content {
+                flex-direction: column;
+            }
+            
+            h1 {
+                font-size: 2.5rem;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            h1 {
+                font-size: 2rem;
+            }
+            
+            .subtitle {
+                font-size: 1.1rem;
+            }
+            
+            #canvas-container {
+                height: 450px;
+            }
+            
+            .controls {
+                flex-direction: column;
+                align-items: center;
+            }
+            
+            button {
+                width: 100%;
+                max-width: 300px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Spotlight Related Rates Animation</h1>
+            <p class="subtitle">A visualization of how the angle θ changes as a man walks away from a spotlight. The spotlight constantly focuses on the man as he moves horizontally at 4 ft/s.</p>
+        </header>
+        
+        <div class="content">
+            <div class="animation-container">
+                <div class="toggle-panel" id="toggle-btn">
+                    <i class="fas fa-calculator"></i>
+                    <span>Physics Panel</span>
+                </div>
+                
+                <div id="canvas-container">
+                    <canvas id="canvas"></canvas>
+                </div>
+                <div class="controls">
+                    <button id="start-btn">
+                        <i class="fas fa-play"></i>
+                        Start Animation
+                    </button>
+                    <button id="pause-btn">
+                        <i class="fas fa-pause"></i>
+                        Pause
+                    </button>
+                    <button id="reset-btn">
+                        <i class="fas fa-redo"></i>
+                        Reset
+                    </button>
+                </div>
+            </div>
+            
+            <div class="info-panel" id="info-panel">
+                <h2 class="panel-title">Physics & Calculus</h2>
+                <div class="info-content">
+                    <div class="variables">
+                        <div class="variable">
+                            <span class="var-name">Position (x):</span>
+                            <span id="x-value" class="var-value">15 ft</span>
+                        </div>
+                        <div class="variable">
+                            <span class="var-name">Angle (θ):</span>
+                            <span id="theta-value" class="var-value">0.6435 rad</span>
+                        </div>
+                        <div class="variable">
+                            <span class="var-name">dθ/dt:</span>
+                            <span id="dtheta-value" class="var-value">0.0303 rad/s</span>
+                        </div>
+                        <div class="variable">
+                            <span class="var-name">Time:</span>
+                            <span id="time-value" class="var-value">0.0 s</span>
+                        </div>
+                    </div>
+                    
+                    <div class="formula">
+                        <div class="formula-title">
+                            <i class="fas fa-square-root-alt"></i>
+                            Related Rates Formula:
+                        </div>
+                        <div class="math">dθ/dt = (20 × dx/dt) / (20² + x²)</div>
+                        <div class="explanation">
+                            <p>As the man walks away from the spotlight:</p>
+                            <ul style="padding-left: 20px; margin-top: 15px;">
+                                <li>The angle θ decreases at a rate proportional to the man's speed</li>
+                                <li>The rate of change (dθ/dt) decreases as the man moves farther away</li>
+                                <li>When the man is close to the spotlight, the angle changes rapidly</li>
+                                <li>When the man is far away, the angle changes very slowly</li>
+                            </ul>
+                        </div>
+                    </div>
+                    
+                    <div class="key">
+                        <div class="key-item">
+                            <div class="key-color beam-color"></div>
+                            <span>Spotlight Beam</span>
+                        </div>
+                        <div class="key-item">
+                            <div class="key-color man-color"></div>
+                            <span>Man</span>
+                        </div>
+                        <div class="key-item">
+                            <div class="key-color arc-color"></div>
+                            <span>Angle θ</span>
+                        </div>
+                        <div class="key-item">
+                            <div class="key-color spotlight-color"></div>
+                            <span>Spotlight</span>
+                        </div>
+                        <div class="key-item">
+                            <div class="key-color ground-color"></div>
+                            <span>Ground</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <footer>
+            <p>Created with HTML5 Canvas & JavaScript | Related Rates Calculus Visualization</p>
+        </footer>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const canvas = document.getElementById('canvas');
+            const ctx = canvas.getContext('2d');
+            const container = document.getElementById('canvas-container');
+            
+            // Get display elements
+            const xValue = document.getElementById('x-value');
+            const thetaValue = document.getElementById('theta-value');
+            const dthetaValue = document.getElementById('dtheta-value');
+            const timeValue = document.getElementById('time-value');
+            
+            // Buttons
+            const startBtn = document.getElementById('start-btn');
+            const pauseBtn = document.getElementById('pause-btn');
+            const resetBtn = document.getElementById('reset-btn');
+            const toggleBtn = document.getElementById('toggle-btn');
+            const infoPanel = document.getElementById('info-panel');
+            
+            // Animation state
+            let animationId = null;
+            let isPlaying = false;
+            let elapsedTime = 0;
+            let lastTimestamp = 0;
+            
+            // Constants
+            const GROUND_Y = 500;
+            const SPOTLIGHT_X = 300;
+            const SPOTLIGHT_Y = 150;
+            const SCALE = 25; // pixels per foot
+            const MAN_HEIGHT = 25;
+            const MAN_SPEED = 4; // ft/s
+            const INITIAL_X = 15; // ft
+            const HEIGHT_ABOVE_GROUND = 20; // ft (spotlight height)
+            
+            // State variables
+            let manX = INITIAL_X; // feet
+            let manY = GROUND_Y - MAN_HEIGHT;
+            let theta = Math.atan(manX / HEIGHT_ABOVE_GROUND);
+            let dtheta = (HEIGHT_ABOVE_GROUND * MAN_SPEED) / (HEIGHT_ABOVE_GROUND * HEIGHT_ABOVE_GROUND + manX * manX);
+            
+            // Resize canvas to fit container
+            function resizeCanvas() {
+                canvas.width = container.clientWidth;
+                canvas.height = container.clientHeight;
+                drawScene();
+            }
+            
+            // Draw the scene
+            function drawScene() {
+                const width = canvas.width;
+                const height = canvas.height;
+                
+                // Clear canvas
+                ctx.clearRect(0, 0, width, height);
+                
+                // Draw night sky
+                drawSky();
+                
+                // Draw ground
+                drawGround();
+                
+                // Draw spotlight
+                drawSpotlight();
+                
+                // Draw light beam
+                drawBeam();
+                
+                // Draw man
+                drawMan();
+                
+                // Draw angle arc
+                drawAngleArc();
+                
+                // Draw labels
+                drawLabels();
+            }
+            
+            function drawSky() {
+                const width = canvas.width;
+                const height = canvas.height;
+                
+                // Draw gradient sky
+                const gradient = ctx.createLinearGradient(0, 0, 0, height);
+                gradient.addColorStop(0, '#0c1445');
+                gradient.addColorStop(1, '#1a237e');
+                
+                ctx.fillStyle = gradient;
+                ctx.fillRect(0, 0, width, height);
+                
+                // Draw stars
+                ctx.fillStyle = 'white';
+                for (let i = 0; i < 150; i++) {
+                    const x = Math.random() * width;
+                    const y = Math.random() * (GROUND_Y - 50);
+                    const radius = Math.random() * 1.5;
+                    ctx.beginPath();
+                    ctx.arc(x, y, radius, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+                
+                // Draw moon
+                ctx.beginPath();
+                ctx.arc(width - 100, 80, 40, 0, Math.PI * 2);
+                ctx.fillStyle = 'rgba(255, 255, 240, 0.9)';
+                ctx.fill();
+                
+                // Moon craters
+                ctx.fillStyle = 'rgba(200, 200, 200, 0.5)';
+                ctx.beginPath();
+                ctx.arc(width - 120, 70, 6, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.beginPath();
+                ctx.arc(width - 80, 90, 8, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.beginPath();
+                ctx.arc(width - 100, 60, 5, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            
+            function drawGround() {
+                const width = canvas.width;
+                
+                // Draw ground
+                ctx.fillStyle = '#222';
+                ctx.fillRect(0, GROUND_Y, width, canvas.height - GROUND_Y);
+                
+                // Draw ground line
+                ctx.beginPath();
+                ctx.moveTo(0, GROUND_Y);
+                ctx.lineTo(width, GROUND_Y);
+                ctx.strokeStyle = '#888';
+                ctx.lineWidth = 3;
+                ctx.stroke();
+                
+                // Draw path markers
+                ctx.strokeStyle = '#666';
+                ctx.lineWidth = 1;
+                ctx.setLineDash([5, 15]);
+                
+                for (let x = 100; x < width; x += 50) {
+                    ctx.beginPath();
+                    ctx.moveTo(x, GROUND_Y + 5);
+                    ctx.lineTo(x, GROUND_Y + 25);
+                    ctx.stroke();
+                }
+                
+                ctx.setLineDash([]);
+            }
+            
+            function drawSpotlight() {
+                // Draw spotlight stand
+                ctx.fillStyle = '#444';
+                ctx.fillRect(SPOTLIGHT_X - 10, SPOTLIGHT_Y, 20, 50);
+                
+                // Draw spotlight
+                ctx.fillStyle = '#333';
+                ctx.beginPath();
+                ctx.arc(SPOTLIGHT_X, SPOTLIGHT_Y, 25, 0, Math.PI * 2);
+                ctx.fill();
+                
+                ctx.fillStyle = '#555';
+                ctx.beginPath();
+                ctx.arc(SPOTLIGHT_X, SPOTLIGHT_Y, 18, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // Draw light glow
+                const gradient = ctx.createRadialGradient(
+                    SPOTLIGHT_X, SPOTLIGHT_Y, 5,
+                    SPOTLIGHT_X, SPOTLIGHT_Y, 40
+                );
+                gradient.addColorStop(0, 'rgba(255, 255, 200, 0.8)');
+                gradient.addColorStop(1, 'rgba(255, 255, 200, 0)');
+                
+                ctx.fillStyle = gradient;
+                ctx.beginPath();
+                ctx.arc(SPOTLIGHT_X, SPOTLIGHT_Y, 40, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            
+            function drawBeam() {
+                // Calculate beam direction
+                const dx = manX * SCALE;
+                const dy = (GROUND_Y - SPOTLIGHT_Y);
+                const distance = Math.sqrt(dx * dx + dy * dy);
+                
+                // Draw light beam
+                const beamWidth = 0.1 * distance;
+                
+                ctx.beginPath();
+                ctx.moveTo(SPOTLIGHT_X, SPOTLIGHT_Y);
+                ctx.lineTo(
+                    SPOTLIGHT_X + dx - beamWidth * dy / distance,
+                    SPOTLIGHT_Y + dy + beamWidth * dx / distance
+                );
+                ctx.lineTo(
+                    SPOTLIGHT_X + dx + beamWidth * dy / distance,
+                    SPOTLIGHT_Y + dy - beamWidth * dx / distance
+                );
+                ctx.closePath();
+                
+                const gradient = ctx.createLinearGradient(
+                    SPOTLIGHT_X, SPOTLIGHT_Y,
+                    SPOTLIGHT_X + dx, SPOTLIGHT_Y + dy
+                );
+                gradient.addColorStop(0, 'rgba(255, 255, 150, 0.6)');
+                gradient.addColorStop(0.7, 'rgba(255, 255, 150, 0.3)');
+                gradient.addColorStop(1, 'rgba(255, 255, 150, 0.1)');
+                
+                ctx.fillStyle = gradient;
+                ctx.fill();
+                
+                // Draw man highlight
+                ctx.beginPath();
+                ctx.arc(SPOTLIGHT_X + dx, SPOTLIGHT_Y + dy, 25, 0, Math.PI * 2);
+                const highlightGradient = ctx.createRadialGradient(
+                    SPOTLIGHT_X + dx, SPOTLIGHT_Y + dy, 0,
+                    SPOTLIGHT_X + dx, SPOTLIGHT_Y + dy, 25
+                );
+                highlightGradient.addColorStop(0, 'rgba(255, 255, 200, 0.6)');
+                highlightGradient.addColorStop(1, 'rgba(255, 255, 200, 0)');
+                
+                ctx.fillStyle = highlightGradient;
+                ctx.fill();
+            }
+            
+            function drawMan() {
+                const x = SPOTLIGHT_X + manX * SCALE;
+                const y = GROUND_Y - MAN_HEIGHT;
+                
+                // Draw shadow
+                ctx.beginPath();
+                ctx.ellipse(x, GROUND_Y, 20, 8, 0, 0, Math.PI * 2);
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
+                ctx.fill();
+                
+                // Draw body
+                ctx.beginPath();
+                ctx.arc(x, y - 12, 10, 0, Math.PI * 2);
+                ctx.fillStyle = '#4CAF50';
+                ctx.fill();
+                
+                // Draw body
+                ctx.beginPath();
+                ctx.moveTo(x, y);
+                ctx.lineTo(x, y - 20);
+                ctx.lineWidth = 4;
+                ctx.strokeStyle = '#4CAF50';
+                ctx.stroke();
+                
+                // Draw legs
+                const walkOffset = Math.sin(elapsedTime * 10) * 10;
+                ctx.beginPath();
+                ctx.moveTo(x, y);
+                ctx.lineTo(x - 10, y + 20);
+                ctx.moveTo(x, y);
+                ctx.lineTo(x + 10, y + 20 + walkOffset);
+                ctx.stroke();
+                
+                // Draw arms
+                ctx.beginPath();
+                ctx.moveTo(x, y - 12);
+                ctx.lineTo(x - 12 - walkOffset/2, y);
+                ctx.moveTo(x, y - 12);
+                ctx.lineTo(x + 12 + walkOffset/2, y);
+                ctx.stroke();
+            }
+            
+            function drawAngleArc() {
+                // Draw the angle arc
+                const startAngle = Math.PI/2;
+                const endAngle = Math.PI/2 + theta;
+                const radius = 70;
+                
+                ctx.beginPath();
+                ctx.arc(SPOTLIGHT_X, SPOTLIGHT_Y, radius, startAngle, endAngle);
+                ctx.strokeStyle = '#FFD700';
+                ctx.lineWidth = 4;
+                ctx.stroke();
+                
+                // Draw angle indicator line
+                ctx.beginPath();
+                ctx.moveTo(SPOTLIGHT_X, SPOTLIGHT_Y);
+                ctx.lineTo(
+                    SPOTLIGHT_X + Math.cos(endAngle) * (radius + 20),
+                    SPOTLIGHT_Y + Math.sin(endAngle) * (radius + 20)
+                );
+                ctx.stroke();
+                
+                // Draw angle label
+                ctx.fillStyle = '#FFD700';
+                ctx.font = 'bold 20px Arial';
+                ctx.fillText('θ', SPOTLIGHT_X + 35, SPOTLIGHT_Y - 20);
+            }
+            
+            function drawLabels() {
+                // Draw distance labels
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+                ctx.font = '16px Arial';
+                
+                // Draw x distance
+                ctx.beginPath();
+                ctx.moveTo(SPOTLIGHT_X, GROUND_Y - 15);
+                ctx.lineTo(SPOTLIGHT_X + manX * SCALE, GROUND_Y - 15);
+                ctx.setLineDash([5, 3]);
+                ctx.strokeStyle = '#aaa';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+                ctx.setLineDash([]);
+                
+                ctx.fillText(`x = ${manX.toFixed(1)} ft`, 
+                    SPOTLIGHT_X + manX * SCALE / 2 - 40, GROUND_Y - 20);
+                
+                // Draw 20 ft vertical distance
+                ctx.beginPath();
+                ctx.moveTo(SPOTLIGHT_X + 15, SPOTLIGHT_Y);
+                ctx.lineTo(SPOTLIGHT_X + 15, GROUND_Y);
+                ctx.setLineDash([5, 3]);
+                ctx.stroke();
+                ctx.setLineDash([]);
+                
+                ctx.fillText('20 ft', SPOTLIGHT_X + 20, (SPOTLIGHT_Y + GROUND_Y) / 2);
+                
+                // Draw dθ/dt label
+                ctx.fillStyle = '#FFD700';
+                ctx.font = 'bold 18px Arial';
+                ctx.fillText(`dθ/dt = ${dtheta.toFixed(4)} rad/s`, SPOTLIGHT_X - 120, SPOTLIGHT_Y - 60);
+            }
+            
+            // Animation function
+            function animate(timestamp) {
+                if (!lastTimestamp) lastTimestamp = timestamp;
+                const deltaTime = (timestamp - lastTimestamp) / 1000; // in seconds
+                lastTimestamp = timestamp;
+                
+                if (isPlaying) {
+                    elapsedTime += deltaTime;
+                    
+                    // Update man's position
+                    manX = INITIAL_X + MAN_SPEED * elapsedTime;
+                    
+                    // Calculate angle
+                    theta = Math.atan(manX / HEIGHT_ABOVE_GROUND);
+                    
+                    // Calculate dθ/dt
+                    dtheta = (HEIGHT_ABOVE_GROUND * MAN_SPEED) / (HEIGHT_ABOVE_GROUND * HEIGHT_ABOVE_GROUND + manX * manX);
+                    
+                    // Update display values
+                    xValue.textContent = `${manX.toFixed(1)} ft`;
+                    thetaValue.textContent = `${theta.toFixed(4)} rad`;
+                    dthetaValue.textContent = `${dtheta.toFixed(4)} rad/s`;
+                    timeValue.textContent = `${elapsedTime.toFixed(1)} s`;
+                    
+                    // Draw updated scene
+                    drawScene();
+                }
+                
+                animationId = requestAnimationFrame(animate);
+            }
+            
+            // Event handlers
+            startBtn.addEventListener('click', function() {
+                if (!isPlaying) {
+                    isPlaying = true;
+                    startTime = null;
+                    if (!animationId) {
+                        lastTimestamp = 0;
+                        animationId = requestAnimationFrame(animate);
+                    }
+                }
+            });
+            
+            pauseBtn.addEventListener('click', function() {
+                isPlaying = false;
+            });
+            
+            resetBtn.addEventListener('click', function() {
+                isPlaying = false;
+                elapsedTime = 0;
+                manX = INITIAL_X;
+                theta = Math.atan(manX / HEIGHT_ABOVE_GROUND);
+                dtheta = (HEIGHT_ABOVE_GROUND * MAN_SPEED) / (HEIGHT_ABOVE_GROUND * HEIGHT_ABOVE_GROUND + manX * manX);
+                
+                // Update display values
+                xValue.textContent = `${manX.toFixed(1)} ft`;
+                thetaValue.textContent = `${theta.toFixed(4)} rad`;
+                dthetaValue.textContent = `${dtheta.toFixed(4)} rad/s`;
+                timeValue.textContent = `${elapsedTime.toFixed(1)} s`;
+                
+                drawScene();
+            });
+            
+            // Toggle info panel
+            toggleBtn.addEventListener('click', function() {
+                infoPanel.classList.toggle('hidden');
+                if (infoPanel.classList.contains('hidden')) {
+                    toggleBtn.innerHTML = '<i class="fas fa-calculator"></i><span>Show Physics</span>';
+                } else {
+                    toggleBtn.innerHTML = '<i class="fas fa-calculator"></i><span>Hide Physics</span>';
+                }
+            });
+            
+            // Initialize
+            window.addEventListener('resize', resizeCanvas);
+            resizeCanvas();
+            drawScene();
+        });
+    </script>
+</body>
+</html>
