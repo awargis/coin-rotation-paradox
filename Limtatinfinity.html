@@ -1,0 +1,636 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Limit at Infinity - Interactive Visualization</title>
+    <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+            color: #fff;
+            min-height: 100vh;
+            /* FIX: Allow vertical scrolling if content overflows */
+            overflow-y: auto;
+            position: relative;
+        }
+        
+        body::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: 
+                radial-gradient(circle at 20% 30%, rgba(255, 100, 100, 0.1) 0%, transparent 40%),
+                radial-gradient(circle at 80% 70%, rgba(100, 100, 255, 0.1) 0%, transparent 40%),
+                radial-gradient(circle at 50% 20%, rgba(100, 255, 100, 0.1) 0%, transparent 40%);
+            pointer-events: none;
+            z-index: -1;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+        
+        header {
+            text-align: center;
+            padding: 20px 0;
+            position: relative;
+            z-index: 10;
+        }
+        
+        h1 {
+            font-size: 2.8rem;
+            margin-bottom: 10px;
+            background: linear-gradient(45deg, #ff7e5f, #feb47b);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-shadow: 0 0 15px rgba(255, 126, 95, 0.3);
+            animation: glow 3s infinite alternate;
+        }
+        
+        .subtitle {
+            font-size: 1.2rem;
+            opacity: 0.8;
+            margin-bottom: 20px;
+        }
+        
+        /* FIX: Change main layout to a vertical column */
+        .content {
+            display: flex;
+            flex-direction: column;
+            flex: 1;
+            gap: 30px;
+            margin: 20px 0;
+        }
+        
+        /* FIX: Make graph container taller and full-width */
+        .graph-container {
+            /* flex: 2; (Removed) */
+            height: 65vh; /* Increased height */
+            min-height: 500px; /* Minimum height for smaller screens */
+            background: rgba(10, 15, 30, 0.7);
+            border-radius: 20px;
+            padding: 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .graph-container::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: 
+                radial-gradient(circle at center, rgba(100, 100, 255, 0.05) 0%, transparent 70%),
+                repeating-linear-gradient(
+                    0deg,
+                    transparent,
+                    transparent 19px,
+                    rgba(255, 255, 255, 0.02) 20px
+                );
+            pointer-events: none;
+        }
+        
+        canvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+            border-radius: 12px;
+        }
+        
+        /* FIX: Arrange control panels side-by-side */
+        .controls {
+            /* flex: 1; (Removed) */
+            display: flex;
+            gap: 30px;
+            background: rgba(10, 15, 30, 0.7);
+            border-radius: 20px;
+            padding: 25px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .control-group {
+            flex: 1; /* Make control groups share space */
+            background: rgba(20, 25, 50, 0.6);
+            border-radius: 12px;
+            padding: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .def-container {
+            flex: 1; /* Make control groups share space */
+            background: rgba(20, 25, 50, 0.6);
+            border-radius: 12px;
+            padding: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        h2 {
+            font-size: 1.5rem;
+            margin-bottom: 15px;
+            color: #ff7e5f;
+        }
+        
+        .slider-container {
+            margin: 15px 0;
+        }
+        
+        .slider-label {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+        }
+        
+        .slider-label span {
+            font-size: 1.1rem;
+        }
+        
+        .slider-value {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 2px 10px;
+            border-radius: 10px;
+            font-weight: bold;
+            color: #ffb47b;
+        }
+        
+        input[type="range"] {
+            width: 100%;
+            height: 10px;
+            border-radius: 5px;
+            background: linear-gradient(90deg, #302b63, #ff7e5f);
+            outline: none;
+            -webkit-appearance: none;
+        }
+        
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            background: #fff;
+            cursor: pointer;
+            box-shadow: 0 0 10px rgba(255, 126, 95, 0.8);
+            border: 2px solid #ff7e5f;
+        }
+        
+        .definition {
+            font-size: 1.1rem;
+            line-height: 1.6;
+            margin-bottom: 15px;
+            background: rgba(30, 35, 60, 0.5);
+            padding: 15px;
+            border-radius: 10px;
+            border-left: 3px solid #ff7e5f;
+        }
+        
+        .formula {
+            font-size: 1.4rem;
+            text-align: center;
+            margin: 15px 0;
+            padding: 10px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 8px;
+            font-family: 'Cambria Math', serif;
+        }
+        
+        .buttons {
+            display: flex;
+            gap: 15px;
+            margin-top: 20px;
+        }
+        
+        button {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            border-radius: 8px;
+            background: linear-gradient(45deg, #ff7e5f, #feb47b);
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            box-shadow: 0 4px 15px rgba(255, 126, 95, 0.4);
+        }
+        
+        button:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 6px 20px rgba(255, 126, 95, 0.6);
+        }
+        
+        button:active {
+            transform: translateY(1px);
+        }
+        
+        #resetBtn {
+            background: linear-gradient(45deg, #302b63, #24243e);
+        }
+        
+        footer {
+            text-align: center;
+            padding: 20px 0;
+            font-size: 0.9rem;
+            opacity: 0.7;
+        }
+        
+        @keyframes glow {
+            0% {
+                text-shadow: 0 0 10px rgba(255, 126, 95, 0.5);
+            }
+            100% {
+                text-shadow: 0 0 20px rgba(255, 126, 95, 0.8), 0 0 30px rgba(255, 126, 95, 0.6);
+            }
+        }
+        
+        /* FIX: Make controls stack vertically on smaller screens */
+        @media (max-width: 1024px) {
+            .controls {
+                flex-direction: column;
+            }
+             h1 {
+                font-size: 2.2rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Limit at Infinity</h1>
+            <div class="subtitle">Interactive Visualization of \(\lim_{x \to \infty} f(x) = L\)</div>
+        </header>
+        
+        <div class="content">
+            <div class="graph-container">
+                <canvas id="graphCanvas"></canvas>
+            </div>
+            
+            <div class="controls">
+                <div class="control-group">
+                    <h2>Visualization Controls</h2>
+                    
+                    <div class="slider-container">
+                        <div class="slider-label">
+                            <span>Precision (ε)</span>
+                            <span class="slider-value" id="epsilonValue">0.50</span>
+                        </div>
+                        <input type="range" id="epsilonSlider" min="0.01" max="0.5" step="0.01" value="0.5">
+                    </div>
+                    
+                    <div class="slider-container">
+                        <div class="slider-label">
+                            <span>X Position</span>
+                            <span class="slider-value" id="xValue">0.0</span>
+                        </div>
+                        <input type="range" id="xSlider" min="0" max="30" step="0.1" value="0">
+                    </div>
+                    
+                    <div class="buttons">
+                        <button id="animateBtn">Animate</button>
+                        <button id="resetBtn">Reset</button>
+                    </div>
+                </div>
+                
+                <div class="def-container">
+                    <h2>Precise Definition</h2>
+                    <div class="definition">
+                        Let \( f \) be a function defined on some interval \((a, \infty)\). Then
+                        \[ \lim_{x \to \infty} f(x) = L \]
+                        means that for every \(\varepsilon > 0\) there is a corresponding number \( N \) such that
+                        \[ \text{if} \quad x > N \quad \text{then} \quad |f(x) - L| < \varepsilon \]
+                    </div>
+                    
+                    <div class="formula">
+                        \( f(x) = \frac{x^2 + x + 2}{x^2 + x + 1} \)
+                    </div>
+                    
+                    <div class="formula">
+                        \( \lim_{x \to \infty} f(x) = 1 \)
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <footer>
+            Interactive Visualization | Limit at Infinity | Created with HTML5 Canvas
+        </footer>
+    </div>
+
+    <script>
+    // --- Wait for the DOM to be fully loaded before running the script ---
+    document.addEventListener('DOMContentLoaded', function() {
+
+        // Get canvas and context
+        const canvas = document.getElementById('graphCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        // Function: f(x) = (x² + x + 2)/(x² + x + 1)
+        function f(x) {
+            return (x*x + x + 2) / (x*x + x + 1);
+        }
+        
+        // Graph parameters
+        const L = 1; // Limit value
+        let epsilon = 0.5; // Precision
+        let N = 0; // Threshold value
+        let xPos = 0; // Current x position
+        
+        // Calculate N based on epsilon
+        function calculateN() {
+            // For our function: |f(x) - 1| = |1/(x²+x+1)| = 1/(x²+x+1) < ε
+            // Solving for x: x² + x + 1 > 1/ε
+            // Using quadratic formula: x = [-1 + sqrt(1 - 4(1)(1 - 1/ε))]/2
+            const discriminant = 1 - 4 * (1 - 1/epsilon);
+            
+            if (discriminant < 0) {
+                return 0; // For large epsilon, N=0
+            }
+            
+            return (-1 + Math.sqrt(discriminant)) / 2;
+        }
+        
+        // Draw the graph
+        function drawGraph() {
+            const width = canvas.width;
+            const height = canvas.height;
+            
+            // Clear canvas with a gradient background
+            const gradient = ctx.createLinearGradient(0, 0, width, height);
+            gradient.addColorStop(0, '#0f0c29');
+            gradient.addColorStop(1, '#24243e');
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, width, height);
+            
+            // Draw grid
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+            ctx.lineWidth = 1;
+            
+            // Vertical grid lines
+            for (let i = 0.1; i < width; i += width / 20) {
+                ctx.beginPath();
+                ctx.moveTo(i, 0);
+                ctx.lineTo(i, height);
+                ctx.stroke();
+            }
+            
+            // Horizontal grid lines
+            for (let i = 0.1; i < height; i += height / 10) {
+                ctx.beginPath();
+                ctx.moveTo(0, i);
+                ctx.lineTo(width, i);
+                ctx.stroke();
+            }
+            
+            // Coordinate system bounds
+            const xMin = 0;
+            const xMax = 30;
+            const yMin = 0.8;
+            const yMax = 1.2;
+            
+            // Convert math coordinates to canvas coordinates
+            function toCanvasX(x) {
+                return (x - xMin) / (xMax - xMin) * width;
+            }
+            
+            function toCanvasY(y) {
+                return height - ((y - yMin) / (yMax - yMin) * height);
+            }
+            
+            // Draw axes
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.6)';
+            ctx.lineWidth = 2;
+            
+            // X-axis
+            ctx.beginPath();
+            ctx.moveTo(0, toCanvasY(L));
+            ctx.lineTo(width, toCanvasY(L));
+            ctx.stroke();
+            
+            // Draw epsilon band
+            ctx.fillStyle = 'rgba(100, 100, 255, 0.3)';
+            ctx.beginPath();
+            ctx.moveTo(0, toCanvasY(L + epsilon));
+            ctx.lineTo(width, toCanvasY(L + epsilon));
+            ctx.lineTo(width, toCanvasY(L - epsilon));
+            ctx.lineTo(0, toCanvasY(L - epsilon));
+            ctx.closePath();
+            ctx.fill();
+            
+            // Draw band boundaries
+            ctx.strokeStyle = 'rgba(100, 200, 255, 0.8)';
+            ctx.lineWidth = 1.5;
+            ctx.setLineDash([5, 3]);
+            
+            // Upper boundary
+            ctx.beginPath();
+            ctx.moveTo(0, toCanvasY(L + epsilon));
+            ctx.lineTo(width, toCanvasY(L + epsilon));
+            ctx.stroke();
+            
+            // Lower boundary
+            ctx.beginPath();
+            ctx.moveTo(0, toCanvasY(L - epsilon));
+            ctx.lineTo(width, toCanvasY(L - epsilon));
+            ctx.stroke();
+            
+            ctx.setLineDash([]);
+            
+            // Draw threshold line (N)
+            N = calculateN();
+            if (N > 0) {
+                const nX = toCanvasX(N);
+                
+                // Draw line
+                ctx.strokeStyle = 'rgba(255, 100, 100, 0.8)';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.moveTo(nX, 0);
+                ctx.lineTo(nX, height);
+                ctx.stroke();
+                
+                // Draw label
+                ctx.fillStyle = 'rgba(255, 100, 100, 0.9)';
+                ctx.font = 'bold 14px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText('N', nX, height - 10);
+            }
+            
+            // Draw function curve
+            ctx.strokeStyle = '#ff7e5f';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            
+            const step = (xMax - xMin) / 200;
+            for (let x = xMin; x <= xMax; x += step) {
+                const y = f(x);
+                if (x === xMin) {
+                    ctx.moveTo(toCanvasX(x), toCanvasY(y));
+                } else {
+                    ctx.lineTo(toCanvasX(x), toCanvasY(y));
+                }
+            }
+            
+            ctx.stroke();
+            
+            // Draw moving point
+            const pointY = f(xPos);
+            const canvasX = toCanvasX(xPos);
+            const canvasY = toCanvasY(pointY);
+            
+            // Draw trail
+            ctx.strokeStyle = 'rgba(255, 200, 100, 0.4)';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(toCanvasX(0), toCanvasY(f(0)));
+            ctx.lineTo(canvasX, canvasY);
+            ctx.stroke();
+            
+            // Draw point
+            ctx.fillStyle = '#feb47b';
+            ctx.beginPath();
+            ctx.arc(canvasX, canvasY, 8, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Draw glow
+            const gradient2 = ctx.createRadialGradient(
+                canvasX, canvasY, 8, 
+                canvasX, canvasY, 20
+            );
+            gradient2.addColorStop(0, 'rgba(254, 180, 123, 0.8)');
+            gradient2.addColorStop(1, 'rgba(254, 180, 123, 0)');
+            
+            ctx.fillStyle = gradient2;
+            ctx.beginPath();
+            ctx.arc(canvasX, canvasY, 20, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Draw coordinates
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+            ctx.font = '14px Arial';
+            ctx.textAlign = 'left';
+            ctx.fillText(`x: ${xPos.toFixed(1)}`, canvasX + 15, canvasY - 10);
+            ctx.fillText(`f(x): ${pointY.toFixed(4)}`, canvasX + 15, canvasY + 10);
+            
+            // Draw labels
+            ctx.fillStyle = 'rgba(100, 200, 255, 0.9)';
+            ctx.font = 'bold 16px Arial';
+            ctx.textAlign = 'right';
+            ctx.fillText(`y = L + ε = ${(L + epsilon).toFixed(2)}`, width - 20, toCanvasY(L + epsilon) - 10);
+            ctx.fillText(`y = L - ε = ${(L - epsilon).toFixed(2)}`, width - 20, toCanvasY(L - epsilon) + 20);
+            
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+            ctx.textAlign = 'center';
+            ctx.fillText('y = L = 1', 40, toCanvasY(L) - 10);
+            
+            // Draw title
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+            ctx.font = 'bold 18px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText(`f(x) = (x² + x + 2)/(x² + x + 1)`, width/2, 30);
+            
+            // Draw limit information
+            ctx.font = 'bold 16px Arial';
+            ctx.fillText(`Current ε: ${epsilon.toFixed(2)} | Calculated N: ${N > 0 ? N.toFixed(2) : '0'}`, width/2, height - 20);
+        }
+        
+        // Set up controls
+        const epsilonSlider = document.getElementById('epsilonSlider');
+        const epsilonValue = document.getElementById('epsilonValue');
+        const xSlider = document.getElementById('xSlider');
+        const xValue = document.getElementById('xValue');
+        const animateBtn = document.getElementById('animateBtn');
+        const resetBtn = document.getElementById('resetBtn');
+
+        // Set canvas dimensions
+        function resizeCanvas() {
+            // Set the internal resolution of the canvas to match its displayed size
+            canvas.width = canvas.clientWidth;
+            canvas.height = canvas.clientHeight;
+            drawGraph(); // Redraw graph after resizing
+        }
+        
+        window.addEventListener('resize', resizeCanvas);
+        
+        epsilonSlider.addEventListener('input', function() {
+            epsilon = parseFloat(this.value);
+            epsilonValue.textContent = epsilon.toFixed(2);
+            drawGraph();
+        });
+        
+        xSlider.addEventListener('input', function() {
+            xPos = parseFloat(this.value);
+            xValue.textContent = xPos.toFixed(1);
+            drawGraph();
+        });
+        
+        animateBtn.addEventListener('click', function() {
+            let start = null;
+            let animationFrameId = null;
+            const duration = 8000; // 8 seconds
+            
+            function animate(time) {
+                if (!start) start = time;
+                const elapsed = time - start;
+                const progress = Math.min(elapsed / duration, 1);
+                
+                // Update epsilon (decrease from 0.5 to 0.01)
+                epsilon = 0.5 - progress * 0.49;
+                epsilonSlider.value = epsilon;
+                epsilonValue.textContent = epsilon.toFixed(2);
+                
+                // Update x position (increase from 0 to 30)
+                xPos = progress * 30;
+                xSlider.value = xPos;
+                xValue.textContent = xPos.toFixed(1);
+                
+                drawGraph();
+                
+                if (progress < 1) {
+                    animationFrameId = requestAnimationFrame(animate);
+                }
+            }
+            
+            // Start the animation
+            cancelAnimationFrame(animationFrameId); // Cancel any previous animation
+            animationFrameId = requestAnimationFrame(animate);
+        });
+        
+        resetBtn.addEventListener('click', function() {
+            epsilon = 0.5;
+            epsilonSlider.value = epsilon;
+            epsilonValue.textContent = epsilon.toFixed(2);
+            
+            xPos = 0;
+            xSlider.value = xPos;
+            xValue.textContent = xPos.toFixed(1);
+            
+            drawGraph();
+        });
+        
+        // Initial draw
+        resizeCanvas();
+    });
+    </script>
+</body>
+</html>
