@@ -1,0 +1,1132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Summit Quest: Ultra-Realistic Maxima & Minima Explorer</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background: radial-gradient(circle at center, #0a0f2b, #050716);
+            color: #fff;
+            min-height: 100vh;
+            overflow-x: hidden;
+            padding: 20px;
+            position: relative;
+        }
+        
+        body::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: 
+                radial-gradient(circle at 20% 30%, rgba(100, 150, 255, 0.1) 0%, transparent 40%),
+                radial-gradient(circle at 80% 70%, rgba(255, 100, 150, 0.1) 0%, transparent 40%),
+                radial-gradient(circle at 40% 60%, rgba(150, 255, 150, 0.1) 0%, transparent 40%);
+            z-index: -1;
+            animation: backgroundPulse 15s infinite alternate;
+        }
+        
+        @keyframes backgroundPulse {
+            0% { opacity: 0.3; }
+            100% { opacity: 0.6; }
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            perspective: 1000px;
+        }
+        
+        header {
+            text-align: center;
+            padding: 30px 0;
+            margin-bottom: 40px;
+            position: relative;
+            transform-style: preserve-3d;
+        }
+        
+        .header-content {
+            position: relative;
+            z-index: 2;
+        }
+        
+        h1 {
+            font-size: 4.5rem;
+            margin-bottom: 15px;
+            text-shadow: 0 0 20px rgba(255, 255, 255, 0.7);
+            background: linear-gradient(to right, #ff9a9e, #fad0c4, #fad0c4, #a1c4fd);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            letter-spacing: 2px;
+            font-weight: 800;
+            position: relative;
+            animation: titleFloat 6s infinite ease-in-out;
+        }
+        
+        @keyframes titleFloat {
+            0%, 100% { transform: translateY(0) rotateX(0deg); }
+            50% { transform: translateY(-15px) rotateX(5deg); }
+        }
+        
+        .subtitle {
+            font-size: 1.8rem;
+            max-width: 900px;
+            margin: 0 auto 30px;
+            color: #e0e0ff;
+            line-height: 1.7;
+            text-shadow: 0 0 10px rgba(100, 150, 255, 0.5);
+            font-weight: 300;
+        }
+        
+        .dashboard {
+            display: flex;
+            gap: 40px;
+            margin-bottom: 50px;
+            transform-style: preserve-3d;
+        }
+        
+        .graph-container {
+            flex: 2;
+            background: rgba(0, 5, 20, 0.85);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.6), 
+                         inset 0 0 20px rgba(80, 120, 255, 0.3);
+            backdrop-filter: blur(15px);
+            border: 1px solid rgba(100, 150, 255, 0.4);
+            transform: translateZ(20px);
+            transition: transform 0.5s ease, box-shadow 0.5s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .graph-container::before {
+            content: "";
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+            opacity: 0.2;
+            animation: rotateGlow 20s linear infinite;
+            z-index: -1;
+        }
+        
+        @keyframes rotateGlow {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .graph-container:hover {
+            transform: translateZ(30px) rotateY(2deg) rotateX(1deg);
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.8), 
+                        inset 0 0 25px rgba(80, 120, 255, 0.4);
+        }
+        
+        .canvas-wrapper {
+            position: relative;
+            height: 500px;
+            background: linear-gradient(to bottom, #0a1020, #050916);
+            border-radius: 15px;
+            overflow: hidden;
+            border: 1px solid rgba(80, 120, 255, 0.4);
+            box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.7);
+        }
+        
+        #terrainCanvas {
+            width: 100%;
+            height: 100%;
+        }
+        
+        .controls {
+            flex: 1;
+            background: rgba(0, 5, 20, 0.85);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.6), 
+                        inset 0 0 20px rgba(80, 120, 255, 0.3);
+            backdrop-filter: blur(15px);
+            border: 1px solid rgba(100, 150, 255, 0.4);
+            transform: translateZ(20px);
+            transition: transform 0.5s ease;
+        }
+        
+        .controls:hover {
+            transform: translateZ(30px);
+        }
+        
+        .control-group {
+            margin-bottom: 30px;
+        }
+        
+        h2 {
+            font-size: 2.2rem;
+            margin-bottom: 20px;
+            color: #ffb74d;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            text-shadow: 0 0 10px rgba(255, 183, 77, 0.4);
+        }
+        
+        h2 i {
+            color: #ff7e5f;
+            text-shadow: 0 0 8px rgba(255, 126, 95, 0.7);
+        }
+        
+        .function-selector {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin-bottom: 25px;
+        }
+        
+        .func-btn {
+            flex: 1;
+            min-width: 140px;
+            padding: 15px;
+            background: linear-gradient(to bottom, rgba(40, 60, 120, 0.8), rgba(20, 30, 70, 0.8));
+            border: 2px solid #4a6fff;
+            border-radius: 12px;
+            color: #e0e0ff;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            text-align: center;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .func-btn::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+            transition: 0.5s;
+        }
+        
+        .func-btn:hover {
+            background: linear-gradient(to bottom, rgba(60, 90, 180, 0.9), rgba(30, 50, 120, 0.9));
+            transform: translateY(-5px) scale(1.03);
+            box-shadow: 0 8px 20px rgba(74, 111, 255, 0.5);
+        }
+        
+        .func-btn:hover::before {
+            left: 100%;
+        }
+        
+        .func-btn.active {
+            background: linear-gradient(45deg, #ff7e5f, #feb47b);
+            color: #0a1020;
+            border-color: #ff9e80;
+            box-shadow: 0 0 25px rgba(255, 126, 95, 0.7);
+            transform: translateY(-3px);
+        }
+        
+        .slider-container {
+            margin: 25px 0;
+            position: relative;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 15px;
+            font-weight: 600;
+            color: #aaccff;
+            text-shadow: 0 0 5px rgba(170, 204, 255, 0.3);
+            font-size: 1.1rem;
+        }
+        
+        input[type="range"] {
+            width: 100%;
+            height: 12px;
+            background: linear-gradient(to right, #1a2a6c, #b21f1f, #1a2a6c);
+            border-radius: 10px;
+            outline: none;
+            -webkit-appearance: none;
+            box-shadow: inset 0 0 8px rgba(0,0,0,0.6);
+        }
+        
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 28px;
+            height: 28px;
+            background: linear-gradient(145deg, #ff7e5f, #ff9a8b);
+            border-radius: 50%;
+            cursor: pointer;
+            box-shadow: 0 0 15px rgba(255, 126, 95, 0.9);
+            border: 2px solid white;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        
+        input[type="range"]::-webkit-slider-thumb:hover {
+            transform: scale(1.2);
+            box-shadow: 0 0 20px rgba(255, 126, 95, 1);
+        }
+        
+        .info-panel {
+            background: linear-gradient(to right, rgba(20, 30, 70, 0.8), rgba(40, 20, 60, 0.8));
+            border-radius: 15px;
+            padding: 25px;
+            margin-top: 25px;
+            border-left: 5px solid #ff7e5f;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.4);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .info-panel::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><rect width="100" height="100" fill="none" stroke="rgba(100,150,255,0.1)" stroke-width="1"/></svg>');
+            opacity: 0.3;
+        }
+        
+        .info-panel h3 {
+            color: #ffb74d;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            font-size: 1.5rem;
+        }
+        
+        .info-content {
+            line-height: 1.8;
+            color: #d0d0ff;
+            font-size: 1.1rem;
+        }
+        
+        .point-info {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid rgba(100, 150, 255, 0.4);
+        }
+        
+        .point-value {
+            font-weight: 700;
+            color: #ffb74d;
+            text-shadow: 0 0 5px rgba(255, 183, 77, 0.4);
+        }
+        
+        .concepts {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 35px;
+            margin-top: 40px;
+        }
+        
+        .concept-card {
+            background: linear-gradient(to bottom right, rgba(0, 5, 20, 0.8), rgba(10, 20, 50, 0.8));
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(100, 150, 255, 0.4);
+            transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.4s ease;
+            position: relative;
+            overflow: hidden;
+            transform-style: preserve-3d;
+        }
+        
+        .concept-card::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 5px;
+            background: linear-gradient(to right, #ff7e5f, #feb47b);
+            transform: scaleX(0);
+            transform-origin: left;
+            transition: transform 0.5s ease;
+        }
+        
+        .concept-card:hover {
+            transform: translateY(-15px) translateZ(10px);
+            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.7), 0 0 30px rgba(100, 150, 255, 0.3);
+        }
+        
+        .concept-card:hover::before {
+            transform: scaleX(1);
+        }
+        
+        .concept-card h3 {
+            color: #ffb74d;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            font-size: 1.6rem;
+        }
+        
+        .concept-card p {
+            color: #d0d0ff;
+            line-height: 1.8;
+            font-size: 1.1rem;
+        }
+        
+        .card-icon {
+            width: 70px;
+            height: 70px;
+            background: linear-gradient(145deg, #ff7e5f, #feb47b);
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 25px;
+            font-size: 2rem;
+            box-shadow: 0 8px 20px rgba(255, 126, 95, 0.4);
+            transform: rotate(45deg);
+            transition: transform 0.5s ease;
+        }
+        
+        .concept-card:hover .card-icon {
+            transform: rotate(0deg);
+        }
+        
+        .card-icon i {
+            transform: rotate(-45deg);
+            transition: transform 0.5s ease;
+        }
+        
+        .concept-card:hover .card-icon i {
+            transform: rotate(0deg);
+        }
+        
+        .max-min {
+            display: flex;
+            gap: 25px;
+            margin: 25px 0;
+        }
+        
+        .max, .min {
+            flex: 1;
+            text-align: center;
+            padding: 20px;
+            border-radius: 15px;
+            font-weight: bold;
+            font-size: 1.2rem;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+            position: relative;
+            overflow: hidden;
+            transition: transform 0.3s ease;
+        }
+        
+        .max:hover, .min:hover {
+            transform: scale(1.05);
+        }
+        
+        .max {
+            background: linear-gradient(to right, rgba(255, 0, 0, 0.2), rgba(200, 0, 0, 0.25));
+            border: 2px solid rgba(255, 100, 100, 0.8);
+        }
+        
+        .min {
+            background: linear-gradient(to right, rgba(0, 255, 0, 0.2), rgba(0, 200, 0, 0.25));
+            border: 2px solid rgba(100, 255, 100, 0.8);
+        }
+        
+        .footer {
+            text-align: center;
+            margin-top: 50px;
+            padding: 30px;
+            color: #aaccff;
+            font-size: 1.1rem;
+            border-top: 1px solid rgba(100, 150, 255, 0.3);
+            position: relative;
+        }
+        
+        .footer::before {
+            content: "";
+            position: absolute;
+            top: -10px;
+            left: 50%;
+            width: 200px;
+            height: 3px;
+            background: linear-gradient(to right, transparent, #ff7e5f, transparent);
+            transform: translateX(-50%);
+        }
+        
+        .rover {
+            position: absolute;
+            width: 80px;
+            height: 50px;
+            transform: translate(-50%, -50%);
+            z-index: 20;
+            transition: left 0.7s cubic-bezier(0.22, 0.61, 0.36, 1), top 0.7s cubic-bezier(0.22, 0.61, 0.36, 1);
+            filter: drop-shadow(0 0 10px rgba(255, 255, 255, 0.7));
+        }
+        
+        .rover-body {
+            position: absolute;
+            width: 100%;
+            height: 60%;
+            top: 20%;
+            background: linear-gradient(to bottom, #ff7e5f, #d05a4a);
+            border-radius: 15px 15px 5px 5px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.5);
+        }
+        
+        .rover-cabin {
+            position: absolute;
+            width: 50%;
+            height: 60%;
+            top: -40%;
+            left: 25%;
+            background: linear-gradient(to bottom, #4a6fff, #2a4fcc);
+            border-radius: 10px 10px 0 0;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+        }
+        
+        .rover-window {
+            position: absolute;
+            width: 60%;
+            height: 50%;
+            top: 25%;
+            left: 20%;
+            background: rgba(200, 230, 255, 0.8);
+            border-radius: 5px;
+        }
+        
+        .wheel {
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            background: #333;
+            border-radius: 50%;
+            bottom: 0;
+            animation: wheelSpin 1s linear infinite;
+            box-shadow: 0 0 10px rgba(0,0,0,0.7);
+        }
+        
+        .wheel.front {
+            left: 15px;
+        }
+        
+        .wheel.back {
+            right: 15px;
+        }
+        
+        @keyframes wheelSpin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .particles {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            top: 0;
+            left: 0;
+            pointer-events: none;
+            z-index: 5;
+        }
+        
+        .particle {
+            position: absolute;
+            width: 4px;
+            height: 4px;
+            background: white;
+            border-radius: 50%;
+            opacity: 0;
+            animation: particleFloat 3s ease-out forwards;
+        }
+        
+        @keyframes particleFloat {
+            0% {
+                transform: translate(0, 0);
+                opacity: 1;
+            }
+            100% {
+                transform: translate(var(--tx), var(--ty));
+                opacity: 0;
+            }
+        }
+        
+        .play-controls {
+            display: flex;
+            gap: 15px;
+            margin-top: 20px;
+        }
+        
+        .play-btn {
+            flex: 1;
+            padding: 12px 15px;
+            background: linear-gradient(to bottom, rgba(40, 60, 120, 0.8), rgba(20, 30, 70, 0.8));
+            border: 2px solid #4a6fff;
+            border-radius: 10px;
+            color: #e0e0ff;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-align: center;
+        }
+        
+        .play-btn:hover {
+            background: linear-gradient(to bottom, rgba(60, 90, 180, 0.9), rgba(30, 50, 120, 0.9));
+            transform: translateY(-3px);
+        }
+        
+        @media (max-width: 1100px) {
+            .dashboard {
+                flex-direction: column;
+            }
+            
+            h1 {
+                font-size: 3.5rem;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            h1 {
+                font-size: 2.8rem;
+            }
+            
+            .subtitle {
+                font-size: 1.4rem;
+            }
+            
+            .concepts {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="header-content">
+                <h1><i class="fas fa-mountain"></i> SUMMIT QUEST</h1>
+                <p class="subtitle">An Oscar-Worthy Exploration of Maxima & Minima</p>
+                <p>Journey through mathematical landscapes to discover peaks and valleys in stunning cinematic detail</p>
+            </div>
+        </header>
+        
+        <div class="dashboard">
+            <div class="graph-container">
+                <h2><i class="fas fa-map"></i> Function Terrain Explorer</h2>
+                <div class="canvas-wrapper">
+                    <canvas id="terrainCanvas"></canvas>
+                    <div class="particles" id="particles"></div>
+                    <div class="rover" id="rover">
+                        <div class="rover-body"></div>
+                        <div class="rover-cabin">
+                            <div class="rover-window"></div>
+                        </div>
+                        <div class="wheel front"></div>
+                        <div class="wheel back"></div>
+                    </div>
+                </div>
+                
+                <div class="max-min">
+                    <div class="max">
+                        <i class="fas fa-arrow-up"></i> Maximum Point: <span id="maxPoint">(0, 4)</span>
+                    </div>
+                    <div class="min">
+                        <i class="fas fa-arrow-down"></i> Minimum Point: <span id="minPoint">None</span>
+                    </div>
+                </div>
+                
+                <div class="info-panel">
+                    <h3><i class="fas fa-info-circle"></i> Advanced Position Analysis</h3>
+                    <div class="info-content">
+                        <p>The slope of the tangent line indicates the rate of change. At critical points (maxima/minima), the slope becomes zero. The second derivative reveals concavity - positive for minima, negative for maxima.</p>
+                        <div class="point-info">
+                            <div>
+                                <div>Current Position: <span class="point-value" id="currentPos">(0.0, 4.0)</span></div>
+                                <div>Slope (1st Derivative): <span class="point-value" id="slopeValue">0.0</span></div>
+                            </div>
+                            <div>
+                                <div>Curvature (2nd Derivative): <span class="point-value" id="secondDerivative">-2.0</span></div>
+                                <div>Function: <span class="point-value" id="currentFunc">f(x) = -x² + 4</span></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="controls">
+                <h2><i class="fas fa-sliders-h"></i> Exploration Controls</h2>
+                
+                <div class="control-group">
+                    <label>Select Terrain Type:</label>
+                    <div class="function-selector">
+                        <div class="func-btn active" data-func="quadratic">
+                            <i class="fas fa-hill-rockslide"></i> Parabolic Mountain
+                        </div>
+                        <div class="func-btn" data-func="absolute">
+                            <i class="fas fa-mountain-sun"></i> V-Shaped Valley
+                        </div>
+                        <div class="func-btn" data-func="cubic">
+                            <i class="fas fa-hills"></i> Cubic Hills
+                        </div>
+                        <div class="func-btn" data-func="sinusoidal">
+                            <i class="fas fa-wave-square"></i> Sinusoidal Waves
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="control-group">
+                    <label>Explorer Position: <span id="positionValue">0.0</span></label>
+                    <div class="slider-container">
+                        <input type="range" id="positionSlider" min="-5" max="5" step="0.01" value="0">
+                    </div>
+                </div>
+                
+                <div class="control-group">
+                    <label>Animation Speed:</label>
+                    <div class="slider-container">
+                        <input type="range" id="speedSlider" min="1" max="10" value="5">
+                    </div>
+                </div>
+                
+                <div class="play-controls">
+                    <div class="play-btn" id="playBtn">
+                        <i class="fas fa-play"></i> Auto-Explore
+                    </div>
+                    <div class="play-btn" id="pauseBtn">
+                        <i class="fas fa-pause"></i> Pause
+                    </div>
+                    <div class="play-btn" id="resetBtn">
+                        <i class="fas fa-redo"></i> Reset
+                    </div>
+                </div>
+                
+                <div class="info-panel">
+                    <h3><i class="fas fa-lightbulb"></i> Mathematical Insights</h3>
+                    <div class="info-content">
+                        <p><strong>Critical Points:</strong> Where derivative is zero or undefined</p>
+                        <p><strong>First Derivative Test:</strong> Sign change indicates max/min</p>
+                        <p><strong>Second Derivative Test:</strong> Concavity determines max/min</p>
+                        <p><strong>Global vs Local:</strong> Highest/lowest point in entire domain vs neighborhood</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="concepts">
+            <div class="concept-card">
+                <div class="card-icon">
+                    <i class="fas fa-arrow-up"></i>
+                </div>
+                <h3>Local Maximum</h3>
+                <p>A point where the function value is higher than all nearby points. The derivative changes from positive to negative. Mathematically, it's a point where f'(x) = 0 and f''(x) < 0. These represent peaks in the mathematical landscape.</p>
+            </div>
+            
+            <div class="concept-card">
+                <div class="card-icon">
+                    <i class="fas fa-arrow-down"></i>
+                </div>
+                <h3>Local Minimum</h3>
+                <p>A point where the function value is lower than all nearby points. The derivative changes from negative to positive. Formally, f'(x) = 0 and f''(x) > 0. These are valleys where the function reaches its lowest point in a local region.</p>
+            </div>
+            
+            <div class="concept-card">
+                <div class="card-icon">
+                    <i class="fas fa-diamond"></i>
+                </div>
+                <h3>Non-Differentiable Points</h3>
+                <p>Points where the derivative doesn't exist, such as sharp corners or discontinuities, can still be maxima or minima. Examples include |x| at x=0. These critical points require special analysis as standard derivative tests don't apply.</p>
+            </div>
+        </div>
+        
+        <div class="footer">
+            <p>Created for educational purposes | The Summit Quest: Maxima & Minima Explorer</p>
+            <p>Move the slider to explore the terrain and discover mathematical peaks and valleys!</p>
+        </div>
+    </div>
+
+    <script>
+        // Enhanced DOM Elements
+        const canvas = document.getElementById('terrainCanvas');
+        const ctx = canvas.getContext('2d');
+        const rover = document.getElementById('rover');
+        const positionSlider = document.getElementById('positionSlider');
+        const positionValue = document.getElementById('positionValue');
+        const currentPos = document.getElementById('currentPos');
+        const slopeValue = document.getElementById('slopeValue');
+        const secondDerivative = document.getElementById('secondDerivative');
+        const currentFunc = document.getElementById('currentFunc');
+        const maxPoint = document.getElementById('maxPoint');
+        const minPoint = document.getElementById('minPoint');
+        const funcButtons = document.querySelectorAll('.func-btn');
+        const playBtn = document.getElementById('playBtn');
+        const pauseBtn = document.getElementById('pauseBtn');
+        const resetBtn = document.getElementById('resetBtn');
+        const particlesContainer = document.getElementById('particles');
+        const speedSlider = document.getElementById('speedSlider');
+        
+        // Canvas setup
+        function setupCanvas() {
+            canvas.width = canvas.parentElement.clientWidth;
+            canvas.height = canvas.parentElement.clientHeight;
+        }
+        
+        // Current function state
+        let currentFunction = 'quadratic';
+        let x = 0;
+        let autoPlay = false;
+        let direction = 1;
+        let animationSpeed = 5;
+        let lastTimestamp = 0;
+        let stars = [];
+        
+        // Create stars for background
+        function createStars() {
+            stars = [];
+            for (let i = 0; i < 100; i++) {
+                stars.push({
+                    x: Math.random() * canvas.width,
+                    y: Math.random() * canvas.height / 2,
+                    size: Math.random() * 1.5 + 0.5,
+                    opacity: Math.random() * 0.5 + 0.2,
+                    twinkle: Math.random() * 0.05
+                });
+            }
+        }
+        
+        // Create particles
+        function createParticles(x, y, count) {
+            for (let i = 0; i < count; i++) {
+                const particle = document.createElement('div');
+                particle.classList.add('particle');
+                particle.style.left = `${x}px`;
+                particle.style.top = `${y}px`;
+                particle.style.setProperty('--tx', `${(Math.random() - 0.5) * 100}px`);
+                particle.style.setProperty('--ty', `${(Math.random() - 0.5) * 100}px`);
+                particlesContainer.appendChild(particle);
+                
+                setTimeout(() => {
+                    particle.remove();
+                }, 3000);
+            }
+        }
+        
+        // Function definitions with second derivatives
+        const functions = {
+            quadratic: {
+                func: x => -x*x + 4,
+                derivative: x => -2*x,
+                secondDerivative: () => -2,
+                max: {x: 0, y: 4},
+                min: null,
+                name: "f(x) = -x² + 4",
+                derivativeName: "f'(x) = -2x"
+            },
+            absolute: {
+                func: x => Math.abs(x - 2) + 1,
+                derivative: x => x < 2 ? -1 : 1,
+                secondDerivative: () => 0,
+                max: null,
+                min: {x: 2, y: 1},
+                name: "f(x) = |x - 2| + 1",
+                derivativeName: "f'(x) = undefined at x=2"
+            },
+            cubic: {
+                func: x => 0.1*(x*x*x - 12*x) + 2,
+                derivative: x => 0.1*(3*x*x - 12),
+                secondDerivative: x => 0.1*(6*x),
+                max: {x: -2, y: 0.1*(-8 + 24) + 2},
+                min: {x: 2, y: 0.1*(8 - 24) + 2},
+                name: "f(x) = 0.1(x³ - 12x) + 2",
+                derivativeName: "f'(x) = 0.1(3x² - 12)"
+            },
+            sinusoidal: {
+                func: x => 2*Math.sin(x) + 3,
+                derivative: x => 2*Math.cos(x),
+                secondDerivative: x => -2*Math.sin(x),
+                max: {x: Math.PI/2, y: 5},
+                min: {x: -Math.PI/2, y: 1},
+                name: "f(x) = 2sin(x) + 3",
+                derivativeName: "f'(x) = 2cos(x)"
+            }
+        };
+        
+        // Draw the terrain with enhanced visuals
+        function drawTerrain(timestamp) {
+            if (!lastTimestamp) lastTimestamp = timestamp;
+            const deltaTime = timestamp - lastTimestamp;
+            lastTimestamp = timestamp;
+            
+            const width = canvas.width;
+            const height = canvas.height;
+            const padding = 50;
+            const graphWidth = width - 2*padding;
+            const graphHeight = height - 2*padding;
+            
+            // Clear canvas
+            ctx.clearRect(0, 0, width, height);
+            
+            // Draw stars
+            ctx.fillStyle = 'white';
+            stars.forEach(star => {
+                const twinkle = Math.sin(timestamp * star.twinkle) * 0.2;
+                ctx.globalAlpha = star.opacity + twinkle;
+                ctx.beginPath();
+                ctx.arc(star.x, star.y, star.size, 0, Math.PI * 2);
+                ctx.fill();
+            });
+            ctx.globalAlpha = 1;
+            
+            // Draw grid with perspective
+            ctx.strokeStyle = 'rgba(100, 150, 255, 0.15)';
+            ctx.lineWidth = 1;
+            
+            // Vertical grid lines
+            for (let i = 0; i <= 10; i++) {
+                const x = padding + i * graphWidth / 10;
+                ctx.beginPath();
+                ctx.moveTo(x, padding);
+                ctx.lineTo(x, height - padding);
+                ctx.stroke();
+            }
+            
+            // Horizontal grid lines
+            for (let i = 0; i <= 10; i++) {
+                const y = padding + i * graphHeight / 10;
+                ctx.beginPath();
+                ctx.moveTo(padding, y);
+                ctx.lineTo(width - padding, y);
+                ctx.stroke();
+            }
+            
+            // Draw axes with glow
+            ctx.strokeStyle = '#4a6fff';
+            ctx.lineWidth = 2;
+            ctx.shadowColor = '#4a6fff';
+            ctx.shadowBlur = 10;
+            
+            // X-axis
+            ctx.beginPath();
+            ctx.moveTo(padding, height/2);
+            ctx.lineTo(width - padding, height/2);
+            ctx.stroke();
+            
+            // Y-axis
+            ctx.beginPath();
+            ctx.moveTo(width/2, padding);
+            ctx.lineTo(width/2, height - padding);
+            ctx.stroke();
+            
+            ctx.shadowBlur = 0;
+            
+            // Draw function curve with gradient and thickness
+            const gradient = ctx.createLinearGradient(0, 0, width, 0);
+            gradient.addColorStop(0, '#ff7e5f');
+            gradient.addColorStop(0.5, '#feb47b');
+            gradient.addColorStop(1, '#ff7e5f');
+            
+            ctx.strokeStyle = gradient;
+            ctx.lineWidth = 6;
+            ctx.lineCap = 'round';
+            ctx.beginPath();
+            
+            const func = functions[currentFunction];
+            let prevCanvasY = 0;
+            
+            for (let i = 0; i <= graphWidth; i++) {
+                const graphX = -5 + 10 * i / graphWidth;
+                const graphY = func.func(graphX);
+                
+                // Convert to canvas coordinates
+                const canvasX = padding + (graphX + 5) * graphWidth / 10;
+                const canvasY = height/2 - graphY * graphHeight / 8;
+                
+                if (i === 0) {
+                    ctx.moveTo(canvasX, canvasY);
+                } else {
+                    // Draw with slight curve for smoothness
+                    const cpx = (prevCanvasX + canvasX) / 2;
+                    const cpy = (prevCanvasY + canvasY) / 2;
+                    ctx.quadraticCurveTo(prevCanvasX, prevCanvasY, cpx, cpy);
+                }
+                
+                prevCanvasX = canvasX;
+                prevCanvasY = canvasY;
+            }
+            
+            ctx.stroke();
+            
+            // Draw tangent line at current position
+            const slope = func.derivative(x);
+            const y = func.func(x);
+            
+            // Calculate tangent line points
+            const tangentLength = 100;
+            const x1 = x - 0.5;
+            const y1 = y - 0.5 * slope;
+            const x2 = x + 0.5;
+            const y2 = y + 0.5 * slope;
+            
+            // Convert to canvas coordinates
+            const canvasX1 = padding + (x1 + 5) * graphWidth / 10;
+            const canvasY1 = height/2 - y1 * graphHeight / 8;
+            const canvasX2 = padding + (x2 + 5) * graphWidth / 10;
+            const canvasY2 = height/2 - y2 * graphHeight / 8;
+            
+            // Draw tangent line with glow
+            ctx.strokeStyle = '#ff7e5f';
+            ctx.lineWidth = 4;
+            ctx.shadowColor = '#ff7e5f';
+            ctx.shadowBlur = 15;
+            ctx.beginPath();
+            ctx.moveTo(canvasX1, canvasY1);
+            ctx.lineTo(canvasX2, canvasY2);
+            ctx.stroke();
+            ctx.shadowBlur = 0;
+            
+            // Draw current point with glow
+            const pointX = padding + (x + 5) * graphWidth / 10;
+            const pointY = height/2 - y * graphHeight / 8;
+            
+            ctx.fillStyle = '#ff7e5f';
+            ctx.shadowColor = '#ff7e5f';
+            ctx.shadowBlur = 20;
+            ctx.beginPath();
+            ctx.arc(pointX, pointY, 10, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.shadowBlur = 0;
+            
+            // Position the rover
+            rover.style.left = `${pointX}px`;
+            rover.style.top = `${pointY}px`;
+            
+            // Update info displays
+            positionValue.textContent = x.toFixed(2);
+            currentPos.textContent = `(${x.toFixed(1)}, ${y.toFixed(1)})`;
+            slopeValue.textContent = isFinite(slope) ? slope.toFixed(2) : "undefined";
+            
+            // Calculate and display second derivative
+            if (typeof func.secondDerivative === 'function') {
+                const secondDerivValue = func.secondDerivative(x);
+                secondDerivative.textContent = isFinite(secondDerivValue) ? secondDerivValue.toFixed(2) : "undefined";
+            } else {
+                secondDerivative.textContent = "undefined";
+            }
+            
+            currentFunc.textContent = func.name;
+            
+            // Update max/min points
+            maxPoint.textContent = func.max ? `(${func.max.x.toFixed(1)}, ${func.max.y.toFixed(1)})` : "None";
+            minPoint.textContent = func.min ? `(${func.min.x.toFixed(1)}, ${func.min.y.toFixed(1)})` : "None";
+            
+            // Continue animation loop
+            requestAnimationFrame(drawTerrain);
+        }
+        
+        // Auto-play animation
+        function autoExplore() {
+            if (!autoPlay) return;
+            
+            const func = functions[currentFunction];
+            const step = 0.01 * animationSpeed;
+            
+            x += step * direction;
+            
+            // Change direction at boundaries
+            if (x > 5) direction = -1;
+            if (x < -5) direction = 1;
+            
+            // Pause briefly at critical points
+            if (Math.abs(func.derivative(x)) < 0.05) {
+                createParticles(
+                    parseFloat(rover.style.left),
+                    parseFloat(rover.style.top),
+                    20
+                );
+            }
+            
+            positionSlider.value = x;
+            positionValue.textContent = x.toFixed(2);
+            
+            setTimeout(autoExplore, 50 - (animationSpeed * 4));
+        }
+        
+        // Event listeners
+        positionSlider.addEventListener('input', function() {
+            x = parseFloat(this.value);
+        });
+        
+        speedSlider.addEventListener('input', function() {
+            animationSpeed = parseFloat(this.value);
+        });
+        
+        funcButtons.forEach(button => {
+            button.addEventListener('click', function() {
+                funcButtons.forEach(btn => btn.classList.remove('active'));
+                this.classList.add('active');
+                currentFunction = this.dataset.func;
+                
+                // Reset position for new function
+                if (currentFunction === 'absolute') {
+                    positionSlider.value = 2;
+                    x = 2;
+                } else if (currentFunction === 'cubic') {
+                    positionSlider.value = -2;
+                    x = -2;
+                } else if (currentFunction === 'sinusoidal') {
+                    positionSlider.value = 0;
+                    x = 0;
+                } else {
+                    positionSlider.value = 0;
+                    x = 0;
+                }
+                
+                positionValue.textContent = x.toFixed(2);
+            });
+        });
+        
+        playBtn.addEventListener('click', function() {
+            autoPlay = true;
+            direction = 1;
+            autoExplore();
+        });
+        
+        pauseBtn.addEventListener('click', function() {
+            autoPlay = false;
+        });
+        
+        resetBtn.addEventListener('click', function() {
+            autoPlay = false;
+            x = 0;
+            positionSlider.value = 0;
+            positionValue.textContent = "0.00";
+        });
+        
+        // Initialize
+        window.addEventListener('load', function() {
+            setupCanvas();
+            createStars();
+            requestAnimationFrame(drawTerrain);
+        });
+        
+        window.addEventListener('resize', function() {
+            setupCanvas();
+            createStars();
+        });
+    </script>
+</body>
+</html>
