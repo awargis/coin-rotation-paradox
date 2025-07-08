@@ -1,0 +1,609 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Parabolic Illumination: A Mathematical Cinematic Experience</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Roboto+Mono:wght@300;400;700&display=swap');
+    
+    body { 
+      margin: 0; 
+      overflow: hidden; 
+      background: #000; 
+      color: #FFF; 
+      font-family: 'Roboto Mono', monospace;
+      -webkit-font-smoothing: antialiased;
+    }
+    
+    #canvas-container {
+      position: relative;
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+    }
+    
+    canvas { 
+      display: block; 
+      width: 100%;
+      height: 100%;
+    }
+    
+    #ui-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+    }
+    
+    #title-card {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      text-align: center;
+      opacity: 0;
+      transition: opacity 1.5s ease-in-out;
+    }
+    
+    #title-card h1 {
+      font-family: 'Playfair Display', serif;
+      font-size: 4rem;
+      color: #FFD700;
+      margin-bottom: 0.5rem;
+      text-shadow: 0 0 20px rgba(255, 215, 0, 0.7);
+    }
+    
+    #title-card p {
+      font-size: 1.2rem;
+      max-width: 600px;
+      margin: 0 auto;
+      line-height: 1.6;
+    }
+    
+    #info-panel {
+      position: absolute;
+      top: 30px;
+      left: 30px;
+      background: rgba(0, 0, 0, 0.7);
+      padding: 20px;
+      border-radius: 8px;
+      max-width: 320px;
+      border-left: 3px solid #FFD700;
+      opacity: 0;
+      transform: translateX(-20px);
+      transition: all 0.8s ease-out;
+    }
+    
+    #equation-display {
+      position: absolute;
+      bottom: 30px;
+      right: 30px;
+      font-size: 1.5rem;
+      background: rgba(0, 0, 0, 0.7);
+      padding: 15px;
+      border-radius: 8px;
+      border-bottom: 3px solid #FF4500;
+      opacity: 0;
+      transform: translateY(20px);
+      transition: all 0.8s ease-out;
+    }
+    
+    #pause-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.7);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.8s ease-in-out;
+    }
+    
+    #pause-title {
+      font-family: 'Playfair Display', serif;
+      font-size: 3.5rem;
+      color: #FFD700;
+      margin-bottom: 1rem;
+      text-align: center;
+    }
+    
+    #pause-subtitle {
+      font-size: 1.3rem;
+      max-width: 600px;
+      text-align: center;
+      line-height: 1.6;
+      margin-bottom: 2rem;
+    }
+    
+    #pause-timer {
+      font-size: 5rem;
+      color: #FFD700;
+      text-shadow: 0 0 15px rgba(255, 215, 0, 0.8);
+      margin-bottom: 2rem;
+    }
+    
+    #controls {
+      position: absolute;
+      bottom: 30px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      gap: 15px;
+      opacity: 0;
+      transition: opacity 1s ease-out;
+    }
+    
+    .control-btn {
+      background: rgba(255, 215, 0, 0.2);
+      border: 1px solid rgba(255, 215, 0, 0.5);
+      color: #FFD700;
+      padding: 10px 20px;
+      border-radius: 30px;
+      font-family: 'Roboto Mono', monospace;
+      font-size: 0.9rem;
+      cursor: pointer;
+      pointer-events: auto;
+      transition: all 0.3s ease;
+    }
+    
+    .control-btn:hover {
+      background: rgba(255, 215, 0, 0.4);
+      transform: translateY(-2px);
+    }
+    
+    .highlight {
+      color: #FF4500;
+      font-weight: bold;
+    }
+    
+    .gold-text {
+      color: #FFD700;
+    }
+    
+    .math-notation {
+      font-family: 'Roboto Mono', monospace;
+      font-style: italic;
+    }
+  </style>
+</head>
+<body>
+  <div id="canvas-container">
+    <canvas id="main-canvas"></canvas>
+    
+    <div id="ui-overlay">
+      <div id="title-card">
+        <h1>Parabolic Illumination</h1>
+        <p>A cinematic exploration of tangent lines and their geometric significance</p>
+      </div>
+      
+      <div id="info-panel">
+        <h2>The Problem</h2>
+        <p>A car's headlights shine along the tangent line to its parabolic path <span class="math-notation">(y = x²/100)</span>. When does the beam illuminate the statue at <span class="highlight">(100, 50)</span>?</p>
+      </div>
+      
+      <div id="equation-display">
+        <div>Car Position: <span id="car-pos" class="gold-text">(0, 0)</span></div>
+        <div>Tangent Slope: <span id="slope-value" class="gold-text">0</span></div>
+      </div>
+      
+      <div id="pause-overlay">
+        <div id="pause-title">Tangent Condition Met</div>
+        <div id="pause-subtitle">The car's headlights now perfectly illuminate the statue at (100, 50)</div>
+        <div id="pause-timer">3</div>
+      </div>
+      
+      <div id="controls">
+        <button id="replay-btn" class="control-btn">⟳ Replay</button>
+        <button id="pause-btn" class="control-btn">⏸ Pause</button>
+        <button id="info-btn" class="control-btn">ℹ Info</button>
+      </div>
+    </div>
+  </div>
+
+  <audio id="ambient-sound" loop>
+    <source src="https://assets.codepen.io/21542/ambient-drive.mp3" type="audio/mpeg">
+  </audio>
+  
+  <audio id="illumination-sound">
+    <source src="https://assets.codepen.io/21542/magic-chime.mp3" type="audio/mpeg">
+  </audio>
+
+  <script>
+    // ================ CONFIGURATION ================
+    const CONFIG = {
+      duration: 15000, // 15 second animation
+      parabola: {
+        equation: x => x * x / 100,
+        range: [-120, 120],
+        width: 4,
+        color: "rgba(100, 200, 255, 0.8)"
+      },
+      car: {
+        radius: 6,
+        color: "#00FFFF",
+        glowColor: "rgba(0, 255, 255, 0.6)",
+        speed: 0.8
+      },
+      statue: {
+        position: { x: 100, y: 50 },
+        radius: 6,
+        color: "#FF4500",
+        glowColor: "rgba(255, 69, 0, 0.8)"
+      },
+      tangent: {
+        width: 3,
+        color: "rgba(255, 215, 0, 0.8)",
+        fadeColor: "rgba(255, 215, 0, 0)"
+      },
+      illuminationPoint: {
+        x: 100 - 50 * Math.sqrt(2), // ≈ -29.29
+        pauseDuration: 3000 // 3 seconds
+      }
+    };
+
+    // ================ INITIALIZATION ================
+    const canvas = document.getElementById("main-canvas");
+    const ctx = canvas.getContext("2d");
+    const resizeCanvas = () => {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    };
+    resizeCanvas();
+    window.addEventListener('resize', resizeCanvas);
+
+    // UI Elements
+    const titleCard = document.getElementById("title-card");
+    const infoPanel = document.getElementById("info-panel");
+    const equationDisplay = document.getElementById("equation-display");
+    const pauseOverlay = document.getElementById("pause-overlay");
+    const pauseTitle = document.getElementById("pause-title");
+    const pauseSubtitle = document.getElementById("pause-subtitle");
+    const pauseTimer = document.getElementById("pause-timer");
+    const carPosDisplay = document.getElementById("car-pos");
+    const slopeDisplay = document.getElementById("slope-value");
+    const controls = document.getElementById("controls");
+    const replayBtn = document.getElementById("replay-btn");
+    const pauseBtn = document.getElementById("pause-btn");
+    const infoBtn = document.getElementById("info-btn");
+
+    // Audio
+    const ambientSound = document.getElementById("ambient-sound");
+    const illumSound = document.getElementById("illumination-sound");
+    let audioEnabled = false;
+
+    // Animation State
+    let startTime = null;
+    let pausedTime = null;
+    let isPaused = false;
+    let isIlluminated = false;
+    let illuminationStart = null;
+    let animationId = null;
+    let showInfo = true;
+
+    // ================ ANIMATION FUNCTIONS ================
+    function startAnimation() {
+      startTime = performance.now();
+      pausedTime = null;
+      isPaused = false;
+      isIlluminated = false;
+      illuminationStart = null;
+      
+      // Show title card
+      titleCard.style.opacity = 1;
+      setTimeout(() => {
+        titleCard.style.opacity = 0;
+      }, 3000);
+      
+      // Show info panel and equation after title
+      setTimeout(() => {
+        infoPanel.style.opacity = 1;
+        infoPanel.style.transform = "translateX(0)";
+        equationDisplay.style.opacity = 1;
+        equationDisplay.style.transform = "translateY(0)";
+        controls.style.opacity = 1;
+      }, 3500);
+      
+      if (audioEnabled) {
+        ambientSound.currentTime = 0;
+        ambientSound.play().catch(e => console.log("Audio blocked:", e));
+      }
+      
+      animate();
+    }
+
+    function animate() {
+      if (isPaused) {
+        updatePauseTimer();
+        renderFrame(pausedTime - startTime);
+        animationId = requestAnimationFrame(animate);
+        return;
+      }
+      
+      const currentTime = performance.now();
+      const elapsed = currentTime - startTime;
+      
+      if (elapsed > CONFIG.duration) {
+        completeAnimation();
+        return;
+      }
+      
+      renderFrame(elapsed);
+      animationId = requestAnimationFrame(animate);
+    }
+
+    function renderFrame(elapsed) {
+      // Clear canvas with fading trail effect
+      ctx.fillStyle = "rgba(0, 0, 0, 0.15)";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      
+      // Calculate normalized progress (0 to 1)
+      const progress = Math.min(elapsed / CONFIG.duration, 1);
+      
+      // Calculate car position
+      const xRange = CONFIG.parabola.range[1] - CONFIG.parabola.range[0];
+      const x = CONFIG.parabola.range[0] + progress * xRange;
+      const y = CONFIG.parabola.equation(x);
+      
+      // Check for illumination point
+      if (!isIlluminated && Math.abs(x - CONFIG.illuminationPoint.x) < 0.5) {
+        isIlluminated = true;
+        illuminationStart = performance.now();
+        if (audioEnabled) illumSound.play().catch(e => console.log("Sound blocked"));
+      }
+      
+      // Draw elements
+      drawParabola();
+      drawStatue();
+      drawCar(x, y);
+      
+      // Draw tangent beam when illuminated or at illumination point
+      if (isIlluminated) {
+        drawTangentBeam(x, y);
+        
+        // Handle pause at illumination point
+        if (!isPaused && performance.now() - illuminationStart < CONFIG.illuminationPoint.pauseDuration) {
+          isPaused = true;
+          pausedTime = performance.now();
+          pauseOverlay.style.opacity = 1;
+        } else if (isPaused && performance.now() - illuminationStart >= CONFIG.illuminationPoint.pauseDuration) {
+          isPaused = false;
+          pauseOverlay.style.opacity = 0;
+          startTime += CONFIG.illuminationPoint.pauseDuration; // Compensate for pause time
+        }
+      }
+      
+      // Update UI
+      updateUI(x, y);
+    }
+
+    function updatePauseTimer() {
+      if (!isIlluminated) return;
+      
+      const elapsed = performance.now() - illuminationStart;
+      const remaining = Math.ceil((CONFIG.illuminationPoint.pauseDuration - elapsed) / 1000);
+      
+      if (remaining >= 0) {
+        pauseTimer.textContent = remaining;
+      }
+    }
+
+    function completeAnimation() {
+      cancelAnimationFrame(animationId);
+      // Show completion message
+      infoPanel.innerHTML = `
+        <h2>Animation Complete</h2>
+        <p>The car's path has illuminated the statue at the precise tangent point:</p>
+        <p class="highlight">x = ${CONFIG.illuminationPoint.x.toFixed(2)}</p>
+        <p>Click "Replay" to experience it again.</p>
+      `;
+    }
+
+    // ================ DRAWING FUNCTIONS ================
+    function worldToCanvas(worldX, worldY) {
+      const scale = Math.min(canvas.width, canvas.height) / 250;
+      return {
+        x: canvas.width / 2 + worldX * scale,
+        y: canvas.height / 2 - worldY * scale
+      };
+    }
+
+    function drawParabola() {
+      ctx.beginPath();
+      for (let x = CONFIG.parabola.range[0]; x <= CONFIG.parabola.range[1]; x += 0.5) {
+        const p = worldToCanvas(x, CONFIG.parabola.equation(x));
+        x === CONFIG.parabola.range[0] ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y);
+      }
+      
+      // Style
+      ctx.strokeStyle = CONFIG.parabola.color;
+      ctx.lineWidth = CONFIG.parabola.width;
+      ctx.shadowBlur = 15;
+      ctx.shadowColor = CONFIG.parabola.color;
+      ctx.stroke();
+      
+      // Reset shadow
+      ctx.shadowBlur = 0;
+    }
+
+    function drawStatue() {
+      const p = worldToCanvas(CONFIG.statue.position.x, CONFIG.statue.position.y);
+      
+      // Glow effect
+      const gradient = ctx.createRadialGradient(
+        p.x, p.y, 5,
+        p.x, p.y, 30
+      );
+      gradient.addColorStop(0, CONFIG.statue.glowColor);
+      gradient.addColorStop(1, "rgba(255, 69, 0, 0)");
+      
+      ctx.fillStyle = gradient;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, 30, 0, Math.PI * 2);
+      ctx.fill();
+      
+      // Statue dot
+      ctx.fillStyle = CONFIG.statue.color;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, CONFIG.statue.radius, 0, Math.PI * 2);
+      ctx.fill();
+      
+      // Label
+      ctx.fillStyle = CONFIG.statue.color;
+      ctx.font = "bold 14px 'Roboto Mono'";
+      ctx.fillText(`Statue (${CONFIG.statue.position.x}, ${CONFIG.statue.position.y})`, p.x + 25, p.y + 5);
+    }
+
+    function drawCar(x, y) {
+      const p = worldToCanvas(x, y);
+      
+      // Car body
+      ctx.fillStyle = CONFIG.car.color;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, CONFIG.car.radius, 0, Math.PI * 2);
+      ctx.fill();
+      
+      // Glow effect
+      const gradient = ctx.createRadialGradient(
+        p.x, p.y, CONFIG.car.radius,
+        p.x, p.y, CONFIG.car.radius * 3
+      );
+      gradient.addColorStop(0, CONFIG.car.glowColor);
+      gradient.addColorStop(1, "rgba(0, 255, 255, 0)");
+      
+      ctx.fillStyle = gradient;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, CONFIG.car.radius * 3, 0, Math.PI * 2);
+      ctx.fill();
+      
+      // Motion trail
+      if (!isPaused) {
+        ctx.strokeStyle = "rgba(0, 255, 255, 0.2)";
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        for (let i = 0; i < 5; i++) {
+          const trailX = x - i * CONFIG.car.speed;
+          const trailY = CONFIG.parabola.equation(trailX);
+          const trailP = worldToCanvas(trailX, trailY);
+          i === 0 ? ctx.moveTo(trailP.x, trailP.y) : ctx.lineTo(trailP.x, trailP.y);
+        }
+        ctx.stroke();
+      }
+    }
+
+    function drawTangentBeam(x, y) {
+      const p = worldToCanvas(x, y);
+      const m = x / 50; // Slope of tangent (dy/dx = x/50)
+      
+      // Create gradient for beam
+      const gradient = ctx.createLinearGradient(
+        p.x, p.y,
+        p.x + canvas.width * Math.cos(Math.atan(m)),
+        p.y - canvas.width * Math.sin(Math.atan(m)) // Negative because canvas y increases downward
+      );
+      gradient.addColorStop(0, CONFIG.tangent.color);
+      gradient.addColorStop(0.7, CONFIG.tangent.fadeColor);
+      
+      // Draw beam
+      ctx.strokeStyle = gradient;
+      ctx.lineWidth = CONFIG.tangent.width;
+      ctx.beginPath();
+      ctx.moveTo(p.x, p.y);
+      ctx.lineTo(
+        p.x + canvas.width * Math.cos(Math.atan(m)),
+        p.y - canvas.width * Math.sin(Math.atan(m))
+      );
+      ctx.stroke();
+      
+      // Add sparkle particles
+      if (isIlluminated && !isPaused) {
+        for (let i = 0; i < 8; i++) {
+          const angle = Math.atan(m) + (Math.random() - 0.5) * 0.3;
+          const dist = 30 + Math.random() * 50;
+          const sparkleX = p.x + dist * Math.cos(angle);
+          const sparkleY = p.y - dist * Math.sin(angle);
+          const size = 1 + Math.random() * 2;
+          
+          ctx.fillStyle = `rgba(255, 215, 0, ${0.5 + Math.random() * 0.5})`;
+          ctx.beginPath();
+          ctx.arc(sparkleX, sparkleY, size, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+      
+      // Label at illumination point
+      if (isPaused) {
+        ctx.font = "bold 18px 'Playfair Display'";
+        ctx.fillStyle = "#FFD700";
+        ctx.fillText("Illumination Point", p.x + 40, p.y - 30);
+        
+        // Highlight the exact point
+        ctx.fillStyle = "#FFD700";
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, 8, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+
+    function updateUI(x, y) {
+      // Update position display
+      carPosDisplay.textContent = `(${x.toFixed(1)}, ${y.toFixed(1)})`;
+      slopeDisplay.textContent = (x / 50).toFixed(3);
+      
+      // Update pause overlay text
+      if (isIlluminated) {
+        pauseSubtitle.innerHTML = `
+          The car at <span class="highlight">(${x.toFixed(1)}, ${y.toFixed(1)})</span><br>
+          illuminates the statue at (100, 50) along the tangent line<br>
+          with slope <span class="highlight">${(x/50).toFixed(3)}</span>`;
+      }
+    }
+
+    // ================ EVENT HANDLERS ================
+    replayBtn.addEventListener('click', () => {
+      cancelAnimationFrame(animationId);
+      startAnimation();
+    });
+
+    pauseBtn.addEventListener('click', () => {
+      if (isPaused) {
+        // Resume
+        isPaused = false;
+        startTime += performance.now() - pausedTime;
+        pauseBtn.textContent = "⏸ Pause";
+        pauseOverlay.style.opacity = 0;
+        animate();
+      } else {
+        // Pause
+        isPaused = true;
+        pausedTime = performance.now();
+        pauseBtn.textContent = "▶ Resume";
+      }
+    });
+
+    infoBtn.addEventListener('click', () => {
+      showInfo = !showInfo;
+      infoPanel.style.opacity = showInfo ? 1 : 0;
+      equationDisplay.style.opacity = showInfo ? 1 : 0;
+    });
+
+    // Enable audio on first interaction
+    document.body.addEventListener('click', () => {
+      if (!audioEnabled) {
+        audioEnabled = true;
+        ambientSound.volume = 0.3;
+        illumSound.volume = 0.6;
+      }
+    }, { once: true });
+
+    // Start the animation
+    startAnimation();
+  </script>
+</body>
+</html>
