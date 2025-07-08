@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Advanced Calculus Visualization</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            overflow: hidden;
+            background: linear-gradient(135deg, #000428, #004e92, #000428);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            color: white;
+            height: 100vh;
+        }
+        
+        .container {
+            position: relative;
+            width: 100%;
+            height: 100vh;
+            overflow: hidden;
+        }
+        
+        #spaceCanvas, #graphCanvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+
+        #graphCanvas {
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 85%;
+            height: 75%;
+            background: rgba(0, 10, 30, 0.85);
+            border-radius: 12px;
+            box-shadow: 0 0 60px rgba(0, 150, 255, 0.4);
+            z-index: 2;
+            border: 1px solid rgba(100, 180, 255, 0.2);
+            backdrop-filter: blur(4px);
+        }
+        
+        .title {
+            position: absolute;
+            top: 4%;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 10;
+            font-size: 2.5rem;
+            font-weight: 700;
+            text-shadow: 0 0 20px rgba(0, 200, 255, 0.8);
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            background: linear-gradient(to right, #4facfe, #00f2fe);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            animation: glow 3s ease-in-out infinite alternate;
+        }
+        
+        .controls {
+            position: absolute;
+            bottom: 4%;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 10;
+            display: flex;
+            gap: 20px;
+            padding: 15px 30px;
+            background: rgba(0, 20, 50, 0.6);
+            border-radius: 50px;
+            border: 1px solid rgba(100, 180, 255, 0.3);
+            backdrop-filter: blur(10px);
+        }
+        
+        .control-btn {
+            background: linear-gradient(to right, #00c6ff, #0072ff);
+            border: none;
+            color: white;
+            padding: 12px 25px;
+            border-radius: 30px;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            outline: none;
+            font-weight: 600;
+            box-shadow: 0 5px 15px rgba(0, 100, 255, 0.4);
+        }
+        
+        .control-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 20px rgba(0, 150, 255, 0.6);
+        }
+        
+        .info-panel {
+            position: absolute;
+            top: 15%;
+            right: 2%;
+            z-index: 10;
+            background: rgba(0, 15, 40, 0.7);
+            border-radius: 15px;
+            padding: 20px;
+            width: 280px;
+            border: 1px solid rgba(100, 180, 255, 0.2);
+            backdrop-filter: blur(10px);
+        }
+        
+        .info-title {
+            font-size: 1.3rem;
+            margin-bottom: 10px;
+            color: #4facfe;
+            text-align: center;
+        }
+        
+        .function-display {
+            font-family: 'Courier New', monospace;
+            font-size: 1.1rem;
+            text-align: center;
+            margin: 15px 0;
+            color: #00f2fe;
+            text-shadow: 0 0 10px rgba(0, 242, 254, 0.5);
+            font-weight: bold;
+        }
+        
+        .display-options {
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid rgba(100, 180, 255, 0.2);
+        }
+
+        .display-options label {
+            display: flex;
+            align-items: center;
+            margin-bottom: 8px;
+            font-size: 0.95rem;
+            cursor: pointer;
+        }
+
+        .display-options input {
+            margin-right: 10px;
+            cursor: pointer;
+        }
+        
+        .inflection-point {
+            position: absolute;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: #ff3860;
+            box-shadow: 0 0 20px 8px rgba(255, 56, 96, 0.7);
+            transform: translate(-50%, -50%);
+            animation: pulse 2s infinite;
+            z-index: 5;
+            pointer-events: none;
+        }
+        
+        .legend {
+            position: absolute;
+            bottom: 15%;
+            left: 2%;
+            z-index: 10;
+            background: rgba(0, 15, 40, 0.7);
+            border-radius: 15px;
+            padding: 15px;
+            border: 1px solid rgba(100, 180, 255, 0.2);
+            backdrop-filter: blur(10px);
+        }
+        
+        .legend-item {
+            display: flex;
+            align-items: center;
+            margin: 10px 0;
+        }
+        
+        .legend-color {
+            width: 20px;
+            height: 4px;
+            margin-right: 10px;
+            border-radius: 2px;
+        }
+        
+        .equation {
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+        }
+
+        /* Added style to hide elements */
+        .hidden {
+            display: none !important;
+        }
+
+        @keyframes glow {
+            from { text-shadow: 0 0 10px rgba(0, 200, 255, 0.6); }
+            to { text-shadow: 0 0 25px rgba(0, 200, 255, 0.9), 0 0 50px rgba(0, 150, 255, 0.6); }
+        }
+        
+        @keyframes pulse {
+            0% { transform: translate(-50%, -50%) scale(1); box-shadow: 0 0 0 0 rgba(255, 56, 96, 0.7); }
+            70% { transform: translate(-50%, -50%) scale(1.2); box-shadow: 0 0 0 15px rgba(255, 56, 96, 0); }
+            100% { transform: translate(-50%, -50%) scale(1); box-shadow: 0 0 0 0 rgba(255, 56, 96, 0); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <canvas id="spaceCanvas"></canvas>
+        <canvas id="graphCanvas"></canvas>
+        <div id="inflectionPointContainer"></div>
+
+        <h1 class="title">Calculus Visualization</h1>
+        
+        <div class="info-panel" id="infoPanel">
+            <h2 class="info-title">Function Explorer</h2>
+            <div class="function-display" id="currentFunction">f(x) = x³</div>
+            <div class="display-options">
+                <label><input type="checkbox" id="toggleTangent" checked>Show Tangent Line</label>
+                <label><input type="checkbox" id="toggleDerivative1" checked>Show f'(x)</label>
+                <label><input type="checkbox" id="toggleDerivative2" checked>Show f''(x)</label>
+            </div>
+        </div>
+        
+        <div class="legend" id="legendPanel">
+            <div class="legend-item">
+                <div class="legend-color" style="background: #ff3860;"></div>
+                <div class="equation">Inflection Point</div>
+            </div>
+             <div class="legend-item">
+                <div class="legend-color" style="height: 2px; background: yellow;"></div>
+                <div class="equation">Tangent Line</div>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color" style="height: 2px; border-top: 2px dashed #39ff14;"></div>
+                <div class="equation">f'(x) - First Derivative</div>
+            </div>
+             <div class="legend-item">
+                <div class="legend-color" style="height: 2px; border-top: 2px dashed #ff9933;"></div>
+                <div class="equation">f''(x) - Second Derivative</div>
+            </div>
+        </div>
+        
+        <div class="controls">
+            <button class="control-btn" id="prevBtn">Previous</button>
+            <button class="control-btn" id="playBtn">Pause</button>
+            <button class="control-btn" id="nextBtn">Next</button>
+            <button class="control-btn" id="toggleUiBtn">Toggle UI</button>
+        </div>
+    </div>
+
+    <script>
+        const spaceCanvas = document.getElementById('spaceCanvas');
+        const graphCanvas = document.getElementById('graphCanvas');
+        const inflectionPointContainer = document.getElementById('inflectionPointContainer');
+        const spaceCtx = spaceCanvas.getContext('2d');
+        const graphCtx = graphCanvas.getContext('2d');
+
+        // --- UI Toggles ---
+        const toggleTangent = document.getElementById('toggleTangent');
+        const toggleDerivative1 = document.getElementById('toggleDerivative1');
+        const toggleDerivative2 = document.getElementById('toggleDerivative2');
+        
+        function setCanvasSize() {
+            spaceCanvas.width = window.innerWidth;
+            spaceCanvas.height = window.innerHeight;
+            graphCanvas.width = graphCanvas.offsetWidth;
+            graphCanvas.height = graphCanvas.offsetHeight;
+            const graphRect = graphCanvas.getBoundingClientRect();
+            inflectionPointContainer.style.position = 'absolute';
+            inflectionPointContainer.style.left = `${graphRect.left}px`;
+            inflectionPointContainer.style.top = `${graphRect.top}px`;
+            inflectionPointContainer.style.width = `${graphRect.width}px`;
+            inflectionPointContainer.style.height = `${graphRect.height}px`;
+        }
+        
+        setCanvasSize();
+        window.addEventListener('resize', setCanvasSize);
+        
+        const stars = Array.from({ length: 400 }, () => ({
+            x: Math.random() * window.innerWidth,
+            y: Math.random() * window.innerHeight,
+            radius: Math.random() * 1.5,
+            speed: Math.random() * 0.5 + 0.1,
+        }));
+        
+        const functions = [
+            {
+                display: "f(x) = x³",
+                fn: x => Math.pow(x, 3),
+                derivative1: x => 3 * Math.pow(x, 2),
+                derivative2: x => 6 * x,
+                inflectionPoints: [0],
+                color: "#00c6ff",
+                domain: [-2, 2],
+                range: [-8, 8]
+            },
+            {
+                display: "f(x) = sin(x)",
+                fn: x => Math.sin(x) * 3, // Scaled for visibility
+                derivative1: x => Math.cos(x) * 3,
+                derivative2: x => -Math.sin(x) * 3,
+                inflectionPoints: [-Math.PI, 0, Math.PI],
+                color: "#4facfe",
+                domain: [-2 * Math.PI, 2 * Math.PI],
+                range: [-4, 4]
+            },
+            {
+                display: "f(x) = x⁴ - 4x²",
+                fn: x => Math.pow(x, 4) - 4 * Math.pow(x, 2),
+                derivative1: x => 4 * Math.pow(x, 3) - 8 * x,
+                derivative2: x => 12 * Math.pow(x, 2) - 8,
+                inflectionPoints: [-Math.sqrt(2/3), Math.sqrt(2/3)],
+                color: "#00f2fe",
+                domain: [-2.5, 2.5],
+                range: [-5, 9]
+            },
+            {
+                display: "f(x) = 1/(1+e⁻ˣ)",
+                fn: x => 6 / (1 + Math.exp(-x)) - 3, // Scaled for visibility
+                derivative1: x => (6 * Math.exp(-x)) / Math.pow(1 + Math.exp(-x), 2),
+                derivative2: x => (6 * Math.exp(-x) * (Math.exp(-x) - 1)) / Math.pow(1 + Math.exp(-x), 3),
+                inflectionPoints: [0],
+                color: "#ff7a45",
+                domain: [-6, 6],
+                range: [-4, 4]
+            }
+        ];
+        
+        let currentFunctionIndex = 0;
+        let animationProgress = 0;
+        let isPlaying = true;
+        let lastTimestamp = 0;
+        const animationSpeed = 0.008; 
+        
+        function drawSpace() {
+            spaceCtx.fillStyle = '#000428';
+            spaceCtx.fillRect(0, 0, spaceCanvas.width, spaceCanvas.height);
+            spaceCtx.fillStyle = `rgba(255, 255, 255, 0.8)`;
+            stars.forEach(star => {
+                spaceCtx.beginPath();
+                spaceCtx.arc(star.x, star.y, star.radius, 0, Math.PI * 2);
+                spaceCtx.fill();
+                star.x -= star.speed;
+                if (star.x < 0) star.x = spaceCanvas.width;
+            });
+        }
+        
+        function mapToScreen(x, y, func, scales) {
+            const { centerX, centerY, scaleX, scaleY } = scales;
+            const mappedX = centerX + (x - (func.domain[0] + func.domain[1])/2) * scaleX;
+            const mappedY = centerY - (y - (func.range[0] + func.range[1])/2) * scaleY;
+            return { x: mappedX, y: mappedY };
+        }
+
+        function drawCurve(func, curveFn, color, isDashed, scales) {
+            graphCtx.beginPath();
+            const startX = func.domain[0];
+            const endX = func.domain[1];
+            const pointsToDraw = Math.floor(500 * animationProgress);
+            const step = (endX - startX) / 500;
+
+            let firstPoint = true;
+            for (let i = 0; i <= pointsToDraw; i++) {
+                const x = startX + i * step;
+                const y = curveFn(x);
+                const screenPos = mapToScreen(x, y, func, scales);
+                if (firstPoint) {
+                    graphCtx.moveTo(screenPos.x, screenPos.y);
+                    firstPoint = false;
+                } else {
+                    graphCtx.lineTo(screenPos.x, screenPos.y);
+                }
+            }
+            
+            graphCtx.strokeStyle = color;
+            graphCtx.lineWidth = isDashed ? 2 : 3;
+            if (isDashed) graphCtx.setLineDash([5, 5]);
+            graphCtx.stroke();
+            graphCtx.setLineDash([]); // Reset for other lines
+        }
+
+        function animate(timestamp) {
+            if (!lastTimestamp) lastTimestamp = timestamp;
+            const deltaTime = timestamp - lastTimestamp;
+            lastTimestamp = timestamp;
+            
+            drawSpace();
+
+            const func = functions[currentFunctionIndex];
+            document.getElementById('currentFunction').textContent = func.display;
+            inflectionPointContainer.innerHTML = '';
+            
+            const width = graphCanvas.width;
+            const height = graphCanvas.height;
+            graphCtx.clearRect(0, 0, width, height);
+            
+            const scales = {
+                centerX: width / 2,
+                centerY: height / 2,
+                scaleX: width * 0.9 / (func.domain[1] - func.domain[0]),
+                scaleY: height * 0.9 / (func.range[1] - func.range[0])
+            };
+            
+            // Draw Axes
+            const origin = mapToScreen(0, 0, func, scales);
+            graphCtx.strokeStyle = 'rgba(100, 180, 255, 0.4)';
+            graphCtx.lineWidth = 1;
+            graphCtx.beginPath();
+            graphCtx.moveTo(0, origin.y);
+            graphCtx.lineTo(width, origin.y);
+            graphCtx.moveTo(origin.x, 0);
+            graphCtx.lineTo(origin.x, height);
+            graphCtx.stroke();
+
+            // Draw f(x)
+            graphCtx.shadowColor = func.color;
+            graphCtx.shadowBlur = 10;
+            drawCurve(func, func.fn, func.color, false, scales);
+            graphCtx.shadowBlur = 0;
+
+            // Draw Derivatives if toggled
+            if(toggleDerivative1.checked) drawCurve(func, func.derivative1, '#39ff14', true, scales);
+            if(toggleDerivative2.checked) drawCurve(func, func.derivative2, '#ff9933', true, scales);
+            
+            // --- Logic for Tangent and Inflection Points ---
+            const startX = func.domain[0];
+            const endX = func.domain[1];
+            const step = (endX - startX) / 500;
+            const pointsToDraw = Math.floor(500 * animationProgress);
+            const currentX = startX + pointsToDraw * step;
+            
+            // Draw Tangent Line
+            if (toggleTangent.checked && animationProgress > 0) {
+                const slope = func.derivative1(currentX);
+                const y = func.fn(currentX);
+                const screenPos = mapToScreen(currentX, y, func, scales);
+                
+                graphCtx.save();
+                graphCtx.translate(screenPos.x, screenPos.y);
+                graphCtx.rotate(-Math.atan(slope * scales.scaleY / scales.scaleX));
+                graphCtx.beginPath();
+                graphCtx.strokeStyle = 'yellow';
+                graphCtx.lineWidth = 2;
+                graphCtx.moveTo(-50, 0);
+                graphCtx.lineTo(50, 0);
+                graphCtx.stroke();
+                graphCtx.restore();
+            }
+
+            // Draw Inflection Points
+            func.inflectionPoints.forEach(ipX => {
+                if (ipX <= currentX) {
+                    const ipY = func.fn(ipX);
+                    const screenPos = mapToScreen(ipX, ipY, func, scales);
+                    const pointEl = document.createElement('div');
+                    pointEl.className = 'inflection-point';
+                    pointEl.style.left = `${screenPos.x}px`;
+                    pointEl.style.top = `${screenPos.y}px`;
+                    inflectionPointContainer.appendChild(pointEl);
+                }
+            });
+
+            if (isPlaying) {
+                animationProgress += animationSpeed * (deltaTime / 16.67);
+                if (animationProgress >= 1) animationProgress = 1;
+            }
+            
+            requestAnimationFrame(animate);
+        }
+        
+        function changeFunction(direction) {
+            currentFunctionIndex = (currentFunctionIndex + direction + functions.length) % functions.length;
+            animationProgress = 0;
+            isPlaying = true;
+            document.getElementById('playBtn').textContent = "Pause";
+        }
+
+        document.getElementById('prevBtn').addEventListener('click', () => changeFunction(-1));
+        document.getElementById('nextBtn').addEventListener('click', () => changeFunction(1));
+        
+        document.getElementById('playBtn').addEventListener('click', () => {
+            isPlaying = !isPlaying;
+            document.getElementById('playBtn').textContent = isPlaying ? "Pause" : "Play";
+            if (isPlaying && animationProgress >= 1) {
+                 changeFunction(1);
+            }
+        });
+        
+        // --- Added Event Listener for Toggle UI Button ---
+        document.getElementById('toggleUiBtn').addEventListener('click', () => {
+            const infoPanel = document.getElementById('infoPanel');
+            const legendPanel = document.getElementById('legendPanel');
+            infoPanel.classList.toggle('hidden');
+            legendPanel.classList.toggle('hidden');
+        });
+        
+        animate(0);
+    </script>
+</body>
+</html>
