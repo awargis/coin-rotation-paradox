@@ -1,0 +1,754 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Derivative Visualization: Function Shape Analysis</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+            color: #fff;
+            min-height: 100vh;
+            overflow-x: hidden;
+            position: relative;
+            line-height: 1.6;
+        }
+        
+        body::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: 
+                radial-gradient(circle at 10% 20%, rgba(255, 255, 255, 0.05) 0%, transparent 20%),
+                radial-gradient(circle at 90% 80%, rgba(255, 255, 255, 0.05) 0%, transparent 20%);
+            z-index: -1;
+            animation: pulse 8s infinite alternate;
+        }
+        
+        @keyframes pulse {
+            0% { opacity: 0.3; }
+            100% { opacity: 0.7; }
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        header {
+            text-align: center;
+            padding: 30px 0;
+            margin-bottom: 30px;
+            position: relative;
+        }
+        
+        h1 {
+            font-size: 3.5rem;
+            margin-bottom: 15px;
+            text-shadow: 0 0 15px rgba(100, 217, 255, 0.7);
+            background: linear-gradient(to right, #64d9ff, #a68eff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            animation: title-glow 3s infinite alternate;
+        }
+        
+        @keyframes title-glow {
+            0% { text-shadow: 0 0 10px rgba(100, 217, 255, 0.5); }
+            100% { text-shadow: 0 0 25px rgba(166, 142, 255, 0.8); }
+        }
+        
+        .subtitle {
+            font-size: 1.3rem;
+            color: #a68eff;
+            max-width: 800px;
+            margin: 0 auto;
+            line-height: 1.6;
+        }
+        
+        .content-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-bottom: 40px;
+        }
+        
+        @media (max-width: 900px) {
+            .content-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        .graph-container {
+            background: rgba(16, 18, 27, 0.7);
+            border-radius: 20px;
+            padding: 25px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .graph-container::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 5px;
+            background: linear-gradient(to right, #64d9ff, #a68eff);
+        }
+        
+        .graph-title {
+            font-size: 1.8rem;
+            margin-bottom: 20px;
+            color: #64d9ff;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        #graph {
+            width: 100%;
+            height: 400px;
+            background: rgba(10, 12, 18, 0.6);
+            border-radius: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        
+        .controls {
+            display: flex;
+            gap: 15px;
+            margin-top: 20px;
+            flex-wrap: wrap;
+        }
+        
+        .btn {
+            background: linear-gradient(to right, #4a00e0, #8e2de2);
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 50px;
+            cursor: pointer;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.3s ease;
+            box-shadow: 0 5px 15px rgba(142, 45, 226, 0.3);
+        }
+        
+        .btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 20px rgba(142, 45, 226, 0.5);
+        }
+        
+        .btn.active {
+            background: linear-gradient(to right, #00c853, #64dd17);
+            box-shadow: 0 0 15px rgba(100, 221, 23, 0.6);
+        }
+        
+        .btn.secondary {
+            background: linear-gradient(to right, #1d2b64, #2c3e50);
+        }
+        
+        .btn.secondary.active {
+            background: linear-gradient(to right, #d50000, #ff1744);
+            box-shadow: 0 0 15px rgba(255, 23, 68, 0.6);
+        }
+        
+        .explanation {
+            background: rgba(16, 18, 27, 0.7);
+            border-radius: 20px;
+            padding: 25px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .section-title {
+            font-size: 1.8rem;
+            margin-bottom: 20px;
+            color: #a68eff;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .theorem {
+            background: rgba(30, 30, 60, 0.5);
+            border-left: 4px solid #64d9ff;
+            padding: 20px;
+            border-radius: 0 10px 10px 0;
+            margin: 25px 0;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .theorem-title {
+            font-size: 1.4rem;
+            margin-bottom: 15px;
+            color: #64d9ff;
+        }
+        
+        .theorem-content {
+            font-size: 1.1rem;
+            line-height: 1.7;
+        }
+        
+        .equation {
+            font-size: 1.4rem;
+            text-align: center;
+            margin: 20px 0;
+            padding: 15px;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 8px;
+            font-family: 'Cambria Math', serif;
+        }
+        
+        .interval-display {
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 10px;
+            padding: 20px;
+            margin: 25px 0;
+            text-align: center;
+            border: 1px solid rgba(100, 217, 255, 0.3);
+        }
+        
+        .interval-title {
+            font-size: 1.2rem;
+            color: #64d9ff;
+            margin-bottom: 15px;
+        }
+        
+        .interval-content {
+            font-size: 1.3rem;
+            font-family: 'Cambria Math', serif;
+            line-height: 2;
+        }
+        
+        .increase {
+            color: #4dff88;
+        }
+        
+        .decrease {
+            color: #ff6b6b;
+        }
+        
+        .key-points {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-top: 30px;
+        }
+        
+        .point-card {
+            background: rgba(30, 30, 60, 0.5);
+            border-radius: 15px;
+            padding: 25px;
+            transition: transform 0.3s ease;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .point-card:hover {
+            transform: translateY(-10px);
+            background: rgba(40, 40, 80, 0.7);
+        }
+        
+        .point-title {
+            font-size: 1.3rem;
+            margin-bottom: 15px;
+            color: #64d9ff;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .point-content {
+            font-size: 1.1rem;
+        }
+        
+        footer {
+            text-align: center;
+            padding: 30px 0;
+            margin-top: 40px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            color: #a68eff;
+        }
+        
+        .highlight {
+            color: #ff7bac;
+            font-weight: bold;
+        }
+        
+        .legend {
+            display: flex;
+            gap: 20px;
+            margin-top: 20px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.9rem;
+        }
+        
+        .legend-color {
+            width: 20px;
+            height: 20px;
+            border-radius: 4px;
+        }
+        
+        .critical-dot {
+            animation: pulse-dot 2s infinite;
+        }
+        
+        @keyframes pulse-dot {
+            0% { transform: scale(1); opacity: 0.8; }
+            50% { transform: scale(1.2); opacity: 1; }
+            100% { transform: scale(1); opacity: 0.8; }
+        }
+        
+        .tangent-line {
+            stroke-width: 2;
+            opacity: 0.8;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1><i class="fas fa-chart-line"></i> Derivative Visualization: Function Shape Analysis</h1>
+            <p class="subtitle">Discover how the derivative determines intervals of increase and decrease with mathematical precision</p>
+        </header>
+        
+        <div class="content-grid">
+            <div class="graph-container">
+                <h2 class="graph-title"><i class="fas fa-project-diagram"></i> Function & Derivative Analysis</h2>
+                <div id="graph"></div>
+                
+                <div class="legend">
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: #64d9ff;"></div>
+                        <span>f(x) = x³ - 2x</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: #ff7bac;"></div>
+                        <span>f'(x) = 3x² - 2</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: #ffcc00;"></div>
+                        <span>Critical Points</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: #4dff88;"></div>
+                        <span>Increasing Interval</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: #ff6b6b;"></div>
+                        <span>Decreasing Interval</span>
+                    </div>
+                </div>
+                
+                <div class="controls">
+                    <button id="showIncreasing" class="btn"><i class="fas fa-arrow-up"></i> Show Increasing</button>
+                    <button id="showDecreasing" class="btn secondary"><i class="fas fa-arrow-down"></i> Show Decreasing</button>
+                    <button id="showAll" class="btn active"><i class="fas fa-layer-group"></i> Show All</button>
+                </div>
+            </div>
+            
+            <div class="explanation">
+                <h2 class="section-title"><i class="fas fa-lightbulb"></i> Mathematical Analysis</h2>
+                <p>The derivative f'(x) determines the intervals where the function f(x) increases or decreases:</p>
+                
+                <div class="theorem">
+                    <div class="theorem-title">Increasing/Decreasing Test</div>
+                    <div class="theorem-content">
+                        <p>(a) If <span class="highlight">f'(x) > 0</span> on an interval, then <span class="highlight">f is increasing</span> on that interval.</p>
+                        <p>(b) If <span class="highlight">f'(x) < 0</span> on an interval, then <span class="highlight">f is decreasing</span> on that interval.</p>
+                    </div>
+                </div>
+                
+                <div class="interval-display">
+                    <div class="interval-title">Intervals for f(x) = x³ - 2x</div>
+                    <div class="interval-content">
+                        <p>Critical Points: x = <span class="highlight">-√(2/3)</span> ≈ -0.816, x = <span class="highlight">√(2/3)</span> ≈ 0.816</p>
+                        <p><span class="increase">Increasing</span>: (-∞, -√(2/3)) ∪ (√(2/3), ∞)</p>
+                        <p><span class="decrease">Decreasing</span>: (-√(2/3), √(2/3))</p>
+                    </div>
+                </div>
+                
+                <div class="proof">
+                    <div class="proof-title">Proof of Concept:</div>
+                    <p>For f(x) = x³ - 2x:</p>
+                    <p>1. Find derivative: f'(x) = 3x² - 2</p>
+                    <p>2. Solve f'(x) = 0: 3x² - 2 = 0 → x² = 2/3 → x = ±√(2/3)</p>
+                    <p>3. Test intervals:</p>
+                    <p>   • For x < -√(2/3): f'(x) > 0 → Increasing</p>
+                    <p>   • For -√(2/3) < x < √(2/3): f'(x) < 0 → Decreasing</p>
+                    <p>   • For x > √(2/3): f'(x) > 0 → Increasing</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="key-points">
+            <div class="point-card">
+                <h3 class="point-title"><i class="fas fa-arrow-up"></i> Increasing Intervals</h3>
+                <p class="point-content">When f'(x) > 0, the function is increasing. Graphically, this means the function moves upward as we move from left to right. The slope of the tangent lines is positive.</p>
+            </div>
+            
+            <div class="point-card">
+                <h3 class="point-title"><i class="fas fa-arrow-down"></i> Decreasing Intervals</h3>
+                <p class="point-content">When f'(x) < 0, the function is decreasing. Graphically, this means the function moves downward as we move from left to right. The slope of the tangent lines is negative.</p>
+            </div>
+            
+            <div class="point-card">
+                <h3 class="point-title"><i class="fas fa-exchange-alt"></i> Critical Points</h3>
+                <p class="point-content">Points where f'(x) = 0 or is undefined. These points mark transitions between increasing and decreasing intervals and are potential locations for local maxima or minima.</p>
+            </div>
+        </div>
+        
+        <footer>
+            <p>Interactive Visualization of Calculus Concepts | Derivatives and Graph Behavior</p>
+        </footer>
+    </div>
+
+    <script>
+        // Set up the graph using D3.js
+        const margin = { top: 30, right: 30, bottom: 50, left: 60 };
+        const width = 560 - margin.left - margin.right;
+        const height = 400 - margin.top - margin.bottom;
+
+        const svg = d3.select("#graph")
+            .append("svg")
+            .attr("width", width + margin.left + margin.right)
+            .attr("height", height + margin.top + margin.bottom)
+            .append("g")
+            .attr("transform", `translate(${margin.left},${margin.top})`);
+
+        // Define the x and y scales
+        const xScale = d3.scaleLinear()
+            .domain([-2.5, 2.5])
+            .range([0, width]);
+
+        const yScale = d3.scaleLinear()
+            .domain([-4, 4])
+            .range([height, 0]);
+
+        // Draw the x and y axes
+        const xAxis = d3.axisBottom(xScale).ticks(7);
+        const yAxis = d3.axisLeft(yScale).ticks(7);
+
+        svg.append("g")
+            .attr("transform", `translate(0,${height})`)
+            .call(xAxis)
+            .append("text")
+            .attr("x", width)
+            .attr("y", -10)
+            .attr("fill", "#fff")
+            .attr("text-anchor", "end")
+            .text("x");
+
+        svg.append("g")
+            .call(yAxis)
+            .append("text")
+            .attr("transform", "rotate(-90)")
+            .attr("y", 15)
+            .attr("dy", "0.71em")
+            .attr("fill", "#fff")
+            .attr("text-anchor", "end")
+            .text("y");
+
+        // Grid lines
+        svg.append("g")
+            .attr("class", "grid")
+            .attr("transform", `translate(0,${height})`)
+            .call(d3.axisBottom(xScale).tickSize(-height).tickFormat(""))
+            .selectAll(".tick")
+            .attr("opacity", 0.1);
+
+        svg.append("g")
+            .attr("class", "grid")
+            .call(d3.axisLeft(yScale).tickSize(-width).tickFormat(""))
+            .selectAll(".tick")
+            .attr("opacity", 0.1);
+
+        // Define the function f(x) = x^3 - 2x
+        const f = x => Math.pow(x, 3) - 2*x;
+
+        // Define the derivative f'(x) = 3x^2 - 2
+        const df = x => 3*Math.pow(x, 2) - 2;
+
+        // Calculate critical points
+        const criticalPoints = [];
+        const sqrt2_3 = Math.sqrt(2/3);  // ≈ 0.8165
+        
+        criticalPoints.push({x: -sqrt2_3, y: f(-sqrt2_3)});
+        criticalPoints.push({x: sqrt2_3, y: f(sqrt2_3)});
+
+        // Draw the function f(x)
+        const line = d3.line()
+            .x(d => xScale(d.x))
+            .y(d => yScale(f(d.x)))
+            .curve(d3.curveMonotoneX);
+
+        const data = d3.range(-2.5, 2.51, 0.01).map(x => ({ x: x }));
+
+        svg.append("path")
+            .datum(data)
+            .attr("d", line)
+            .attr("fill", "none")
+            .attr("stroke", "#64d9ff")
+            .attr("stroke-width", 3);
+
+        // Draw the derivative f'(x)
+        const dline = d3.line()
+            .x(d => xScale(d.x))
+            .y(d => yScale(df(d.x)))
+            .curve(d3.curveMonotoneX);
+
+        svg.append("path")
+            .datum(data)
+            .attr("d", dline)
+            .attr("fill", "none")
+            .attr("stroke", "#ff7bac")
+            .attr("stroke-width", 2.5)
+            .attr("stroke-dasharray", "5,5");
+
+        // Draw the x-axis line
+        svg.append("line")
+            .attr("x1", 0)
+            .attr("y1", yScale(0))
+            .attr("x2", width)
+            .attr("y2", yScale(0))
+            .attr("stroke", "rgba(255, 255, 255, 0.7)")
+            .attr("stroke-width", 1);
+
+        // Draw critical points
+        const criticalPointsGroup = svg.append("g");
+        
+        criticalPointsGroup.selectAll("circle")
+            .data(criticalPoints)
+            .enter()
+            .append("circle")
+            .attr("cx", d => xScale(d.x))
+            .attr("cy", d => yScale(d.y))
+            .attr("r", 7)
+            .attr("fill", "#ffcc00")
+            .attr("class", "critical-dot");
+
+        // Add labels to critical points
+        criticalPointsGroup.append("text")
+            .attr("x", xScale(criticalPoints[0].x) - 15)
+            .attr("y", yScale(criticalPoints[0].y) - 15)
+            .text("Local Max")
+            .attr("fill", "#ffcc00")
+            .attr("font-size", "12px");
+
+        criticalPointsGroup.append("text")
+            .attr("x", xScale(criticalPoints[1].x) + 15)
+            .attr("y", yScale(criticalPoints[1].y) + 20)
+            .text("Local Min")
+            .attr("fill", "#ffcc00")
+            .attr("font-size", "12px");
+
+        // Add title for the function and derivative
+        svg.append("text")
+            .attr("x", xScale(1.5))
+            .attr("y", yScale(f(1.5)) - 15)
+            .text("f(x) = x³ - 2x")
+            .attr("fill", "#64d9ff")
+            .attr("font-size", "14px");
+
+        svg.append("text")
+            .attr("x", xScale(1.5))
+            .attr("y", yScale(df(1.5)) - 15)
+            .text("f'(x) = 3x² - 2")
+            .attr("fill", "#ff7bac")
+            .attr("font-size", "14px");
+
+        // Draw tangent lines at critical points
+        function drawTangentAt(x) {
+            const slope = df(x);
+            const yIntercept = f(x) - slope * x;
+            
+            const lineStart = x - 0.8;
+            const lineEnd = x + 0.8;
+            
+            svg.append("line")
+                .attr("x1", xScale(lineStart))
+                .attr("y1", yScale(slope * lineStart + yIntercept))
+                .attr("x2", xScale(lineEnd))
+                .attr("y2", yScale(slope * lineEnd + yIntercept))
+                .attr("stroke", "#ffcc00")
+                .attr("stroke-width", 2)
+                .attr("class", "tangent-line")
+                .attr("opacity", 0)
+                .transition()
+                .duration(1000)
+                .attr("opacity", 0.8);
+        }
+
+        // Highlight increasing regions (where f'(x) > 0)
+        function highlightIncreasing() {
+            // Clear previous highlights
+            svg.selectAll(".region").remove();
+            
+            // Highlight increasing regions
+            const increasing1 = svg.append("path")
+                .datum(data.filter(d => d.x < -sqrt2_3))
+                .attr("d", line)
+                .attr("fill", "none")
+                .attr("stroke", "#4dff88")
+                .attr("stroke-width", 5)
+                .attr("class", "region");
+            
+            const increasing2 = svg.append("path")
+                .datum(data.filter(d => d.x > sqrt2_3))
+                .attr("d", line)
+                .attr("fill", "none")
+                .attr("stroke", "#4dff88")
+                .attr("stroke-width", 5)
+                .attr("class", "region");
+            
+            // Add animated tangent lines in increasing regions
+            for (let x = -2.4; x <= 2.4; x += 0.7) {
+                if (df(x) > 0.1) {
+                    const slope = df(x);
+                    const yIntercept = f(x) - slope * x;
+                    
+                    const lineStart = x - 0.4;
+                    const lineEnd = x + 0.4;
+                    
+                    svg.append("line")
+                        .attr("x1", xScale(lineStart))
+                        .attr("y1", yScale(slope * lineStart + yIntercept))
+                        .attr("x2", xScale(lineEnd))
+                        .attr("y2", yScale(slope * lineEnd + yIntercept))
+                        .attr("stroke", "#4dff88")
+                        .attr("stroke-width", 2)
+                        .attr("class", "region tangent-line")
+                        .attr("opacity", 0)
+                        .transition()
+                        .duration(800)
+                        .attr("opacity", 0.7);
+                }
+            }
+            
+            // Update button states
+            d3.select("#showIncreasing").classed("active", true);
+            d3.select("#showDecreasing").classed("active", false);
+            d3.select("#showAll").classed("active", false);
+        }
+
+        // Highlight decreasing regions (where f'(x) < 0)
+        function highlightDecreasing() {
+            // Clear previous highlights
+            svg.selectAll(".region").remove();
+            
+            // Highlight decreasing regions
+            const decreasing = svg.append("path")
+                .datum(data.filter(d => d.x >= -sqrt2_3 && d.x <= sqrt2_3))
+                .attr("d", line)
+                .attr("fill", "none")
+                .attr("stroke", "#ff6b6b")
+                .attr("stroke-width", 5)
+                .attr("class", "region");
+            
+            // Add animated tangent lines in decreasing regions
+            for (let x = -0.8; x <= 0.8; x += 0.7) {
+                if (df(x) < -0.1) {
+                    const slope = df(x);
+                    const yIntercept = f(x) - slope * x;
+                    
+                    const lineStart = x - 0.4;
+                    const lineEnd = x + 0.4;
+                    
+                    svg.append("line")
+                        .attr("x1", xScale(lineStart))
+                        .attr("y1", yScale(slope * lineStart + yIntercept))
+                        .attr("x2", xScale(lineEnd))
+                        .attr("y2", yScale(slope * lineEnd + yIntercept))
+                        .attr("stroke", "#ff6b6b")
+                        .attr("stroke-width", 2)
+                        .attr("class", "region tangent-line")
+                        .attr("opacity", 0)
+                        .transition()
+                        .duration(800)
+                        .attr("opacity", 0.7);
+                }
+            }
+            
+            // Update button states
+            d3.select("#showIncreasing").classed("active", false);
+            d3.select("#showDecreasing").classed("active", true);
+            d3.select("#showAll").classed("active", false);
+        }
+
+        // Show all regions
+        function showAll() {
+            // Clear previous highlights
+            svg.selectAll(".region").remove();
+            
+            // Highlight increasing regions
+            const increasing1 = svg.append("path")
+                .datum(data.filter(d => d.x < -sqrt2_3))
+                .attr("d", line)
+                .attr("fill", "none")
+                .attr("stroke", "#4dff88")
+                .attr("stroke-width", 5)
+                .attr("class", "region");
+            
+            const increasing2 = svg.append("path")
+                .datum(data.filter(d => d.x > sqrt2_3))
+                .attr("d", line)
+                .attr("fill", "none")
+                .attr("stroke", "#4dff88")
+                .attr("stroke-width", 5)
+                .attr("class", "region");
+            
+            // Highlight decreasing regions
+            const decreasing = svg.append("path")
+                .datum(data.filter(d => d.x >= -sqrt2_3 && d.x <= sqrt2_3))
+                .attr("d", line)
+                .attr("fill", "none")
+                .attr("stroke", "#ff6b6b")
+                .attr("stroke-width", 5)
+                .attr("class", "region");
+            
+            // Draw tangent lines at critical points
+            drawTangentAt(-sqrt2_3);
+            drawTangentAt(sqrt2_3);
+            
+            // Update button states
+            d3.select("#showIncreasing").classed("active", false);
+            d3.select("#showDecreasing").classed("active", false);
+            d3.select("#showAll").classed("active", true);
+        }
+
+        // Add event listeners to buttons
+        document.getElementById("showIncreasing").addEventListener("click", highlightIncreasing);
+        document.getElementById("showDecreasing").addEventListener("click", highlightDecreasing);
+        document.getElementById("showAll").addEventListener("click", showAll);
+
+        // Initialize with all regions shown
+        showAll();
+    </script>
+</body>
+</html>
