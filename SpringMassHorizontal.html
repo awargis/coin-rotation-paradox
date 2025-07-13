@@ -1,0 +1,1416 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Spring-Mass Oscillation | Physics Visualization</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.13.18/dist/katex.min.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.13.18/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.13.18/dist/contrib/auto-render.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            overflow: hidden;
+            background: linear-gradient(135deg, #0c0e2a, #161f4e);
+            color: #fff;
+            height: 100vh;
+        }
+        
+        #canvas-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+        
+        #ui-container {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.85);
+            border-radius: 15px;
+            padding: 20px;
+            max-width: 400px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
+            z-index: 10;
+        }
+        
+        h1 {
+            font-size: 24px;
+            margin-bottom: 15px;
+            color: #4fc3f7;
+            text-shadow: 0 0 10px rgba(79, 195, 247, 0.5);
+        }
+        
+        .equation {
+            background: rgba(0, 30, 60, 0.6);
+            padding: 15px;
+            border-radius: 10px;
+            margin: 15px 0;
+            font-family: 'Cambria Math', serif;
+            border-left: 4px solid #4fc3f7;
+            text-align: center;
+        }
+        
+        .controls {
+            display: flex;
+            gap: 10px;
+            margin: 15px 0;
+            flex-wrap: wrap;
+        }
+        
+        button {
+            flex: 1;
+            min-width: 80px;
+            padding: 12px;
+            background: linear-gradient(to right, #2196f3, #21cbf3);
+            border: none;
+            border-radius: 8px;
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(33, 150, 243, 0.4);
+        }
+        
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(33, 150, 243, 0.6);
+        }
+        
+        button:active {
+            transform: translateY(1px);
+        }
+        
+        button.toggled {
+            background: linear-gradient(to right, #ff9800, #ff5722);
+            box-shadow: 0 4px 15px rgba(255, 152, 0, 0.6);
+        }
+        
+        .slider-container {
+            margin: 15px 0;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #bbdefb;
+            font-size: 14px;
+        }
+        
+        input[type="range"] {
+            width: 100%;
+            height: 8px;
+            border-radius: 4px;
+            background: rgba(255, 255, 255, 0.1);
+            outline: none;
+            -webkit-appearance: none;
+        }
+        
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #4fc3f7;
+            cursor: pointer;
+            box-shadow: 0 0 8px rgba(79, 195, 247, 0.8);
+        }
+        
+        .data-panel {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-top: 15px;
+        }
+        
+        .data-card {
+            background: rgba(30, 30, 60, 0.6);
+            padding: 12px;
+            border-radius: 8px;
+            text-align: center;
+            transition: transform 0.3s;
+        }
+        
+        .data-card:hover {
+            transform: translateY(-3px);
+            background: rgba(40, 40, 80, 0.7);
+        }
+        
+        .data-value {
+            font-size: 20px;
+            font-weight: bold;
+            margin-top: 5px;
+            color: #4fc3f7;
+        }
+        
+        .vector-display {
+            margin-top: 15px;
+            padding: 15px;
+            background: rgba(0, 40, 80, 0.6);
+            border-radius: 10px;
+            border-left: 4px solid #ff9800;
+        }
+        
+        .legend {
+            display: flex;
+            gap: 15px;
+            margin-top: 10px;
+            flex-wrap: wrap;
+        }
+        
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 14px;
+        }
+        
+        .legend-color {
+            width: 15px;
+            height: 15px;
+            border-radius: 3px;
+        }
+        
+        .graph-container {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            right: 20px;
+            height: 150px;
+            background: rgba(0, 0, 0, 0.7);
+            border-radius: 10px;
+            padding: 15px;
+            backdrop-filter: blur(5px);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            z-index: 5;
+        }
+        
+        #graph-canvas {
+            width: 100%;
+            height: 100%;
+        }
+        
+        .time-marker {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            height: 100%;
+            width: 2px;
+            background: #ff9800;
+            box-shadow: 0 0 10px #ff9800;
+            z-index: 2;
+        }
+        
+        .energy-container {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+            height: 80px;
+        }
+        
+        .energy-bar {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        
+        .energy-label {
+            font-size: 12px;
+            margin-bottom: 5px;
+            color: #bbdefb;
+        }
+        
+        .energy-fill {
+            width: 100%;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+            height: 50px;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .energy-value {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            transition: height 0.3s;
+        }
+        
+        #kinetic-energy {
+            background: linear-gradient(to top, #66bb6a, #4caf50);
+        }
+        
+        #potential-energy {
+            background: linear-gradient(to top, #ff9800, #f57c00);
+        }
+        
+        .physics-insight {
+            background: rgba(60, 0, 80, 0.6);
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 15px;
+            border-left: 4px solid #9c27b0;
+            font-size: 14px;
+        }
+        
+        .tab-container {
+            display: flex;
+            gap: 5px;
+            margin-top: 15px;
+        }
+        
+        .tab {
+            flex: 1;
+            padding: 10px;
+            text-align: center;
+            background: rgba(30, 30, 60, 0.6);
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .tab.active {
+            background: linear-gradient(to right, #2196f3, #21cbf3);
+            box-shadow: 0 0 10px rgba(33, 150, 243, 0.5);
+        }
+        
+        .tab-content {
+            display: none;
+            margin-top: 10px;
+            padding: 10px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 8px;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+        
+        .enhancement-badge {
+            position: absolute;
+            top: -10px;
+            right: -10px;
+            background: linear-gradient(135deg, #ff416c, #ff4b2b);
+            color: white;
+            padding: 5px 10px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: bold;
+            box-shadow: 0 4px 10px rgba(255, 65, 108, 0.4);
+            z-index: 11;
+        }
+        
+        /* Physics Problem Section */
+        #physics-problem {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.9);
+            border-radius: 15px;
+            padding: 25px;
+            max-width: 450px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
+            z-index: 10;
+            transition: transform 0.4s ease, opacity 0.4s ease;
+            transform: translateX(0);
+            opacity: 1;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+        
+        #physics-problem.hidden {
+            transform: translateX(120%);
+            opacity: 0;
+        }
+        
+        .problem-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .problem-title {
+            font-size: 22px;
+            color: #ff9800;
+            text-shadow: 0 0 8px rgba(255, 152, 0, 0.4);
+        }
+        
+        .problem-content {
+            font-size: 16px;
+            line-height: 1.6;
+            margin-bottom: 20px;
+        }
+        
+        .problem-equation {
+            background: rgba(0, 30, 60, 0.6);
+            padding: 15px;
+            border-radius: 10px;
+            margin: 15px 0;
+            font-family: 'Cambria Math', serif;
+            border-left: 4px solid #ff9800;
+            text-align: center;
+            font-size: 18px;
+        }
+        
+        .solution-section {
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .solution-title {
+            font-size: 18px;
+            color: #66bb6a;
+            margin-bottom: 15px;
+            text-shadow: 0 0 8px rgba(102, 187, 106, 0.3);
+        }
+        
+        .solution-part {
+            margin-bottom: 20px;
+            padding: 15px;
+            background: rgba(30, 30, 60, 0.4);
+            border-radius: 8px;
+            border-left: 3px solid #4fc3f7;
+        }
+        
+        .solution-part-title {
+            font-weight: bold;
+            color: #4fc3f7;
+            margin-bottom: 8px;
+            font-size: 17px;
+        }
+        
+        .values-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 10px 0;
+            background: rgba(30, 30, 60, 0.6);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        
+        .values-table th {
+            background: rgba(79, 195, 247, 0.3);
+            padding: 10px;
+            text-align: center;
+        }
+        
+        .values-table td {
+            padding: 10px;
+            text-align: center;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .values-table tr:last-child td {
+            border-bottom: none;
+        }
+        
+        .direction-indicator {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-weight: bold;
+            margin-top: 5px;
+        }
+        
+        .right-direction {
+            background: rgba(76, 175, 80, 0.3);
+            color: #66bb6a;
+        }
+        
+        .left-direction {
+            background: rgba(244, 67, 54, 0.3);
+            color: #ff8a80;
+        }
+        
+        .toggle-btn {
+            background: none;
+            border: none;
+            color: #4fc3f7;
+            font-size: 24px;
+            cursor: pointer;
+            transition: all 0.3s;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+        }
+        
+        .toggle-btn:hover {
+            background: rgba(79, 195, 247, 0.2);
+            transform: scale(1.1);
+        }
+        
+        .visual-highlight {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            border: 2px solid #ff9800;
+            border-radius: 15px;
+            animation: pulse 2s infinite;
+            pointer-events: none;
+            z-index: -1;
+        }
+        
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(255, 152, 0, 0.7); }
+            70% { box-shadow: 0 0 0 10px rgba(255, 152, 0, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(255, 152, 0, 0); }
+        }
+        
+        .katex { 
+            font-size: 1.1em; 
+        }
+        
+        .problem-action {
+            display: flex;
+            justify-content: center;
+            margin-top: 20px;
+        }
+        
+        .action-btn {
+            padding: 10px 20px;
+            background: linear-gradient(to right, #9c27b0, #673ab7);
+            border: none;
+            border-radius: 8px;
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .action-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(156, 39, 176, 0.6);
+        }
+        
+        .math-equation {
+            font-size: 1.1em;
+            padding: 10px 0;
+            text-align: center;
+        }
+        
+        .solution-step {
+            margin: 10px 0;
+            padding: 8px;
+            background: rgba(40, 40, 70, 0.4);
+            border-radius: 6px;
+        }
+    </style>
+</head>
+<body>
+    <div id="canvas-container"></div>
+    
+    <div id="ui-container">
+        <div class="enhancement-badge">Enhanced</div>
+        <h1>Spring-Mass Oscillation</h1>
+        <div class="equation">
+            Equation of Motion: \( x(t) = 8 \sin(t) \)
+        </div>
+        
+        <div class="tab-container">
+            <div class="tab active" data-tab="controls">Controls</div>
+            <div class="tab" data-tab="vectors">Vectors</div>
+            <div class="tab" data-tab="energy">Energy</div>
+        </div>
+        
+        <div class="tab-content active" id="controls-content">
+            <div class="controls">
+                <button id="play-btn">▶ Play</button>
+                <button id="pause-btn">⏸ Pause</button>
+                <button id="reset-btn">↺ Reset</button>
+                <button id="slow-btn">⏱ Slow Motion</button>
+                <button id="vector-toggle">📐 Toggle Vectors</button>
+                <button id="problem-btn">📚 Show Problem</button>
+            </div>
+            
+            <div class="slider-container">
+                <label for="time-slider">Time: <span id="time-value">0.00</span> s</label>
+                <input type="range" id="time-slider" min="0" max="6.28" step="0.01" value="0">
+            </div>
+            
+            <div class="slider-container">
+                <label for="amplitude-slider">Amplitude: <span id="amplitude-value">8.00</span> cm</label>
+                <input type="range" id="amplitude-slider" min="4" max="12" step="0.1" value="8">
+            </div>
+            
+            <div class="slider-container">
+                <label for="damping-slider">Damping: <span id="damping-value">0.00</span></label>
+                <input type="range" id="damping-slider" min="0" max="0.5" step="0.01" value="0">
+            </div>
+        </div>
+        
+        <div class="tab-content" id="vectors-content">
+            <div class="data-panel">
+                <div class="data-card">
+                    Position (x)
+                    <div class="data-value" id="position-value">0.00 cm</div>
+                </div>
+                <div class="data-card">
+                    Velocity (v)
+                    <div class="data-value" id="velocity-value">0.00 cm/s</div>
+                </div>
+                <div class="data-card">
+                    Acceleration (a)
+                    <div class="data-value" id="acceleration-value">0.00 cm/s²</div>
+                </div>
+                <div class="data-card">
+                    Direction
+                    <div class="data-value" id="direction-value">-</div>
+                </div>
+            </div>
+            
+            <div class="legend">
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #4fc3f7;"></div>
+                    Position (x)
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #66bb6a;"></div>
+                    Velocity (v)
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #ff9800;"></div>
+                    Acceleration (a)
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #ff416c;"></div>
+                    Force (F)
+                </div>
+            </div>
+        </div>
+        
+        <div class="tab-content" id="energy-content">
+            <div class="energy-container">
+                <div class="energy-bar">
+                    <div class="energy-label">Kinetic Energy</div>
+                    <div class="energy-fill">
+                        <div id="kinetic-energy" class="energy-value" style="height: 0%"></div>
+                    </div>
+                </div>
+                <div class="energy-bar">
+                    <div class="energy-label">Potential Energy</div>
+                    <div class="energy-fill">
+                        <div id="potential-energy" class="energy-value" style="height: 0%"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="data-card" style="grid-column: span 2; margin-top: 10px;">
+                Total Mechanical Energy
+                <div class="data-value" id="total-energy">0.00 J</div>
+            </div>
+        </div>
+        
+        <div class="physics-insight">
+            <strong>Physics Insight:</strong> At equilibrium (x=0), potential energy is minimum and kinetic energy is maximum. At maximum displacement, potential energy is maximum and kinetic energy is zero.
+        </div>
+    </div>
+    
+    <!-- Physics Problem Panel -->
+    <div id="physics-problem" class="hidden">
+        <div class="visual-highlight"></div>
+        <div class="problem-header">
+            <h2 class="problem-title">Physics Problem</h2>
+            <button id="problem-toggle" class="toggle-btn">×</button>
+        </div>
+        
+        <div class="problem-content">
+            <p>A mass on a spring vibrates horizontally on a smooth level surface. Its equation of motion is:</p>
+            <div class="problem-equation">
+                \( x(t) = 8 \sin t \)
+            </div>
+            <p>where \( t \) is in seconds and \( x \) in centimeters.</p>
+        </div>
+        
+        <div class="solution-section">
+            <h3 class="solution-title">Solution</h3>
+            
+            <div class="solution-part">
+                <div class="solution-part-title">(a) Velocity and Acceleration at time \( t \):</div>
+                
+                <div class="solution-step">
+                    <p>Velocity is the derivative of position with respect to time:</p>
+                    <div class="math-equation">
+                        \( v(t) = \frac{dx}{dt} = \frac{d}{dt}(8 \sin t) = 8 \cos t \) cm/s
+                    </div>
+                </div>
+                
+                <div class="solution-step">
+                    <p>Acceleration is the derivative of velocity with respect to time:</p>
+                    <div class="math-equation">
+                        \( a(t) = \frac{dv}{dt} = \frac{d}{dt}(8 \cos t) = -8 \sin t \) cm/s²
+                    </div>
+                </div>
+            </div>
+            
+            <div class="solution-part">
+                <div class="solution-part-title">(b) Position, Velocity, and Acceleration at \( t = \dfrac{2\pi}{3} \):</div>
+                
+                <div class="solution-step">
+                    <p>Position at \( t = \dfrac{2\pi}{3} \):</p>
+                    <div class="math-equation">
+                        \( x\left(\dfrac{2\pi}{3}\right) = 8 \sin\left(\dfrac{2\pi}{3}\right) = 8 \times \dfrac{\sqrt{3}}{2} = 4\sqrt{3} \approx 6.93 \) cm
+                    </div>
+                </div>
+                
+                <div class="solution-step">
+                    <p>Velocity at \( t = \dfrac{2\pi}{3} \):</p>
+                    <div class="math-equation">
+                        \( v\left(\dfrac{2\pi}{3}\right) = 8 \cos\left(\dfrac{2\pi}{3}\right) = 8 \times \left(-\dfrac{1}{2}\right) = -4 \) cm/s
+                    </div>
+                </div>
+                
+                <div class="solution-step">
+                    <p>Acceleration at \( t = \dfrac{2\pi}{3} \):</p>
+                    <div class="math-equation">
+                        \( a\left(\dfrac{2\pi}{3}\right) = -8 \sin\left(\dfrac{2\pi}{3}\right) = -8 \times \dfrac{\sqrt{3}}{2} = -4\sqrt{3} \approx -6.93 \) cm/s²
+                    </div>
+                </div>
+                
+                <div class="solution-step">
+                    <p><strong>Direction:</strong> 
+                    <span class="direction-indicator left-direction">← Moving Left</span></p>
+                    <p>(Since velocity is negative at \( t = \dfrac{2\pi}{3} \))</p>
+                </div>
+            </div>
+            
+            <div class="problem-action">
+                <button class="action-btn" id="goto-time">
+                    <span>Go to t = 2π/3</span>
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <div class="graph-container">
+        <canvas id="graph-canvas"></canvas>
+        <div class="time-marker" id="time-marker" style="left: 0;"></div>
+    </div>
+
+    <script>
+        // Main Three.js variables
+        let scene, camera, renderer, controls;
+        let spring, mass, wall, ground, equilibriumPlane;
+        let positionVector, velocityVector, accelerationVector, forceVector;
+        let clock = new THREE.Clock();
+        let isPlaying = true;
+        let showVectors = true;
+        let isSlowMotion = false;
+        let currentTime = 0;
+        let amplitude = 8;   // Oscillation amplitude (cm)
+        let damping = 0.0;   // Damping coefficient
+        const restLength = 20; // Equilibrium spring length
+        
+        // Initialize the scene
+        function init() {
+            // Create scene
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x0a0e2a);
+            scene.fog = new THREE.Fog(0x0a0e2a, 20, 100);
+            
+            // Create camera
+            camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.set(30, 15, 30);
+            
+            // Create renderer
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+            document.getElementById('canvas-container').appendChild(renderer.domElement);
+            
+            // Add orbit controls
+            controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.05;
+            
+            // Add lighting
+            addLighting();
+            
+            // Create the environment
+            createEnvironment();
+            
+            // Create spring-mass system
+            createSpringMassSystem();
+            
+            // Create vectors
+            createVectors();
+            
+            // Initialize graph
+            initGraph();
+            
+            // Event listeners
+            setupEventListeners();
+            
+            // Start animation
+            animate();
+            
+            // Handle window resize
+            window.addEventListener('resize', onWindowResize);
+        }
+        
+        // Add lighting to the scene
+        function addLighting() {
+            // Ambient light
+            const ambientLight = new THREE.AmbientLight(0x404040, 1.5);
+            scene.add(ambientLight);
+            
+            // Directional light (sun)
+            const sunLight = new THREE.DirectionalLight(0xffffff, 1);
+            sunLight.position.set(20, 30, 20);
+            sunLight.castShadow = true;
+            sunLight.shadow.mapSize.width = 2048;
+            sunLight.shadow.mapSize.height = 2048;
+            sunLight.shadow.camera.near = 0.5;
+            sunLight.shadow.camera.far = 100;
+            sunLight.shadow.camera.left = -30;
+            sunLight.shadow.camera.right = 30;
+            sunLight.shadow.camera.top = 30;
+            sunLight.shadow.camera.bottom = -30;
+            scene.add(sunLight);
+            
+            // Hemisphere light for more natural illumination
+            const hemiLight = new THREE.HemisphereLight(0x5577dd, 0x224422, 0.3);
+            scene.add(hemiLight);
+            
+            // Back light
+            const backLight = new THREE.DirectionalLight(0x2233ff, 0.8);
+            backLight.position.set(-20, 10, -20);
+            scene.add(backLight);
+        }
+        
+        // Create the environment (ground, walls, etc.)
+        function createEnvironment() {
+            // Ground
+            const groundGeometry = new THREE.PlaneGeometry(100, 100);
+            const groundMaterial = new THREE.MeshStandardMaterial({ 
+                color: 0x1a5f3e,
+                roughness: 0.8,
+                metalness: 0.2
+            });
+            ground = new THREE.Mesh(groundGeometry, groundMaterial);
+            ground.rotation.x = -Math.PI / 2;
+            ground.position.y = -0.1;
+            ground.receiveShadow = true;
+            scene.add(ground);
+            
+            // Wall
+            const wallGeometry = new THREE.BoxGeometry(2, 10, 20);
+            const wallMaterial = new THREE.MeshStandardMaterial({ 
+                color: 0x5d4037,
+                roughness: 0.7,
+                metalness: 0.3
+            });
+            wall = new THREE.Mesh(wallGeometry, wallMaterial);
+            wall.position.set(-restLength, 5, 0);
+            wall.castShadow = true;
+            wall.receiveShadow = true;
+            scene.add(wall);
+            
+            // Equilibrium position marker (plane)
+            const planeGeometry = new THREE.PlaneGeometry(0.5, 10);
+            const planeMaterial = new THREE.MeshBasicMaterial({ 
+                color: 0xffff00,
+                side: THREE.DoubleSide,
+                transparent: true,
+                opacity: 0.5
+            });
+            equilibriumPlane = new THREE.Mesh(planeGeometry, planeMaterial);
+            equilibriumPlane.position.set(0, 5, 0);
+            equilibriumPlane.rotation.y = Math.PI / 2;
+            scene.add(equilibriumPlane);
+            
+            // Add grid helper
+            const gridHelper = new THREE.GridHelper(100, 20, 0x444444, 0x222222);
+            gridHelper.position.y = 0;
+            scene.add(gridHelper);
+            
+            // Add coordinate axes
+            const axesHelper = new THREE.AxesHelper(10);
+            scene.add(axesHelper);
+        }
+        
+        // Create spring-mass system
+        function createSpringMassSystem() {
+            // Spring parameters
+            const springRadius = 1.5;
+            const springSegments = 200;
+            const springTurns = 8;
+            
+            // Create spring path
+            const path = new THREE.Curve();
+            path.getPoint = function(t) {
+                const length = restLength;
+                const x = t * length;
+                const y = springRadius * Math.cos(t * Math.PI * 2 * springTurns);
+                const z = springRadius * Math.sin(t * Math.PI * 2 * springTurns);
+                return new THREE.Vector3(x, y, z);
+            };
+            
+            // Spring geometry
+            const springGeometry = new THREE.TubeGeometry(
+                path,
+                springSegments,
+                0.4,
+                12,
+                false
+            );
+            
+            // Spring material
+            const springMaterial = new THREE.MeshStandardMaterial({
+                color: 0xcccccc,
+                roughness: 0.3,
+                metalness: 0.7,
+                side: THREE.DoubleSide
+            });
+            
+            // Create spring
+            spring = new THREE.Mesh(springGeometry, springMaterial);
+            spring.position.x = -restLength;
+            spring.castShadow = true;
+            scene.add(spring);
+            
+            // Mass (block)
+            const massGeometry = new THREE.BoxGeometry(4, 3, 3);
+            const massMaterial = new THREE.MeshStandardMaterial({
+                color: 0x2196f3,
+                roughness: 0.2,
+                metalness: 0.8
+            });
+            
+            mass = new THREE.Mesh(massGeometry, massMaterial);
+            mass.position.set(0, 1.5, 0);
+            mass.castShadow = true;
+            mass.receiveShadow = true;
+            scene.add(mass);
+        }
+        
+        // Create vectors for visualization
+        function createVectors() {
+            // Position vector (x)
+            positionVector = new THREE.ArrowHelper(
+                new THREE.Vector3(1, 0, 0),
+                new THREE.Vector3(0, 0, 0),
+                5,
+                0x4fc3f7,
+                1,
+                0.5
+            );
+            positionVector.visible = false;
+            scene.add(positionVector);
+            
+            // Velocity vector (v)
+            velocityVector = new THREE.ArrowHelper(
+                new THREE.Vector3(1, 0, 0),
+                new THREE.Vector3(0, 0, 0),
+                5,
+                0x66bb6a,
+                1,
+                0.5
+            );
+            velocityVector.visible = false;
+            scene.add(velocityVector);
+            
+            // Acceleration vector (a)
+            accelerationVector = new THREE.ArrowHelper(
+                new THREE.Vector3(1, 0, 0),
+                new THREE.Vector3(0, 0, 0),
+                5,
+                0xff9800,
+                1,
+                0.5
+            );
+            accelerationVector.visible = false;
+            scene.add(accelerationVector);
+            
+            // Force vector (F)
+            forceVector = new THREE.ArrowHelper(
+                new THREE.Vector3(-1, 0, 0),
+                new THREE.Vector3(0, 0, 0),
+                5,
+                0xff416c,
+                1,
+                0.5
+            );
+            forceVector.visible = false;
+            scene.add(forceVector);
+        }
+        
+        // Initialize the graph
+        function initGraph() {
+            const canvas = document.getElementById('graph-canvas');
+            const ctx = canvas.getContext('2d');
+            
+            // Set canvas size
+            canvas.width = canvas.clientWidth;
+            canvas.height = canvas.clientHeight;
+            
+            // Draw graph background
+            ctx.fillStyle = 'rgba(10, 20, 30, 0.7)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Draw grid
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+            ctx.lineWidth = 1;
+            
+            // Vertical grid lines
+            for (let i = 0; i <= 10; i++) {
+                const x = i * canvas.width / 10;
+                ctx.beginPath();
+                ctx.moveTo(x, 0);
+                ctx.lineTo(x, canvas.height);
+                ctx.stroke();
+            }
+            
+            // Horizontal grid lines
+            for (let i = 0; i <= 5; i++) {
+                const y = i * canvas.height / 5;
+                ctx.beginPath();
+                ctx.moveTo(0, y);
+                ctx.lineTo(canvas.width, y);
+                ctx.stroke();
+            }
+            
+            // Draw axes
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(0, canvas.height / 2);
+            ctx.lineTo(canvas.width, canvas.height / 2);
+            ctx.stroke();
+            
+            // Draw labels
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+            ctx.font = '12px Arial';
+            ctx.fillText('0', 5, canvas.height / 2 + 15);
+            ctx.fillText('π', canvas.width * 0.5, canvas.height / 2 + 15);
+            ctx.fillText('2π', canvas.width - 20, canvas.height / 2 + 15);
+            ctx.fillText('t (s)', canvas.width / 2 - 15, canvas.height - 5);
+        }
+        
+        // Update the graph
+        function updateGraph(time) {
+            const canvas = document.getElementById('graph-canvas');
+            const ctx = canvas.getContext('2d');
+            
+            // Clear canvas
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // Draw background
+            ctx.fillStyle = 'rgba(10, 20, 30, 0.7)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Draw grid
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+            ctx.lineWidth = 1;
+            
+            // Vertical grid lines
+            for (let i = 0; i <= 10; i++) {
+                const x = i * canvas.width / 10;
+                ctx.beginPath();
+                ctx.moveTo(x, 0);
+                ctx.lineTo(x, canvas.height);
+                ctx.stroke();
+            }
+            
+            // Horizontal grid lines
+            for (let i = 0; i <= 5; i++) {
+                const y = i * canvas.height / 5;
+                ctx.beginPath();
+                ctx.moveTo(0, y);
+                ctx.lineTo(canvas.width, y);
+                ctx.stroke();
+            }
+            
+            // Draw axes
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(0, canvas.height / 2);
+            ctx.lineTo(canvas.width, canvas.height / 2);
+            ctx.stroke();
+            
+            // Draw labels
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+            ctx.font = '12px Arial';
+            ctx.fillText('0', 5, canvas.height / 2 + 15);
+            ctx.fillText('π', canvas.width * 0.5, canvas.height / 2 + 15);
+            ctx.fillText('2π', canvas.width - 20, canvas.height / 2 + 15);
+            ctx.fillText('t (s)', canvas.width / 2 - 15, canvas.height - 5);
+            
+            // Draw position curve (x = A sin(ωt))
+            ctx.beginPath();
+            ctx.strokeStyle = '#4fc3f7';
+            ctx.lineWidth = 3;
+            
+            for (let t = 0; t <= 2 * Math.PI; t += 0.01) {
+                const x = t * (canvas.width / (2 * Math.PI));
+                const y = canvas.height / 2 - amplitude * Math.sin(t) * (canvas.height / 30);
+                
+                if (t === 0) {
+                    ctx.moveTo(x, y);
+                } else {
+                    ctx.lineTo(x, y);
+                }
+            }
+            ctx.stroke();
+            
+            // Draw velocity curve (v = Aω cos(ωt))
+            ctx.beginPath();
+            ctx.strokeStyle = '#66bb6a';
+            ctx.lineWidth = 3;
+            
+            for (let t = 0; t <= 2 * Math.PI; t += 0.01) {
+                const x = t * (canvas.width / (2 * Math.PI));
+                const y = canvas.height / 2 - amplitude * Math.cos(t) * (canvas.height / 30);
+                
+                if (t === 0) {
+                    ctx.moveTo(x, y);
+                } else {
+                    ctx.lineTo(x, y);
+                }
+            }
+            ctx.stroke();
+            
+            // Draw acceleration curve (a = -Aω² sin(ωt))
+            ctx.beginPath();
+            ctx.strokeStyle = '#ff9800';
+            ctx.lineWidth = 3;
+            
+            for (let t = 0; t <= 2 * Math.PI; t += 0.01) {
+                const x = t * (canvas.width / (2 * Math.PI));
+                const y = canvas.height / 2 - (-amplitude * Math.sin(t)) * (canvas.height / 30);
+                
+                if (t === 0) {
+                    ctx.moveTo(x, y);
+                } else {
+                    ctx.lineTo(x, y);
+                }
+            }
+            ctx.stroke();
+            
+            // Draw current time marker
+            const markerX = time * (canvas.width / (2 * Math.PI));
+            document.getElementById('time-marker').style.left = `${markerX}px`;
+            
+            // Draw current values on graph
+            const position = amplitude * Math.sin(time);
+            const velocity = amplitude * Math.cos(time);
+            const acceleration = -amplitude * Math.sin(time);
+            
+            // Position point
+            ctx.fillStyle = '#4fc3f7';
+            ctx.beginPath();
+            ctx.arc(markerX, canvas.height / 2 - position * (canvas.height / 30), 6, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Velocity point
+            ctx.fillStyle = '#66bb6a';
+            ctx.beginPath();
+            ctx.arc(markerX, canvas.height / 2 - velocity * (canvas.height / 30), 6, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Acceleration point
+            ctx.fillStyle = '#ff9800';
+            ctx.beginPath();
+            ctx.arc(markerX, canvas.height / 2 - acceleration * (canvas.height / 30), 6, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Highlight t = 2π/3
+            const highlightTime = 2 * Math.PI / 3;
+            const highlightX = highlightTime * (canvas.width / (2 * Math.PI));
+            
+            ctx.beginPath();
+            ctx.strokeStyle = '#ff9800';
+            ctx.lineWidth = 1;
+            ctx.setLineDash([5, 3]);
+            ctx.moveTo(highlightX, 0);
+            ctx.lineTo(highlightX, canvas.height);
+            ctx.stroke();
+            ctx.setLineDash([]);
+            
+            ctx.fillStyle = 'rgba(255, 152, 0, 0.3)';
+            ctx.beginPath();
+            ctx.arc(highlightX, canvas.height / 2 - amplitude * Math.sin(highlightTime) * (canvas.height / 30), 10, 0, Math.PI * 2);
+            ctx.fill();
+        }
+        
+        // Update the physics
+        function updatePhysics(time) {
+            // Calculate position, velocity, acceleration with damping
+            const position = amplitude * Math.sin(time) * Math.exp(-damping * time);
+            const velocity = amplitude * Math.cos(time) * Math.exp(-damping * time) - 
+                            damping * amplitude * Math.sin(time) * Math.exp(-damping * time);
+            const acceleration = -amplitude * Math.sin(time) * Math.exp(-damping * time) - 
+                                2 * damping * amplitude * Math.cos(time) * Math.exp(-damping * time) + 
+                                damping * damping * amplitude * Math.sin(time) * Math.exp(-damping * time);
+            
+            // Calculate restoring force (F = -kx)
+            const force = -position;
+            
+            // Update mass position
+            mass.position.x = position;
+            
+            // Update spring
+            const stretchFactor = (restLength + position) / restLength;
+            spring.scale.x = stretchFactor;
+            
+            // Update vectors
+            updateVectors(position, velocity, acceleration, force);
+            
+            // Update energy display
+            updateEnergyDisplay(position, velocity);
+            
+            // Update UI values
+            document.getElementById('position-value').textContent = position.toFixed(2) + ' cm';
+            document.getElementById('velocity-value').textContent = velocity.toFixed(2) + ' cm/s';
+            document.getElementById('acceleration-value').textContent = acceleration.toFixed(2) + ' cm/s²';
+            
+            // Update direction
+            let direction = "None";
+            if (velocity > 0.1) direction = "Right →";
+            else if (velocity < -0.1) direction = "← Left";
+            document.getElementById('direction-value').textContent = direction;
+            
+            // Update graph
+            updateGraph(time);
+        }
+        
+        // Update vector visualization
+        function updateVectors(position, velocity, acceleration, force) {
+            const massPosition = new THREE.Vector3(position, 1.5, 0);
+            
+            // Position vector (from equilibrium)
+            positionVector.position.copy(massPosition);
+            positionVector.setDirection(new THREE.Vector3(position > 0 ? 1 : -1, 0, 0));
+            positionVector.setLength(Math.abs(position) * 0.5 + 0.1);
+            positionVector.visible = showVectors;
+            
+            // Velocity vector
+            velocityVector.position.copy(massPosition);
+            velocityVector.position.y += 2;
+            velocityVector.setDirection(new THREE.Vector3(velocity > 0 ? 1 : -1, 0, 0));
+            velocityVector.setLength(Math.abs(velocity) * 0.5 + 0.1);
+            velocityVector.visible = showVectors;
+            
+            // Acceleration vector
+            accelerationVector.position.copy(massPosition);
+            accelerationVector.position.y += 4;
+            accelerationVector.setDirection(new THREE.Vector3(acceleration > 0 ? 1 : -1, 0, 0));
+            accelerationVector.setLength(Math.abs(acceleration) * 0.3 + 0.1);
+            accelerationVector.visible = showVectors;
+            
+            // Force vector
+            forceVector.position.copy(massPosition);
+            forceVector.position.y += 6;
+            forceVector.setDirection(new THREE.Vector3(force > 0 ? 1 : -1, 0, 0));
+            forceVector.setLength(Math.abs(force) * 0.4 + 0.1);
+            forceVector.visible = showVectors;
+        }
+        
+        // Update energy display
+        function updateEnergyDisplay(position, velocity) {
+            // Calculate energies (simplified)
+            const kineticEnergy = 0.5 * velocity * velocity;
+            const potentialEnergy = 0.5 * position * position;
+            const totalEnergy = kineticEnergy + potentialEnergy;
+            
+            // Update energy bars
+            const maxEnergy = 0.5 * amplitude * amplitude;
+            const kineticPercent = Math.min(100, (kineticEnergy / maxEnergy) * 100);
+            const potentialPercent = Math.min(100, (potentialEnergy / maxEnergy) * 100);
+            
+            document.getElementById('kinetic-energy').style.height = kineticPercent + '%';
+            document.getElementById('potential-energy').style.height = potentialPercent + '%';
+            document.getElementById('total-energy').textContent = totalEnergy.toFixed(2) + ' J';
+        }
+        
+        // Set up event listeners
+        function setupEventListeners() {
+            // Play button
+            document.getElementById('play-btn').addEventListener('click', () => {
+                isPlaying = true;
+            });
+            
+            // Pause button
+            document.getElementById('pause-btn').addEventListener('click', () => {
+                isPlaying = false;
+            });
+            
+            // Reset button
+            document.getElementById('reset-btn').addEventListener('click', () => {
+                currentTime = 0;
+                updatePhysics(currentTime);
+                document.getElementById('time-slider').value = 0;
+                document.getElementById('time-value').textContent = '0.00';
+            });
+            
+            // Slow motion button
+            document.getElementById('slow-btn').addEventListener('click', function() {
+                isSlowMotion = !isSlowMotion;
+                this.classList.toggle('toggled', isSlowMotion);
+            });
+            
+            // Vector toggle button
+            document.getElementById('vector-toggle').addEventListener('click', function() {
+                showVectors = !showVectors;
+                this.classList.toggle('toggled', showVectors);
+            });
+            
+            // Problem toggle button
+            document.getElementById('problem-btn').addEventListener('click', function() {
+                const problemPanel = document.getElementById('physics-problem');
+                problemPanel.classList.toggle('hidden');
+                this.textContent = problemPanel.classList.contains('hidden') ? 
+                                  '📚 Show Problem' : '📚 Hide Problem';
+            });
+            
+            // Problem panel toggle
+            document.getElementById('problem-toggle').addEventListener('click', function() {
+                const problemPanel = document.getElementById('physics-problem');
+                problemPanel.classList.toggle('hidden');
+                document.getElementById('problem-btn').textContent = 
+                    problemPanel.classList.contains('hidden') ? 
+                    '📚 Show Problem' : '📚 Hide Problem';
+            });
+            
+            // Go to specific time button
+            document.getElementById('goto-time').addEventListener('click', function() {
+                currentTime = 2 * Math.PI / 3;
+                document.getElementById('time-slider').value = currentTime;
+                document.getElementById('time-value').textContent = currentTime.toFixed(3);
+                isPlaying = false;
+                updatePhysics(currentTime);
+                
+                // Show problem panel if hidden
+                const problemPanel = document.getElementById('physics-problem');
+                if (problemPanel.classList.contains('hidden')) {
+                    problemPanel.classList.remove('hidden');
+                    document.getElementById('problem-btn').textContent = '📚 Hide Problem';
+                }
+            });
+            
+            // Time slider
+            const timeSlider = document.getElementById('time-slider');
+            timeSlider.addEventListener('input', () => {
+                currentTime = parseFloat(timeSlider.value);
+                document.getElementById('time-value').textContent = currentTime.toFixed(2);
+                isPlaying = false;
+                updatePhysics(currentTime);
+            });
+            
+            // Amplitude slider
+            const amplitudeSlider = document.getElementById('amplitude-slider');
+            amplitudeSlider.addEventListener('input', () => {
+                amplitude = parseFloat(amplitudeSlider.value);
+                document.getElementById('amplitude-value').textContent = amplitude.toFixed(2);
+                updatePhysics(currentTime);
+            });
+            
+            // Damping slider
+            const dampingSlider = document.getElementById('damping-slider');
+            dampingSlider.addEventListener('input', () => {
+                damping = parseFloat(dampingSlider.value);
+                document.getElementById('damping-value').textContent = damping.toFixed(2);
+            });
+            
+            // Tab switching
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.addEventListener('click', () => {
+                    // Remove active class from all tabs and content
+                    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+                    
+                    // Add active class to clicked tab
+                    tab.classList.add('active');
+                    
+                    // Show corresponding content
+                    const tabName = tab.getAttribute('data-tab');
+                    document.getElementById(`${tabName}-content`).classList.add('active');
+                });
+            });
+        }
+        
+        // Handle window resize
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            
+            // Update graph canvas size
+            const canvas = document.getElementById('graph-canvas');
+            canvas.width = canvas.clientWidth;
+            canvas.height = canvas.clientHeight;
+            updateGraph(currentTime);
+        }
+        
+        // Animation loop
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            // Update time if playing
+            if (isPlaying) {
+                const delta = clock.getDelta();
+                currentTime += isSlowMotion ? delta * 0.3 : delta;
+                if (currentTime > 2 * Math.PI) currentTime = 0;
+                
+                document.getElementById('time-slider').value = currentTime;
+                document.getElementById('time-value').textContent = currentTime.toFixed(2);
+            }
+            
+            // Update physics
+            updatePhysics(currentTime);
+            
+            // Update controls
+            controls.update();
+            
+            // Render scene
+            renderer.render(scene, camera);
+        }
+        
+        // Start the application
+        init();
+        
+        // Render math equations with KaTeX
+        document.addEventListener('DOMContentLoaded', function() {
+            if (typeof renderMathInElement === 'function') {
+                renderMathInElement(document.body, {
+                    delimiters: [
+                        {left: '\\[', right: '\\]', display: true},
+                        {left: '\\(', right: '\\)', display: false}
+                    ],
+                    throwOnError: false
+                });
+            } else {
+                console.error('KaTeX auto-render function not found');
+            }
+        });
+    </script>
+</body>
+</html>
