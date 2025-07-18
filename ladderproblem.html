@@ -1,0 +1,1030 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Enhanced Ladder Sliding Physics</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #0f0f1c, #1e1e3a);
+            color: #fff;
+            min-height: 100vh;
+            padding: 20px;
+            overflow-x: hidden;
+            background-attachment: fixed;
+            background-size: 400% 400%;
+            animation: gradientBG 15s ease infinite;
+        }
+
+        @keyframes gradientBG {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        header {
+            text-align: center;
+            padding: 20px 0;
+            margin-bottom: 20px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        header::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 80%;
+            height: 3px;
+            background: linear-gradient(90deg, transparent, #4facfe, #00f2fe, transparent);
+            border-radius: 50%;
+            filter: blur(2px);
+        }
+
+        h1 {
+            font-size: 2.8rem;
+            background: linear-gradient(45deg, #4facfe, #00f2fe, #8a7afc);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            text-shadow: 0 0 20px rgba(79, 172, 254, 0.3);
+            margin-bottom: 10px;
+            animation: glow 3s ease-in-out infinite alternate;
+        }
+
+        @keyframes glow {
+            from { text-shadow: 0 0 10px rgba(79, 172, 254, 0.5); }
+            to { text-shadow: 0 0 20px rgba(79, 172, 254, 0.8), 0 0 30px rgba(79, 172, 254, 0.6); }
+        }
+
+        .subtitle {
+            font-size: 1.2rem;
+            color: #cce0ff;
+            max-width: 800px;
+            margin: 10px auto 0;
+            line-height: 1.6;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+        }
+
+        .content-wrapper {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+
+        @media (max-width: 900px) {
+            .content-wrapper {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Question Window */
+        .question-container {
+            background: linear-gradient(145deg, rgba(40, 40, 70, 0.9), rgba(30, 30, 50, 0.9));
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            border: 1px solid rgba(79, 172, 254, 0.5);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .question-container:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.7);
+        }
+
+        .question-header {
+            background: linear-gradient(90deg, #4facfe, #00f2fe);
+            padding: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .question-header:hover {
+            background: linear-gradient(90deg, #5fb6ff, #10f8ff);
+        }
+
+        .question-header h2 {
+            color: #1a1a2e;
+            font-size: 1.6rem;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .question-header i {
+            font-size: 1.8rem;
+        }
+
+        .question-content {
+            padding: 25px;
+            font-size: 1.1rem;
+            line-height: 1.8;
+            background: rgba(15, 15, 35, 0.8);
+            border-left: 3px solid #4facfe;
+            border-right: 3px solid #4facfe;
+            border-bottom: 3px solid #4facfe;
+            border-bottom-left-radius: 20px;
+            border-bottom-right-radius: 20px;
+        }
+
+        .question-content p {
+            margin-bottom: 20px;
+            color: #e0e0ff;
+        }
+
+        .question-content .highlight {
+            background: rgba(79, 172, 254, 0.2);
+            padding: 15px;
+            border-radius: 10px;
+            border: 1px solid #4facfe;
+            margin: 15px 0;
+            font-weight: bold;
+            color: #4facfe;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .highlight::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+            animation: shine 2s infinite;
+        }
+
+        @keyframes shine {
+            100% { left: 100%; }
+        }
+
+        .physics-facts {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .fact {
+            background: rgba(30, 70, 120, 0.4);
+            padding: 15px;
+            border-radius: 10px;
+            border: 1px solid #00f2fe;
+            text-align: center;
+            transition: all 0.3s ease;
+        }
+
+        .fact:hover {
+            transform: translateY(-5px);
+            background: rgba(40, 80, 140, 0.5);
+            box-shadow: 0 5px 15px rgba(0, 242, 254, 0.3);
+        }
+
+        .fact i {
+            font-size: 2rem;
+            color: #00f2fe;
+            margin-bottom: 10px;
+            transition: transform 0.3s ease;
+        }
+
+        .fact:hover i {
+            transform: scale(1.2);
+        }
+
+        /* Animation Container */
+        .animation-container {
+            background: rgba(15, 20, 40, 0.8);
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            border: 1px solid rgba(79, 172, 254, 0.5);
+            padding: 20px;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .animation-container:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.7);
+        }
+
+        .animation-header {
+            background: linear-gradient(90deg, #4facfe, #00f2fe);
+            padding: 15px;
+            text-align: center;
+            border-radius: 15px 15px 0 0;
+            margin-bottom: 20px;
+        }
+
+        .animation-header h2 {
+            font-size: 1.6rem;
+            color: #1a1a2e;
+        }
+
+        .canvas-container {
+            position: relative;
+            width: 100%;
+            height: 400px;
+            background: #0a1020;
+            border-radius: 15px;
+            overflow: hidden;
+            border: 2px solid #4facfe;
+            margin-bottom: 20px;
+            box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.5);
+        }
+
+        canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
+
+        .controls {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+
+        button {
+            background: linear-gradient(to bottom, #4facfe, #00f2fe);
+            color: #1a1a1a;
+            border: none;
+            border-radius: 50px;
+            padding: 12px;
+            font-size: 1rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        button::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+            transition: 0.5s;
+        }
+
+        button:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
+            background: linear-gradient(to bottom, #5fb6ff, #10f8ff);
+        }
+
+        button:hover::before {
+            left: 100%;
+        }
+
+        button:active {
+            transform: translateY(1px);
+        }
+
+        .info-panel {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            background: rgba(30, 40, 70, 0.8);
+            border-radius: 15px;
+            padding: 20px;
+            margin: 20px 0;
+            border: 1px solid #4facfe;
+        }
+
+        .info-box {
+            text-align: center;
+            padding: 10px;
+            background: rgba(40, 50, 90, 0.5);
+            border-radius: 10px;
+            transition: all 0.3s ease;
+        }
+
+        .info-box:hover {
+            transform: translateY(-3px);
+            background: rgba(50, 60, 100, 0.6);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+        }
+
+        .info-title {
+            font-size: 1rem;
+            color: #00f2fe;
+            margin-bottom: 8px;
+        }
+
+        .info-value {
+            font-size: 1.8rem;
+            font-weight: bold;
+            color: #fff;
+        }
+
+        .highlight-box {
+            background: rgba(79, 172, 254, 0.15);
+            border: 2px solid #4facfe;
+            border-radius: 15px;
+            padding: 15px;
+            margin: 20px 0;
+            text-align: center;
+            display: none;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { box-shadow: 0 0 5px rgba(79, 172, 254, 0.5); }
+            50% { box-shadow: 0 0 20px rgba(79, 172, 254, 0.8); }
+            100% { box-shadow: 0 0 5px rgba(79, 172, 254, 0.5); }
+        }
+
+        .highlight-box h3 {
+            color: #4facfe;
+            margin-bottom: 10px;
+            font-size: 1.4rem;
+        }
+
+        .formula {
+            font-family: 'Cambria', serif;
+            font-size: 1.3rem;
+            background: rgba(0, 0, 0, 0.3);
+            padding: 15px;
+            border-radius: 10px;
+            margin: 15px 0;
+            color: #00f2fe;
+            border: 1px dashed #4facfe;
+        }
+
+        footer {
+            text-align: center;
+            padding: 20px;
+            margin-top: 30px;
+            color: #aaccff;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            font-size: 0.9rem;
+        }
+
+        .toggle-icon {
+            transition: transform 0.3s ease;
+        }
+
+        .hidden .question-content {
+            display: none;
+        }
+
+        .hidden .toggle-icon {
+            transform: rotate(180deg);
+        }
+
+        /* Speed Controls */
+        .speed-control {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: rgba(30, 40, 70, 0.8);
+            padding: 10px 15px;
+            border-radius: 50px;
+            justify-content: center;
+            margin: 15px 0;
+            border: 1px solid #4facfe;
+        }
+
+        .speed-control label {
+            color: #00f2fe;
+            font-weight: bold;
+        }
+
+        .speed-control input {
+            width: 150px;
+            accent-color: #4facfe;
+        }
+
+        .speed-control span {
+            color: white;
+            font-weight: bold;
+            min-width: 40px;
+        }
+
+        /* Path Traces */
+        .trace-control {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        /* Enhanced grid for reference */
+        .grid-line {
+            position: absolute;
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .grid-line.vertical {
+            width: 1px;
+            height: 100%;
+        }
+
+        .grid-line.horizontal {
+            width: 100%;
+            height: 1px;
+        }
+
+        /* Particles for visual effect */
+        .particle {
+            position: absolute;
+            width: 3px;
+            height: 3px;
+            background: rgba(79, 172, 254, 0.7);
+            border-radius: 50%;
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1><i class="fas fa-ruler-combined"></i> Ladder Sliding Physics</h1>
+            <p class="subtitle">Visualizing related rates in calculus with an interactive animation</p>
+        </header>
+
+        <div class="content-wrapper">
+            <!-- Question Window -->
+            <div class="question-container">
+                <div class="question-header" id="questionToggle">
+                    <h2><i class="fas fa-question-circle"></i> Physics Problem Statement</h2>
+                    <i class="fas fa-chevron-down toggle-icon"></i>
+                </div>
+                <div class="question-content">
+                    <p>A ladder 5 m long is leaning against a wall. The bottom of the ladder is pulled along the ground, away from the wall, at the rate of 2cm/s.</p>
+                    
+                    <div class="highlight">
+                        How fast is its height on the wall decreasing when the foot of the ladder is 4 m away from the wall?
+                    </div>
+                    
+                    <p>This classic related rates problem demonstrates how the position of a sliding ladder affects the rate of change of its height. As the bottom of the ladder moves away from the wall, the top slides down at a rate that depends on its current position.</p>
+                    
+                    <div class="physics-facts">
+                        <div class="fact">
+                            <i class="fas fa-ruler"></i>
+                            <div>Ladder length: 5 meters</div>
+                        </div>
+                        <div class="fact">
+                            <i class="fas fa-tachometer-alt"></i>
+                            <div>dx/dt = 2 cm/s = 0.02 m/s</div>
+                        </div>
+                        <div class="fact">
+                            <i class="fas fa-calculator"></i>
+                            <div>dy/dt = - (x dx/dt) / y</div>
+                        </div>
+                        <div class="fact">
+                            <i class="fas fa-bullseye"></i>
+                            <div>At x=4m: dy/dt = -0.0267 m/s</div>
+                        </div>
+                    </div>
+
+                    <div class="formula">
+                        Pythagoras: x² + y² = 5²<br>
+                        Differentiate: 2x dx/dt + 2y dy/dt = 0<br>
+                        Solve: dy/dt = - (x dx/dt) / y
+                    </div>
+                </div>
+            </div>
+
+            <!-- Animation Container -->
+            <div class="animation-container">
+                <div class="animation-header">
+                    <h2><i class="fas fa-play-circle"></i> Interactive Animation</h2>
+                </div>
+                
+                <div class="canvas-container" id="canvasContainer">
+                    <canvas id="animationCanvas"></canvas>
+                </div>
+                
+                <div class="controls">
+                    <button id="startBtn"><i class="fas fa-play"></i> Start</button>
+                    <button id="pauseBtn"><i class="fas fa-pause"></i> Pause</button>
+                    <button id="resetBtn"><i class="fas fa-redo"></i> Reset</button>
+                    <button id="toPositionBtn"><i class="fas fa-bullseye"></i> Go to x=4m</button>
+                </div>
+
+                <div class="speed-control">
+                    <label for="speedSlider"><i class="fas fa-tachometer-alt"></i> Animation Speed:</label>
+                    <input type="range" id="speedSlider" min="0.1" max="2" step="0.1" value="1">
+                    <span id="speedValue">1x</span>
+                </div>
+
+                <div class="trace-control">
+                    <button id="togglePathBtn"><i class="fas fa-draw-polygon"></i> Toggle Path Trace</button>
+                    <button id="clearPathBtn"><i class="fas fa-eraser"></i> Clear Path</button>
+                </div>
+                
+                <div class="info-panel">
+                    <div class="info-box">
+                        <div class="info-title">DISTANCE (x)</div>
+                        <div class="info-value" id="xValue">0.00 m</div>
+                    </div>
+                    <div class="info-box">
+                        <div class="info-title">HEIGHT (y)</div>
+                        <div class="info-value" id="yValue">5.00 m</div>
+                    </div>
+                    <div class="info-box">
+                        <div class="info-title">dx/dt</div>
+                        <div class="info-value">0.02 m/s</div>
+                    </div>
+                    <div class="info-box">
+                        <div class="info-title">dy/dt</div>
+                        <div class="info-value" id="dydtValue">0.00 m/s</div>
+                    </div>
+                </div>
+                
+                <div class="highlight-box" id="highlightBox">
+                    <h3><i class="fas fa-star"></i> Critical Point Reached!</h3>
+                    <div class="formula">
+                        dy/dt = - (x dx/dt) / y = - (4 × 0.02) / 3 = -0.0267 m/s
+                    </div>
+                    <p>The height is decreasing at 0.0267 m/s when the foot is 4m from the wall.</p>
+                </div>
+            </div>
+        </div>
+        
+        <footer>
+            <p>Created for Physics Education | Related Rates & Calculus | © 2023 Interactive Physics Demo</p>
+        </footer>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const canvas = document.getElementById('animationCanvas');
+            const ctx = canvas.getContext('2d');
+            const container = document.getElementById('canvasContainer');
+            canvas.width = container.clientWidth;
+            canvas.height = container.clientHeight;
+            
+            // Physics constants
+            const ladderLength = 5; // meters
+            const dxdt = 0.02; // m/s (2 cm/s)
+            let x = 0.1; // initial distance from wall (start slightly away from 0)
+            let time = 0;
+            let speedFactor = 1;
+            
+            // Animation control
+            let animationId = null;
+            let isAnimating = false;
+            
+            // Path trace
+            let tracePath = [];
+            const maxTracePoints = 100;
+            let showTrace = true;
+            
+            // Particles
+            let particles = [];
+            
+            // Calculate height
+            function calculateHeight() {
+                return Math.sqrt(ladderLength * ladderLength - x * x);
+            }
+            
+            // Calculate dy/dt
+            function calculatedydt() {
+                const y = calculateHeight();
+                if (y === 0) return 0;
+                return -(x * dxdt) / y;
+            }
+            
+            // DOM elements
+            const xValueElement = document.getElementById('xValue');
+            const yValueElement = document.getElementById('yValue');
+            const dydtValueElement = document.getElementById('dydtValue');
+            const startBtn = document.getElementById('startBtn');
+            const pauseBtn = document.getElementById('pauseBtn');
+            const resetBtn = document.getElementById('resetBtn');
+            const toPositionBtn = document.getElementById('toPositionBtn');
+            const highlightBox = document.getElementById('highlightBox');
+            const questionToggle = document.getElementById('questionToggle');
+            const speedSlider = document.getElementById('speedSlider');
+            const speedValue = document.getElementById('speedValue');
+            const togglePathBtn = document.getElementById('togglePathBtn');
+            const clearPathBtn = document.getElementById('clearPathBtn');
+            
+            // Speed control
+            speedSlider.addEventListener('input', () => {
+                speedFactor = parseFloat(speedSlider.value);
+                speedValue.textContent = speedFactor.toFixed(1) + 'x';
+            });
+            
+            // Toggle question window
+            questionToggle.addEventListener('click', () => {
+                const content = document.querySelector('.question-content');
+                const icon = document.querySelector('.toggle-icon');
+                content.parentElement.classList.toggle('hidden');
+            });
+            
+            // Toggle path trace
+            togglePathBtn.addEventListener('click', () => {
+                showTrace = !showTrace;
+                togglePathBtn.innerHTML = showTrace ? 
+                    '<i class="fas fa-eye-slash"></i> Hide Path Trace' : 
+                    '<i class="fas fa-eye"></i> Show Path Trace';
+            });
+            
+            // Clear path trace
+            clearPathBtn.addEventListener('click', () => {
+                tracePath = [];
+            });
+            
+            // Create particles
+            function createParticles(x, y, count) {
+                for (let i = 0; i < count; i++) {
+                    particles.push({
+                        x: x,
+                        y: y,
+                        size: Math.random() * 3 + 1,
+                        speedX: (Math.random() - 0.5) * 2,
+                        speedY: (Math.random() - 0.5) * 2,
+                        alpha: 1,
+                        color: `rgba(79, 172, 254, ${Math.random() * 0.5 + 0.5})`
+                    });
+                }
+            }
+            
+            // Update particles
+            function updateParticles() {
+                for (let i = particles.length - 1; i >= 0; i--) {
+                    const p = particles[i];
+                    p.x += p.speedX;
+                    p.y += p.speedY;
+                    p.alpha -= 0.02;
+                    
+                    if (p.alpha <= 0) {
+                        particles.splice(i, 1);
+                    }
+                }
+            }
+            
+            // Draw particles
+            function drawParticles() {
+                particles.forEach(p => {
+                    ctx.beginPath();
+                    ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+                    ctx.fillStyle = p.color.replace(')', `, ${p.alpha})`);
+                    ctx.fill();
+                });
+            }
+            
+            // Draw the scene
+            function drawScene() {
+                // Clear canvas
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                
+                // Draw grid background
+                const gridSize = 40;
+                ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
+                ctx.lineWidth = 1;
+                
+                // Vertical lines
+                for (let x = 0; x < canvas.width; x += gridSize) {
+                    ctx.beginPath();
+                    ctx.moveTo(x, 0);
+                    ctx.lineTo(x, canvas.height);
+                    ctx.stroke();
+                }
+                
+                // Horizontal lines
+                for (let y = 0; y < canvas.height; y += gridSize) {
+                    ctx.beginPath();
+                    ctx.moveTo(0, y);
+                    ctx.lineTo(canvas.width, y);
+                    ctx.stroke();
+                }
+                
+                // Dimensions
+                const groundY = canvas.height * 0.8;
+                const scale = canvas.width / 8;
+                
+                // Draw wall (left side) with texture
+                ctx.beginPath();
+                ctx.moveTo(50, 50);
+                ctx.lineTo(50, groundY);
+                ctx.strokeStyle = '#4facfe';
+                ctx.lineWidth = 12;
+                ctx.stroke();
+                
+                // Wall texture
+                ctx.strokeStyle = 'rgba(0, 0, 0, 0.2)';
+                ctx.lineWidth = 1;
+                for (let y = 60; y < groundY; y += 15) {
+                    ctx.beginPath();
+                    ctx.moveTo(45, y);
+                    ctx.lineTo(55, y);
+                    ctx.stroke();
+                }
+                
+                // Draw ground with texture
+                ctx.beginPath();
+                ctx.moveTo(50, groundY);
+                ctx.lineTo(canvas.width - 50, groundY);
+                ctx.strokeStyle = '#8c6d46';
+                ctx.lineWidth = 15;
+                ctx.stroke();
+                
+                // Ground texture
+                ctx.strokeStyle = 'rgba(0, 0, 0, 0.2)';
+                ctx.lineWidth = 1;
+                for (let x = 60; x < canvas.width - 50; x += 20) {
+                    ctx.beginPath();
+                    ctx.moveTo(x, groundY - 7);
+                    ctx.lineTo(x, groundY + 7);
+                    ctx.stroke();
+                }
+                
+                // Draw ladder
+                const ladderX = 50 + x * scale;
+                const ladderY = groundY - calculateHeight() * scale;
+                
+                // Draw path trace
+                if (showTrace && tracePath.length > 1) {
+                    ctx.beginPath();
+                    ctx.moveTo(tracePath[0].x, tracePath[0].y);
+                    
+                    for (let i = 1; i < tracePath.length; i++) {
+                        ctx.lineTo(tracePath[i].x, tracePath[i].y);
+                    }
+                    
+                    ctx.strokeStyle = 'rgba(255, 215, 102, 0.4)';
+                    ctx.lineWidth = 3;
+                    ctx.stroke();
+                }
+                
+                // Add current position to trace
+                tracePath.push({x: ladderX, y: ladderY});
+                if (tracePath.length > maxTracePoints) {
+                    tracePath.shift();
+                }
+                
+                // Draw ladder shadow
+                ctx.beginPath();
+                ctx.moveTo(50, ladderY + 5);
+                ctx.lineTo(ladderX + 5, groundY + 5);
+                ctx.strokeStyle = 'rgba(0, 0, 0, 0.3)';
+                ctx.lineWidth = 8;
+                ctx.stroke();
+                
+                // Draw ladder
+                ctx.beginPath();
+                ctx.moveTo(50, ladderY);
+                ctx.lineTo(ladderX, groundY);
+                ctx.strokeStyle = '#ff6b6b';
+                ctx.lineWidth = 8;
+                ctx.stroke();
+                
+                // Draw ladder details (rungs)
+                ctx.strokeStyle = '#ff8e8e';
+                ctx.lineWidth = 3;
+                
+                const ladderAngle = Math.atan2(groundY - ladderY, ladderX - 50);
+                const rungCount = 8;
+                const rungSpacing = ladderLength / rungCount * scale;
+                
+                for (let i = 1; i < rungCount; i++) {
+                    const rungX = 50 + Math.cos(ladderAngle) * rungSpacing * i;
+                    const rungY = ladderY + Math.sin(ladderAngle) * rungSpacing * i;
+                    
+                    const rungLength = 15;
+                    const perpAngle = ladderAngle + Math.PI/2;
+                    
+                    ctx.beginPath();
+                    ctx.moveTo(
+                        rungX - Math.cos(perpAngle) * rungLength/2,
+                        rungY - Math.sin(perpAngle) * rungLength/2
+                    );
+                    ctx.lineTo(
+                        rungX + Math.cos(perpAngle) * rungLength/2,
+                        rungY + Math.sin(perpAngle) * rungLength/2
+                    );
+                    ctx.stroke();
+                }
+                
+                // Draw foot of ladder
+                ctx.beginPath();
+                ctx.arc(ladderX, groundY, 10, 0, Math.PI * 2);
+                ctx.fillStyle = '#ff6b6b';
+                ctx.fill();
+                ctx.strokeStyle = '#d94c4c';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+                
+                // Create particles at foot
+                if (isAnimating && Math.random() > 0.7) {
+                    createParticles(ladderX, groundY, 2);
+                }
+                
+                // Draw top of ladder
+                ctx.beginPath();
+                ctx.arc(50, ladderY, 10, 0, Math.PI * 2);
+                ctx.fillStyle = '#ff6b6b';
+                ctx.fill();
+                ctx.strokeStyle = '#d94c4c';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+                
+                // Create particles at top
+                if (isAnimating && calculatedydt() < -0.01 && Math.random() > 0.8) {
+                    createParticles(50, ladderY, 1);
+                }
+                
+                // Draw distance labels
+                ctx.font = 'bold 18px Arial';
+                ctx.fillStyle = '#00f2fe';
+                
+                // x distance
+                ctx.beginPath();
+                ctx.moveTo(50, groundY + 30);
+                ctx.lineTo(ladderX, groundY + 30);
+                ctx.strokeStyle = '#00f2fe';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+                
+                ctx.fillText(`x = ${x.toFixed(2)} m`, (50 + ladderX) / 2 - 30, groundY + 50);
+                
+                // y height
+                ctx.beginPath();
+                ctx.moveTo(70, groundY);
+                ctx.lineTo(70, ladderY);
+                ctx.strokeStyle = '#00f2fe';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+                
+                ctx.fillText(`y = ${calculateHeight().toFixed(2)} m`, 30, (groundY + ladderY) / 2);
+                
+                // Ladder length
+                ctx.beginPath();
+                ctx.moveTo(50, ladderY - 20);
+                ctx.lineTo(ladderX, groundY + 20);
+                ctx.strokeStyle = '#ffd166';
+                ctx.lineWidth = 2;
+                ctx.setLineDash([5, 5]);
+                ctx.stroke();
+                ctx.setLineDash([]);
+                
+                ctx.fillStyle = '#ffd166';
+                ctx.fillText(`L = ${ladderLength} m`, (50 + ladderX) / 2 - 30, (ladderY + groundY) / 2 - 20);
+                
+                // Draw velocity vectors
+                // dx/dt
+                ctx.beginPath();
+                ctx.moveTo(ladderX + 20, groundY - 20);
+                ctx.lineTo(ladderX + 60, groundY - 20);
+                ctx.lineTo(ladderX + 50, groundY - 25);
+                ctx.moveTo(ladderX + 60, groundY - 20);
+                ctx.lineTo(ladderX + 50, groundY - 15);
+                ctx.strokeStyle = '#4facfe';
+                ctx.lineWidth = 3;
+                ctx.stroke();
+                
+                ctx.fillStyle = '#4facfe';
+                ctx.fillText(`dx/dt = ${dxdt} m/s`, ladderX + 20, groundY - 30);
+                
+                // dy/dt
+                const dydt = calculatedydt();
+                const dyDirection = dydt < 0 ? -1 : 1;
+                const dyOffset = dyDirection * 40;
+                
+                ctx.beginPath();
+                ctx.moveTo(30, ladderY - 20);
+                ctx.lineTo(30, ladderY - 20 + dyOffset);
+                ctx.lineTo(25, ladderY - 20 + dyOffset + dyDirection * 5);
+                ctx.moveTo(30, ladderY - 20 + dyOffset);
+                ctx.lineTo(35, ladderY - 20 + dyOffset + dyDirection * 5);
+                ctx.strokeStyle = '#ff6b6b';
+                ctx.lineWidth = 3;
+                ctx.stroke();
+                
+                ctx.fillStyle = '#ff6b6b';
+                ctx.fillText(`dy/dt = ${dydt.toFixed(4)} m/s`, 40, ladderY - 20 + dyOffset/2);
+                
+                // Draw particles
+                updateParticles();
+                drawParticles();
+            }
+            
+            // Update info panel
+            function updateInfo() {
+                const y = calculateHeight();
+                const dydt = calculatedydt();
+                
+                xValueElement.textContent = x.toFixed(2);
+                yValueElement.textContent = y.toFixed(2);
+                dydtValueElement.textContent = dydt.toFixed(4);
+                
+                // Show highlight box when at x=4m
+                if (Math.abs(x - 4) < 0.05) {
+                    highlightBox.style.display = 'block';
+                } else {
+                    highlightBox.style.display = 'none';
+                }
+            }
+            
+            // Animation loop with fixed time step
+            let lastTime = 0;
+            const fixedTimeStep = 1000 / 60; // 60fps
+            
+            function animate(timestamp) {
+                if (!isAnimating) return;
+                
+                if (!lastTime) lastTime = timestamp;
+                const deltaTime = timestamp - lastTime;
+                lastTime = timestamp;
+                
+                // Update physics based on fixed time step
+                const frameSteps = Math.floor(deltaTime / fixedTimeStep) || 1;
+                
+                for (let i = 0; i < frameSteps; i++) {
+                    // Update position
+                    x += dxdt * (fixedTimeStep / 1000) * speedFactor;
+                    
+                    // Don't let x exceed ladder length
+                    if (x >= ladderLength - 0.01) {
+                        x = ladderLength - 0.01;
+                        isAnimating = false;
+                        break;
+                    }
+                }
+                
+                drawScene();
+                updateInfo();
+                
+                animationId = requestAnimationFrame(animate);
+            }
+            
+            // Event listeners
+            startBtn.addEventListener('click', () => {
+                if (!isAnimating) {
+                    isAnimating = true;
+                    lastTime = 0;
+                    animationId = requestAnimationFrame(animate);
+                }
+            });
+            
+            pauseBtn.addEventListener('click', () => {
+                isAnimating = false;
+                if (animationId) cancelAnimationFrame(animationId);
+            });
+            
+            resetBtn.addEventListener('click', () => {
+                isAnimating = false;
+                if (animationId) cancelAnimationFrame(animationId);
+                x = 0.1;
+                tracePath = [];
+                particles = [];
+                drawScene();
+                updateInfo();
+            });
+            
+            toPositionBtn.addEventListener('click', () => {
+                isAnimating = false;
+                if (animationId) cancelAnimationFrame(animationId);
+                x = 4;
+                drawScene();
+                updateInfo();
+            });
+            
+            // Handle window resize
+            window.addEventListener('resize', () => {
+                canvas.width = container.clientWidth;
+                canvas.height = container.clientHeight;
+                drawScene();
+            });
+            
+            // Initialize
+            drawScene();
+            updateInfo();
+        });
+    </script>
+</body>
+</html>
