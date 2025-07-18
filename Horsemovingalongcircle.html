@@ -1,0 +1,668 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Horse Shadow Physics Animation</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
+            color: #fff;
+            min-height: 100vh;
+            padding: 20px;
+            overflow-x: hidden;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        header {
+            text-align: center;
+            padding: 20px 0;
+            margin-bottom: 20px;
+        }
+
+        h1 {
+            font-size: 2.8rem;
+            background: linear-gradient(45deg, #ffcc00, #ff9900);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            text-shadow: 0 0 20px rgba(255, 204, 0, 0.3);
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            font-size: 1.2rem;
+            color: #aaccff;
+            max-width: 800px;
+            margin: 0 auto;
+            line-height: 1.6;
+        }
+
+        .content-wrapper {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+
+        @media (max-width: 900px) {
+            .content-wrapper {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Question Window */
+        .question-container {
+            background: linear-gradient(145deg, rgba(30, 30, 60, 0.9), rgba(20, 20, 40, 0.9));
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            border: 1px solid rgba(255, 204, 0, 0.3);
+        }
+
+        .question-header {
+            background: linear-gradient(90deg, #ff9900, #ffcc00);
+            padding: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .question-header:hover {
+            background: linear-gradient(90deg, #ffaa00, #ffd633);
+        }
+
+        .question-header h2 {
+            color: #1a1a2e;
+            font-size: 1.6rem;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .question-header i {
+            font-size: 1.8rem;
+        }
+
+        .question-content {
+            padding: 25px;
+            font-size: 1.1rem;
+            line-height: 1.8;
+            background: rgba(10, 10, 30, 0.7);
+            border-left: 3px solid #ffcc00;
+            border-right: 3px solid #ffcc00;
+            border-bottom: 3px solid #ffcc00;
+            border-bottom-left-radius: 20px;
+            border-bottom-right-radius: 20px;
+        }
+
+        .question-content p {
+            margin-bottom: 20px;
+            color: #e0e0ff;
+        }
+
+        .question-content .highlight {
+            background: rgba(255, 204, 0, 0.2);
+            padding: 15px;
+            border-radius: 10px;
+            border: 1px solid #ffcc00;
+            margin: 15px 0;
+            font-weight: bold;
+            color: #ffcc00;
+        }
+
+        .physics-facts {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .fact {
+            background: rgba(0, 60, 100, 0.4);
+            padding: 15px;
+            border-radius: 10px;
+            border: 1px solid #00ccff;
+            text-align: center;
+        }
+
+        .fact i {
+            font-size: 2rem;
+            color: #00ccff;
+            margin-bottom: 10px;
+        }
+
+        /* Animation Container */
+        .animation-container {
+            background: rgba(10, 15, 30, 0.8);
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            border: 1px solid rgba(0, 200, 255, 0.3);
+            padding: 20px;
+        }
+
+        .animation-header {
+            background: linear-gradient(90deg, #0077b6, #00b4d8);
+            padding: 15px;
+            text-align: center;
+            border-radius: 15px 15px 0 0;
+            margin-bottom: 20px;
+        }
+
+        .animation-header h2 {
+            font-size: 1.6rem;
+            color: white;
+        }
+
+        .canvas-container {
+            position: relative;
+            width: 100%;
+            height: 400px;
+            background: #0a0e29;
+            border-radius: 15px;
+            overflow: hidden;
+            border: 2px solid #ffcc00;
+            margin-bottom: 20px;
+        }
+
+        canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
+
+        .controls {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+
+        button {
+            background: linear-gradient(to bottom, #ffcc00, #ff9900);
+            color: #1a1a1a;
+            border: none;
+            border-radius: 50px;
+            padding: 12px;
+            font-size: 1rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        button:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
+            background: linear-gradient(to bottom, #ffd633, #ffad33);
+        }
+
+        button:active {
+            transform: translateY(1px);
+        }
+
+        .info-panel {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            background: rgba(0, 0, 40, 0.8);
+            border-radius: 15px;
+            padding: 20px;
+            margin: 20px 0;
+            border: 1px solid #ffcc00;
+        }
+
+        .info-box {
+            text-align: center;
+            padding: 10px;
+            background: rgba(30, 30, 60, 0.5);
+            border-radius: 10px;
+        }
+
+        .info-title {
+            font-size: 1rem;
+            color: #ffcc00;
+            margin-bottom: 8px;
+        }
+
+        .info-value {
+            font-size: 1.8rem;
+            font-weight: bold;
+            color: #fff;
+        }
+
+        .highlight-box {
+            background: rgba(255, 204, 0, 0.15);
+            border: 2px solid #ffcc00;
+            border-radius: 15px;
+            padding: 15px;
+            margin: 20px 0;
+            text-align: center;
+            display: none;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { box-shadow: 0 0 5px rgba(255, 204, 0, 0.5); }
+            50% { box-shadow: 0 0 20px rgba(255, 204, 0, 0.8); }
+            100% { box-shadow: 0 0 5px rgba(255, 204, 0, 0.5); }
+        }
+
+        .highlight-box h3 {
+            color: #ffcc00;
+            margin-bottom: 10px;
+            font-size: 1.4rem;
+        }
+
+        .formula {
+            font-family: 'Cambria', serif;
+            font-size: 1.3rem;
+            background: rgba(0, 0, 0, 0.3);
+            padding: 15px;
+            border-radius: 10px;
+            margin: 15px 0;
+            color: #ffcc00;
+        }
+
+        footer {
+            text-align: center;
+            padding: 20px;
+            margin-top: 30px;
+            color: #aaccff;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .toggle-icon {
+            transition: transform 0.3s ease;
+        }
+
+        .hidden .question-content {
+            display: none;
+        }
+
+        .hidden .toggle-icon {
+            transform: rotate(180deg);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1><i class="fas fa-horse"></i> Horse Shadow Physics</h1>
+            <p class="subtitle">Visualizing circular motion and light projection in real-time</p>
+        </header>
+
+        <div class="content-wrapper">
+            <!-- Question Window -->
+            <div class="question-container">
+                <div class="question-header" id="questionToggle">
+                    <h2><i class="fas fa-question-circle"></i> Physics Problem Statement</h2>
+                    <i class="fas fa-chevron-down toggle-icon"></i>
+                </div>
+                <div class="question-content">
+                    <p>A horse runs along a circle with a speed of <span style="color:#ffcc00;font-weight:bold">20 km/hr</span>. A lantern is at the center of the circle. A fence is along the tangent to the circle at the point at which the horse starts.</p>
+                    
+                    <div class="highlight">
+                        The speed with which the shadow of the horse moves along the fence at the moment when it covers 1/8 of the circle (in km/hr) is?
+                    </div>
+                    
+                    <p>This problem demonstrates the relationship between angular motion and linear projection. As the horse moves along the circular path, its shadow moves along the tangent fence at a varying speed that depends on the horse's angular position.</p>
+                    
+                    <div class="physics-facts">
+                        <div class="fact">
+                            <i class="fas fa-lightbulb"></i>
+                            <div>Light travels in straight lines from the lantern</div>
+                        </div>
+                        <div class="fact">
+                            <i class="fas fa-running"></i>
+                            <div>Horse moves at constant tangential speed</div>
+                        </div>
+                        <div class="fact">
+                            <i class="fas fa-ruler-combined"></i>
+                            <div>Shadow speed = v / cos(θ)</div>
+                        </div>
+                        <div class="fact">
+                            <i class="fas fa-calculator"></i>
+                            <div>At 45°: 20 / cos(45°) = 20√2 ≈ 28.28 km/hr</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Animation Container -->
+            <div class="animation-container">
+                <div class="animation-header">
+                    <h2><i class="fas fa-play-circle"></i> Interactive Animation</h2>
+                </div>
+                
+                <div class="canvas-container">
+                    <canvas id="animationCanvas"></canvas>
+                </div>
+                
+                <div class="controls">
+                    <button id="startBtn"><i class="fas fa-play"></i> Start</button>
+                    <button id="pauseBtn"><i class="fas fa-pause"></i> Pause</button>
+                    <button id="resetBtn"><i class="fas fa-redo"></i> Reset</button>
+                    <button id="toEighthBtn"><i class="fas fa-bullseye"></i> Go to 1/8 Circle</button>
+                </div>
+                
+                <div class="info-panel">
+                    <div class="info-box">
+                        <div class="info-title">HORSE SPEED</div>
+                        <div class="info-value">20.00 km/hr</div>
+                    </div>
+                    <div class="info-box">
+                        <div class="info-title">SHADOW SPEED</div>
+                        <div class="info-value" id="shadowSpeed">0.00 km/hr</div>
+                    </div>
+                    <div class="info-box">
+                        <div class="info-title">ANGLE (θ)</div>
+                        <div class="info-value" id="angleValue">0.00°</div>
+                    </div>
+                    <div class="info-box">
+                        <div class="info-title">ARC COMPLETED</div>
+                        <div class="info-value" id="arcValue">0.00%</div>
+                    </div>
+                </div>
+                
+                <div class="highlight-box" id="highlightBox">
+                    <h3><i class="fas fa-star"></i> 1/8 Circle Reached!</h3>
+                    <div class="formula">
+                        Speed of Shadow = Horse Speed / cos(θ) = 20 / cos(45°) = 20√2 ≈ 28.28 km/hr
+                    </div>
+                    <p>At 45° (1/8 circle), the shadow moves faster than the horse due to the projection effect.</p>
+                </div>
+            </div>
+        </div>
+        
+        <footer>
+            <p>Created for Physics Education | Circular Motion & Light Projection | © 2023 Interactive Physics Demo</p>
+        </footer>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const canvas = document.getElementById('animationCanvas');
+            const ctx = canvas.getContext('2d');
+            const container = canvas.parentElement;
+            canvas.width = container.clientWidth;
+            canvas.height = container.clientHeight;
+            
+            // Center of the circle
+            const centerX = canvas.width * 0.4;
+            const centerY = canvas.height / 2;
+            const radius = Math.min(canvas.width, canvas.height) * 0.3;
+            
+            // Physics constants
+            const horseSpeed = 20; // km/hr
+            let angle = 0; // radians
+            let animationId = null;
+            let isAnimating = false;
+            const angularSpeed = 0.02; // radians per frame
+            
+            // Fence position (tangent to circle at start)
+            const fenceX = centerX + radius;
+            
+            // DOM elements
+            const shadowSpeedElement = document.getElementById('shadowSpeed');
+            const angleValueElement = document.getElementById('angleValue');
+            const arcValueElement = document.getElementById('arcValue');
+            const startBtn = document.getElementById('startBtn');
+            const pauseBtn = document.getElementById('pauseBtn');
+            const resetBtn = document.getElementById('resetBtn');
+            const toEighthBtn = document.getElementById('toEighthBtn');
+            const highlightBox = document.getElementById('highlightBox');
+            const questionToggle = document.getElementById('questionToggle');
+            
+            // Toggle question window
+            questionToggle.addEventListener('click', () => {
+                const content = document.querySelector('.question-content');
+                const icon = document.querySelector('.toggle-icon');
+                content.parentElement.classList.toggle('hidden');
+            });
+            
+            // Draw the scene
+            function drawScene() {
+                // Clear canvas
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                
+                // Draw circular path
+                ctx.beginPath();
+                ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
+                ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+                
+                // Draw fence (tangent to circle at start)
+                ctx.beginPath();
+                ctx.moveTo(fenceX, 0);
+                ctx.lineTo(fenceX, canvas.height);
+                ctx.strokeStyle = '#00FF00';
+                ctx.lineWidth = 3;
+                ctx.stroke();
+                
+                // Draw lantern at center
+                ctx.beginPath();
+                ctx.arc(centerX, centerY, 10, 0, Math.PI * 2);
+                ctx.fillStyle = '#FFCC00';
+                ctx.fill();
+                
+                // Draw glow effect
+                const gradient = ctx.createRadialGradient(
+                    centerX, centerY, 10, 
+                    centerX, centerY, 30
+                );
+                gradient.addColorStop(0, 'rgba(255, 204, 0, 0.8)');
+                gradient.addColorStop(1, 'rgba(255, 204, 0, 0)');
+                ctx.beginPath();
+                ctx.arc(centerX, centerY, 30, 0, Math.PI * 2);
+                ctx.fillStyle = gradient;
+                ctx.fill();
+                
+                // Calculate horse position
+                const horseX = centerX + radius * Math.cos(angle);
+                const horseY = centerY - radius * Math.sin(angle);
+                
+                // Calculate shadow position
+                const shadowY = centerY - radius * Math.tan(angle);
+                
+                // Draw light ray from lantern to horse to shadow
+                ctx.beginPath();
+                ctx.moveTo(centerX, centerY);
+                ctx.lineTo(horseX, horseY);
+                ctx.lineTo(fenceX, shadowY);
+                ctx.strokeStyle = 'rgba(255, 255, 0, 0.5)';
+                ctx.lineWidth = 1.5;
+                ctx.stroke();
+                
+                // Draw shadow
+                ctx.beginPath();
+                ctx.arc(fenceX, shadowY, 8, 0, Math.PI * 2);
+                ctx.fillStyle = 'rgba(255, 0, 0, 0.8)';
+                ctx.fill();
+                
+                // Draw horse
+                ctx.save();
+                ctx.translate(horseX, horseY);
+                ctx.rotate(-angle + Math.PI/2);
+                
+                // Horse body
+                ctx.beginPath();
+                ctx.arc(0, 0, 10, 0, Math.PI * 2);
+                ctx.fillStyle = '#8B4513';
+                ctx.fill();
+                
+                // Horse head
+                ctx.beginPath();
+                ctx.arc(-8, -5, 6, 0, Math.PI * 2);
+                ctx.fillStyle = '#8B4513';
+                ctx.fill();
+                
+                // Eye
+                ctx.beginPath();
+                ctx.arc(-10, -6, 2, 0, Math.PI * 2);
+                ctx.fillStyle = 'black';
+                ctx.fill();
+                
+                // Ear
+                ctx.beginPath();
+                ctx.moveTo(-12, -10);
+                ctx.lineTo(-10, -15);
+                ctx.lineTo(-8, -10);
+                ctx.closePath();
+                ctx.fillStyle = '#8B4513';
+                ctx.fill();
+                
+                // Legs
+                ctx.fillStyle = '#8B4513';
+                ctx.fillRect(-5, 8, 3, 15);
+                ctx.fillRect(2, 8, 3, 15);
+                
+                // Tail
+                ctx.beginPath();
+                ctx.moveTo(5, 5);
+                ctx.lineTo(15, 0);
+                ctx.lineTo(10, 10);
+                ctx.closePath();
+                ctx.fillStyle = '#8B4513';
+                ctx.fill();
+                
+                ctx.restore();
+                
+                // Draw 1/8 circle marker
+                const markerAngle = Math.PI / 4;
+                const markerX = centerX + radius * Math.cos(markerAngle);
+                const markerY = centerY - radius * Math.sin(markerAngle);
+                ctx.beginPath();
+                ctx.arc(markerX, markerY, 5, 0, Math.PI * 2);
+                ctx.fillStyle = '#00CCFF';
+                ctx.fill();
+                ctx.font = '14px Arial';
+                ctx.fillStyle = '#00CCFF';
+                ctx.fillText('1/8 Circle', markerX + 10, markerY - 10);
+                
+                // Draw labels
+                ctx.font = '16px Arial';
+                ctx.fillStyle = '#FFCC00';
+                ctx.fillText('Lantern', centerX - 30, centerY - 40);
+                ctx.fillStyle = '#8B4513';
+                ctx.fillText('Horse', horseX + 15, horseY - 15);
+                ctx.fillStyle = '#FF0000';
+                ctx.fillText('Shadow', fenceX + 10, shadowY - 15);
+                ctx.fillStyle = '#00FF00';
+                ctx.fillText('Fence', fenceX + 10, 30);
+                
+                // Draw angle arc
+                ctx.beginPath();
+                ctx.arc(centerX, centerY, 40, 0, angle);
+                ctx.strokeStyle = '#FF00FF';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+                
+                // Draw angle label
+                ctx.font = '16px Arial';
+                ctx.fillStyle = '#FF00FF';
+                ctx.fillText(`θ = ${(angle * 180 / Math.PI).toFixed(1)}°`, centerX + 50, centerY - 80);
+            }
+            
+            // Calculate shadow speed
+            function calculateShadowSpeed(angle) {
+                return horseSpeed / Math.abs(Math.cos(angle));
+            }
+            
+            // Update info panel
+            function updateInfo() {
+                const angleDeg = angle * 180 / Math.PI;
+                const arcPercent = (angleDeg / 360) * 100;
+                const shadowSpeed = calculateShadowSpeed(angle);
+                
+                shadowSpeedElement.textContent = shadowSpeed.toFixed(2);
+                angleValueElement.textContent = angleDeg.toFixed(1);
+                arcValueElement.textContent = arcPercent.toFixed(1);
+                
+                // Show highlight box when at 1/8 circle (45 degrees)
+                if (Math.abs(angleDeg - 45) < 1) {
+                    highlightBox.style.display = 'block';
+                } else {
+                    highlightBox.style.display = 'none';
+                }
+            }
+            
+            // Animation loop
+            function animate() {
+                if (isAnimating) {
+                    angle += angularSpeed;
+                    if (angle > Math.PI * 2) angle = 0;
+                    
+                    drawScene();
+                    updateInfo();
+                    
+                    animationId = requestAnimationFrame(animate);
+                }
+            }
+            
+            // Event listeners
+            startBtn.addEventListener('click', () => {
+                if (!isAnimating) {
+                    isAnimating = true;
+                    animate();
+                }
+            });
+            
+            pauseBtn.addEventListener('click', () => {
+                isAnimating = false;
+                if (animationId) cancelAnimationFrame(animationId);
+            });
+            
+            resetBtn.addEventListener('click', () => {
+                isAnimating = false;
+                if (animationId) cancelAnimationFrame(animationId);
+                angle = 0;
+                drawScene();
+                updateInfo();
+            });
+            
+            toEighthBtn.addEventListener('click', () => {
+                angle = Math.PI / 4;
+                drawScene();
+                updateInfo();
+            });
+            
+            // Handle window resize
+            window.addEventListener('resize', () => {
+                canvas.width = container.clientWidth;
+                canvas.height = container.clientHeight;
+                drawScene();
+            });
+            
+            // Initialize
+            drawScene();
+            updateInfo();
+            
+            // Start animation automatically after a short delay
+            setTimeout(() => {
+                startBtn.click();
+            }, 1000);
+        });
+    </script>
+</body>
+</html>
