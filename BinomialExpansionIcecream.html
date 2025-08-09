@@ -1,0 +1,751 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Multinomial Magic - n-scoop Ice Cream</title>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.2/dist/gsap.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --primary-color: #ff9800;
+            --secondary-color: #ffeb3b;
+            --bg-dark: rgba(30, 30, 46, 0.85);
+            --bg-gradient: linear-gradient(135deg, #1a2a6c, #b21f1f, #1a2a6c);
+            --panel-border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Poppins', sans-serif;
+            background: var(--bg-gradient);
+            color: #fff;
+            min-height: 100vh;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .container {
+            display: flex;
+            flex: 1;
+            padding: 20px;
+            gap: 20px;
+            max-height: calc(100vh - 80px); /* Header height */
+        }
+        
+        header {
+            background: rgba(0, 0, 0, 0.7);
+            padding: 15px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 2px solid var(--primary-color);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+            flex-shrink: 0;
+        }
+        
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        
+        .logo h1 {
+            font-family: 'Playfair Display', serif;
+            font-size: 2.2rem;
+            background: linear-gradient(to right, var(--primary-color), var(--secondary-color));
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            letter-spacing: 1px;
+        }
+        
+        .logo-icon {
+            font-size: 2.5rem;
+            color: var(--primary-color);
+        }
+        
+        .panel {
+            background: var(--bg-dark);
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(10px);
+            border: var(--panel-border);
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+        }
+
+        /* Scrollbar styling */
+        .panel::-webkit-scrollbar {
+            width: 8px;
+        }
+        .panel::-webkit-scrollbar-track {
+            background: rgba(0,0,0,0.2);
+            border-radius: 10px;
+        }
+        .panel::-webkit-scrollbar-thumb {
+            background: #555;
+            border-radius: 10px;
+        }
+        .panel::-webkit-scrollbar-thumb:hover {
+            background: #777;
+        }
+        
+        .left-panel, .right-panel {
+            width: 350px;
+            flex-shrink: 0;
+        }
+        
+        .center-panel {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .panel-title {
+            font-size: 1.4rem;
+            margin-bottom: 20px;
+            color: var(--primary-color);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            border-bottom: 2px solid var(--primary-color);
+            padding-bottom: 8px;
+        }
+        
+        .control-group {
+            margin-bottom: 25px;
+        }
+        
+        .control-label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: var(--secondary-color);
+        }
+        
+        .slider-container {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        
+        .slider {
+            flex: 1;
+            -webkit-appearance: none;
+            height: 8px;
+            border-radius: 4px;
+            background: #444;
+            outline: none;
+        }
+        
+        .slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: var(--primary-color);
+            cursor: pointer;
+            box-shadow: 0 0 10px rgba(255, 152, 0, 0.7);
+        }
+        
+        .value-display {
+            width: 40px;
+            text-align: center;
+            font-weight: 600;
+            background: rgba(255, 152, 0, 0.2);
+            padding: 5px;
+            border-radius: 5px;
+        }
+        
+        .flavor-selector {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+            gap: 10px;
+            margin-top: 15px;
+        }
+        
+        .flavor-option {
+            padding: 12px;
+            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.1);
+            cursor: default;
+            transition: all 0.3s ease;
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .flavor-color {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            border: 2px solid rgba(255,255,255,0.5);
+        }
+        
+        .button-group {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-top: 20px;
+        }
+        
+        .btn {
+            padding: 12px 15px;
+            border: none;
+            border-radius: 8px;
+            background: linear-gradient(45deg, #2196F3, #21CBF3);
+            color: white;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+        }
+        
+        .btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 6px 15px rgba(0, 0, 0, 0.4);
+        }
+        
+        .btn:active {
+            transform: translateY(1px);
+        }
+        
+        .btn-orange { background: linear-gradient(45deg, #FF9800, #FF5722); }
+        .btn-purple { background: linear-gradient(45deg, #9C27B0, #673AB7); }
+        
+        .math-container {
+            background: rgba(33, 150, 243, 0.15);
+            border-radius: 12px;
+            padding: 15px;
+            margin-top: 15px;
+            border: 1px solid rgba(33, 150, 243, 0.4);
+        }
+        
+        .math-title {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: #21CBF3;
+            font-size: 1.2rem;
+            margin-bottom: 12px;
+        }
+        
+        .math-expression {
+            text-align: center;
+            margin: 15px 0;
+            padding: 15px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 8px;
+            overflow-x: auto;
+            color: var(--secondary-color);
+        }
+        
+        .ice-cream-cup {
+            flex: 1;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 15px;
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            box-shadow: inset 0 0 30px rgba(0, 0, 0, 0.7);
+        }
+        
+        #iceCreamCanvas {
+            width: 100% !important;
+            height: 100% !important;
+        }
+        
+        .scoop-counter {
+            position: absolute;
+            top: 15px;
+            left: 15px;
+            background: rgba(0, 0, 0, 0.6);
+            padding: 10px 15px;
+            border-radius: 10px;
+            font-size: 0.9rem;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        
+        .counter-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .counter-color {
+            width: 15px;
+            height: 15px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+
+        #totalCombinations {
+            margin-top: 15px;
+            font-size: 1rem;
+            text-align: center;
+            font-weight: 600;
+            color: var(--secondary-color);
+        }
+        
+        .combination-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+        
+        .combination {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            padding: 15px 10px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: 2px solid transparent;
+        }
+        
+        .combination:hover {
+            background: rgba(255, 152, 0, 0.3);
+            transform: translateY(-5px);
+        }
+
+        .combination.active {
+            border-color: var(--primary-color);
+            box-shadow: 0 0 15px rgba(255, 152, 0, 0.7);
+        }
+        
+        .coefficient {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: 5px;
+            color: var(--primary-color);
+        }
+        
+        .term {
+            font-size: 0.85rem;
+            opacity: 0.9;
+            word-break: break-all;
+        }
+        
+        footer {
+            text-align: center;
+            padding: 15px;
+            font-size: 0.9rem;
+            background: rgba(0, 0, 0, 0.7);
+            color: #aaa;
+            flex-shrink: 0;
+        }
+        
+        @media (max-width: 1200px) {
+            body { overflow: auto; }
+            .container {
+                flex-direction: column;
+                max-height: none;
+            }
+            .left-panel, .right-panel, .center-panel {
+                width: 100%;
+            }
+            .center-panel {
+                min-height: 500px;
+            }
+            .logo h1 { font-size: 1.5rem; }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="logo">
+            <span class="logo-icon">🍨</span>
+            <h1>Multinomial Magic</h1>
+        </div>
+    </header>
+    
+    <div class="container">
+        <div class="panel left-panel">
+            <h2 class="panel-title">⚙️ Controls</h2>
+            
+            <div class="control-group">
+                <label class="control-label">Number of Scoops (n)</label>
+                <div class="slider-container">
+                    <input type="range" min="1" max="8" value="3" class="slider" id="scoopSlider">
+                    <div class="value-display" id="scoopValue">3</div>
+                </div>
+            </div>
+            
+            <div class="control-group">
+                <label class="control-label">Number of Flavors (m)</label>
+                <div class="slider-container">
+                    <input type="range" min="2" max="5" value="3" class="slider" id="flavorSlider">
+                    <div class="value-display" id="flavorValue">3</div>
+                </div>
+                <div class="flavor-selector" id="flavorSelector">
+                    </div>
+            </div>
+            
+            <div class="button-group">
+                <button class="btn btn-orange" id="rebuildBtn">🔄 Rebuild</button>
+                <button class="btn btn-purple" id="randomizeBtn">🎲 Randomize</button>
+            </div>
+             <div class="button-group">
+                <button class="btn" id="exportBtn">📸 Snapshot</button>
+            </div>
+
+            <div class="math-container">
+                 <div class="math-title">📜 Did You Know?</div>
+                 <p style="font-size: 0.9rem; line-height: 1.6;">Around 200 BCE, Indian scholar Pingala developed methods for combinatorics in his work on Sanskrit poetry meters. His "Meru Prastāra" is the earliest known version of what is now called Pascal's Triangle, a key element in binomial expansions, which are a special case of the multinomial theorem.</p>
+            </div>
+        </div>
+        
+        <div class="panel center-panel">
+            <h2 class="panel-title">🍦 Ice Cream Cup</h2>
+            <div class="ice-cream-cup">
+                <canvas id="iceCreamCanvas"></canvas>
+                <div class="scoop-counter" id="scoopCounter">
+                    </div>
+            </div>
+        </div>
+        
+        <div class="panel right-panel">
+            <h2 class="panel-title">🧮 Math & Combinations</h2>
+            
+            <div class="math-container">
+                <div class="math-title">∑ Multinomial Theorem</div>
+                <div class="math-expression" id="mainFormula"></div>
+                <div class="math-expression" id="currentTerm"></div>
+            </div>
+            
+            <div id="totalCombinations"></div>
+            <div class="combination-grid" id="combinationGrid">
+                </div>
+        </div>
+    </div>
+    
+    <footer>
+        <p>Combining Ancient Indian Mathematics with Modern Interactive Learning | Built by Gemini</p>
+    </footer>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', () => {
+        // --- CONFIG & STATE ---
+        const FLAVORS = [
+            { name: 'Kesar', color: 0xFF6B6B },
+            { name: 'Pista', color: 0x4ECDC4 },
+            { name: 'Malai', color: 0xFFD166 },
+            { name: 'Blueberry', color: 0x118AB2 },
+            { name: 'Black Currant', color: 0x9B5DE5 }
+        ];
+
+        let state = {
+            n: 3, // scoops
+            m: 3, // flavors
+            currentCombination: [], // e.g. [1, 1, 1] for n=3, m=3
+        };
+
+        let three, scene, camera, renderer, cupGroup, scoops = [];
+        const memoizedFactorials = {};
+
+        // --- DOM ELEMENTS ---
+        const scoopSlider = document.getElementById('scoopSlider');
+        const scoopValue = document.getElementById('scoopValue');
+        const flavorSlider = document.getElementById('flavorSlider');
+        const flavorValue = document.getElementById('flavorValue');
+        const flavorSelector = document.getElementById('flavorSelector');
+        const scoopCounter = document.getElementById('scoopCounter');
+        const combinationGrid = document.getElementById('combinationGrid');
+        const totalCombinationsDiv = document.getElementById('totalCombinations');
+        const mainFormulaDiv = document.getElementById('mainFormula');
+        const currentTermDiv = document.getElementById('currentTerm');
+
+        // --- MATH FUNCTIONS ---
+        const factorial = (num) => {
+            if (num < 0) return 0;
+            if (num === 0 || num === 1) return 1;
+            if (memoizedFactorials[num]) return memoizedFactorials[num];
+            memoizedFactorials[num] = num * factorial(num - 1);
+            return memoizedFactorials[num];
+        };
+
+        const multinomialCoefficient = (n, ks) => {
+            if (ks.reduce((a, b) => a + b, 0) !== n) return 0;
+            let denominator = ks.map(k => factorial(k)).reduce((a, b) => a * b, 1);
+            return factorial(n) / denominator;
+        };
+
+        const generateCombinations = (n, m) => {
+            let results = [];
+            function findCombs(remaining_n, terms, current_comb) {
+                if (terms === 1) {
+                    results.push([...current_comb, remaining_n]);
+                    return;
+                }
+                for (let i = 0; i <= remaining_n; i++) {
+                    findCombs(remaining_n - i, terms - 1, [...current_comb, i]);
+                }
+            }
+            findCombs(n, m, []);
+            return results;
+        };
+        
+        // --- THREE.JS VISUALIZATION ---
+        function initScene() {
+            const canvas = document.getElementById('iceCreamCanvas');
+            const container = canvas.parentElement;
+            
+            renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true, preserveDrawingBuffer: true });
+            renderer.setPixelRatio(window.devicePixelRatio);
+            renderer.setSize(container.clientWidth, container.clientHeight);
+            renderer.setClearColor(0x000000, 0);
+
+            scene = new THREE.Scene();
+            camera = new THREE.PerspectiveCamera(50, container.clientWidth / container.clientHeight, 0.1, 1000);
+            camera.position.set(0, 4, 10);
+            camera.lookAt(0, 2, 0);
+            
+            // Lighting
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
+            scene.add(ambientLight);
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
+            directionalLight.position.set(5, 10, 7.5);
+            scene.add(directionalLight);
+
+            // Cup
+            cupGroup = new THREE.Group();
+            const cupGeometry = new THREE.CylinderGeometry(1.5, 1, 2.5, 32);
+            const cupMaterial = new THREE.MeshStandardMaterial({ color: 0xeeeeee, metalness: 0.2, roughness: 0.5 });
+            const cup = new THREE.Mesh(cupGeometry, cupMaterial);
+            cup.position.y = -0.25;
+            cupGroup.add(cup);
+            scene.add(cupGroup);
+            
+            animate();
+        }
+
+        function buildIceCream() {
+            // Clear existing scoops
+            scoops.forEach(s => cupGroup.remove(s));
+            scoops = [];
+
+            const scoopGeometry = new THREE.SphereGeometry(0.7, 32, 32);
+            let currentY = 1.2; // Starting height above the cup base
+
+            state.currentCombination.forEach((count, flavorIndex) => {
+                const flavor = FLAVORS[flavorIndex];
+                const scoopMaterial = new THREE.MeshStandardMaterial({
+                    color: flavor.color,
+                    roughness: 0.6
+                });
+
+                for (let i = 0; i < count; i++) {
+                    const scoop = new THREE.Mesh(scoopGeometry, scoopMaterial);
+                    
+                    // Position scoops in a slightly randomized stack
+                    scoop.position.set(
+                        (Math.random() - 0.5) * 0.5,
+                        currentY,
+                        (Math.random() - 0.5) * 0.5
+                    );
+                    
+                    // Animate them dropping in
+                    scoop.scale.set(0.01, 0.01, 0.01);
+                    cupGroup.add(scoop);
+                    scoops.push(scoop);
+                    
+                    gsap.to(scoop.scale, {
+                        x: 1, y: 1, z: 1,
+                        duration: 0.5,
+                        ease: "back.out(1.7)",
+                        delay: scoops.length * 0.1
+                    });
+
+                    currentY += 0.6; // Stack the next scoop higher
+                }
+            });
+            updateCounterDisplay();
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            cupGroup.rotation.y += 0.005;
+            renderer.render(scene, camera);
+        }
+
+        function onResize() {
+            const container = renderer.domElement.parentElement;
+            if(!container) return;
+            camera.aspect = container.clientWidth / container.clientHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(container.clientWidth, container.clientHeight);
+        }
+        
+        // --- UI UPDATE FUNCTIONS ---
+        function updateFlavorControls() {
+            flavorSelector.innerHTML = '';
+            scoopCounter.innerHTML = '';
+            for (let i = 0; i < state.m; i++) {
+                const flavor = FLAVORS[i];
+                // Left Panel Flavor Display
+                const optionDiv = document.createElement('div');
+                optionDiv.className = 'flavor-option';
+                optionDiv.innerHTML = `
+                    <div class="flavor-color" style="background-color: #${flavor.color.getHexString()};"></div>
+                    <span>${flavor.name}</span>`;
+                flavorSelector.appendChild(optionDiv);
+
+                // Center Panel Counter
+                const counterDiv = document.createElement('div');
+                counterDiv.className = 'counter-item';
+                counterDiv.innerHTML = `
+                    <div class="counter-color" style="background-color: #${flavor.color.getHexString()};"></div>
+                    <span>${flavor.name}: <span id="count-${i}">0</span></span>`;
+                scoopCounter.appendChild(counterDiv);
+            }
+        }
+        
+        function updateCounterDisplay() {
+            for (let i = 0; i < state.m; i++) {
+                const countSpan = document.getElementById(`count-${i}`);
+                if(countSpan) {
+                   countSpan.textContent = state.currentCombination[i] || 0;
+                }
+            }
+        }
+
+        function updateCombinationGrid() {
+            combinationGrid.innerHTML = '';
+            const combinations = generateCombinations(state.n, state.m);
+            totalCombinationsDiv.textContent = `Total Unique Combinations: ${combinations.length}`;
+            
+            // Set first combination as default if none is valid
+            if (!state.currentCombination || state.currentCombination.length !== state.m) {
+                state.currentCombination = combinations[0];
+            }
+
+            combinations.forEach((comb, index) => {
+                const tile = document.createElement('div');
+                tile.className = 'combination';
+                const coefficient = multinomialCoefficient(state.n, comb);
+                const term = comb.map((k, i) => k > 0 ? `${FLAVORS[i].name[0]}<sup>${k}</sup>` : '').join('');
+                tile.innerHTML = `
+                    <div class="coefficient">${coefficient}</div>
+                    <div class="term">${term || '...'}</div>
+                `;
+                tile.dataset.combination = JSON.stringify(comb);
+                
+                // Highlight the active combination
+                if(JSON.stringify(comb) === JSON.stringify(state.currentCombination)) {
+                    tile.classList.add('active');
+                }
+                
+                tile.addEventListener('click', () => {
+                    state.currentCombination = JSON.parse(tile.dataset.combination);
+                    document.querySelectorAll('.combination.active').forEach(el => el.classList.remove('active'));
+                    tile.classList.add('active');
+                    buildIceCream();
+                    updateMathDisplay();
+                });
+                
+                combinationGrid.appendChild(tile);
+            });
+        }
+        
+        function updateMathDisplay() {
+             const x_vars = Array.from({length: state.m}, (_, i) => `x_{${i+1}}`).join(' + ');
+             const k_vars = Array.from({length: state.m}, (_, i) => `k_{${i+1}}!`).join('');
+             const xk_terms = Array.from({length: state.m}, (_, i) => `x_{${i+1}}^{k_{${i+1}}}`).join(' ');
+
+            // Main formula
+            mainFormulaDiv.innerHTML = `$$(${x_vars})^${state.n} = \\sum_{k_1+...+k_m=n} \\binom{n}{k_1,...,k_m} ${xk_terms}$$`;
+
+            // Current term
+            const current_k_vars = state.currentCombination.map(k => `${k}!`).join('');
+            const current_xk_terms = state.currentCombination.map((k, i) => k > 0 ? `${FLAVORS[i].name}^{${k}}` : '').filter(Boolean).join(' \\cdot ');
+            const coeff = multinomialCoefficient(state.n, state.currentCombination);
+            
+            currentTermDiv.innerHTML = `$$ \\binom{${state.n}}{${state.currentCombination.join(',')}} = \\frac{${state.n}!}{${current_k_vars}} = ${coeff} $$
+            <div style="font-size: 1rem; margin-top: 5px;">Term: ${coeff} &middot; ${current_xk_terms || '1'}</div>`;
+            
+            // Re-render MathJax
+            MathJax.typesetPromise();
+        }
+
+        function fullUpdate() {
+            updateFlavorControls();
+            updateCombinationGrid();
+            updateMathDisplay();
+            buildIceCream();
+        }
+        
+        // --- EVENT LISTENERS ---
+        scoopSlider.addEventListener('input', (e) => {
+            state.n = parseInt(e.target.value);
+            scoopValue.textContent = state.n;
+            state.currentCombination = null; // Invalidate current combination
+            fullUpdate();
+        });
+
+        flavorSlider.addEventListener('input', (e) => {
+            state.m = parseInt(e.target.value);
+            flavorValue.textContent = state.m;
+            state.currentCombination = null; // Invalidate current combination
+            fullUpdate();
+        });
+
+        document.getElementById('rebuildBtn').addEventListener('click', buildIceCream);
+        
+        document.getElementById('randomizeBtn').addEventListener('click', () => {
+             const combinations = generateCombinations(state.n, state.m);
+             const randomIndex = Math.floor(Math.random() * combinations.length);
+             state.currentCombination = combinations[randomIndex];
+             
+             // Update active tile in the grid
+             document.querySelectorAll('.combination.active').forEach(el => el.classList.remove('active'));
+             const activeTile = combinationGrid.querySelector(`[data-combination='${JSON.stringify(state.currentCombination)}']`);
+             if (activeTile) activeTile.classList.add('active');
+
+             buildIceCream();
+             updateMathDisplay();
+        });
+        
+        document.getElementById('exportBtn').addEventListener('click', () => {
+            const dataURL = renderer.domElement.toDataURL('image/png');
+            const link = document.createElement('a');
+            link.href = dataURL;
+            link.download = `multinomial-icecream-n${state.n}-m${state.m}.png`;
+            link.click();
+        });
+
+        window.addEventListener('resize', onResize);
+
+        // --- INITIALIZATION ---
+        initScene();
+        fullUpdate();
+    });
+    </script>
+</body>
+</html>
