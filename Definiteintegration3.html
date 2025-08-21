@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Definite Integration = Infinite Addition (Cinematic Canvas)</title>
+  <style>
+    :root{
+      --bg1:#0b1020; --bg2:#0a0f1a; --panel:#0f172a; --glass:rgba(255,255,255,0.06);
+      --curve:#ffae6d; --approx:#ffd7b0; --fill:#7fd3ff; --accent:#66e0ff; --muted:#96a4b9;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{margin:0;background:radial-gradient(1200px 600px at 20% -10%, #122341 0%, var(--bg2) 30%, #060b14 100%);
+         color:#e6f1ff;font-family:Inter, system-ui, Segoe UI, Roboto, Arial;}
+    .wrap{min-height:100%;display:grid;grid-template-columns:1fr 360px;gap:18px;padding:18px}
+    .stage{position:relative;border-radius:16px;overflow:hidden;box-shadow:0 18px 60px rgba(2,10,32,0.7)}
+    #canvas{width:100%;height:100%;display:block;background:radial-gradient(circle at 60% 40%, #0e1a2c 0%, #081120 70%, #050b15 100%)}
+
+    .scanline{position:absolute;inset:0;pointer-events:none;background:repeating-linear-gradient( to bottom, rgba(255,255,255,0.02) 0px, rgba(255,255,255,0.02) 1px, transparent 2px, transparent 3px );mix-blend-mode:overlay;}
+    .vignette{position:absolute;inset:0;pointer-events:none;background:radial-gradient(120% 120% at 50% 40%, transparent 40%, rgba(0,0,0,0.25) 70%, rgba(0,0,0,0.55) 100%)}
+
+    .title{position:absolute;left:18px;top:16px;padding:6px 12px;border-radius:999px;background:rgba(10,18,34,0.55);
+           backdrop-filter: blur(6px); border:1px solid rgba(255,255,255,0.06); font-weight:700; font-size:14px; color:#dff6ff}
+
+    .panel{background:linear-gradient(180deg, rgba(16,26,48,0.9), rgba(10,16,30,0.9)); border:1px solid rgba(255,255,255,0.06);
+           border-radius:16px; padding:14px; display:flex; flex-direction:column; gap:12px; box-shadow:0 10px 40px rgba(3,12,32,0.6)}
+    .panel .h{font-weight:800; font-size:16px}
+    .muted{color:var(--muted);font-size:13px}
+    select,input[type=number],button{background:var(--glass);color:#eaf6ff;border:1px solid rgba(255,255,255,0.08);border-radius:10px;padding:10px}
+    .row{display:flex;gap:8px;align-items:center}
+    .row > *{flex:1}
+    .btn{cursor:pointer;border:none;background:linear-gradient(90deg, var(--accent), #7af0d6);color:#012;font-weight:700}
+    .btn.secondary{background:transparent;border:1px solid rgba(255,255,255,0.12);color:#cfe7ff}
+    .slider{width:100%}
+    .info{font-family:ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;background:rgba(255,255,255,0.04);
+          border:1px solid rgba(255,255,255,0.06); border-radius:12px; padding:10px;}
+
+    .math{position:absolute;right:18px;top:16px;padding:6px 12px;border-radius:12px;background:rgba(10,18,34,0.45);
+          border:1px solid rgba(255,255,255,0.06);font-family:Cambria, Georgia, serif; font-size:14px; color:#d6ecff}
+
+    .legend{display:flex;gap:12px;flex-wrap:wrap}
+    .chip{display:flex;align-items:center;gap:8px;font-size:12px;color:#d8e8ff}
+    .dot{width:12px;height:12px;border-radius:3px}
+
+    @media (max-width: 980px){.wrap{grid-template-columns:1fr; grid-template-rows: 1fr auto; height:auto}}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <section class="stage">
+      <div class="title">Definite Integration = Infinite Addition</div>
+      <div class="math" id="math">Area = lim<sub>n→∞</sub> ∑ f(xᵢ)Δx = ∫ f(x) dx</div>
+      <canvas id="canvas" aria-label="integration visualization"></canvas>
+      <div class="scanline"></div>
+      <div class="vignette"></div>
+    </section>
+
+    <aside class="panel" aria-label="controls">
+      <div class="h">Controls</div>
+      <div class="muted">Choose function, method, and partitions. Watch rectangles/trapezoids converge to the exact area.</div>
+
+      <div class="row">
+        <label for="fn">Function</label>
+        <select id="fn">
+          <option value="x2">f(x)=x²  (0→1)</option>
+          <option value="sin">f(x)=sin x  (0→π)</option>
+          <option value="exp">f(x)=e^{-x}  (0→3)</option>
+          <option value="sqrt">f(x)=√(1-x²)  (0→1)</option>
+        </select>
+      </div>
+
+      <div class="row">
+        <label for="method">Method</label>
+        <select id="method">
+          <option value="left">Left</option>
+          <option value="mid">Midpoint</option>
+          <option value="right">Right</option>
+          <option value="trap">Trapezoid</option>
+          <option value="simpson">Simpson</option>
+        </select>
+      </div>
+
+      <div>
+        <label>Partitions n: <span id="nLabel">32</span></label>
+        <input id="n" class="slider" type="range" min="2" max="2048" step="1" value="32">
+      </div>
+
+      <div class="row">
+        <button id="play" class="btn">Auto-refine</button>
+        <button id="reset" class="btn secondary">Reset</button>
+      </div>
+
+      <div class="row">
+        <label>Limit View</label>
+        <input id="limit" type="checkbox" />
+        <button id="series" class="btn secondary">Show Series</button>
+      </div>
+
+      <div class="legend">
+        <div class="chip"><span class="dot" style="background: var(--curve)"></span>Curve</div>
+        <div class="chip"><span class="dot" style="background: var(--approx)"></span>Approx (tiles)</div>
+        <div class="chip"><span class="dot" style="background: var(--fill)"></span>Exact fill</div>
+      </div>
+
+      <div class="info" id="info">
+        Δx: <span id="dx">-</span><br/>
+        Sum: <span id="sum">-</span><br/>
+        Exact: <span id="exact">-</span><br/>
+        Error: <span id="err">-</span>
+      </div>
+
+      <div class="muted">Keyboard: [ / ] change n • Space auto-refine • L/M/R/T/S switch method</div>
+    </aside>
+  </div>
+
+  <script>
+    // ===== Canvas setup (HiDPI) =====
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+    let DPR = Math.min(2, window.devicePixelRatio || 1);
+    function fit(){
+      const r = canvas.getBoundingClientRect();
+      canvas.width = Math.floor(r.width * DPR);
+      canvas.height = Math.floor(r.height * DPR);
+      ctx.setTransform(DPR,0,0,DPR,0,0);
+    }
+    const ro = new ResizeObserver(fit); ro.observe(canvas);
+    fit();
+
+    // ===== UI =====
+    const fnSel = document.getElementById('fn');
+    const methodSel = document.getElementById('method');
+    const nSlider = document.getElementById('n');
+    const nLabel = document.getElementById('nLabel');
+    const dxEl = document.getElementById('dx');
+    const sumEl = document.getElementById('sum');
+    const exactEl = document.getElementById('exact');
+    const errEl = document.getElementById('err');
+    const playBtn = document.getElementById('play');
+    const resetBtn = document.getElementById('reset');
+    const limitChk = document.getElementById('limit');
+    const seriesBtn = document.getElementById('series');
+    const mathBox = document.getElementById('math');
+
+    let auto=false, series=false, seriesOverlay=null;
+
+    // ===== Functions & exacts =====
+    const FNS = {
+      x2: { a:0, b:1, f:(x)=>x*x, name:'x²', exact:(a,b)=> (b**3-a**3)/3 },
+      sin:{ a:0, b:Math.PI, f:Math.sin, name:'sin x', exact:(a,b)=> Math.cos(a)-Math.cos(b) },
+      exp:{ a:0, b:3, f:(x)=>Math.exp(-x), name:'e^{-x}', exact:(a,b)=> Math.exp(-a)-Math.exp(-b) },
+      sqrt:{ a:0, b:1, f:(x)=> Math.sqrt(Math.max(0,1-x*x)), name:'√(1-x²)', exact:(a,b)=>{ const F=(x)=> 0.5*(x*Math.sqrt(Math.max(0,1-x*x)) + Math.asin(Math.min(1,Math.max(-1,x)))); return F(b)-F(a);} }
+    };
+    let cur = { key:'x2', ...FNS.x2 };
+
+    // ===== Methods =====
+    function riemann(f,a,b,n,mode){ const dx=(b-a)/n; let s=0; for(let i=0;i<n;i++){ let x=a+i*dx; if(mode==='mid') x+=dx/2; if(mode==='right') x+=dx; s+= f(x); } return s*dx; }
+    function trap(f,a,b,n){ const dx=(b-a)/n; let s=(f(a)+f(b))/2; for(let i=1;i<n;i++) s+=f(a+i*dx); return s*dx; }
+    function simpson(f,a,b,n){ if(n%2) n++; const dx=(b-a)/n; let s=f(a)+f(b); for(let i=1;i<n;i++){ s += (i%2?4:2)*f(a+i*dx);} return s*dx/3; }
+
+    // ===== Particles =====
+    const particles=[]; function addParticle(x,y){ particles.push({x,y,vx:(Math.random()-0.5)*0.6, vy:-0.4-Math.random()*0.6, life: 90+Math.random()*60}); }
+
+    // ===== Drawing helpers =====
+    function yMaxSample(f,a,b){ let m=0; const S=400; for(let i=0;i<=S;i++){ const x=a+(b-a)*i/S; m=Math.max(m,f(x)); } return Math.max(1e-6,m); }
+    function toCanvas(x,y,a,b,ymax){ const pad=60; const W=canvas.clientWidth-2*pad; const H=canvas.clientHeight-2*pad; const sx=pad+(x-a)/(b-a)*W; const sy=pad+H - (y/ymax)*H; return [sx,sy,W,H,pad]; }
+
+    function drawGrid(a,b,ymax){ const pad=60; const W=canvas.clientWidth-2*pad; const H=canvas.clientHeight-2*pad; ctx.save();
+      // glow grid
+      ctx.strokeStyle='rgba(150,200,255,0.12)'; ctx.lineWidth=1;
+      for(let i=0;i<8;i++){ const x=pad+i*W/7; ctx.beginPath(); ctx.moveTo(x,pad); ctx.lineTo(x,pad+H); ctx.stroke(); }
+      for(let j=0;j<6;j++){ const y=pad+j*H/5; ctx.beginPath(); ctx.moveTo(pad,y); ctx.lineTo(pad+W,y); ctx.stroke(); }
+      // axes
+      ctx.strokeStyle='rgba(220,235,255,0.55)'; ctx.lineWidth=1.6; ctx.beginPath(); ctx.moveTo(pad,pad+H); ctx.lineTo(pad+W,pad+H); ctx.moveTo(pad,pad); ctx.lineTo(pad,pad+H); ctx.stroke();
+      // labels
+      ctx.fillStyle='rgba(220,235,255,0.75)'; ctx.font='12px Inter'; ctx.textAlign='center';
+      for(let i=0;i<=7;i++){ const xv = a + (b-a)*i/7; const x=pad+i*W/7; ctx.fillText(xv.toFixed(2), x, pad+H+18);}
+      ctx.textAlign='right'; for(let j=0;j<=5;j++){ const yv = ymax*j/5; const y=pad+H - j*H/5; ctx.fillText(yv.toFixed(2), pad-8, y+4);} ctx.restore(); }
+
+    function drawCurve(f,a,b,ymax){ ctx.save(); ctx.shadowBlur=16; ctx.shadowColor='rgba(255,174,109,0.35)'; ctx.strokeStyle='rgba(255,174,109,0.95)'; ctx.lineWidth=2.3; ctx.beginPath(); const S=500; for(let i=0;i<=S;i++){ const x=a+(b-a)*i/S; const y=f(x); const [sx,sy]=toCanvas(x,y,a,b,ymax); if(i===0) ctx.moveTo(sx,sy); else ctx.lineTo(sx,sy);} ctx.stroke(); ctx.restore(); }
+
+    function drawExactFill(f,a,b,ymax,alpha){ ctx.save(); ctx.globalAlpha=alpha; ctx.fillStyle='rgba(127,211,255,0.20)'; ctx.beginPath(); const S=500; for(let i=0;i<=S;i++){ const x=a+(b-a)*i/S; const y=f(x); const [sx,sy]=toCanvas(x,y,a,b,ymax); if(i===0) ctx.moveTo(sx,sy); else ctx.lineTo(sx,sy);} const [rx,ry,,,pad]=toCanvas(b,0,a,b,ymax); ctx.lineTo(rx, canvas.clientHeight-pad); const lx=toCanvas(a,0,a,b,ymax)[0]; ctx.lineTo(lx, canvas.clientHeight-pad); ctx.closePath(); ctx.fill(); ctx.restore(); }
+
+    function drawTiles(f,a,b,n,mode,ymax){ const dx=(b-a)/n; let sum=0; for(let i=0;i<n;i++){
+        const xL=a+i*dx, xR=xL+dx; let area=0;
+        if(mode==='trap'){
+          const yL=f(xL), yR=f(xR); area = (yL+yR)*dx/2; // trapezoid polygon
+          const [sxL,syL,,,pad]=toCanvas(xL,yL,a,b,ymax); const [sxR,syR]=toCanvas(xR,yR,a,b,ymax); const baseY=canvas.clientHeight-pad;
+          ctx.save(); ctx.fillStyle='rgba(255,215,176,0.35)'; ctx.strokeStyle='rgba(255,230,200,0.6)'; ctx.beginPath(); ctx.moveTo(sxL,baseY); ctx.lineTo(sxL,syL); ctx.lineTo(sxR,syR); ctx.lineTo(sxR,baseY); ctx.closePath(); ctx.fill(); ctx.stroke(); ctx.restore();
+        } else if(mode==='simpson'){
+          const xm=(xL+xR)/2, y0=f(xL), y1=f(xm), y2=f(xR); area=(y0+4*y1+y2)*dx/6; // visualize with mid-height rect
+          const [sx,sy,,,pad]=toCanvas(xL, y1, a,b,ymax); const sw = toCanvas(xR,0,a,b,ymax)[0]-sx; const baseY=canvas.clientHeight-pad;
+          ctx.save(); ctx.fillStyle='rgba(255,215,176,0.35)'; ctx.fillRect(sx, sy, sw, baseY-sy); ctx.strokeStyle='rgba(255,230,200,0.6)'; ctx.strokeRect(sx, sy, sw, baseY-sy); ctx.restore();
+        } else {
+          let x = (mode==='left')? xL : (mode==='right')? xR : (xL+xR)/2; const y=f(x); area = y*dx;
+          const [sx,sy,,,pad]=toCanvas(xL, y, a,b,ymax); const sw = toCanvas(xR,0,a,b,ymax)[0]-sx; const baseY=canvas.clientHeight-pad;
+          ctx.save(); ctx.fillStyle='rgba(255,215,176,0.35)'; ctx.fillRect(sx, sy, sw, baseY-sy); ctx.strokeStyle='rgba(255,230,200,0.6)'; ctx.strokeRect(sx, sy, sw, baseY-sy); ctx.restore();
+        }
+        sum += area; if(n<=128 && Math.random()<0.05) { const [px,py]=toCanvas(xL+(xR-xL)*Math.random(), f(xL+(xR-xL)*Math.random()), a,b,ymax); addParticle(px,py); }
+      }
+      return sum;
+    }
+
+    // ===== Series overlay (simple bar stack) =====
+    function startSeries(sumParts){ if(seriesOverlay) stopSeries(); series=true; seriesOverlay=document.createElement('canvas'); seriesOverlay.width=canvas.width; seriesOverlay.height=canvas.height; seriesOverlay.style.position='absolute'; seriesOverlay.style.inset='0'; seriesOverlay.style.pointerEvents='none'; seriesOverlay.style.filter='drop-shadow(0 10px 20px rgba(0,0,0,0.5))'; canvas.parentElement.appendChild(seriesOverlay);
+      const o=seriesOverlay.getContext('2d'); let t=0; const duration=1400; (function anim(){ o.clearRect(0,0,seriesOverlay.width,seriesOverlay.height); t+=16; const p=Math.min(1,t/duration); const pad=60; const x0=seriesOverlay.clientWidth-260; const y0=120; o.save(); o.font='13px ui-monospace'; o.fillStyle='rgba(200,235,255,0.9)'; o.fillText('Series: A1 + A2 + ... + An', x0-40, y0-14); let off=0; for(let i=0;i<sumParts.length*p;i++){ const w=Math.max(8, Math.sqrt(sumParts[i])*80); o.fillStyle='rgba(120,220,255,0.85)'; o.fillRect(x0-100 + (i%6)*6, y0+off, w, 6); off += 6; if(i%6===5) off=0; } o.restore(); if(p<1 && series) requestAnimationFrame(anim); })(); }
+    function stopSeries(){ series=false; if(seriesOverlay){ seriesOverlay.remove(); seriesOverlay=null; } }
+
+    // ===== State & loop =====
+    function state(){ const key=fnSel.value; const fdef=FNS[key]; return { key, f:fdef.f, a:fdef.a, b:fdef.b, name:fdef.name, exact:fdef.exact(fdef.a,fdef.b), ymax: yMaxSample(fdef.f, fdef.a, fdef.b) } }
+
+    let lastT=0; function frame(){ ctx.clearRect(0,0,canvas.clientWidth,canvas.clientHeight); const st=state(); const n=parseInt(nSlider.value); const method=methodSel.value; const dx=(st.b-st.a)/n; nLabel.textContent=n; dxEl.textContent=dx.toExponential(3);
+      drawGrid(st.a,st.b,st.ymax);
+      if(limitChk.checked) drawExactFill(st.f, st.a, st.b, st.ymax, 0.28);
+      drawCurve(st.f, st.a, st.b, st.ymax);
+      // tiles + sum
+      const parts=[]; const dxLocal=(st.b-st.a)/n; for(let i=0;i<n;i++){ const xL=st.a+i*dxLocal, xR=xL+dxLocal; let area=0; if(method==='trap'){ const yL=st.f(xL), yR=st.f(xR); area=(yL+yR)*dxLocal/2; } else if(method==='simpson'){ const xm=(xL+xR)/2, y0=st.f(xL), y1=st.f(xm), y2=st.f(xR); area=(y0+4*y1+y2)*dxLocal/6; } else { let x=(method==='left')?xL:(method==='right')?xR:(xL+xR)/2; area=st.f(x)*dxLocal; } parts.push(area); }
+      const approx = drawTiles(st.f, st.a, st.b, n, method, st.ymax);
+      const exact = st.exact; const err = Math.abs(exact-approx);
+      sumEl.textContent = approx.toFixed(6); exactEl.textContent = exact.toFixed(6); errEl.textContent = err.toExponential(3);
+
+      // particles
+      for(let i=particles.length-1;i>=0;i--){ const p=particles[i]; p.x+=p.vx; p.y+=p.vy; p.life--; ctx.beginPath(); ctx.fillStyle='rgba(150,230,255,'+(0.6*Math.max(0,p.life/120))+')'; ctx.arc(p.x,p.y,1.5,0,Math.PI*2); ctx.fill(); if(p.life<=0) particles.splice(i,1); }
+
+      // series overlay refresh (kept visible once toggled)
+      requestAnimationFrame(frame);
+    }
+    requestAnimationFrame(frame);
+
+    // ===== Interactions =====
+    fnSel.addEventListener('change', ()=>{ stopSeries(); });
+    methodSel.addEventListener('change', ()=>{ /* re-render on next frame */ });
+    nSlider.addEventListener('input', ()=>{ if(series) stopSeries(); });
+
+    let timer=null; function tick(){ if(!auto) return; let n=parseInt(nSlider.value); const next = Math.min(2048, n*2); if(next===n){ auto=false; playBtn.textContent='Auto-refine'; return; } nSlider.value=next; if(series) stopSeries(); timer=setTimeout(tick, 700); }
+    playBtn.addEventListener('click', ()=>{ auto=!auto; playBtn.textContent = auto? 'Pause' : 'Auto-refine'; if(auto) tick(); else clearTimeout(timer); });
+    resetBtn.addEventListener('click', ()=>{ auto=false; playBtn.textContent='Auto-refine'; fnSel.value='x2'; methodSel.value='left'; nSlider.value=32; limitChk.checked=false; stopSeries(); });
+    seriesBtn.addEventListener('click', ()=>{ if(series) { stopSeries(); } else { // build parts & show
+        const st=state(); const n=parseInt(nSlider.value); const mode=methodSel.value; const dx=(st.b-st.a)/n; const parts=[]; for(let i=0;i<n;i++){ const xL=st.a+i*dx, xR=xL+dx; let A=0; if(mode==='trap'){ A=(st.f(xL)+st.f(xR))*dx/2; } else if(mode==='simpson'){ const xm=(xL+xR)/2; A=(st.f(xL)+4*st.f(xm)+st.f(xR))*dx/6; } else { let x=(mode==='left')?xL:(mode==='right')?xR:(xL+xR)/2; A=st.f(x)*dx; } parts.push(A); } startSeries(parts); }
+    });
+
+    limitChk.addEventListener('change', ()=>{/* visual only */});
+
+    // Shortcuts
+    window.addEventListener('keydown', (e)=>{
+      if(e.key===' ') { e.preventDefault(); playBtn.click(); }
+      if(e.key==='['){ const v=Math.max(2, parseInt(nSlider.value)-1); nSlider.value=v; if(series) stopSeries(); }
+      if(e.key===']'){ const v=Math.min(2048, parseInt(nSlider.value)+1); nSlider.value=v; if(series) stopSeries(); }
+      if(/^[lLmMrRtTsS]$/.test(e.key)){
+        const map={l:'left',m:'mid',r:'right',t:'trap',s:'simpson'}; const k=e.key.toLowerCase(); if(map[k]) methodSel.value=map[k];
+      }
+    });
+  </script>
+</body>
+</html>
