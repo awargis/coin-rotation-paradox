@@ -1,0 +1,827 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Definite Integration = Infinite Addition</title>
+    <style>
+        /* --- General Setup --- */
+        :root {
+            --bg-dark: #121828;
+            --bg-medium: #1a233a;
+            --bg-light: #2c3a5c;
+            --accent-primary: #00aaff;
+            --accent-secondary: #ff47a3;
+            --text-light: #e0e5f0;
+            --text-medium: #a0a8b8;
+            --glow-color: rgba(0, 170, 255, 0.5);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-dark);
+            color: var(--text-light);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 2rem;
+            overflow: hidden;
+            font-size: 16px;
+        }
+
+        /* --- Main Layout & Panels --- */
+        .app-container {
+            width: 100%;
+            max-width: 1400px;
+            height: 90vh;
+            display: grid;
+            grid-template-columns: 1fr 380px;
+            grid-template-rows: auto 1fr auto;
+            gap: 20px;
+            grid-template-areas:
+                "header controls"
+                "canvas controls"
+                "infobar infobar";
+        }
+
+        #visualization-container {
+            grid-area: canvas;
+            position: relative;
+            background-color: var(--bg-medium);
+            border-radius: 16px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+            overflow: hidden;
+            border: 1px solid var(--bg-light);
+        }
+
+        #graphCanvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+
+        #limit-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: rgba(18, 24, 40, 0.8);
+            backdrop-filter: blur(5px);
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.5s ease-in-out;
+            font-family: 'Georgia', 'Cambria', serif;
+            font-size: 3rem;
+            color: var(--accent-primary);
+            text-shadow: 0 0 15px var(--glow-color);
+        }
+
+        /* --- Header --- */
+        header {
+            grid-area: header;
+            padding-left: 1rem;
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            background: linear-gradient(90deg, var(--accent-primary), var(--accent-secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 0.5rem;
+        }
+        
+        .subtitle {
+            font-size: 1.1rem;
+            color: var(--text-medium);
+        }
+
+        /* --- Controls Panel --- */
+        .controls {
+            grid-area: controls;
+            background-color: var(--bg-medium);
+            border-radius: 16px;
+            padding: 25px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+            border: 1px solid var(--bg-light);
+        }
+
+        .control-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .control-title {
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: var(--text-medium);
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        select, input[type="text"], input[type="number"] {
+            width: 100%;
+            padding: 12px 15px;
+            background: var(--bg-dark);
+            border: 1px solid var(--bg-light);
+            border-radius: 8px;
+            color: var(--text-light);
+            font-size: 1rem;
+            outline: none;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+
+        select:focus, input:focus {
+            border-color: var(--accent-primary);
+            box-shadow: 0 0 0 3px rgba(0, 170, 255, 0.2);
+        }
+
+        .interval-inputs {
+            display: flex;
+            gap: 10px;
+        }
+
+        /* --- Slider --- */
+        .slider-group {
+            display: grid;
+            grid-template-columns: 1fr auto;
+            align-items: center;
+            gap: 15px;
+        }
+        input[type="range"] {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 100%;
+            height: 6px;
+            background: var(--bg-light);
+            border-radius: 3px;
+            outline: none;
+            cursor: pointer;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            background: var(--text-light);
+            border-radius: 50%;
+            border: 3px solid var(--accent-primary);
+            transition: transform 0.2s;
+        }
+        input[type="range"]::-webkit-slider-thumb:hover {
+            transform: scale(1.1);
+        }
+        #nValueDisplay {
+            background-color: var(--bg-dark);
+            padding: 5px 10px;
+            border-radius: 6px;
+            font-weight: 600;
+            font-size: 1rem;
+            color: var(--accent-primary);
+            min-width: 50px;
+            text-align: center;
+        }
+
+        /* --- Buttons & Toggles --- */
+        .button-group {
+            display: flex;
+            gap: 10px;
+        }
+        button {
+            flex-grow: 1;
+            padding: 12px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            position: relative;
+            overflow: hidden;
+        }
+        #autoRefineBtn {
+            background: linear-gradient(90deg, var(--accent-primary), #00c3ff);
+            color: white;
+        }
+        #autoRefineBtn:hover {
+            box-shadow: 0 0 15px var(--glow-color);
+        }
+        .toggle-group {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background-color: var(--bg-dark);
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid var(--bg-light);
+        }
+        .toggle-switch {
+            position: relative;
+            display: inline-block;
+            width: 50px;
+            height: 28px;
+        }
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+        .toggle-slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-color: var(--bg-light);
+            transition: .4s;
+            border-radius: 28px;
+        }
+        .toggle-slider:before {
+            position: absolute;
+            content: "";
+            height: 20px;
+            width: 20px;
+            left: 4px;
+            bottom: 4px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+        input:checked + .toggle-slider {
+            background-color: var(--accent-secondary);
+        }
+        input:checked + .toggle-slider:before {
+            transform: translateX(22px);
+        }
+
+        /* --- Info Bar --- */
+        .info-bar {
+            grid-area: infobar;
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 15px;
+            padding: 15px;
+            background-color: var(--bg-medium);
+            border-radius: 16px;
+            border: 1px solid var(--bg-light);
+        }
+
+        .info-box {
+            text-align: center;
+        }
+
+        .info-label {
+            font-size: 0.8rem;
+            color: var(--text-medium);
+            text-transform: uppercase;
+        }
+
+        .info-value {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-top: 5px;
+            color: var(--text-light);
+        }
+
+        /* --- Responsive Design --- */
+        @media (max-width: 1200px) {
+            .app-container {
+                display: flex;
+                flex-direction: column;
+                height: auto;
+            }
+            #visualization-container {
+                min-height: 50vh;
+            }
+            .info-bar {
+                grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            }
+        }
+        @media (max-width: 768px) {
+            body { padding: 1rem; }
+            h1 { font-size: 2rem; }
+            .info-bar { grid-template-columns: 1fr 1fr; }
+            .info-value { font-size: 1.2rem; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="app-container">
+        <header>
+            <h1>Definite Integration</h1>
+            <p class="subtitle">The limit of an infinite sum.</p>
+        </header>
+        
+        <div id="visualization-container">
+            <canvas id="graphCanvas"></canvas>
+            <div id="limit-overlay">
+                $$\int_{a}^{b} f(x) \,dx$$
+            </div>
+        </div>
+
+        <div class="controls">
+            <div class="control-group">
+                <label class="control-title" for="functionSelect">Function & Interval</label>
+                <select id="functionSelect">
+                    <option value="x^2">f(x) = x²</option>
+                    <option value="sin(x)">f(x) = sin(x)</option>
+                    <option value="exp(-x)">f(x) = e⁻ˣ</option>
+                    <option value="sqrt(1-x^2)">f(x) = √(1-x²)</option>
+                    <option value="custom">Custom...</option>
+                </select>
+                <input type="text" id="customFunctionInput" placeholder="Enter JS math function, e.g., Math.log(x)" style="display:none; margin-top: 10px;">
+                <div class="interval-inputs" style="margin-top: 10px;">
+                    <input type="number" id="a_input" value="0">
+                    <input type="number" id="b_input" value="1">
+                </div>
+            </div>
+
+            <div class="control-group">
+                <label class="control-title" for="methodSelect">Approximation Method</label>
+                <select id="methodSelect">
+                    <option value="left">Left Riemann Sum</option>
+                    <option value="midpoint">Midpoint Rule</option>
+                    <option value="right">Right Riemann Sum</option>
+                    <option value="trapezoid">Trapezoidal Rule</option>
+                    <option value="simpson">Simpson's Rule</option>
+                </select>
+            </div>
+
+            <div class="control-group">
+                <label class="control-title" for="nSlider">Partitions (n)</label>
+                <div class="slider-group">
+                    <input type="range" id="nSlider" min="2" max="2048" step="2" value="10">
+                    <span id="nValueDisplay">10</span>
+                </div>
+            </div>
+            
+            <div class="button-group">
+                <button id="autoRefineBtn">▶ Auto-Refine</button>
+            </div>
+
+            <div class="toggle-group">
+                <span>Limit View (n &rarr; &infin;)</span>
+                <label class="toggle-switch">
+                    <input type="checkbox" id="limitToggle">
+                    <span class="toggle-slider"></span>
+                </label>
+            </div>
+        </div>
+
+        <div class="info-bar">
+            <div class="info-box">
+                <div class="info-label">&Delta;x</div>
+                <div class="info-value" id="infoDx">0.1000</div>
+            </div>
+            <div class="info-box">
+                <div class="info-label">Approximation</div>
+                <div class="info-value" id="infoApprox">0.2850</div>
+            </div>
+            <div class="info-box">
+                <div class="info-label">Exact Value</div>
+                <div class="info-value" id="infoExact">0.3333</div>
+            </div>
+            <div class="info-box">
+                <div class="info-label">Abs. Error</div>
+                <div class="info-value" id="infoError">0.0483</div>
+            </div>
+            <div class="info-box">
+                <div class="info-label">Rel. Error</div>
+                <div class="info-value" id="infoRelError">14.50%</div>
+            </div>
+        </div>
+    </div>
+    
+    <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', () => {
+
+    // --- CONFIG & STATE ---
+    const PRESETS = {
+        'x^2': { expr: 'x**2', a: 0, b: 1, exact: 1/3 },
+        'sin(x)': { expr: 'Math.sin(x)', a: 0, b: Math.PI, exact: 2 },
+        'exp(-x)': { expr: 'Math.exp(-x)', a: 0, b: 3, exact: 1 - Math.exp(-3) },
+        'sqrt(1-x^2)': { expr: 'Math.sqrt(1 - x**2)', a: 0, b: 1, exact: Math.PI / 4 },
+    };
+
+    let state = {
+        f: (x) => x**2,
+        f_expr: 'x**2',
+        a: 0,
+        b: 1,
+        n: 10,
+        method: 'left',
+        exactValue: 1/3,
+        animationFrameId: null,
+        autoRefineInterval: null,
+        isLimitView: false,
+    };
+
+    // --- DOM ELEMENTS ---
+    const canvas = document.getElementById('graphCanvas');
+    const ctx = canvas.getContext('2d');
+    const vizContainer = document.getElementById('visualization-container');
+    const limitOverlay = document.getElementById('limit-overlay');
+    
+    const functionSelect = document.getElementById('functionSelect');
+    const customFuncInput = document.getElementById('customFunctionInput');
+    const aInput = document.getElementById('a_input');
+    const bInput = document.getElementById('b_input');
+    const methodSelect = document.getElementById('methodSelect');
+    const nSlider = document.getElementById('nSlider');
+    const nValueDisplay = document.getElementById('nValueDisplay');
+    const autoRefineBtn = document.getElementById('autoRefineBtn');
+    const limitToggle = document.getElementById('limitToggle');
+
+    const infoDx = document.getElementById('infoDx');
+    const infoApprox = document.getElementById('infoApprox');
+    const infoExact = document.getElementById('infoExact');
+    const infoError = document.getElementById('infoError');
+    const infoRelError = document.getElementById('infoRelError');
+
+    // --- MATH HELPERS ---
+    const integrate = {
+        _sum: (f, a, n, dx, offset) => {
+            let total = 0;
+            for (let i = 0; i < n; i++) {
+                total += f(a + (i + offset) * dx);
+            }
+            return total * dx;
+        },
+        left: (f, a, b, n) => {
+            const dx = (b - a) / n;
+            return integrate._sum(f, a, n, dx, 0);
+        },
+        right: (f, a, b, n) => {
+            const dx = (b - a) / n;
+            return integrate._sum(f, a, n, dx, 1);
+        },
+        midpoint: (f, a, b, n) => {
+            const dx = (b - a) / n;
+            return integrate._sum(f, a, n, dx, 0.5);
+        },
+        trapezoid: (f, a, b, n) => {
+            const dx = (b - a) / n;
+            let total = (f(a) + f(b)) / 2;
+            for (let i = 1; i < n; i++) {
+                total += f(a + i * dx);
+            }
+            return total * dx;
+        },
+        simpson: (f, a, b, n) => {
+            if (n % 2 !== 0) n++; // Simpson's rule requires even n
+            const dx = (b - a) / n;
+            let total = f(a) + f(b);
+            for (let i = 1; i < n; i += 2) {
+                total += 4 * f(a + i * dx);
+            }
+            for (let i = 2; i < n - 1; i += 2) {
+                total += 2 * f(a + i * dx);
+            }
+            return total * dx / 3;
+        },
+    };
+
+    // --- DRAWING ENGINE ---
+    let dpi = window.devicePixelRatio || 1;
+    let padding = { top: 40, right: 40, bottom: 50, left: 60 };
+    let plotWidth, plotHeight, xRange, yRange, xScale, yScale;
+    
+    function resizeCanvas() {
+        const rect = vizContainer.getBoundingClientRect();
+        canvas.width = rect.width * dpi;
+        canvas.height = rect.height * dpi;
+        canvas.style.width = `${rect.width}px`;
+        canvas.style.height = `${rect.height}px`;
+        ctx.scale(dpi, dpi);
+        
+        plotWidth = rect.width - padding.left - padding.right;
+        plotHeight = rect.height - padding.top - padding.bottom;
+        
+        updateAndDraw();
+    }
+
+    function worldToScreen(x, y) {
+        const sx = padding.left + ((x - xRange.min) / (xRange.max - xRange.min)) * plotWidth;
+        const sy = padding.top + plotHeight - ((y - yRange.min) / (yRange.max - yRange.min)) * plotHeight;
+        return { x: sx, y: sy };
+    }
+
+    function calculateRanges() {
+        xRange = { min: state.a, max: state.b };
+        
+        // Sample the function to find y-range
+        let yMin = 0, yMax = 0;
+        const samples = 200;
+        for (let i = 0; i <= samples; i++) {
+            const x = state.a + (state.b - state.a) * (i / samples);
+            try {
+                const y = state.f(x);
+                if (isFinite(y)) {
+                    if (i === 0) {
+                        yMin = y;
+                        yMax = y;
+                    } else {
+                        yMin = Math.min(yMin, y);
+                        yMax = Math.max(yMax, y);
+                    }
+                }
+            } catch (e) { /* ignore errors */ }
+        }
+
+        // Add padding to y-range
+        const yBuffer = Math.abs(yMax - yMin) * 0.1;
+        yRange = { min: Math.min(0, yMin - yBuffer), max: Math.max(0, yMax + yBuffer) };
+        if (yRange.min === yRange.max) yRange.max += 1;
+    }
+
+    function drawAxes() {
+        ctx.strokeStyle = '#4a5568';
+        ctx.lineWidth = 1;
+        ctx.font = '12px Arial';
+        ctx.fillStyle = '#a0a8b8';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+
+        // X-Axis
+        const origin = worldToScreen(0, 0);
+        ctx.beginPath();
+        ctx.moveTo(padding.left, origin.y);
+        ctx.lineTo(padding.left + plotWidth, origin.y);
+        ctx.stroke();
+        
+        // Y-Axis
+        ctx.beginPath();
+        ctx.moveTo(origin.x, padding.top);
+        ctx.lineTo(origin.x, padding.top + plotHeight);
+        ctx.stroke();
+
+        // Ticks
+        const xTicks = 5, yTicks = 5;
+        for (let i = 0; i <= xTicks; i++) {
+            const x = xRange.min + (xRange.max - xRange.min) * (i / xTicks);
+            const screenPos = worldToScreen(x, 0);
+            ctx.fillText(x.toFixed(1), screenPos.x, origin.y + 15);
+        }
+        for (let i = 0; i <= yTicks; i++) {
+            const y = yRange.min + (yRange.max - yRange.min) * (i / yTicks);
+            const screenPos = worldToScreen(0, y);
+            ctx.textAlign = 'right';
+            ctx.fillText(y.toFixed(1), padding.left - 10, screenPos.y);
+            ctx.textAlign = 'center';
+        }
+    }
+    
+    function drawFunctionCurve() {
+        ctx.strokeStyle = `hsla(195, 100%, 50%, ${state.isLimitView ? 0 : 1})`; // Fade out curve in limit view
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        const samples = Math.min(plotWidth * 2, 1000);
+        for (let i = 0; i <= samples; i++) {
+            const x = state.a + (state.b - state.a) * (i / samples);
+            try {
+                const y = state.f(x);
+                if (isFinite(y)) {
+                    const { x: sx, y: sy } = worldToScreen(x, y);
+                    if (i === 0) ctx.moveTo(sx, sy);
+                    else ctx.lineTo(sx, sy);
+                }
+            } catch (e) { /* ignore */ }
+        }
+        ctx.stroke();
+    }
+    
+    function drawFilledArea() {
+        const gradient = ctx.createLinearGradient(0, padding.top, 0, padding.top + plotHeight);
+        gradient.addColorStop(0, 'rgba(0, 170, 255, 0.4)');
+        gradient.addColorStop(1, 'rgba(255, 71, 163, 0.4)');
+        ctx.fillStyle = gradient;
+
+        ctx.beginPath();
+        const originY = worldToScreen(0, 0).y;
+        const startX = worldToScreen(state.a, 0).x;
+        ctx.moveTo(startX, originY);
+        
+        const samples = plotWidth * 2;
+        for (let i = 0; i <= samples; i++) {
+            const x = state.a + (state.b - state.a) * (i / samples);
+            try {
+                const y = state.f(x);
+                if (isFinite(y)) {
+                    const { x: sx, y: sy } = worldToScreen(x, y);
+                    ctx.lineTo(sx, sy);
+                }
+            } catch (e) { /* ignore */ }
+        }
+        
+        const endX = worldToScreen(state.b, 0).x;
+        ctx.lineTo(endX, originY);
+        ctx.closePath();
+        ctx.fill();
+    }
+
+    function drawApproximation() {
+        const { f, a, b, n, method } = state;
+        const dx = (b - a) / n;
+        const originY = worldToScreen(0, 0).y;
+        
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+        ctx.lineWidth = 1;
+        ctx.fillStyle = `hsla(328, 100%, 64%, ${state.isLimitView ? 0 : 0.4})`;
+
+        for (let i = 0; i < n; i++) {
+            const x1 = a + i * dx;
+            const x2 = a + (i + 1) * dx;
+            
+            const sx1 = worldToScreen(x1, 0).x;
+            const sx2 = worldToScreen(x2, 0).x;
+            const rectWidth = sx2 - sx1;
+            
+            if (method === 'trapezoid') {
+                const y1 = f(x1), y2 = f(x2);
+                const sy1 = worldToScreen(x1, y1).y;
+                const sy2 = worldToScreen(x2, y2).y;
+                
+                ctx.beginPath();
+                ctx.moveTo(sx1, originY);
+                ctx.lineTo(sx1, sy1);
+                ctx.lineTo(sx2, sy2);
+                ctx.lineTo(sx2, originY);
+                ctx.closePath();
+                ctx.fill();
+                ctx.stroke();
+
+            } else {
+                let sampleX;
+                if (method === 'left') sampleX = x1;
+                else if (method === 'right') sampleX = x2;
+                else sampleX = x1 + dx / 2;
+                
+                const y = f(sampleX);
+                const sy = worldToScreen(0, y).y;
+                const rectHeight = originY - sy;
+                
+                ctx.fillRect(sx1, sy, rectWidth, rectHeight);
+                ctx.strokeRect(sx1, sy, rectWidth, rectHeight);
+            }
+        }
+    }
+
+    function draw() {
+        ctx.clearRect(0, 0, canvas.width / dpi, canvas.height / dpi);
+        calculateRanges();
+        drawAxes();
+        
+        if (state.isLimitView) {
+            drawFilledArea();
+        } else {
+            drawApproximation();
+        }
+        
+        drawFunctionCurve();
+    }
+    
+    function updateAndDraw() {
+        if (state.animationFrameId) {
+            cancelAnimationFrame(state.animationFrameId);
+        }
+        state.animationFrameId = requestAnimationFrame(draw);
+    }
+    
+    // --- UI & EVENT HANDLERS ---
+    
+    function updateInfoPanel() {
+        const { f, a, b, n, method, exactValue } = state;
+        
+        const effectiveN = (method === 'simpson' && n % 2 !== 0) ? n + 1 : n;
+        const approxValue = integrate[method](f, a, b, effectiveN);
+        const dx = (b - a) / n;
+        const error = Math.abs(exactValue - approxValue);
+        const relError = exactValue !== 0 ? (error / Math.abs(exactValue)) * 100 : 0;
+        
+        infoDx.textContent = dx.toPrecision(4);
+        infoApprox.textContent = approxValue.toPrecision(5);
+        infoExact.textContent = exactValue ? exactValue.toPrecision(5) : 'N/A';
+        infoError.textContent = error.toPrecision(4);
+        infoRelError.textContent = exactValue ? `${relError.toPrecision(3)}%` : 'N/A';
+    }
+    
+    function parseFunction(expr) {
+        try {
+            const func = new Function('x', `with(Math) { return ${expr}; }`);
+            func(1); // Test call
+            return func;
+        } catch (e) {
+            console.error("Invalid function:", e);
+            customFuncInput.style.borderColor = 'red';
+            return null;
+        }
+    }
+
+    function handleStateUpdate() {
+        updateInfoPanel();
+        updateAndDraw();
+    }
+    
+    function handleFunctionChange() {
+        const selection = functionSelect.value;
+        if (selection === 'custom') {
+            customFuncInput.style.display = 'block';
+            const f = parseFunction(customFuncInput.value);
+            if (f) state.f = f;
+            state.f_expr = customFuncInput.value;
+            state.exactValue = null; // No exact value for custom functions
+        } else {
+            customFuncInput.style.display = 'none';
+            const preset = PRESETS[selection];
+            state.f_expr = preset.expr;
+            state.f = parseFunction(preset.expr);
+            state.a = preset.a;
+            state.b = preset.b;
+            state.exactValue = preset.exact;
+            aInput.value = state.a;
+            bInput.value = state.b;
+        }
+        handleStateUpdate();
+    }
+
+    function toggleAutoRefine() {
+        if (state.autoRefineInterval) {
+            clearInterval(state.autoRefineInterval);
+            state.autoRefineInterval = null;
+            autoRefineBtn.textContent = '▶ Auto-Refine';
+        } else {
+            autoRefineBtn.textContent = '■ Stop';
+            let currentN = state.n;
+            state.autoRefineInterval = setInterval(() => {
+                currentN = Math.min(2048, Math.floor(currentN * 1.5));
+                nSlider.value = currentN;
+                state.n = currentN;
+                nValueDisplay.textContent = currentN;
+                handleStateUpdate();
+                if (currentN >= 2048) toggleAutoRefine();
+            }, 200);
+        }
+    }
+
+    // --- INITIALIZATION ---
+    function init() {
+        // Event Listeners
+        functionSelect.addEventListener('change', handleFunctionChange);
+        customFuncInput.addEventListener('input', () => {
+             const f = parseFunction(customFuncInput.value);
+            if (f) {
+                state.f = f;
+                state.f_expr = customFuncInput.value;
+                customFuncInput.style.borderColor = '';
+                handleStateUpdate();
+            }
+        });
+
+        aInput.addEventListener('change', () => { state.a = parseFloat(aInput.value); handleStateUpdate(); });
+        bInput.addEventListener('change', () => { state.b = parseFloat(bInput.value); handleStateUpdate(); });
+        methodSelect.addEventListener('change', () => { state.method = methodSelect.value; handleStateUpdate(); });
+
+        nSlider.addEventListener('input', () => {
+            state.n = parseInt(nSlider.value);
+            if (state.method === 'simpson' && state.n % 2 !== 0) state.n++;
+            nSlider.value = state.n;
+            nValueDisplay.textContent = state.n;
+            handleStateUpdate();
+        });
+
+        autoRefineBtn.addEventListener('click', toggleAutoRefine);
+        limitToggle.addEventListener('change', () => {
+            state.isLimitView = limitToggle.checked;
+            limitOverlay.style.opacity = state.isLimitView ? 1 : 0;
+            handleStateUpdate();
+        });
+        
+        window.addEventListener('resize', resizeCanvas);
+
+        // Initial Setup
+        handleFunctionChange();
+        resizeCanvas();
+    }
+
+    init();
+});
+    </script>
+</body>
+</html>
