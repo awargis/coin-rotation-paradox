@@ -1,0 +1,561 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Factory Visit Planner - Combinatorics Visualization</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background: linear-gradient(to bottom, #0c1f3c, #163b6d);
+            color: #fff;
+            min-height: 100vh;
+            padding: 20px;
+            overflow-x: hidden;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 20px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 15px;
+            box-shadow: 0 0 20px rgba(0, 100, 255, 0.4);
+        }
+        
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            text-shadow: 0 0 10px rgba(0, 200, 255, 0.7);
+        }
+        
+        .problem-statement {
+            font-size: 1.2rem;
+            max-width: 800px;
+            margin: 0 auto;
+            line-height: 1.6;
+        }
+        
+        .scene {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+        
+        .calendar-container {
+            flex: 1;
+            min-width: 300px;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 0 15px rgba(0, 100, 255, 0.3);
+        }
+        
+        .calendar {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 10px;
+            margin-top: 20px;
+        }
+        
+        .day {
+            aspect-ratio: 1;
+            background: rgba(30, 60, 120, 0.6);
+            border-radius: 8px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .day:hover {
+            background: rgba(50, 100, 200, 0.8);
+            transform: translateY(-5px);
+            box-shadow: 0 5px 15px rgba(0, 150, 255, 0.5);
+        }
+        
+        .day.selected {
+            background: linear-gradient(to bottom, #4CAF50, #2E7D32);
+            box-shadow: 0 0 15px rgba(76, 175, 80, 0.7);
+        }
+        
+        .day.invalid {
+            background: linear-gradient(to bottom, #F44336, #B71C1C);
+            animation: shake 0.5s ease;
+        }
+        
+        .day-number {
+            font-size: 1.5rem;
+            font-weight: bold;
+        }
+        
+        .day-name {
+            font-size: 0.8rem;
+            opacity: 0.8;
+        }
+        
+        .controls {
+            margin-top: 20px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            justify-content: center;
+        }
+        
+        button {
+            padding: 12px 25px;
+            background: linear-gradient(to bottom, #2196F3, #0D47A1);
+            color: white;
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: bold;
+            transition: all 0.3s ease;
+            box-shadow: 0 5px 15px rgba(33, 150, 243, 0.4);
+        }
+        
+        button:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 20px rgba(33, 150, 243, 0.6);
+        }
+        
+        .info-panel {
+            flex: 1;
+            min-width: 300px;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 0 15px rgba(0, 100, 255, 0.3);
+        }
+        
+        .formula {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+            font-family: 'Courier New', monospace;
+            font-size: 1.2rem;
+            line-height: 1.6;
+        }
+        
+        .highlight {
+            color: #FFC107;
+            font-weight: bold;
+        }
+        
+        .counter {
+            font-size: 2rem;
+            text-align: center;
+            margin: 20px 0;
+            text-shadow: 0 0 10px rgba(255, 193, 7, 0.7);
+        }
+        
+        .engineer {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            width: 60px;
+            height: 80px;
+            background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect x="30" y="10" width="40" height="20" fill="%23355C7D" rx="5"/><rect x="20" y="30" width="60" height="50" fill="%23355C7D" rx="10"/><circle cx="50" cy="25" r="15" fill="%23F8B195"/><rect x="35" y="80" width="30" height="10" fill="%232A363B"/></svg>') no-repeat center;
+            background-size: contain;
+            transition: all 1s ease;
+            z-index: 100;
+        }
+        
+        .factory {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            width: 100px;
+            height: 100px;
+            background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect x="10" y="30" width="80" height="60" fill="%23555"/><rect x="20" y="40" width="15" height="15" fill="%23ccc"/><rect x="45" y="40" width="15" height="15" fill="%23ccc"/><rect x="70" y="40" width="15" height="15" fill="%23ccc"/><rect x="35" y="65" width="30" height="25" fill="%23777"/><rect x="0" y="90" width="100" height="10" fill="%23333"/><polygon points="40,10 60,10 70,30 30,30" fill="%23777"/></svg>') no-repeat center;
+            background-size: contain;
+        }
+        
+        .smoke {
+            position: absolute;
+            top: 20px;
+            right: 60px;
+            width: 40px;
+            height: 40px;
+            background: rgba(255, 255, 255, 0.7);
+            border-radius: 50%;
+            opacity: 0;
+        }
+        
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-5px); }
+            75% { transform: translateX(5px); }
+        }
+        
+        @keyframes smoke {
+            0% { 
+                opacity: 0.8;
+                transform: translateY(0) scale(1);
+            }
+            100% { 
+                opacity: 0;
+                transform: translateY(-100px) scale(2);
+            }
+        }
+        
+        @keyframes fireworks {
+            0% { 
+                opacity: 1;
+                transform: translate(0, 0) scale(1);
+            }
+            100% { 
+                opacity: 0;
+                transform: translate(var(--tx), var(--ty)) scale(2);
+            }
+        }
+        
+        .firework {
+            position: absolute;
+            width: 5px;
+            height: 5px;
+            background: #FFC107;
+            border-radius: 50%;
+            opacity: 0;
+        }
+        
+        footer {
+            text-align: center;
+            margin-top: 30px;
+            padding: 20px;
+            font-size: 0.9rem;
+            opacity: 0.7;
+        }
+        
+        @media (max-width: 768px) {
+            .scene {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Factory Visit Planner</h1>
+            <div class="problem-statement">
+                <p>An engineer has to visit a factory exactly 4 times in the first 15 days of June 2021, but no two visits can be on consecutive days. Find the number of possible ways.</p>
+            </div>
+        </header>
+        
+        <div class="scene">
+            <div class="calendar-container">
+                <h2>June 2021 - First 15 Days</h2>
+                <div class="calendar" id="calendar">
+                    <!-- Days will be generated by JavaScript -->
+                </div>
+                
+                <div class="controls">
+                    <button id="check-button">Check Validity</button>
+                    <button id="reset-button">Reset Selection</button>
+                    <button id="simulate-button">Auto Simulation</button>
+                    <button id="solve-button">Show Solution</button>
+                </div>
+            </div>
+            
+            <div class="info-panel">
+                <h2>Mathematical Solution</h2>
+                <div class="formula">
+                    <p>We need to choose 4 days out of 15 with no two consecutive.</p>
+                    <p>Let the chosen days be: <span class="highlight">d₁, d₂, d₃, d₄</span></p>
+                    <p>We can transform the problem by defining:</p>
+                    <p><span class="highlight">x₁ = d₁</span>, <span class="highlight">x₂ = d₂ - d₁ - 1</span>, ..., <span class="highlight">x₅ = 15 - d₄</span></p>
+                    <p>Where <span class="highlight">x₁ ≥ 1</span>, <span class="highlight">x₅ ≥ 0</span>, and <span class="highlight">x₂, x₃, x₄ ≥ 1</span></p>
+                    <p>Then the equation becomes: <span class="highlight">x₁ + x₂ + x₃ + x₄ + x₅ = 15 - 4 + 1 = 12</span></p>
+                    <p>Which is equivalent to: <span class="highlight">C(12, 4) = 495</span></p>
+                </div>
+                
+                <div class="counter">
+                    Valid combinations: <span id="counter">0</span> / 495
+                </div>
+                
+                <div id="feedback"></div>
+            </div>
+        </div>
+        
+        <div class="engineer" id="engineer"></div>
+        <div class="factory"></div>
+        <div class="smoke" id="smoke"></div>
+        
+        <footer>
+            <p>Created to demonstrate combinatorial mathematics through interactive visualization</p>
+        </footer>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const calendar = document.getElementById('calendar');
+            const checkButton = document.getElementById('check-button');
+            const resetButton = document.getElementById('reset-button');
+            const simulateButton = document.getElementById('simulate-button');
+            const solveButton = document.getElementById('solve-button');
+            const counterElement = document.getElementById('counter');
+            const feedbackElement = document.getElementById('feedback');
+            const engineer = document.getElementById('engineer');
+            const smoke = document.getElementById('smoke');
+            
+            const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+            const june12021 = new Date(2021, 5, 1); // June 1, 2021 (month is 0-indexed)
+            
+            let selectedDays = [];
+            let validCombinations = new Set();
+            let simulationInterval = null;
+            
+            // Generate calendar days
+            for (let i = 0; i < 15; i++) {
+                const date = new Date(june12021);
+                date.setDate(june12021.getDate() + i);
+                
+                const day = document.createElement('div');
+                day.className = 'day';
+                day.dataset.day = i + 1;
+                
+                const dayNumber = document.createElement('div');
+                dayNumber.className = 'day-number';
+                dayNumber.textContent = i + 1;
+                
+                const dayName = document.createElement('div');
+                dayName.className = 'day-name';
+                dayName.textContent = dayNames[date.getDay()];
+                
+                day.appendChild(dayNumber);
+                day.appendChild(dayName);
+                
+                day.addEventListener('click', () => toggleDay(day));
+                calendar.appendChild(day);
+            }
+            
+            // Toggle day selection
+            function toggleDay(dayElement) {
+                const day = parseInt(dayElement.dataset.day);
+                
+                if (selectedDays.includes(day)) {
+                    // Deselect the day
+                    selectedDays = selectedDays.filter(d => d !== day);
+                    dayElement.classList.remove('selected');
+                } else {
+                    // Check if we can select this day
+                    if (selectedDays.length >= 4) {
+                        showFeedback('You can only select 4 days', 'error');
+                        return;
+                    }
+                    
+                    // Check if consecutive with any selected day
+                    const isConsecutive = selectedDays.some(d => Math.abs(d - day) === 1);
+                    
+                    if (isConsecutive) {
+                        dayElement.classList.add('invalid');
+                        showFeedback('Cannot select consecutive days', 'error');
+                        setTimeout(() => {
+                            dayElement.classList.remove('invalid');
+                        }, 1000);
+                        return;
+                    }
+                    
+                    // Select the day
+                    selectedDays.push(day);
+                    dayElement.classList.add('selected');
+                    
+                    // Move engineer to this day
+                    const rect = dayElement.getBoundingClientRect();
+                    const calendarRect = calendar.getBoundingClientRect();
+                    engineer.style.left = `${rect.left + rect.width/2 - 30}px`;
+                    engineer.style.bottom = `${window.innerHeight - rect.top - rect.height/2}px`;
+                    
+                    // Animate smoke from factory
+                    animateSmoke();
+                }
+                
+                updateCounter();
+            }
+            
+            // Check validity of selection
+            function checkValidity() {
+                if (selectedDays.length !== 4) {
+                    showFeedback(`Please select exactly 4 days (currently ${selectedDays.length})`, 'error');
+                    return;
+                }
+                
+                // Check for consecutive days
+                const sortedDays = [...selectedDays].sort((a, b) => a - b);
+                let hasConsecutive = false;
+                
+                for (let i = 0; i < sortedDays.length - 1; i++) {
+                    if (sortedDays[i + 1] - sortedDays[i] === 1) {
+                        hasConsecutive = true;
+                        break;
+                    }
+                }
+                
+                if (hasConsecutive) {
+                    showFeedback('Invalid selection: Contains consecutive days', 'error');
+                    return;
+                }
+                
+                // Check if this combination is new
+                const combinationKey = sortedDays.join('-');
+                if (validCombinations.has(combinationKey)) {
+                    showFeedback('Valid but already found combination', 'info');
+                } else {
+                    validCombinations.add(combinationKey);
+                    showFeedback('Valid combination found!', 'success');
+                    celebrate();
+                }
+                
+                updateCounter();
+            }
+            
+            // Reset selection
+            function resetSelection() {
+                selectedDays = [];
+                document.querySelectorAll('.day').forEach(day => {
+                    day.classList.remove('selected', 'invalid');
+                });
+                updateCounter();
+                showFeedback('Selection reset', 'info');
+            }
+            
+            // Simulate valid combinations
+            function simulate() {
+                if (simulationInterval) {
+                    clearInterval(simulationInterval);
+                    simulationInterval = null;
+                    simulateButton.textContent = 'Auto Simulation';
+                    showFeedback('Simulation stopped', 'info');
+                    return;
+                }
+                
+                simulateButton.textContent = 'Stop Simulation';
+                showFeedback('Showing random valid combinations...', 'info');
+                
+                // Generate all valid combinations (in a real scenario)
+                // For simulation, we'll just show random valid ones
+                simulationInterval = setInterval(() => {
+                    resetSelection();
+                    
+                    // Generate a random valid combination
+                    const days = [];
+                    while (days.length < 4) {
+                        const day = Math.floor(Math.random() * 15) + 1;
+                        if (!days.includes(day) && !days.some(d => Math.abs(d - day) === 1)) {
+                            days.push(day);
+                        }
+                    }
+                    
+                    // Select these days with animation
+                    days.sort((a, b) => a - b).forEach((day, index) => {
+                        setTimeout(() => {
+                            const dayElement = document.querySelector(`.day[data-day="${day}"]`);
+                            toggleDay(dayElement);
+                        }, index * 500);
+                    });
+                    
+                    // Check validity after selection
+                    setTimeout(() => {
+                        checkValidity();
+                    }, 2500);
+                    
+                }, 4000);
+            }
+            
+            // Show the mathematical solution
+            function showSolution() {
+                // In a real implementation, this would show the step-by-step solution
+                showFeedback('The formula is C(12, 4) = 495. This comes from transforming the problem using stars and bars.', 'info');
+                
+                // Create fireworks celebration
+                createFireworks();
+            }
+            
+            // Update the counter of valid combinations found
+            function updateCounter() {
+                counterElement.textContent = validCombinations.size;
+            }
+            
+            // Show feedback message
+            function showFeedback(message, type) {
+                feedbackElement.textContent = message;
+                feedbackElement.className = '';
+                feedbackElement.classList.add(type);
+            }
+            
+            // Animate smoke from factory
+            function animateSmoke() {
+                smoke.style.opacity = '0.8';
+                smoke.style.animation = 'none';
+                void smoke.offsetWidth; // Trigger reflow
+                smoke.style.animation = 'smoke 2s forwards';
+            }
+            
+            // Create celebration effect
+            function celebrate() {
+                createFireworks();
+            }
+            
+            // Create fireworks animation
+            function createFireworks() {
+                for (let i = 0; i < 50; i++) {
+                    setTimeout(() => {
+                        const firework = document.createElement('div');
+                        firework.className = 'firework';
+                        
+                        const startX = Math.random() * window.innerWidth;
+                        const startY = window.innerHeight - 50;
+                        const angle = Math.random() * Math.PI;
+                        const distance = 50 + Math.random() * 150;
+                        
+                        firework.style.left = `${startX}px`;
+                        firework.style.bottom = `${50}px`;
+                        
+                        firework.style.setProperty('--tx', `${Math.cos(angle) * distance}px`);
+                        firework.style.setProperty('--ty', `${Math.sin(angle) * distance}px`);
+                        
+                        document.body.appendChild(firework);
+                        
+                        // Animate the firework
+                        setTimeout(() => {
+                            firework.style.animation = `fireworks 1s forwards`;
+                            setTimeout(() => {
+                                document.body.removeChild(firework);
+                            }, 1000);
+                        }, 10);
+                    }, i * 50);
+                }
+            }
+            
+            // Set up button event listeners
+            checkButton.addEventListener('click', checkValidity);
+            resetButton.addEventListener('click', resetSelection);
+            simulateButton.addEventListener('click', simulate);
+            solveButton.addEventListener('click', showSolution);
+            
+            // Initialize
+            updateCounter();
+            showFeedback('Select 4 non-consecutive days', 'info');
+        });
+    </script>
+</body>
+</html>
