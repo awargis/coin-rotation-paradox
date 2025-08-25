@@ -1,0 +1,906 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Love Equations — Differential Equations Made Fun</title>
+  <style>
+    :root{
+      --bg: #0b0f17;
+      --panel: #0f1726;
+      --ink: #e6e9ef;
+      --muted: #8b93a7;
+      --accent: #ff3d6e;
+      --accent-2: #62d2ff;
+      --good: #4ade80;
+      --bad: #fb7185;
+      --warn: #fbbf24;
+      --grid: rgba(255,255,255,.06);
+      --glow: 0 0 30px rgba(255,61,110,.35);
+      --blueglow: 0 0 30px rgba(98,210,255,.35);
+    }
+
+    * { box-sizing: border-box; }
+    html, body { height: 100%; }
+    body{
+      margin:0; 
+      background: radial-gradient(1200px 800px at 70% -10%, #172036 0%, #0b0f17 55%);
+      color:var(--ink); font: 15px/1.45 system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, Helvetica, Arial, "Apple Color Emoji","Segoe UI Emoji";
+      overflow: hidden;
+      position: relative;
+    }
+
+    /* Animated Starfield Background */
+    .stars {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: -1;
+      pointer-events: none;
+    }
+    .star {
+      position: absolute;
+      background-color: white;
+      border-radius: 50%;
+      animation: twinkle linear infinite;
+      opacity: 0;
+    }
+    @keyframes twinkle {
+      0% { opacity: 0; }
+      50% { opacity: 0.5; }
+      100% { opacity: 0; }
+    }
+
+    .app{
+      height:100%; display:grid; grid-template-rows:auto 1fr auto; gap:12px; padding:14px;
+    }
+
+    header{
+      display:flex; align-items:center; justify-content:space-between; gap:16px;
+    }
+    .title{
+      display:flex; align-items:center; gap:12px; letter-spacing:.2px;
+    }
+    .logo{
+      width:44px; height:44px; border-radius:12px; background:
+        radial-gradient(circle at 30% 30%, rgba(255,255,255,.35), transparent 40%),
+        radial-gradient(circle at 70% 70%, rgba(255,61,110,.5), transparent 55%),
+        linear-gradient(135deg, #2b334a, #161c2b);
+      box-shadow: 0 8px 30px rgba(0,0,0,.35), var(--glow);
+      position:relative; overflow:hidden;
+    }
+    .logo::after{
+      content:""; position:absolute; inset:-1px; border-radius:12px; border:1px solid rgba(255,255,255,.08);
+    }
+    h1{ font-size:20px; margin:0; font-weight:700; }
+    .sub{ color:var(--muted); font-size:13px; }
+
+    .grid{
+      display:grid; grid-template-columns: 340px 1fr 420px; gap:14px; height: calc(100vh - 130px);
+    }
+
+    .card{
+      background: linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.02));
+      border:1px solid rgba(255,255,255,.08); border-radius:18px; padding:14px;
+      box-shadow: 0 8px 40px rgba(0,0,0,.35);
+      position:relative; overflow:hidden;
+    }
+    .card h2{ font-size:14px; text-transform:uppercase; letter-spacing:.16em; color:var(--muted); margin:0 0 8px 0; }
+
+    .controls{ display:grid; gap:8px; grid-template-columns:1fr; }
+    .row{ display:grid; grid-template-columns: 90px 1fr 60px; gap:10px; align-items:center; }
+    label{ color:#c9cede; font-size:13px; }
+    input[type="range"]{ width:100%; }
+    .value{ text-align:right; font-variant-numeric: tabular-nums; color:#c9cede; opacity:.9; }
+
+    .btnbar{ display:flex; gap:8px; flex-wrap:wrap; margin-top:8px; }
+    button{ 
+      background: linear-gradient(180deg, #1b2234, #111629);
+      color:var(--ink); border:1px solid rgba(255,255,255,.12); border-radius:12px; padding:10px 12px; cursor:pointer;
+      transition: transform .08s ease, box-shadow .2s ease, background .2s ease;
+    }
+    button:hover{ transform: translateY(-1px); box-shadow: 0 10px 20px rgba(0,0,0,.35), var(--blueglow); }
+    button.primary{ background: linear-gradient(180deg, #ff4b7e, #ca2a5a); box-shadow: var(--glow); border-color: rgba(255,61,110,.6); }
+    button.ghost{ background: transparent; }
+    .toggle{ display:flex; align-items:center; gap:8px; margin-top:4px; }
+
+    .presets {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-top: 10px;
+    }
+    .preset-btn {
+      flex: 1;
+      min-width: 100px;
+      font-size: 12px;
+    }
+
+    .equations{
+      font-family: ui-monospace, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+      background: linear-gradient(180deg, #101628, #0e1426);
+      border-radius:14px; padding:12px; border:1px solid rgba(255,255,255,.08);
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,.03);
+    }
+    .eq{ display:flex; align-items:center; justify-content:space-between; gap:12px; }
+    .eq kbd{ background: rgba(255,255,255,.06); padding:2px 8px; border-radius:8px; border:1px solid rgba(255,255,255,.09); }
+    .tag{ font-size:11px; color:var(--muted); }
+
+    .stage{ display:grid; grid-template-rows: 1fr 180px; gap:12px; }
+    .canvasWrap{ position:relative; border-radius:16px; overflow:hidden; border:1px solid rgba(255,255,255,.08); }
+    canvas{ display:block; width:100%; height:100%; background:
+      radial-gradient(800px 600px at 50% -10%, rgba(255,255,255,.08), transparent 40%),
+      linear-gradient(180deg, #0e1424 0%, #0b0f17 60%);
+    }
+
+    .graphGrid::before, .graphGrid::after{ content:""; position:absolute; inset:0; pointer-events:none; }
+    .graphGrid::before{ background-image: linear-gradient(var(--grid) 1px, transparent 1px), linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+                         background-size: 40px 40px; mask-image: radial-gradient(70% 70% at 50% 50%, rgba(255,255,255,.9), transparent 100%); }
+    .graphGrid::after{ border:1px solid rgba(255,255,255,.08); border-radius:16px; }
+
+    .legend{ position:absolute; top:8px; left:10px; font-size:12px; color:#cdd3df; display:flex; gap:10px; }
+    .dot{ width:10px; height:10px; border-radius:50%; display:inline-block; margin-right:6px; }
+
+    .timelines{ display:grid; grid-template-columns: 1fr 1fr; gap:12px; }
+    .panel{ background: linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.02));
+            border:1px solid rgba(255,255,255,.08); border-radius:16px; padding:10px; }
+    .panel h3{ margin:0 0 6px 0; font-size:13px; font-weight:600; color:#c9cede; }
+
+    .characters{ display:grid; grid-template-rows:auto 1fr; gap:10px; }
+    .cast{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+    .avatar{
+      position:relative; height:130px; border-radius:16px; border:1px solid rgba(255,255,255,.08);
+      background: radial-gradient(500px 200px at 50% -10%, rgba(255,255,255,.08), transparent 50%), linear-gradient(180deg, #11182b, #0d1324);
+      overflow:hidden;
+    }
+    .avatar .name{ position:absolute; top:8px; left:10px; font-weight:600; letter-spacing:.3px; color:#d7dbe6; }
+    .heart{ position:absolute; bottom:16px; left:50%; transform:translateX(-50%); width:96px; height:96px; filter: drop-shadow(0 10px 20px rgba(255,61,110,.45)); transition: transform .15s ease; }
+    .heart svg{ width:100%; height:100%; }
+    .meter{ position:absolute; right:10px; top:8px; font-variant-numeric: tabular-nums; color:#dbe1ee; background: rgba(0,0,0,.25); border:1px solid rgba(255,255,255,.08); padding:2px 8px; border-radius:999px; }
+
+    /* Heart Animations */
+    @keyframes pulse {
+      0% { filter: drop-shadow(0 0 5px rgba(255, 61, 110, 0.7)); }
+      50% { filter: drop-shadow(0 0 20px rgba(255, 61, 110, 0.9)); }
+      100% { filter: drop-shadow(0 0 5px rgba(255, 61, 110, 0.7)); }
+    }
+    @keyframes cool-fade {
+      0% { filter: drop-shadow(0 0 5px rgba(98, 210, 255, 0.3)) brightness(1); }
+      50% { filter: drop-shadow(0 0 15px rgba(98, 210, 255, 0.5)) brightness(0.8); }
+      100% { filter: drop-shadow(0 0 5px rgba(98, 210, 255, 0.3)) brightness(1); }
+    }
+    @keyframes crack {
+      0% { transform: translateX(-50%) scale(1); }
+      50% { transform: translateX(-50%) scale(0.95) rotate(2deg); }
+      100% { transform: translateX(-50%) scale(1); }
+    }
+    .pulse { animation: pulse 1.5s infinite; }
+    .cool-fade { animation: cool-fade 2s infinite; }
+    .crack { animation: crack 0.8s infinite; }
+
+    /* Transition overlay */
+    .transition-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: var(--bg);
+      opacity: 0;
+      pointer-events: none;
+      z-index: 100;
+      transition: opacity 0.5s ease;
+    }
+
+    /* Math Overlay */
+    .math-overlay {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 80%;
+      max-width: 600px;
+      background: var(--panel);
+      border-radius: 18px;
+      padding: 20px;
+      border: 1px solid rgba(255,255,255,.08);
+      box-shadow: 0 10px 50px rgba(0,0,0,.5);
+      z-index: 101;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s ease;
+    }
+    .math-overlay.visible {
+      opacity: 1;
+      pointer-events: all;
+    }
+    .math-overlay h3 {
+      margin-top: 0;
+      color: var(--accent);
+    }
+    .math-content {
+      font-family: ui-monospace, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+      font-size: 14px;
+      line-height: 1.6;
+    }
+    .close-overlay {
+      position: absolute;
+      top: 15px;
+      right: 15px;
+      background: transparent;
+      border: none;
+      color: var(--muted);
+      font-size: 20px;
+      cursor: pointer;
+    }
+
+    footer{ display:flex; align-items:center; justify-content:space-between; color:var(--muted); }
+    .note{ color:#9aa3b8; }
+    .kbd{ background:#111827; border:1px solid rgba(255,255,255,.12); padding:2px 6px; border-radius:6px; }
+
+    /* Responsive tweak */
+    @media (max-width: 1200px){
+      .grid{ grid-template-columns: 320px 1fr; grid-template-rows: 1fr 320px; }
+      .characters{ grid-column: 1 / -1; }
+    }
+  </style>
+</head>
+<body>
+<!-- Animated Starfield Background -->
+<div class="stars" id="stars"></div>
+
+<!-- Transition Overlay -->
+<div class="transition-overlay" id="transitionOverlay"></div>
+
+<!-- Math Overlay -->
+<div class="math-overlay" id="mathOverlay">
+  <button class="close-overlay" id="closeMathOverlay">×</button>
+  <h3>Mathematical Foundation</h3>
+  <div class="math-content">
+    <p>The system is described by:</p>
+    <p>dR/dt = a·P</p>
+    <p>dP/dt = -b·R - c·P</p>
+    <p>Where:</p>
+    <ul>
+      <li>R: Rahul's affection level</li>
+      <li>P: Priya's affection level</li>
+      <li>a: Rahul's sensitivity to Priya's affection</li>
+      <li>b: Priya's resistance to Rahul's affection</li>
+      <li>c: Damping coefficient (dissipation of emotion)</li>
+    </ul>
+    <p>This is a linear system of differential equations. The eigenvalues of the coefficient matrix determine the behavior:</p>
+    <p>λ = [-c ± √(c² - 4ab)] / 2</p>
+    <p>When c=0, the system oscillates with frequency √(ab). With damping, the system spirals toward equilibrium at (0,0).</p>
+  </div>
+</div>
+
+<div class="app">
+  <header>
+    <div class="title">
+      <div class="logo" aria-hidden="true"></div>
+      <div>
+        <h1>💕 The Love Equations — dR/dt = a·P, dP/dt = −b·R ( + damping )</h1>
+        <div class="sub">Canvas 2D • RK4 solver • Phase plane • Sine/Cosine time series • Damping • Cinematic UI • Built for teaching phase difference</div>
+      </div>
+    </div>
+    <div class="sub">Hint: Press <span class="kbd">Space</span> to Play/Pause • <span class="kbd">R</span> to Reset • <span class="kbd">M</span> for Math</div>
+  </header>
+
+  <section class="grid">
+    <!-- LEFT: Controls -->
+    <aside class="card">
+      <h2>Controls</h2>
+      <div class="controls">
+        <div class="row"><label for="a">a (Rahul sensitivity)</label><input id="a" type="range" min="0.1" max="3" step="0.05" value="1.0"><div class="value" id="aVal">1.00</div></div>
+        <div class="row"><label for="b">b (Priya hard-to-get)</label><input id="b" type="range" min="0.1" max="3" step="0.05" value="1.0"><div class="value" id="bVal">1.00</div></div>
+        <div class="row"><label for="c">c (Damping on P)</label><input id="c" type="range" min="0.00" max="1.5" step="0.01" value="0.00"><div class="value" id="cVal">0.00</div></div>
+        <div class="row"><label for="r0">R₀ (start)</label><input id="r0" type="range" min="-6" max="6" step="0.1" value="0"><div class="value" id="r0Val">0.0</div></div>
+        <div class="row"><label for="p0">P₀ (start)</label><input id="p0" type="range" min="-6" max="6" step="0.1" value="5"><div class="value" id="p0Val">5.0</div></div>
+        <div class="row"><label for="speed">Speed</label><input id="speed" type="range" min="0.25" max="4" step="0.05" value="1"><div class="value" id="speedVal">1.00×</div></div>
+        <div class="toggle"><input id="trail" type="checkbox" checked><label for="trail">Show trail</label></div>
+        <div class="toggle"><input id="gridOn" type="checkbox" checked><label for="gridOn">Show grid</label></div>
+        <div class="btnbar">
+          <button id="play" class="primary">▶ Play</button>
+          <button id="step">Step 1s</button>
+          <button id="reset">Reset</button>
+          <button id="shuffle" class="ghost">Randomize</button>
+          <button id="showMath">Show Math</button>
+        </div>
+        
+        <!-- Parameter Presets -->
+        <div class="presets">
+          <button class="preset-btn" data-preset="unstable">Unstable Love</button>
+          <button class="preset-btn" data-preset="spiral">Breakup Spiral</button>
+          <button class="preset-btn" data-preset="drama">Endless Drama</button>
+        </div>
+        
+        <div class="equations" aria-label="equations">
+          <div class="eq"><div><strong>dR/dt = a · P</strong></div><span class="tag">Rahul follows Priya</span></div>
+          <div class="eq"><div><strong>dP/dt = − b · R <span id="dampTerm" style="opacity:.7">− c · P</span></strong></div><span class="tag" id="priyaTag">Priya resists with b = 1.00</span></div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- CENTER: Visualizations -->
+    <main class="stage">
+      <div class="canvasWrap graphGrid" id="phaseWrap">
+        <div class="legend"><span><span class="dot" style="background:var(--accent)"></span>Phase plane (R on X, P on Y)</span><span><span class="dot" style="background:var(--good)"></span>Orbit</span><span><span class="dot" style="background:#c6d0f5"></span>(0,0) Mutual Ambivalence</span></div>
+        <canvas id="phase"></canvas>
+      </div>
+      <div class="timelines">
+        <div class="panel">
+          <h3>R(t) — Rahul's Love (sine-like)</h3>
+          <div class="canvasWrap graphGrid"><canvas id="rt"></canvas></div>
+        </div>
+        <div class="panel">
+          <h3>P(t) — Priya's Love (cosine-like, phase-shifted)</h3>
+          <div class="canvasWrap graphGrid"><canvas id="pt"></canvas></div>
+        </div>
+      </div>
+    </main>
+
+    <!-- RIGHT: Characters -->
+    <aside class="card characters">
+      <h2>Characters</h2>
+      <div class="cast">
+        <div class="avatar" id="rahul">
+          <div class="name">Rahul</div>
+          <div class="meter" id="rMeter">R = 0.00</div>
+          <div class="heart" id="rHeart" aria-hidden="true"> 
+            <!-- SVG heart -->
+            <svg viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M471.7 73.3c-54.5-46.4-136-38.3-186.4 13.8L256 116.4l-29.3-29.3C176.3 35 94.8 26.9 40.3 73.3-21.1 125.6-13 222 43 282l187 191c14 14.3 38 14.3 52 0l187-191c56-60 64.1-156.4 2.7-208.7z" fill="url(#g1)"/>
+              <defs>
+                <radialGradient id="g1" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(256 256) rotate(90) scale(256)">
+                  <stop stop-color="#ff94ae"/>
+                  <stop offset="1" stop-color="#ff3d6e"/>
+                </radialGradient>
+              </defs>
+            </svg>
+          </div>
+        </div>
+        <div class="avatar" id="priya">
+          <div class="name">Priya</div>
+          <div class="meter" id="pMeter">P = 0.00</div>
+          <div class="heart" id="pHeart" aria-hidden="true"> 
+            <svg viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M471.7 73.3c-54.5-46.4-136-38.3-186.4 13.8L256 116.4l-29.3-29.3C176.3 35 94.8 26.9 40.3 73.3-21.1 125.6-13 222 43 282l187 191c14 14.3 38 14.3 52 0l187-191c56-60 64.1-156.4 2.7-208.7z" fill="url(#g2)"/>
+              <defs>
+                <radialGradient id="g2" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(256 256) rotate(90) scale(256)">
+                  <stop stop-color="#9ee7ff"/>
+                  <stop offset="1" stop-color="#62d2ff"/>
+                </radialGradient>
+              </defs>
+            </svg>
+          </div>
+        </div>
+      </div>
+      <div class="equations" style="margin-top:8px">
+        <div style="font-size:13px; color:#c9cede;">Narration cues:</div>
+        <ul style="margin:6px 0 0 18px; padding:0 8px 8px 0; color:#aeb6c8; font-size:13px; line-height:1.35">
+          <li>When <strong>P</strong> is positive, <strong>R</strong> grows (green glow).</li>
+          <li>When <strong>R</strong> is positive, <strong>P</strong> decreases (red glow).</li>
+          <li>Add damping <strong>c</strong> to show the spiral to (0,0).</li>
+          <li>Point at phase difference between R(t) and P(t) waves.</li>
+        </ul>
+      </div>
+    </aside>
+  </section>
+
+  <footer>
+    <div class="note">Made for classroom demos • Stable RK4 solver • Adjustable parameters • Smooth trails</div>
+    <div>© Your Channel — "Pyaar aur Pendulum: Dono Hi Toh Oscillate Karte Hain!"</div>
+  </footer>
+</div>
+
+<script>
+(function(){
+  // ==== Utility ==== //
+  const $ = sel => document.querySelector(sel);
+  const $$ = sel => document.querySelectorAll(sel);
+  const clamp = (x,a,b)=> Math.max(a, Math.min(b,x));
+
+  // ==== DOM refs ==== //
+  const cvsPhase = $('#phase');
+  const cvsRt = $('#rt');
+  const cvsPt = $('#pt');
+  const ctxPhase = cvsPhase.getContext('2d');
+  const ctxRt = cvsRt.getContext('2d');
+  const ctxPt = cvsPt.getContext('2d');
+
+  const playBtn = $('#play');
+  const stepBtn = $('#step');
+  const resetBtn = $('#reset');
+  const shuffleBtn = $('#shuffle');
+  const showMathBtn = $('#showMath');
+  const closeMathOverlayBtn = $('#closeMathOverlay');
+  const mathOverlay = $('#mathOverlay');
+  const transitionOverlay = $('#transitionOverlay');
+  const starsContainer = $('#stars');
+  const priyaTag = $('#priyaTag');
+
+  const aSl = $('#a'); const bSl = $('#b'); const cSl = $('#c');
+  const r0Sl = $('#r0'); const p0Sl = $('#p0');
+  const speedSl = $('#speed');
+  const aVal = $('#aVal'); const bVal = $('#bVal'); const cVal = $('#cVal');
+  const r0Val = $('#r0Val'); const p0Val = $('#p0Val');
+  const speedVal = $('#speedVal');
+  const dampTerm = $('#dampTerm');
+  const trailCb = $('#trail');
+  const gridCb = $('#gridOn');
+
+  const rMeter = $('#rMeter');
+  const pMeter = $('#pMeter');
+  const rHeart = $('#rHeart');
+  const pHeart = $('#pHeart');
+
+  // ==== State ==== //
+  let state = {
+    a: 1.0,
+    b: 1.0,
+    c: 0.0, // damping on P
+    R: 0.0,
+    P: 5.0,
+    t: 0,
+    speed: 1.0,
+    playing: false,
+  };
+
+  // History buffers for time plots
+  const MAX_HISTORY = 1200; // points
+  let hist = { t: [], R: [], P: [] };
+
+  // Trail for phase plane
+  const trail = [];
+  const MAX_TRAIL = 2000;
+
+  // For phase difference visualization
+  let lastRPeak = { time: 0, value: 0 };
+  let lastPPeak = { time: 0, value: 0 };
+  let phaseDiffLines = [];
+
+  // ==== Animated Background ==== //
+  function createStars() {
+    const count = 150;
+    for (let i = 0; i < count; i++) {
+      const star = document.createElement('div');
+      star.classList.add('star');
+      const size = Math.random() * 2 + 1;
+      star.style.width = `${size}px`;
+      star.style.height = `${size}px`;
+      star.style.left = `${Math.random() * 100}%`;
+      star.style.top = `${Math.random() * 100}%`;
+      star.style.animationDuration = `${Math.random() * 5 + 3}s`;
+      star.style.animationDelay = `${Math.random() * 5}s`;
+      starsContainer.appendChild(star);
+    }
+  }
+
+  // ==== Layout handling ==== //
+  function resize(){
+    const DPR = Math.min(2, window.devicePixelRatio || 1);
+    const wrapPhase = document.getElementById('phaseWrap');
+    const rectPhase = wrapPhase.getBoundingClientRect();
+    cvsPhase.width = Math.floor(rectPhase.width * DPR);
+    cvsPhase.height = Math.floor(rectPhase.height * DPR);
+    cvsPhase.style.width = rectPhase.width + 'px';
+    cvsPhase.style.height = rectPhase.height + 'px';
+
+    // time plots height
+    const rectRt = cvsRt.parentElement.getBoundingClientRect();
+    cvsRt.width = Math.floor(rectRt.width * DPR);
+    cvsRt.height = Math.floor(rectRt.height * DPR);
+    cvsRt.style.width = rectRt.width + 'px';
+    cvsRt.style.height = rectRt.height + 'px';
+
+    const rectPt = cvsPt.parentElement.getBoundingClientRect();
+    cvsPt.width = Math.floor(rectPt.width * DPR);
+    cvsPt.height = Math.floor(rectPt.height * DPR);
+    cvsPt.style.width = rectPt.width + 'px';
+    cvsPt.style.height = rectPt.height + 'px';
+  }
+  window.addEventListener('resize', resize);
+  resize();
+
+  // ==== ODE: dR/dt = a P; dP/dt = - b R - c P ====
+  function derivs(t, y){
+    const [R, P] = y;
+    const dR = state.a * P;
+    const dP = - state.b * R - state.c * P;
+    return [dR, dP];
+  }
+  // RK4 step
+  function rk4Step(t, y, h){
+    const k1 = derivs(t, y);
+    const y2 = [ y[0] + 0.5*h*k1[0], y[1] + 0.5*h*k1[1] ];
+    const k2 = derivs(t + 0.5*h, y2);
+    const y3 = [ y[0] + 0.5*h*k2[0], y[1] + 0.5*h*k2[1] ];
+    const k3 = derivs(t + 0.5*h, y3);
+    const y4 = [ y[0] + h*k3[0], y[1] + h*k3[1] ];
+    const k4 = derivs(t + h, y4);
+    const Rn = y[0] + (h/6)*(k1[0] + 2*k2[0] + 2*k3[0] + k4[0]);
+    const Pn = y[1] + (h/6)*(k1[1] + 2*k2[1] + 2*k3[1] + k4[1]);
+    return [Rn, Pn];
+  }
+
+  // ==== Drawing helpers ====
+  function clear(ctx){ ctx.clearRect(0,0,ctx.canvas.width, ctx.canvas.height); }
+
+  function drawGrid(ctx){
+    if(!gridCb.checked) return;
+    const w = ctx.canvas.width, h = ctx.canvas.height;
+    const step = 40 * (window.devicePixelRatio || 1);
+    ctx.save();
+    ctx.strokeStyle = 'rgba(255,255,255,0.06)';
+    ctx.lineWidth = 1;
+    for(let x=0; x<w; x+=step){ ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,h); ctx.stroke(); }
+    for(let y=0; y<h; y+=step){ ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(w,y); ctx.stroke(); }
+    ctx.restore();
+  }
+
+  // World-to-screen mapping for phase plane
+  const world = { xmin:-8, xmax:8, ymin:-8, ymax:8 };
+  function w2sX(x){ return (x - world.xmin) / (world.xmax - world.xmin) * cvsPhase.width; }
+  function w2sY(y){ return (1 - (y - world.ymin) / (world.ymax - world.ymin)) * cvsPhase.height; }
+
+  function drawAxesPhase(){
+    const ctx = ctxPhase; const w = ctx.canvas.width, h = ctx.canvas.height;
+    ctx.save();
+    // axes
+    ctx.strokeStyle = 'rgba(255,255,255,.35)'; ctx.lineWidth = 1.5;
+    // X axis (R)
+    const y0 = w2sY(0); ctx.beginPath(); ctx.moveTo(0,y0); ctx.lineTo(w,y0); ctx.stroke();
+    // Y axis (P)
+    const x0 = w2sX(0); ctx.beginPath(); ctx.moveTo(x0,0); ctx.lineTo(x0,h); ctx.stroke();
+    // labels
+    ctx.fillStyle = '#cdd3df'; ctx.font = `${12*(window.devicePixelRatio||1)}px system-ui`;
+    ctx.fillText('R (Rahul)', w-90*(window.devicePixelRatio||1), y0-6);
+    ctx.fillText('P (Priya)', x0+6, 14);
+
+    // origin marker
+    ctx.beginPath(); ctx.arc(x0,y0, 4*(window.devicePixelRatio||1), 0, Math.PI*2);
+    ctx.fillStyle = '#c6d0f5'; ctx.fill();
+
+    ctx.restore();
+  }
+
+  function drawTrail(){
+    const ctx = ctxPhase; if(!trailCb.checked) return;
+    ctx.save();
+    ctx.lineWidth = 2*(window.devicePixelRatio||1);
+    const n = trail.length; if(n<2){ ctx.restore(); return; }
+    for(let i=1;i<n;i++){
+      const alpha = i/n; // fade
+      ctx.strokeStyle = `rgba(74,222,128,${0.05 + 0.7*alpha})`;
+      ctx.beginPath();
+      ctx.moveTo(w2sX(trail[i-1][0]), w2sY(trail[i-1][1]));
+      ctx.lineTo(w2sX(trail[i][0]), w2sY(trail[i][1]));
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  function glowPulse(val){
+    // used to tint hearts based on sign and magnitude
+    const mag = clamp(Math.abs(val)/6, 0, 1);
+    return 0.6 + 0.6*mag; // scale
+  }
+
+  function updateHearts(){
+    const R = state.R, P = state.P;
+    const rScale = glowPulse(R);
+    const pScale = glowPulse(P);
+    rHeart.style.transform = `translateX(-50%) scale(${rScale})`;
+    pHeart.style.transform = `translateX(-50%) scale(${pScale})`;
+    rMeter.textContent = `R = ${R.toFixed(2)}`;
+    pMeter.textContent = `P = ${P.toFixed(2)}`;
+
+    // color cue via drop shadow tone and animations
+    rHeart.style.filter = `drop-shadow(0 10px 20px rgba(255,61,110,${0.35+0.35*clamp(Math.abs(R)/8,0,1)}))`;
+    pHeart.style.filter = `drop-shadow(0 10px 20px rgba(98,210,255,${0.35+0.35*clamp(Math.abs(P)/8,0,1)}))`;
+    
+    // Emotional animations
+    // Rahul's heart pulses when R > 0 strongly
+    if (R > 2) {
+      rHeart.classList.add('pulse');
+    } else {
+      rHeart.classList.remove('pulse');
+    }
+    
+    // Priya's heart fades when P < 0 (not reciprocating)
+    if (P < 0) {
+      pHeart.classList.add('cool-fade');
+    } else {
+      pHeart.classList.remove('cool-fade');
+    }
+    
+    // Cracked heart effect when near (0,0) with damping
+    const nearZero = Math.abs(R) < 0.5 && Math.abs(P) < 0.5;
+    if (nearZero && state.c > 0.1) {
+      rHeart.classList.add('crack');
+      pHeart.classList.add('crack');
+    } else {
+      rHeart.classList.remove('crack');
+      pHeart.classList.remove('crack');
+    }
+  }
+
+  function drawPhase(){
+    clear(ctxPhase); drawGrid(ctxPhase); drawAxesPhase(); drawTrail();
+    // vector field (sparse, aesthetic)
+    const ctx = ctxPhase; ctx.save();
+    const stepX = 1.6, stepY = 1.6;
+    for(let x=world.xmin; x<=world.xmax; x+=stepX){
+      for(let y=world.ymin; y<=world.ymax; y+=stepY){
+        const d = derivs(0,[x,y]);
+        const vx = d[0], vy = d[1];
+        const len = Math.hypot(vx,vy)+1e-6; const s = 0.5; // scale
+        const ex = (vx/len)*s, ey = (vy/len)*s;
+        const sx = w2sX(x), sy = w2sY(y);
+        const tx = w2sX(x+ex), ty = w2sY(y+ey);
+        ctx.strokeStyle = 'rgba(255,255,255,.1)'; ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.moveTo(sx,sy); ctx.lineTo(tx,ty); ctx.stroke();
+      }
+    }
+    ctx.restore();
+
+    // current point
+    ctx.save();
+    ctx.shadowColor = 'rgba(255,61,110,.45)'; ctx.shadowBlur = 20;
+    ctx.fillStyle = 'rgba(255,61,110,1)';
+    ctx.beginPath(); ctx.arc(w2sX(state.R), w2sY(state.P), 5*(window.devicePixelRatio||1), 0, Math.PI*2); ctx.fill();
+    ctx.restore();
+  }
+
+  function drawTimeSeries(){
+    drawOne(ctxRt, hist.t, hist.R, 'Rahul R(t)');
+    drawOne(ctxPt, hist.t, hist.P, 'Priya P(t)');
+  }
+
+  function drawOne(ctx, tArr, yArr, label){
+    clear(ctx); drawGrid(ctx);
+    const w = ctx.canvas.width, h = ctx.canvas.height;
+    if(tArr.length < 2) return;
+    // normalize t to screen
+    const tMin = tArr[0], tMax = tArr[tArr.length-1];
+    const pad = 8*(window.devicePixelRatio||1);
+
+    // y dynamic scaling
+    const ymin = Math.min(...yArr, -8), ymax = Math.max(...yArr, 8);
+
+    ctx.save();
+    ctx.lineWidth = 2*(window.devicePixelRatio||1);
+    ctx.strokeStyle = label.includes('Rahul') ? 'rgba(255,61,110,0.9)' : 'rgba(98,210,255,0.9)';
+    ctx.beginPath();
+    for(let i=0;i<tArr.length;i++){
+      const x = pad + (tArr[i]-tMin)/(tMax-tMin) * (w-2*pad);
+      const y = pad + (1-(yArr[i]-ymin)/(ymax-ymin))*(h-2*pad);
+      if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+    }
+    ctx.stroke();
+
+    // midline
+    ctx.strokeStyle = 'rgba(255,255,255,.25)'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(pad, h/2); ctx.lineTo(w-pad, h/2); ctx.stroke();
+    
+    // Draw phase difference guides if we have peaks
+    if (phaseDiffLines.length > 0) {
+      ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+      ctx.setLineDash([5, 5]);
+      ctx.lineWidth = 1;
+      
+      for (const line of phaseDiffLines) {
+        ctx.beginPath();
+        ctx.moveTo(line.x, pad);
+        ctx.lineTo(line.x, h - pad);
+        ctx.stroke();
+      }
+      
+      ctx.setLineDash([]);
+    }
+    
+    ctx.restore();
+  }
+
+  // ==== Simulation loop ====
+  let lastTs = null;
+  function tick(ts){
+    if(lastTs==null) lastTs = ts; 
+    const dtReal = (ts - lastTs)/1000; lastTs = ts;
+    const timeScale = state.speed; // user speed
+    const simDt = clamp(dtReal * timeScale, 0, 0.05); // safety
+
+    if(state.playing){ advance(simDt); }
+    render();
+    requestAnimationFrame(tick);
+  }
+
+  function advance(dt){
+    // substep integration for smoothness
+    const h = 0.01;
+    let accum = dt;
+    while(accum > 1e-6){
+      const step = Math.min(h, accum);
+      const [Rn, Pn] = rk4Step(state.t, [state.R, state.P], step);
+      state.R = Rn; state.P = Pn; state.t += step; accum -= step;
+      // trail/history
+      trail.push([state.R, state.P]); if(trail.length > MAX_TRAIL) trail.shift();
+      hist.t.push(state.t); hist.R.push(state.R); hist.P.push(state.P);
+      
+      // Detect peaks for phase difference visualization
+      detectPeaks();
+      
+      if(hist.t.length > MAX_HISTORY){ 
+        hist.t.shift(); 
+        hist.R.shift(); 
+        hist.P.shift(); 
+        
+        // Also clean up old phase diff lines
+        if (phaseDiffLines.length > 0 && hist.t[0] > phaseDiffLines[0].time) {
+          phaseDiffLines.shift();
+        }
+      }
+    }
+  }
+  
+  function detectPeaks() {
+    const n = hist.R.length;
+    if (n < 3) return;
+    
+    // Detect Rahul's peaks (maxima)
+    if (hist.R[n-2] > hist.R[n-3] && hist.R[n-2] > hist.R[n-1] && hist.R[n-2] > 0.5) {
+      lastRPeak = { time: hist.t[n-2], value: hist.R[n-2] };
+      
+      // Add a phase line at this peak
+      phaseDiffLines.push({
+        time: hist.t[n-2],
+        x: 0 // Will be calculated in drawOne
+      });
+    }
+    
+    // Detect Priya's peaks (maxima)
+    if (hist.P[n-2] > hist.P[n-3] && hist.P[n-2] > hist.P[n-1] && hist.P[n-2] > 0.5) {
+      lastPPeak = { time: hist.t[n-2], value: hist.P[n-2] };
+      
+      // Add a phase line at this peak
+      phaseDiffLines.push({
+        time: hist.t[n-2],
+        x: 0 // Will be calculated in drawOne
+      });
+    }
+  }
+
+  function render(){
+    updateHearts();
+    drawPhase();
+    drawTimeSeries();
+    // UI highlights for equations
+    // green glow if dR/dt>0 else red
+    const d = derivs(0,[state.R,state.P]);
+    const rGlow = d[0] >= 0 ? 'var(--good)' : 'var(--bad)';
+    const pGlow = d[1] >= 0 ? 'var(--good)' : 'var(--bad)';
+    dampTerm.style.opacity = state.c>1e-6 ? 1: .35;
+    // Update the dynamic legend
+    priyaTag.textContent = `Priya ${state.c > 0 ? 'damps with c = ' + state.c.toFixed(2) : 'resists with b = ' + state.b.toFixed(2)}`;
+    // subtle pulse via shadow on header logo (fun)
+    document.querySelector('.logo').style.boxShadow = d[0]>0 ? 'var(--glow)' : 'var(--blueglow)';
+  }
+
+  // ==== UI wiring ====
+  function updateVal(el, fmt){ el.textContent = fmt; }
+  function syncFromUI(){
+    state.a = parseFloat(aSl.value); updateVal(aVal, state.a.toFixed(2));
+    state.b = parseFloat(bSl.value); updateVal(bVal, state.b.toFixed(2));
+    state.c = parseFloat(cSl.value); updateVal(cVal, state.c.toFixed(2));
+    state.speed = parseFloat(speedSl.value); updateVal(speedVal, state.speed.toFixed(2)+'×');
+    updateVal(r0Val, parseFloat(r0Sl.value).toFixed(1));
+    updateVal(p0Val, parseFloat(p0Sl.value).toFixed(1));
+  }
+  [aSl,bSl,cSl,r0Sl,p0Sl,speedSl].forEach(inp=>inp.addEventListener('input', syncFromUI));
+  syncFromUI();
+
+  function reset(){
+    state.R = parseFloat(r0Sl.value);
+    state.P = parseFloat(p0Sl.value);
+    state.t = 0; hist = { t:[0], R:[state.R], P:[state.P]};
+    trail.length = 0;
+    lastRPeak = { time: 0, value: 0 };
+    lastPPeak = { time: 0, value: 0 };
+    phaseDiffLines = [];
+  }
+  reset();
+
+  // Cinematic transition
+  function withTransition(callback) {
+    transitionOverlay.style.opacity = '0.8';
+    setTimeout(() => {
+      callback();
+      setTimeout(() => {
+        transitionOverlay.style.opacity = '0';
+      }, 300);
+    }, 300);
+  }
+
+  playBtn.addEventListener('click', ()=>{
+    state.playing = !state.playing;
+    playBtn.textContent = state.playing ? '⏸ Pause' : '▶ Play';
+    playBtn.classList.toggle('primary', !state.playing);
+  });
+  stepBtn.addEventListener('click', ()=>{ advance(1.0); render(); });
+  resetBtn.addEventListener('click', ()=>{ withTransition(() => reset()); });
+  shuffleBtn.addEventListener('click', ()=>{
+    withTransition(() => {
+      aSl.value = (0.5 + Math.random()*2.0).toFixed(2);
+      bSl.value = (0.5 + Math.random()*2.0).toFixed(2);
+      cSl.value = (Math.random()*0.8).toFixed(2);
+      r0Sl.value = (Math.random()*10-5).toFixed(1);
+      p0Sl.value = (Math.random()*10-5).toFixed(1);
+      speedSl.value = (0.5 + Math.random()*2).toFixed(2);
+      syncFromUI(); reset();
+    });
+  });
+  
+  // Parameter presets
+  const presets = {
+    unstable: { a: 1.8, b: 0.5, c: 0.0, r0: 0, p0: 5, speed: 1.2 },
+    spiral: { a: 1.2, b: 1.0, c: 0.4, r0: 5, p0: 0, speed: 1.0 },
+    drama: { a: 1.0, b: 1.0, c: 0.0, r0: 0, p0: 5, speed: 1.0 }
+  };
+  
+  $$('.preset-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const preset = presets[btn.dataset.preset];
+      withTransition(() => {
+        aSl.value = preset.a;
+        bSl.value = preset.b;
+        cSl.value = preset.c;
+        r0Sl.value = preset.r0;
+        p0Sl.value = preset.p0;
+        speedSl.value = preset.speed;
+        syncFromUI();
+        reset();
+      });
+    });
+  });
+  
+  // Math overlay
+  showMathBtn.addEventListener('click', () => {
+    mathOverlay.classList.add('visible');
+  });
+  
+  closeMathOverlayBtn.addEventListener('click', () => {
+    mathOverlay.classList.remove('visible');
+  });
+  
+  // Phase plane interaction
+  cvsPhase.addEventListener('click', (e) => {
+    const rect = cvsPhase.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    
+    // Convert screen coordinates to world coordinates
+    const worldX = world.xmin + (x / cvsPhase.width) * (world.xmax - world.xmin);
+    const worldY = world.ymax - (y / cvsPhase.height) * (world.ymax - world.ymin);
+    
+    // Update sliders and reset
+    r0Sl.value = clamp(worldX, -6, 6).toFixed(1);
+    p0Sl.value = clamp(worldY, -6, 6).toFixed(1);
+    syncFromUI();
+    withTransition(() => reset());
+  });
+
+  window.addEventListener('keydown', (e)=>{
+    if(e.code==='Space'){ e.preventDefault(); playBtn.click(); }
+    if(e.key==='r' || e.key==='R'){ withTransition(() => reset()); }
+    if(e.key==='m' || e.key==='M'){ showMathBtn.click(); }
+  });
+
+  // Initialize
+  createStars();
+  requestAnimationFrame(tick);
+})();
+</script>
+</body>
+</html>
