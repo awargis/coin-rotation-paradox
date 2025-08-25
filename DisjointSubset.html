@@ -1,0 +1,592 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Disjoint Subsets - Cinematic Explanation</title>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Exo+2:wght@300;400;600&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.9.1/gsap.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.13.24/katex.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.13.24/katex.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Exo 2', sans-serif;
+            background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+            color: #fff;
+            min-height: 100vh;
+            overflow-x: hidden;
+            background-attachment: fixed;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        header {
+            text-align: center;
+            margin-bottom: 40px;
+            padding: 20px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        h1 {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 2.8rem;
+            margin-bottom: 15px;
+            text-shadow: 0 0 15px rgba(0, 255, 255, 0.7);
+            letter-spacing: 2px;
+            background: linear-gradient(90deg, cyan, magenta);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            animation: pulse 3s infinite alternate;
+        }
+        
+        @keyframes pulse {
+            0% { text-shadow: 0 0 10px rgba(0, 255, 255, 0.7); }
+            100% { text-shadow: 0 0 25px rgba(255, 0, 255, 0.7); }
+        }
+        
+        .set-display {
+            font-size: 2.2rem;
+            margin: 20px 0;
+            padding: 15px;
+            background: rgba(0, 0, 0, 0.4);
+            border-radius: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 0 0 20px rgba(1, 205, 254, 0.5);
+        }
+        
+        .set-display span {
+            color: #FFD700;
+            text-shadow: 0 0 10px rgba(255, 215, 0, 0.8);
+        }
+        
+        .visualization-area {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 30px;
+            margin: 40px 0;
+        }
+        
+        .elements-container {
+            flex: 1;
+            min-width: 300px;
+            background: rgba(0, 0, 0, 0.5);
+            border-radius: 15px;
+            padding: 20px;
+            border: 1px solid rgba(0, 255, 255, 0.3);
+            box-shadow: 0 0 25px rgba(0, 255, 255, 0.3);
+        }
+        
+        .subsets-container {
+            flex: 2;
+            min-width: 500px;
+            background: rgba(0, 0, 0, 0.5);
+            border-radius: 15px;
+            padding: 20px;
+            border: 1px solid rgba(255, 105, 180, 0.3);
+            box-shadow: 0 0 25px rgba(255, 105, 180, 0.3);
+        }
+        
+        .panel-title {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.5rem;
+            margin-bottom: 20px;
+            text-align: center;
+            padding-bottom: 10px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+            text-shadow: 0 0 10px rgba(255, 255, 255, 0.7);
+        }
+        
+        .elements {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .element {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.8rem;
+            font-weight: bold;
+            cursor: grab;
+            transition: all 0.3s ease;
+            box-shadow: 0 0 15px currentColor;
+        }
+        
+        .element:nth-child(1) { background: rgba(255, 0, 0, 0.7); color: white; }
+        .element:nth-child(2) { background: rgba(0, 255, 0, 0.7); color: white; }
+        .element:nth-child(3) { background: rgba(0, 0, 255, 0.7); color: white; }
+        .element:nth-child(4) { background: rgba(255, 215, 0, 0.7); color: black; }
+        
+        .subsets {
+            display: flex;
+            justify-content: space-around;
+            gap: 30px;
+        }
+        
+        .subset {
+            flex: 1;
+            min-height: 200px;
+            background: rgba(20, 20, 40, 0.6);
+            border-radius: 10px;
+            padding: 15px;
+            border: 2px dashed rgba(255, 255, 255, 0.3);
+        }
+        
+        .subset-title {
+            text-align: center;
+            margin-bottom: 15px;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.2rem;
+            color: #FFD700;
+        }
+        
+        .subset-content {
+            min-height: 150px;
+            border-radius: 8px;
+            background: rgba(0, 0, 0, 0.3);
+            padding: 10px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            align-content: flex-start;
+        }
+        
+        .controls {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin: 30px 0;
+        }
+        
+        button {
+            padding: 12px 25px;
+            font-family: 'Exo 2', sans-serif;
+            font-size: 1.1rem;
+            background: linear-gradient(135deg, #6e45e2, #88d3ce);
+            color: white;
+            border: none;
+            border-radius: 30px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 0 15px rgba(110, 69, 226, 0.7);
+        }
+        
+        button:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 0 20px rgba(110, 69, 226, 1);
+        }
+        
+        .explanation {
+            background: rgba(0, 0, 0, 0.6);
+            border-radius: 15px;
+            padding: 25px;
+            margin: 40px 0;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 0 0 20px rgba(0, 255, 255, 0.2);
+        }
+        
+        .explanation h2 {
+            font-family: 'Orbitron', sans-serif;
+            margin-bottom: 20px;
+            color: #00FFFF;
+            text-shadow: 0 0 10px rgba(0, 255, 255, 0.7);
+        }
+        
+        .explanation-content {
+            line-height: 1.6;
+            font-size: 1.1rem;
+        }
+        
+        .katex-display {
+            padding: 15px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 8px;
+            overflow-x: auto;
+            margin: 20px 0;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .counter {
+            text-align: center;
+            font-size: 2.5rem;
+            font-family: 'Orbitron', sans-serif;
+            margin: 30px 0;
+            padding: 15px;
+            background: rgba(0, 0, 0, 0.5);
+            border-radius: 10px;
+            border: 1px solid rgba(255, 215, 0, 0.5);
+            box-shadow: 0 0 20px rgba(255, 215, 0, 0.3);
+            text-shadow: 0 0 15px rgba(255, 215, 0, 0.8);
+            color: #FFD700;
+        }
+        
+        .particles-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            pointer-events: none;
+        }
+        
+        .disjoint-indicator {
+            text-align: center;
+            font-size: 1.5rem;
+            margin: 20px 0;
+            padding: 10px;
+            border-radius: 8px;
+            transition: all 0.5s ease;
+        }
+        
+        .valid {
+            background: rgba(0, 255, 0, 0.2);
+            color: #00FF00;
+            box-shadow: 0 0 15px rgba(0, 255, 0, 0.5);
+        }
+        
+        .invalid {
+            background: rgba(255, 0, 0, 0.2);
+            color: #FF0000;
+            box-shadow: 0 0 15px rgba(255, 0, 0, 0.5);
+        }
+        
+        .highlight {
+            background: rgba(255, 215, 0, 0.3);
+            padding: 2px 5px;
+            border-radius: 4px;
+            color: #FFD700;
+        }
+        
+        @media (max-width: 900px) {
+            .visualization-area {
+                flex-direction: column;
+            }
+            
+            .subsets {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="particles-container" id="particles"></div>
+    
+    <div class="container">
+        <header>
+            <h1>Unordered Pairs of Disjoint Subsets</h1>
+            <div class="set-display">
+                Let <span>S = {1, 2, 3, 4}</span>. The total number of unordered pairs of disjoint subsets of S is equal to ______
+            </div>
+        </header>
+        
+        <div class="counter" id="counter">
+            0
+        </div>
+        
+        <div class="disjoint-indicator" id="disjoint-indicator">
+            Drag elements to create subsets
+        </div>
+        
+        <div class="visualization-area">
+            <div class="elements-container">
+                <div class="panel-title">Elements of Set S</div>
+                <div class="elements">
+                    <div class="element" data-value="1">1</div>
+                    <div class="element" data-value="2">2</div>
+                    <div class="element" data-value="3">3</div>
+                    <div class="element" data-value="4">4</div>
+                </div>
+            </div>
+            
+            <div class="subsets-container">
+                <div class="panel-title">Subsets</div>
+                <div class="subsets">
+                    <div class="subset" id="subset-a">
+                        <div class="subset-title">Subset A</div>
+                        <div class="subset-content" id="content-a"></div>
+                    </div>
+                    <div class="subset" id="subset-b">
+                        <div class="subset-title">Subset B</div>
+                        <div class="subset-content" id="content-b"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="controls">
+            <button id="check-btn">Check Disjoint</button>
+            <button id="reset-btn">Reset All</button>
+            <button id="count-btn">Count Valid Pairs</button>
+        </div>
+        
+        <div class="explanation">
+            <h2>Mathematical Explanation</h2>
+            <div class="explanation-content">
+                <p>Two subsets A and B are <span class="highlight">disjoint</span> if they have no elements in common, i.e., A ∩ B = ∅.</p>
+                
+                <div class="katex-display">
+                    \text{For each element in S, there are 3 choices:} \\
+                    \text{1. Be in subset A} \\
+                    \text{2. Be in subset B} \\
+                    \text{3. Be in neither A nor B} \\
+                    \text{So the total number of ordered pairs (A, B) is } 3^4 = 81
+                </div>
+                
+                <p>However, we need <span class="highlight">unordered pairs</span> {A, B} where the order doesn't matter (so {A, B} is the same as {B, A}).</p>
+                
+                <div class="katex-display">
+                    \text{For unordered pairs, we use the formula:} \\
+                    \text{Total unordered pairs} = \frac{3^n + 1}{2} \\
+                    \text{For } n = 4: \frac{3^4 + 1}{2} = \frac{81 + 1}{2} = 41
+                </div>
+                
+                <p>Thus, the total number of unordered pairs of disjoint subsets of S is <span class="highlight">41</span>.</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Initialize Three.js particles for background
+        function initParticles() {
+            const container = document.getElementById('particles');
+            const scene = new THREE.Scene();
+            const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            const renderer = new THREE.WebGLRenderer({ alpha: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            container.appendChild(renderer.domElement);
+            
+            const particlesGeometry = new THREE.BufferGeometry();
+            const particlesCount = 2000;
+            const posArray = new Float32Array(particlesCount * 3);
+            
+            for (let i = 0; i < particlesCount * 3; i++) {
+                posArray[i] = (Math.random() - 0.5) * 20;
+            }
+            
+            particlesGeometry.setAttribute('position', new THREE.BufferAttribute(posArray, 3));
+            const particlesMaterial = new THREE.PointsMaterial({
+                size: 0.05,
+                color: 0x6e45e2,
+                transparent: true,
+                opacity: 0.8
+            });
+            
+            const particlesMesh = new THREE.Points(particlesGeometry, particlesMaterial);
+            scene.add(particlesMesh);
+            camera.position.z = 2;
+            
+            function animate() {
+                requestAnimationFrame(animate);
+                particlesMesh.rotation.x += 0.0005;
+                particlesMesh.rotation.y += 0.001;
+                renderer.render(scene, camera);
+            }
+            
+            animate();
+            
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            });
+        }
+        
+        // Initialize the interactive elements
+        function initInteractions() {
+            const elements = document.querySelectorAll('.element');
+            const subsetA = document.getElementById('content-a');
+            const subsetB = document.getElementById('content-b');
+            const disjointIndicator = document.getElementById('disjoint-indicator');
+            const counter = document.getElementById('counter');
+            const checkBtn = document.getElementById('check-btn');
+            const resetBtn = document.getElementById('reset-btn');
+            const countBtn = document.getElementById('count-btn');
+            
+            let validPairsCount = 0;
+            let elementStates = {};
+            
+            // Initialize element states
+            elements.forEach(el => {
+                const value = el.getAttribute('data-value');
+                elementStates[value] = null; // null means not in any subset
+                
+                // Make elements draggable
+                el.setAttribute('draggable', 'true');
+                
+                el.addEventListener('dragstart', (e) => {
+                    e.dataTransfer.setData('text/plain', value);
+                });
+            });
+            
+            // Allow drop in subsets
+            const subsets = [subsetA, subsetB];
+            subsets.forEach(subset => {
+                subset.addEventListener('dragover', (e) => {
+                    e.preventDefault();
+                    subset.style.background = 'rgba(0, 0, 0, 0.5)';
+                });
+                
+                subset.addEventListener('dragleave', () => {
+                    subset.style.background = 'rgba(0, 0, 0, 0.3)';
+                });
+                
+                subset.addEventListener('drop', (e) => {
+                    e.preventDefault();
+                    subset.style.background = 'rgba(0, 0, 0, 0.3)';
+                    const value = e.dataTransfer.getData('text/plain');
+                    
+                    // Remove from other subset if present
+                    if (elementStates[value] !== null) {
+                        const otherSubset = subset === subsetA ? subsetB : subsetA;
+                        const elementToRemove = otherSubset.querySelector(`[data-value="${value}"]`);
+                        if (elementToRemove) {
+                            otherSubset.removeChild(elementToRemove);
+                        }
+                    }
+                    
+                    // Add to this subset
+                    const newElement = document.createElement('div');
+                    newElement.className = 'element';
+                    newElement.setAttribute('data-value', value);
+                    newElement.textContent = value;
+                    newElement.style.cursor = 'pointer';
+                    newElement.style.transform = 'scale(0.8)';
+                    
+                    // Add click to remove functionality
+                    newElement.addEventListener('click', () => {
+                        subset.removeChild(newElement);
+                        elementStates[value] = null;
+                        updateDisjointIndicator();
+                    });
+                    
+                    subset.appendChild(newElement);
+                    
+                    // Update element state
+                    elementStates[value] = subset === subsetA ? 'A' : 'B';
+                    
+                    updateDisjointIndicator();
+                });
+            });
+            
+            // Update the disjoint indicator
+            function updateDisjointIndicator() {
+                const valuesInA = getValuesInSubset(subsetA);
+                const valuesInB = getValuesInSubset(subsetB);
+                
+                const isDisjoint = !valuesInA.some(val => valuesInB.includes(val));
+                
+                if (isDisjoint) {
+                    disjointIndicator.textContent = 'Subsets A and B are DISJOINT';
+                    disjointIndicator.className = 'disjoint-indicator valid';
+                } else {
+                    disjointIndicator.textContent = 'Subsets A and B are NOT DISJOINT (shared elements)';
+                    disjointIndicator.className = 'disjoint-indicator invalid';
+                }
+                
+                return isDisjoint;
+            }
+            
+            // Get values from a subset
+            function getValuesInSubset(subset) {
+                return Array.from(subset.children).map(el => el.getAttribute('data-value'));
+            }
+            
+            // Check disjoint button
+            checkBtn.addEventListener('click', () => {
+                updateDisjointIndicator();
+                
+                // Add visual feedback
+                const indicator = document.getElementById('disjoint-indicator');
+                gsap.fromTo(indicator, 
+                    { scale: 1.2 }, 
+                    { scale: 1, duration: 0.5, ease: 'elastic.out(1, 0.3)' }
+                );
+            });
+            
+            // Reset button
+            resetBtn.addEventListener('click', () => {
+                subsetA.innerHTML = '';
+                subsetB.innerHTML = '';
+                
+                // Reset element states
+                for (let key in elementStates) {
+                    elementStates[key] = null;
+                }
+                
+                disjointIndicator.textContent = 'Drag elements to create subsets';
+                disjointIndicator.className = 'disjoint-indicator';
+                
+                // Animate reset
+                gsap.fromTo('.subset-content', 
+                    { backgroundColor: 'rgba(255, 215, 0, 0.3)' }, 
+                    { backgroundColor: 'rgba(0, 0, 0, 0.3)', duration: 1 }
+                );
+            });
+            
+            // Count valid pairs button
+            countBtn.addEventListener('click', () => {
+                // Animate the counter to the final answer
+                gsap.to(counter, {
+                    innerText: 41,
+                    duration: 3,
+                    snap: { innerText: 1 },
+                    ease: "power2.out",
+                    onUpdate: function() {
+                        counter.innerText = Math.floor(counter.innerText);
+                    },
+                    onComplete: function() {
+                        // Add celebration effect
+                        gsap.fromTo(counter, 
+                            { scale: 1.5, textShadow: '0 0 30px gold' }, 
+                            { scale: 1, duration: 1, ease: 'elastic.out(1, 0.3)' }
+                        );
+                    }
+                });
+                
+                // Show mathematical explanation with highlights
+                const highlights = document.querySelectorAll('.highlight');
+                gsap.fromTo(highlights, 
+                    { backgroundColor: 'rgba(255, 215, 0, 0)' }, 
+                    { 
+                        backgroundColor: 'rgba(255, 215, 0, 0.3)',
+                        duration: 1,
+                        stagger: 0.5,
+                        repeat: 3,
+                        yoyo: true,
+                        repeatDelay: 0.5
+                    }
+                );
+            });
+        }
+        
+        // Initialize when page loads
+        window.addEventListener('load', () => {
+            initParticles();
+            initInteractions();
+            
+            // Animate title and set display
+            gsap.from('h1', { duration: 1.5, y: -50, opacity: 0, ease: 'power2.out' });
+            gsap.from('.set-display', { duration: 1.5, x: -100, opacity: 0, delay: 0.5, ease: 'power2.out' });
+            gsap.from('.element', { duration: 1, scale: 0, opacity: 0, stagger: 0.2, delay: 1, ease: 'back.out(1.7)' });
+            gsap.from('.subset', { duration: 1, y: 100, opacity: 0, stagger: 0.3, delay: 1.5, ease: 'power2.out' });
+        });
+    </script>
+</body>
+</html>
