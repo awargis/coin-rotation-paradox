@@ -1,0 +1,721 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Set Counting Visualizations</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
+            color: #fff;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        header {
+            text-align: center;
+            margin-bottom: 40px;
+            padding: 20px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        header::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(255, 255, 255, 0.1) 0%, transparent 70%);
+            transform: rotate(0deg);
+            animation: rotateBackground 30s linear infinite;
+            z-index: -1;
+        }
+        
+        h1 {
+            font-size: 2.8rem;
+            margin-bottom: 15px;
+            text-shadow: 0 0 15px rgba(100, 200, 255, 0.8);
+            letter-spacing: 2px;
+        }
+        
+        .subtitle {
+            font-size: 1.2rem;
+            opacity: 0.9;
+            max-width: 800px;
+            margin: 0 auto;
+            line-height: 1.6;
+        }
+        
+        .set-card {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+            position: relative;
+            overflow: hidden;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        
+        .set-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.5);
+        }
+        
+        .set-card::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 5px;
+            background: linear-gradient(90deg, #ff0080, #ff8c00, #ffed00);
+        }
+        
+        .set-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        
+        .set-title {
+            font-size: 1.8rem;
+            color: #4fc3f7;
+            text-shadow: 0 0 10px rgba(79, 195, 247, 0.5);
+        }
+        
+        .set-definition {
+            font-family: 'Courier New', monospace;
+            background: rgba(0, 0, 0, 0.4);
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            line-height: 1.6;
+            border-left: 4px solid #4fc3f7;
+        }
+        
+        .visualization {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            margin: 25px 0;
+            justify-content: center;
+            min-height: 200px;
+            align-items: center;
+        }
+        
+        .result {
+            background: rgba(0, 0, 0, 0.4);
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 15px;
+            border-left: 4px solid #69f0ae;
+        }
+        
+        .true-statement {
+            color: #69f0ae;
+            text-shadow: 0 0 10px rgba(105, 240, 174, 0.5);
+        }
+        
+        .false-statement {
+            color: #ff5252;
+            text-shadow: 0 0 10px rgba(255, 82, 82, 0.5);
+        }
+        
+        .number-grid {
+            display: grid;
+            grid-template-columns: repeat(10, 1fr);
+            gap: 8px;
+            margin: 0 auto;
+            max-width: 500px;
+        }
+        
+        .number-cell {
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(41, 121, 255, 0.2);
+            border-radius: 8px;
+            font-weight: bold;
+            transition: all 0.3s ease;
+            box-shadow: 0 0 10px rgba(41, 121, 255, 0.3);
+        }
+        
+        .number-cell.active {
+            background: rgba(41, 121, 255, 0.8);
+            transform: scale(1.1);
+            box-shadow: 0 0 15px rgba(41, 121, 255, 0.8);
+        }
+        
+        .number-cell.valid-pair {
+            background: rgba(105, 240, 174, 0.8);
+            box-shadow: 0 0 15px rgba(105, 240, 174, 0.8);
+        }
+        
+        .triplet {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin: 10px 0;
+        }
+        
+        .triplet-cell {
+            width: 50px;
+            height: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(156, 39, 176, 0.3);
+            border-radius: 10px;
+            font-weight: bold;
+            font-size: 1.2rem;
+            box-shadow: 0 0 10px rgba(156, 39, 176, 0.5);
+        }
+        
+        .control-panel {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-top: 20px;
+        }
+        
+        button {
+            background: linear-gradient(45deg, #ff0080, #ff8c00);
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 30px;
+            cursor: pointer;
+            font-weight: bold;
+            letter-spacing: 1px;
+            box-shadow: 0 5px 15px rgba(255, 0, 128, 0.4);
+            transition: all 0.3s ease;
+        }
+        
+        button:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 20px rgba(255, 0, 128, 0.6);
+        }
+        
+        .counter {
+            font-size: 2rem;
+            font-weight: bold;
+            text-align: center;
+            margin: 20px 0;
+            color: #ffeb3b;
+            text-shadow: 0 0 15px rgba(255, 235, 59, 0.6);
+        }
+        
+        .conclusion {
+            text-align: center;
+            padding: 30px;
+            background: rgba(0, 0, 0, 0.4);
+            border-radius: 15px;
+            margin-top: 40px;
+            border: 2px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .statement {
+            margin: 15px 0;
+            padding: 15px;
+            border-radius: 10px;
+            background: rgba(0, 0, 0, 0.3);
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        
+        .statement-icon {
+            font-size: 1.8rem;
+            flex-shrink: 0;
+        }
+        
+        .calculation-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        
+        .calculation-table th, .calculation-table td {
+            padding: 12px;
+            text-align: center;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .calculation-table th {
+            background: rgba(79, 195, 247, 0.3);
+        }
+        
+        .calculation-table tr:hover {
+            background: rgba(79, 195, 247, 0.1);
+        }
+        
+        .highlight {
+            color: #ff5252;
+            font-weight: bold;
+            text-shadow: 0 0 10px rgba(255, 82, 82, 0.5);
+        }
+        
+        .s2-detail {
+            background: rgba(0, 0, 0, 0.4);
+            padding: 15px;
+            border-radius: 10px;
+            margin: 15px 0;
+            border-left: 4px solid #69f0ae;
+        }
+        
+        .pair-display {
+            display: flex;
+            gap: 10px;
+            margin: 20px 0;
+            justify-content: center;
+        }
+        
+        .pair-cell {
+            width: 60px;
+            height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(156, 39, 176, 0.3);
+            border-radius: 10px;
+            font-weight: bold;
+            font-size: 1.5rem;
+            box-shadow: 0 0 10px rgba(156, 39, 176, 0.5);
+        }
+        
+        @keyframes rotateBackground {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+        
+        .pulse {
+            animation: pulse 2s infinite;
+        }
+        
+        @media (max-width: 768px) {
+            .number-grid {
+                grid-template-columns: repeat(5, 1fr);
+            }
+            
+            h1 {
+                font-size: 2rem;
+            }
+            
+            .set-title {
+                font-size: 1.5rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Multiple Correct Answers Type</h1>
+            <p class="subtitle">Visualizing set counting concepts with interactive animations and cinematic effects</p>
+        </header>
+        
+        <div class="set-card">
+            <div class="set-header">
+                <h2 class="set-title">Set S₁: All Triplets</h2>
+            </div>
+            <div class="set-definition">
+                S₁ = {(i, j, k) : i, j, k ∈ {1, 2, ..., 10}}
+            </div>
+            <p>This set contains all possible ordered triplets where each element can be any number from 1 to 10.</p>
+            
+            <div class="visualization">
+                <div class="number-grid" id="s1-grid">
+                    <!-- Numbers will be generated by JavaScript -->
+                </div>
+                <div class="triplet" id="s1-triplet">
+                    <div class="triplet-cell">i</div>
+                    <div class="triplet-cell">j</div>
+                    <div class="triplet-cell">k</div>
+                </div>
+            </div>
+            
+            <div class="counter" id="s1-counter">n₁ = 10 × 10 × 10 = 1000</div>
+            
+            <div class="result">
+                <div class="statement">
+                    <span class="statement-icon">➡️</span>
+                    <span>Statement (1): n₁ = 1000 is <span class="true-statement">TRUE</span></span>
+                </div>
+            </div>
+        </div>
+        
+        <div class="set-card">
+            <div class="set-header">
+                <h2 class="set-title">Set S₂: Constrained Pairs</h2>
+            </div>
+            <div class="set-definition">
+                S₂ = {(i, j) : 1 ≤ i < j + 2 ≤ 10, i, j ∈ {1, 2, ..., 10}}
+            </div>
+            
+            <div class="s2-detail">
+                <p>This set contains pairs (i, j) where i is less than j+2 and j+2 is at most 10.</p>
+                <p>From <span class="highlight">j + 2 ≤ 10</span>, we get <span class="highlight">j ≤ 8</span>.</p>
+                <p>From <span class="highlight">i < j + 2</span>, we get <span class="highlight">i ≤ j + 1</span>.</p>
+                <p>Also, since i and j are at least 1, we have <span class="highlight">i ≥ 1</span>.</p>
+                
+                <p>So for each j from 1 to 8, the valid i values are from 1 to j+1.</p>
+                
+                <div class="calculation-table">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>j value</th>
+                                <th>Valid i values</th>
+                                <th>Count</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>1</td>
+                                <td>1 to 2</td>
+                                <td>2</td>
+                            </tr>
+                            <tr>
+                                <td>2</td>
+                                <td>1 to 3</td>
+                                <td>3</td>
+                            </tr>
+                            <tr>
+                                <td>3</td>
+                                <td>1 to 4</td>
+                                <td>4</td>
+                            </tr>
+                            <tr>
+                                <td>4</td>
+                                <td>1 to 5</td>
+                                <td>5</td>
+                            </tr>
+                            <tr>
+                                <td>5</td>
+                                <td>1 to 6</td>
+                                <td>6</td>
+                            </tr>
+                            <tr>
+                                <td>6</td>
+                                <td>1 to 7</td>
+                                <td>7</td>
+                            </tr>
+                            <tr>
+                                <td>7</td>
+                                <td>1 to 8</td>
+                                <td>8</td>
+                            </tr>
+                            <tr>
+                                <td>8</td>
+                                <td>1 to 9</td>
+                                <td>9</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                
+                <p>Now we sum up the counts:</p>
+                <div class="counter">2 + 3 + 4 + 5 + 6 + 7 + 8 + 9 = 44</div>
+                
+                <p>We can also express this as:</p>
+                <div class="counter">Sum = (1+2+3+...+9) - 1 = (9×10)/2 - 1 = 45 - 1 = 44</div>
+            </div>
+            
+            <div class="visualization">
+                <div class="number-grid" id="s2-j-grid">
+                    <!-- Numbers will be generated by JavaScript -->
+                </div>
+                
+                <div class="counter" id="s2-current-j">Select j value to see valid i values</div>
+                
+                <div class="number-grid" id="s2-i-grid">
+                    <!-- Numbers will be generated by JavaScript -->
+                </div>
+                
+                <div class="pair-display">
+                    <div class="pair-cell" id="s2-j-value">j</div>
+                    <div class="pair-cell" id="s2-i-value">i</div>
+                </div>
+                
+                <div class="counter" id="s2-total-counter">Total pairs: 0/44</div>
+            </div>
+            
+            <div class="result">
+                <div class="statement">
+                    <span class="statement-icon">➡️</span>
+                    <span>Statement (2): n₂ = 44 is <span class="true-statement">TRUE</span></span>
+                </div>
+            </div>
+        </div>
+        
+        <div class="set-card">
+            <div class="set-header">
+                <h2 class="set-title">Set S₃: Increasing 4-tuples</h2>
+            </div>
+            <div class="set-definition">
+                S₃ = {(i, j, k, l) : 1 ≤ i < j < k < l, i, j, k, l ∈ {1, 2, ..., 10}}
+            </div>
+            <p>This set contains all increasing sequences of 4 distinct numbers from 1 to 10.</p>
+            
+            <div class="visualization">
+                <div class="number-grid" id="s3-grid">
+                    <!-- Numbers will be generated by JavaScript -->
+                </div>
+            </div>
+            
+            <div class="counter" id="s3-counter">n₃ = C(10, 4) = 210</div>
+            
+            <div class="result">
+                <div class="statement">
+                    <span class="statement-icon">➡️</span>
+                    <span>Statement (3): n₃ = 220 is <span class="false-statement">FALSE</span></span>
+                </div>
+            </div>
+        </div>
+        
+        <div class="set-card">
+            <div class="set-header">
+                <h2 class="set-title">Set S₄: All Permutations</h2>
+            </div>
+            <div class="set-definition">
+                S₄ = {(i, j, k, l) : i, j, k and l are distinct elements in {1, 2, ..., 10}}
+            </div>
+            <p>This set contains all ordered quadruples of distinct numbers from 1 to 10.</p>
+            
+            <div class="visualization">
+                <div class="number-grid" id="s4-grid">
+                    <!-- Numbers will be generated by JavaScript -->
+                </div>
+            </div>
+            
+            <div class="counter" id="s4-counter">n₄ = 10 × 9 × 8 × 7 = 5040</div>
+            <div class="counter">n₄/12 = 5040/12 = 420</div>
+            
+            <div class="result">
+                <div class="statement">
+                    <span class="statement-icon">➡️</span>
+                    <span>Statement (4): n₄/12 = 420 is <span class="true-statement">TRUE</span></span>
+                </div>
+            </div>
+        </div>
+        
+        <div class="conclusion">
+            <h2>Conclusion</h2>
+            <p>The true statements are (1), (2), and (4).</p>
+            <div class="control-panel">
+                <button id="restart-btn">Restart Animations</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Create number grids
+            createNumberGrid('s1-grid', 1, 10);
+            createNumberGrid('s2-j-grid', 1, 8);
+            createNumberGrid('s2-i-grid', 1, 10);
+            createNumberGrid('s3-grid', 1, 10);
+            createNumberGrid('s4-grid', 1, 10);
+            
+            // S2 interactive elements
+            let currentJ = 0;
+            
+            // Start animations
+            setTimeout(startS1Animation, 1000);
+            setTimeout(startS2Animation, 4000);
+            setTimeout(startS3Animation, 10000);
+            setTimeout(startS4Animation, 14000);
+            
+            // Restart button
+            document.getElementById('restart-btn').addEventListener('click', function() {
+                setTimeout(startS1Animation, 500);
+                setTimeout(startS2Animation, 3500);
+                setTimeout(startS3Animation, 9000);
+                setTimeout(startS4Animation, 13000);
+            });
+            
+            function createNumberGrid(elementId, start, end) {
+                const grid = document.getElementById(elementId);
+                grid.innerHTML = '';
+                for (let i = start; i <= end; i++) {
+                    const cell = document.createElement('div');
+                    cell.className = 'number-cell';
+                    cell.textContent = i;
+                    grid.appendChild(cell);
+                }
+            }
+            
+            function startS1Animation() {
+                const cells = document.querySelectorAll('#s1-grid .number-cell');
+                const tripletCells = document.querySelectorAll('#s1-triplet .triplet-cell');
+                
+                // Reset previous animations
+                cells.forEach(cell => cell.classList.remove('active'));
+                tripletCells.forEach(cell => cell.classList.remove('pulse'));
+                
+                // Animate the grid cells
+                animateCells(cells, 0, 100, function() {
+                    // After grid animation, animate the triplet
+                    tripletCells[0].classList.add('pulse');
+                    setTimeout(() => {
+                        tripletCells[0].classList.remove('pulse');
+                        tripletCells[1].classList.add('pulse');
+                        setTimeout(() => {
+                            tripletCells[1].classList.remove('pulse');
+                            tripletCells[2].classList.add('pulse');
+                            setTimeout(() => {
+                                tripletCells[2].classList.remove('pulse');
+                            }, 1000);
+                        }, 1000);
+                    }, 1000);
+                });
+            }
+            
+            function startS2Animation() {
+                const jCells = document.querySelectorAll('#s2-j-grid .number-cell');
+                const iCells = document.querySelectorAll('#s2-i-grid .number-cell');
+                
+                // Reset previous animations
+                jCells.forEach(cell => cell.classList.remove('active'));
+                iCells.forEach(cell => cell.classList.remove('active', 'valid-pair'));
+                
+                // Animate through each j value
+                let delay = 0;
+                for (let j = 1; j <= 8; j++) {
+                    // Highlight current j
+                    setTimeout(() => {
+                        jCells.forEach(cell => cell.classList.remove('active'));
+                        jCells[j-1].classList.add('active');
+                        
+                        // Highlight valid i values
+                        iCells.forEach((cell, index) => {
+                            cell.classList.remove('active', 'valid-pair');
+                            if (index < j+1) {
+                                cell.classList.add('valid-pair');
+                            }
+                            if (index === j) {
+                                cell.classList.add('active');
+                            }
+                        });
+                        
+                        // Update counters
+                        document.getElementById('s2-current-j').textContent = `For j = ${j}, valid i values: 1 to ${j+1}`;
+                        document.getElementById('s2-j-value').textContent = j;
+                        document.getElementById('s2-i-value').textContent = j+1;
+                        
+                        // Calculate total pairs so far
+                        let total = 0;
+                        for (let k = 1; k <= j; k++) {
+                            total += k + 1;
+                        }
+                        document.getElementById('s2-total-counter').textContent = `Total pairs: ${total}/44`;
+                    }, delay);
+                    
+                    delay += 1500;
+                }
+            }
+            
+            function startS3Animation() {
+                const cells = document.querySelectorAll('#s3-grid .number-cell');
+                
+                // Reset previous animations
+                cells.forEach(cell => cell.classList.remove('active'));
+                
+                // Animate combinations
+                const combinations = [
+                    [0,1,2,3], [0,1,2,4], [0,1,2,5], [0,1,2,6], [0,1,2,7],
+                    [0,1,2,8], [0,1,2,9], [0,1,3,4], [0,1,3,5], [0,1,3,6]
+                ];
+                
+                let delay = 0;
+                combinations.forEach(comb => {
+                    comb.forEach(index => {
+                        setTimeout(() => {
+                            cells[index].classList.add('active');
+                        }, delay);
+                        delay += 100;
+                    });
+                    delay += 300;
+                    
+                    // Clear after a short time
+                    setTimeout(() => {
+                        cells.forEach(cell => cell.classList.remove('active'));
+                    }, delay - 250);
+                });
+            }
+            
+            function startS4Animation() {
+                const cells = document.querySelectorAll('#s4-grid .number-cell');
+                
+                // Reset previous animations
+                cells.forEach(cell => cell.classList.remove('active'));
+                
+                // Animate selection process
+                setTimeout(() => cells[0].classList.add('active'), 500);
+                setTimeout(() => cells[1].classList.add('active'), 1000);
+                setTimeout(() => cells[2].classList.add('active'), 1500);
+                setTimeout(() => cells[3].classList.add('active'), 2000);
+                
+                // Show more combinations
+                setTimeout(() => {
+                    cells.forEach(cell => cell.classList.remove('active'));
+                    setTimeout(() => cells[4].classList.add('active'), 100);
+                    setTimeout(() => cells[5].classList.add('active'), 300);
+                    setTimeout(() => cells[6].classList.add('active'), 500);
+                    setTimeout(() => cells[7].classList.add('active'), 700);
+                }, 3000);
+                
+                setTimeout(() => {
+                    cells.forEach(cell => cell.classList.remove('active'));
+                    setTimeout(() => cells[8].classList.add('active'), 100);
+                    setTimeout(() => cells[9].classList.add('active'), 300);
+                    setTimeout(() => cells[1].classList.add('active'), 500);
+                    setTimeout(() => cells[2].classList.add('active'), 700);
+                }, 4500);
+            }
+            
+            function animateCells(cells, startIndex, delay, callback) {
+                if (startIndex < cells.length) {
+                    cells[startIndex].classList.add('active');
+                    setTimeout(() => {
+                        animateCells(cells, startIndex + 1, delay, callback);
+                    }, delay);
+                } else {
+                    if (callback) callback();
+                }
+            }
+        });
+    </script>
+</body>
+</html>
