@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Circular Permutations — Interactive Visual Lab (Enhanced)</title>
+  <title>Circular Permutations — Cinematic Interactive Lab</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
@@ -18,30 +18,37 @@
       --good:#22c55e;
       --bad:#ef4444;
       --gold:#f59e0b;
+      --focus:#38bdf8;
+      --table:#0c1424;
     }
+    /* Themes */
+    body[data-theme="neon"]{ --panel:#0b0b13; --table:#0a0a14; --accent:#22d3ee; --accent2:#f472b6; --focus:#a78bfa; }
+    body[data-theme="royal"]{ --panel:#12101a; --table:#1f1630; --accent:#f59e0b; --accent2:#eab308; --focus:#fbbf24; }
+
     html,body{height:100%;}
     body{
       margin:0; background: radial-gradient(1200px 800px at 70% -20%, #162033, #0b0f17);
       color:var(--ink); font-family:Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
       display:flex; flex-direction:column; gap:14px; align-items:center; justify-content:flex-start;
+      overflow-x:hidden;
     }
-    header{width:clamp(320px, 92vw, 1280px); padding:20px 0 0 0;}
+    header{width:clamp(320px, 92vw, 1280px); padding:20px 0 0 0; position:relative; z-index:3}
     h1{margin:0 0 8px 0; font-weight:800; letter-spacing:.3px;}
     p.sub{margin:0; color:var(--muted)}
-    .wrap{width:clamp(320px, 92vw, 1280px); display:grid; grid-template-columns: 1.2fr .8fr; gap:18px;}
+    .wrap{width:clamp(320px, 92vw, 1280px); display:grid; grid-template-columns: 1.2fr .8fr; gap:18px; position:relative; z-index:2}
     @media (max-width: 980px){.wrap{grid-template-columns:1fr;}}
 
     .stage{background:linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.02));
       border:1px solid rgba(255,255,255,.06); box-shadow:0 10px 40px rgba(0,0,0,.35);
-      border-radius:18px; position:relative; overflow:hidden; min-height:520px}
+      border-radius:18px; position:relative; overflow:hidden; min-height:560px}
     .controls{background:var(--panel); border:1px solid rgba(255,255,255,.06);
       border-radius:18px; padding:16px; display:flex; flex-direction:column; gap:12px;}
 
     .row{display:flex; gap:10px; align-items:center; flex-wrap:wrap}
     .row label{font-size:14px; color:var(--muted)}
     .pill{background:#0c1424; border:1px solid rgba(255,255,255,.08); padding:8px 10px; border-radius:12px; display:flex; gap:8px; align-items:center}
-    .btn{cursor:pointer; border:1px solid rgba(255,255,255,.12); background:#0c1424; color:var(--ink); padding:10px 12px; border-radius:12px; font-weight:600; transition:.2s transform, .2s background;}
-    .btn:hover{transform:translateY(-1px); background:#101a30}
+    .btn{cursor:pointer; border:1px solid rgba(255,255,255,.12); background:#0c1424; color:var(--ink); padding:10px 12px; border-radius:12px; font-weight:600; transition:.25s transform, .25s background, .25s box-shadow;}
+    .btn:hover{transform:translateY(-1px); background:#101a30; box-shadow:0 6px 18px rgba(56,189,248,.15)}
     .btn.ghost{background:transparent}
     .badge{padding:3px 8px; border-radius:999px; font-size:12px; border:1px solid rgba(255,255,255,.2)}
 
@@ -50,10 +57,10 @@
 
     .toast{position:absolute; top:16px; left:16px; backdrop-filter: blur(6px);
       background:rgba(15,23,38,.68); border:1px solid rgba(255,255,255,.12); border-radius:12px; padding:10px 12px; font-size:14px;
-      opacity:1; transition:.3s opacity, .3s transform; pointer-events:none;}
+      opacity:1; transition:.3s opacity, .3s transform; pointer-events:none; z-index:5}
     .toast.hidden{opacity:0; transform:translateY(-10px)}
 
-    .callout{position:absolute; right:16px; bottom:16px; max-width:340px; background:rgba(15,23,38,.82); border:1px solid rgba(255,255,255,.12); border-radius:14px; padding:12px 14px; font-size:14px;}
+    .callout{position:absolute; right:16px; bottom:16px; max-width:360px; background:rgba(15,23,38,.72); border:1px solid rgba(255,255,255,.12); border-radius:14px; padding:12px 14px; font-size:14px; z-index:3}
     .callout b{color:#fff}
 
     .formula{font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; background:#0b1324; padding:4px 8px; border-radius:8px; border:1px solid rgba(255,255,255,.08)}
@@ -63,39 +70,102 @@
     .status.bad{color:var(--bad)}
 
     /* Seat highlight class for drag-and-drop */
-    .seat-highlight { stroke: var(--gold) !important; stroke-width:3px !important; }
+    .seat-highlight { stroke: var(--gold) !important; stroke-width:3px !important; filter:url(#seatPulse); }
+
+    /* Cinematic layers */
+    .cinema-bg{ position:absolute; inset:0; pointer-events:none; z-index:0 }
+    .stars, .nebula{ position:absolute; inset:0; }
+    .stars{ opacity:.5; }
+    .nebula{ opacity:.25; mix-blend-mode:screen; }
+
+    /* Camera subtle tilt */
+    .stage.tilt{ transform: perspective(1200px) rotateX(6deg); transform-origin:50% 0; }
+
+    /* Tooltip */
+    .tip{ position:relative }
+    .tip:hover::after{ content:attr(data-tip); position:absolute; bottom:calc(100% + 6px); left:0; background:rgba(0,0,0,.6); padding:6px 8px; border-radius:8px; font-size:12px; white-space:nowrap }
   </style>
 </head>
-<body>
+<body data-theme="space">
+  <!-- Cinematic background layers -->
+  <div class="cinema-bg">
+    <canvas id="starfield" class="stars"></canvas>
+    <canvas id="nebula" class="nebula"></canvas>
+  </div>
+
   <header>
-    <h1>🎛️ Circular Permutations — Interactive Visual Lab</h1>
-    <p class="sub">Drag people around a round table, fix a seat, rotate realistically, flip, and see when arrangements are identical. Improved rotation and drag behavior.</p>
+    <h1>🎬 Circular Permutations — Cinematic Interactive Lab</h1>
+    <p class="sub">Hollywood-style visuals: parallax stars, volumetric lights, glow, sparkles, slow‑mo rotation, and scenario arcs. Drag to swap, rotate realistically, flip, and learn.</p>
   </header>
 
   <div class="wrap">
-    <div class="stage">
+    <div class="stage" id="stage">
       <div class="toast" id="toast">Tip: Drag tokens to swap them.</div>
+
       <svg id="svg" viewBox="0 0 900 700" width="100%" height="100%">
         <defs>
           <radialGradient id="glow" cx="50%" cy="45%" r="60%">
             <stop offset="0%" stop-color="#16325c" stop-opacity=".8"/>
             <stop offset="100%" stop-color="#0b0f17" stop-opacity="0"/>
           </radialGradient>
+          <!-- Soft drop shadow for tokens -->
           <filter id="softShadow" x="-50%" y="-50%" width="200%" height="200%">
             <feDropShadow dx="0" dy="6" stdDeviation="8" flood-color="#000" flood-opacity=".5"/>
           </filter>
+          <!-- Bloom/glow for active elements -->
+          <filter id="bloom" x="-50%" y="-50%" width="200%" height="200%">
+            <feGaussianBlur stdDeviation="3" result="blur"/>
+            <feMerge>
+              <feMergeNode in="blur"/>
+              <feMergeNode in="SourceGraphic"/>
+            </feMerge>
+          </filter>
+          <!-- Seat pulse highlight -->
+          <filter id="seatPulse" x="-50%" y="-50%" width="200%" height="200%">
+            <feGaussianBlur stdDeviation="2" result="b"/>
+            <feColorMatrix type="matrix" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 18 -8"/>
+          </filter>
+          <!-- Sparkle particle gradient -->
+          <radialGradient id="spark" cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stop-color="#fff" stop-opacity="1"/>
+            <stop offset="100%" stop-color="#fff" stop-opacity="0"/>
+          </radialGradient>
+          <!-- Lens flare streak -->
+          <linearGradient id="flare" x1="0" y1="0" x2="1" y2="0">
+            <stop offset="0%" stop-color="#fff" stop-opacity="0"/>
+            <stop offset="50%" stop-color="#fff" stop-opacity=".35"/>
+            <stop offset="100%" stop-color="#fff" stop-opacity="0"/>
+          </linearGradient>
         </defs>
+
         <rect x="0" y="0" width="900" height="700" fill="url(#glow)"/>
 
+        <!-- Volumetric light cones -->
+        <g id="lights" opacity=".45">
+          <radialGradient id="cone1" cx="50%" cy="0%" r="70%">
+            <stop offset="0%" stop-color="#38bdf8" stop-opacity=".45"/>
+            <stop offset="100%" stop-color="#38bdf8" stop-opacity="0"/>
+          </radialGradient>
+          <circle cx="450" cy="180" r="320" fill="url(#cone1)"/>
+        </g>
+
         <g id="tableGroup" transform="translate(450,340)">
-          <circle cx="0" cy="0" r="220" fill="#0c1424" stroke="rgba(255,255,255,.14)" stroke-width="2"/>
+          <circle id="table" cx="0" cy="0" r="220" fill="var(--table)" stroke="rgba(255,255,255,.14)" stroke-width="2"/>
           <g id="arrows"></g>
+          <g id="scenarioArcG"></g>
           <g id="seats"></g>
         </g>
 
         <g id="overlayTokens"></g>
+        <g id="particles"></g>
         <g id="tmpPaths" visibility="hidden"></g>
+
+        <!-- Lens flare overlay -->
+        <g id="flareG" opacity="0">
+          <rect x="250" y="60" width="400" height="4" fill="url(#flare)"/>
+        </g>
       </svg>
+
       <div class="callout" id="callout">
         <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap">
           <div class="legend"><div class="dot" style="background:var(--accent)"></div><span>Clockwise</span></div>
@@ -104,8 +174,8 @@
         </div>
         <div style="margin-top:8px; line-height:1.5">
           <div><b>Active items r = <span id="rVal">6</span></b> out of n = <span id="nVal">6</span></div>
-          <div>Formula: <span class="formula" id="formulaText">(nPr)/r</span></div>
-          <div>Count (theoretical): <b id="theoryCount">(nPr)/r</b></div>
+          <div>Formula: <span class="formula" id="formulaText">P(n,r)/r</span></div>
+          <div>Count (theoretical): <b id="theoryCount">—</b></div>
           <div>Arrangement (current): <span id="arrStr">A-B-C-D-E-F</span></div>
           <div>Scenario: <span id="scenarioStatus" class="status">None</span></div>
         </div>
@@ -124,14 +194,26 @@
         <span class="badge" id="rOut">6</span>
       </div>
       <div class="row">
-        <button class="btn" id="randomBtn">Randomize</button>
-        <button class="btn ghost" id="resetBtn">Reset</button>
-        <button class="btn" id="rotateBtn">Show rotational equivalence</button>
-        <button class="btn" id="flipBtn">Flip (mirror)</button>
+        <button class="btn tip" id="randomBtn" data-tip="Shuffle everyone with sparkles">Randomize</button>
+        <button class="btn ghost tip" id="resetBtn" data-tip="Reset to A… order">Reset</button>
+        <button class="btn tip" id="rotateBtn" data-tip="1-step rotation with realistic arcs">Rotate +1</button>
+        <button class="btn tip" id="rotateCCWBtn" data-tip="1-step rotation counterclockwise">Rotate −1</button>
+        <button class="btn tip" id="flipBtn" data-tip="Mirror across A">Flip</button>
       </div>
       <div class="row">
-        <label><input type="checkbox" id="fixA"/> Fix 'A' at 12 o'clock</label>
-        <label><input type="checkbox" id="cwSame"/> Treat CW and ACW as same</label>
+        <label class="tip" data-tip="Anchor A at 12 o'clock"><input type="checkbox" id="fixA"/> Fix 'A' at 12 o'clock</label>
+        <label class="tip" data-tip="Consider clockwise & anti-clockwise same"><input type="checkbox" id="cwSame"/> Treat CW and ACW as same</label>
+      </div>
+
+      <div class="row">
+        <label>Theme:</label>
+        <select id="themeSel" class="pill">
+          <option value="space">Space</option>
+          <option value="neon">Neon Cyberpunk</option>
+          <option value="royal">Royal Court</option>
+        </select>
+        <button class="btn ghost" id="introBtn">Replay Intro</button>
+        <button class="btn ghost" id="replayLastBtn">Replay Last</button>
       </div>
 
       <hr style="border-color:rgba(255,255,255,.08); width:100%">
@@ -152,13 +234,13 @@
           </div>
           <span class="badge">Status: <span id="scenarioBadge">OK</span></span>
         </div>
-        <div style="font-size:13px; color:var(--muted)">Status turns <span style="color:var(--good); font-weight:700">green</span> when the current arrangement satisfies the scenario.</div>
+        <div style="font-size:13px; color:var(--muted)">Status turns <span style="color:var(--good); font-weight:700">green</span> when the current arrangement satisfies the scenario. A glowing arc links the pair.</div>
       </div>
 
       <hr style="border-color:rgba(255,255,255,.08); width:100%">
 
       <div style="font-size:13px; color:var(--muted); line-height:1.6">
-        <b>How to use:</b> Drag tokens to swap them. Use <i>Fix A</i> to anchor 'A'. Toggle <i>CW=ACW</i> to move from <span class="formula">(nPr)/r</span> to <span class="formula">(nPr)/(2r)</span>. The rotation animation moves people realistically to adjacent seats while they stay upright.
+        <b>How to use:</b> Drag tokens to swap them. Use <i>Fix A</i> to anchor 'A'. Toggle <i>CW=ACW</i> to move from <span class="formula">P(n,r)/r</span> to <span class="formula">P(n,r)/(2r)</span>. Rotation uses realistic arcs and keeps tokens upright. Enjoy sparkles and lens flares ✨
       </div>
     </aside>
   </div>
@@ -168,7 +250,7 @@
   <script>
     gsap.registerPlugin(MotionPathPlugin);
 
-    // ====== Utilities ======
+    // ====== Utilities & DOM ======
     const byId = id => document.getElementById(id);
     const svg = byId('svg');
     const seatsG = byId('seats');
@@ -177,17 +259,24 @@
     const overlay = byId('overlayTokens');
     const tmpPaths = byId('tmpPaths');
     const toast = byId('toast');
+    const particlesG = byId('particles');
+    const scenarioArcG = byId('scenarioArcG');
 
     const nInput = byId('nInput'), rInput = byId('rInput');
     const nOut = byId('nOut'), rOut = byId('rOut');
     const nValSpan = byId('nVal'), rValSpan = byId('rVal');
     const randomBtn = byId('randomBtn'), resetBtn = byId('resetBtn');
-    const rotateBtn = byId('rotateBtn'), flipBtn = byId('flipBtn');
+    const rotateBtn = byId('rotateBtn'), rotateCCWBtn = byId('rotateCCWBtn'), flipBtn = byId('flipBtn');
     const fixA = byId('fixA'), cwSame = byId('cwSame');
     const formulaText = byId('formulaText'), theoryCount = byId('theoryCount');
     const arrStr = byId('arrStr'), equivBadge = byId('equivBadge');
     const scenarioSel = byId('scenarioSel'), pairA = byId('pairA'), pairB = byId('pairB');
     const scenarioBadge = byId('scenarioBadge'), scenarioStatus = byId('scenarioStatus');
+    const themeSel = byId('themeSel');
+    const flareG = byId('flareG');
+    const stage = byId('stage');
+    const introBtn = byId('introBtn');
+    const replayLastBtn = byId('replayLastBtn');
 
     const letters = 'ABCDEFGHIJ'.split('');
     let n = parseInt(nInput.value,10);
@@ -198,6 +287,8 @@
     const RADIUS = 260;
     const TABLE_R = 220;
     const CENTER = {x:450, y:340};
+
+    let lastAction = null; // {type:'rotate'|'flip'|'swap', dir?:1|-1, a?:index, b?:index}
 
     function factorial(k){ return k<=1 ? 1 : k*factorial(k-1); }
     function nPr(n_,r_){ return n_ < r_ ? 0 : factorial(n_) / factorial(n_-r_); }
@@ -237,6 +328,7 @@
         seatNodes.push({g, chair, token});
         seatsG.appendChild(g);
       }
+      drawScenarioArc();
     }
 
     function makeToken(letter){
@@ -251,6 +343,7 @@
       outer.setAttribute('fill', 'url(#grad'+letter+')');
       outer.setAttribute('stroke','rgba(255,255,255,.25)');
       outer.setAttribute('stroke-width','2');
+      outer.setAttribute('filter','url(#bloom)');
 
       const txt = document.createElementNS('http://www.w3.org/2000/svg','text');
       txt.textContent = letter;
@@ -308,9 +401,7 @@
       const letter = tokenGroup.dataset.letter;
 
       if(fixA.checked && letter === 'A') {
-        toast.textContent = "Cannot move 'A' while it's fixed.";
-        toast.classList.remove('hidden');
-        setTimeout(()=>toast.classList.add('hidden'), 2000);
+        showToast("Cannot move 'A' while it's fixed.");
         return;
       }
 
@@ -328,17 +419,17 @@
       const p = getSvgPoint(e.clientX, e.clientY);
       gsap.set(draggedTokenClone, { x: p.x, y: p.y, scale: 1.1, cursor: 'grabbing' });
 
-      toast.textContent = `Dragging ${letter}... Drop on a seat to swap.`;
-      toast.classList.remove('hidden');
+      showToast(`Dragging ${letter}... Drop on a seat to swap.`);
 
       svg.addEventListener('pointermove', onDragMove);
       svg.addEventListener('pointerup', onDragEnd, {once:true});
+      lensFlare(true);
     }
 
     function onDragMove(e){
       const p = getSvgPoint(e.clientX, e.clientY);
       // Move the clone with the cursor
-      gsap.to(draggedTokenClone, { x: p.x, y: p.y, duration: 0.1 });
+      gsap.to(draggedTokenClone, { x: p.x, y: p.y, duration: 0.08, ease:'power2.out' });
 
       // Highlight the nearest seat
       const targetSeatIndex = nearestSeat(p.x, p.y);
@@ -362,7 +453,7 @@
 
       // Clean up highlights and the clone
       if (lastHighlightedSeat !== -1) seatNodes[lastHighlightedSeat].chair.classList.remove('seat-highlight');
-      draggedTokenClone.remove();
+      if (draggedTokenClone) draggedTokenClone.remove();
       draggedTokenClone = null;
 
       // If dropped on a valid, different seat, perform the swap
@@ -370,13 +461,16 @@
         const tmp = layout[targetSeatIndex];
         layout[targetSeatIndex] = layout[originSeatIndex];
         layout[originSeatIndex] = tmp;
+        sparkleBurst(seatCenterAbsolute(targetSeatIndex));
+        sparkleBurst(seatCenterAbsolute(originSeatIndex));
+        lastAction = {type:'swap', a:originSeatIndex, b:targetSeatIndex};
       }
-      
+
       // Always redraw to restore original token opacity and reflect any changes
       redrawTokens();
-      
       originSeatIndex = null;
       lastHighlightedSeat = -1;
+      lensFlare(false);
     }
 
     function redrawTokens(){
@@ -388,6 +482,7 @@
       if(fixA.checked){
         const ai = layout.indexOf('A'); if(ai>-1) rotateLayoutToIndex(ai,0);
       }
+      sparkleBurst(CENTER, 24);
       redrawTokens();
     }
     function reset(){
@@ -403,9 +498,10 @@
     }
 
     let isAnimating = false;
-    function animateRotationRealistic(clockwise=true){
+    function animateRotationRealistic(clockwise=true, duration=0.9){
       if(isAnimating || r < 2) return;
       isAnimating = true;
+      stage.classList.add('tilt');
 
       const starts = seatNodes.map((s,i)=> seatCenterAbsolute(i));
       const destIdx = i => (i + (clockwise? 1 : -1) + r) % r;
@@ -415,28 +511,33 @@
       overlay.innerHTML = '';
 
       const tokensToAnimate = seatNodes.map(s => s.token);
-      seatsG.innerHTML = ''; // Clear original tokens to avoid flicker
+      seatsG.innerHTML = ''; // Clear originals
 
       tokensToAnimate.forEach((token, i)=>{
         overlay.appendChild(token);
         gsap.set(token, { transformOrigin: 'center center', x: starts[i].x, y: starts[i].y });
-        
+
         const path = document.createElementNS('http://www.w3.org/2000/svg','path');
         const sweep = clockwise ? 1 : 0;
         path.setAttribute('d', `M ${starts[i].x} ${starts[i].y} A ${RADIUS} ${RADIUS} 0 0 ${sweep} ${dests[i].x} ${dests[i].y}`);
         tmpPaths.appendChild(path);
 
         gsap.to(token, {
-          duration: 0.9,
+          duration,
           ease: 'power2.inOut',
           motionPath: { path: path, align: path, autoRotate: false, alignOrigin: [0.5, 0.5] },
+          onStart: ()=>{ if(i===0){ lensFlare(true); } },
           onComplete: ()=>{
-            if (i === tokensToAnimate.length - 1) { // Only run cleanup on the last animation
+            if (i === tokensToAnimate.length - 1) {
               layout = layout.map((_,idx)=> layout[(idx - (clockwise?1:-1) + r)%r]);
               overlay.innerHTML = '';
               tmpPaths.innerHTML = '';
               redrawTokens();
               isAnimating = false;
+              stage.classList.remove('tilt');
+              lensFlare(false);
+              sparkleBurst(CENTER, 18);
+              lastAction = {type:'rotate', dir: clockwise? 1 : -1};
             }
           }
         });
@@ -448,7 +549,31 @@
       // Keep the first element, reverse the rest
       layout = [layout[0], ...layout.slice(1).reverse()];
       redrawTokens();
-      gsap.fromTo(seatsG,{opacity:.3},{opacity:1,duration:.4});
+      gsap.fromTo(seatsG,{opacity:.35, scale:.98, transformOrigin:"450px 340px"},{opacity:1, scale:1, duration:.45, ease:'power1.out'});
+      sparkleBurst(CENTER, 16);
+      lensFlare(true); setTimeout(()=>lensFlare(false), 400);
+      lastAction = {type:'flip'};
+    }
+
+    // ===== Scenario visual arc =====
+    function drawScenarioArc(){
+      scenarioArcG.innerHTML = '';
+      const mode = scenarioSel.value; if(mode==='none') return;
+      const A = pairA.value, B = pairB.value; if(!A||!B||A===B) return;
+      const iA = layout.indexOf(A), iB = layout.indexOf(B);
+      if(iA===-1 || iB===-1) return;
+      const cA = seatCenterAbsolute(iA), cB = seatCenterAbsolute(iB);
+      const path = document.createElementNS('http://www.w3.org/2000/svg','path');
+      const d = `M ${cA.x-CENTER.x} ${cA.y-CENTER.y} Q 0 0 ${cB.x-CENTER.x} ${cB.y-CENTER.y}`;
+      path.setAttribute('d', d);
+      path.setAttribute('fill','none');
+      path.setAttribute('stroke', 'var(--focus)');
+      path.setAttribute('stroke-width', '2');
+      path.setAttribute('opacity','.7');
+      scenarioArcG.appendChild(path);
+
+      // Glowing pulse
+      gsap.fromTo(path,{opacity:.2},{opacity:.9, duration:1.2, yoyo:true, repeat:-1, ease:'sine.inOut'});
     }
 
     function validateScenario(){
@@ -466,6 +591,7 @@
       scenarioBadge.textContent = msg;
       scenarioBadge.style.color = ok? 'var(--good)':'var(--bad)';
       scenarioStatus.textContent = scenarioSel.options[scenarioSel.selectedIndex].text + (mode==='none'?'':' — '+msg);
+      drawScenarioArc();
       return ok;
     }
 
@@ -487,23 +613,111 @@
     function applyN(){ n = parseInt(nInput.value,10); if(r>n) { r = n; rInput.value = r; } tokens = letters.slice(0,n); refreshPairOptions(); reset(); }
     function applyR(){ r = parseInt(rInput.value,10); if(r>n){ r=n; rInput.value=r; } layout = tokens.slice(0,r); redrawTokens(); }
 
-    // Events
+    // ===== Sparkles =====
+    function sparkleBurst(pos, count=12){
+      for(let i=0;i<count;i++){
+        const s = document.createElementNS('http://www.w3.org/2000/svg','circle');
+        s.setAttribute('cx', pos.x + (Math.random()*10-5));
+        s.setAttribute('cy', pos.y + (Math.random()*10-5));
+        s.setAttribute('r', 2 + Math.random()*2);
+        s.setAttribute('fill','url(#spark)');
+        particlesG.appendChild(s);
+        const ang = Math.random()*Math.PI*2; const dist = 30 + Math.random()*40;
+        gsap.to(s,{ duration:.6+Math.random()*0.4, x: Math.cos(ang)*dist, y: Math.sin(ang)*dist, opacity:0, ease:'power2.out', onComplete:()=>s.remove()});
+      }
+    }
+
+    // ===== Lens flare =====
+    function lensFlare(on){
+      gsap.to(flareG,{opacity: on? 1:0, duration:.35, ease:'power2.out'});
+    }
+
+    // ===== Starfield & Nebula (canvas parallax) =====
+    const starCanvas = document.getElementById('starfield');
+    const nebCanvas = document.getElementById('nebula');
+    const sCtx = starCanvas.getContext('2d');
+    const nCtx = nebCanvas.getContext('2d');
+
+    function resizeCanvases(){
+      [starCanvas, nebCanvas].forEach(c=>{ c.width = window.innerWidth; c.height = Math.max(window.innerHeight*0.8, 600); });
+      drawStars(true); drawNebula();
+    }
+    window.addEventListener('resize', resizeCanvases);
+
+    let stars = [];
+    function drawStars(init=false){
+      if(init){
+        stars = Array.from({length: 180}, ()=>({ x: Math.random()*starCanvas.width, y: Math.random()*starCanvas.height, z: Math.random()*1 + .3, r: Math.random()*1.2 + .2 }));
+      }
+      sCtx.clearRect(0,0,starCanvas.width, starCanvas.height);
+      stars.forEach(st=>{
+        sCtx.globalAlpha = 0.4 + Math.sin((st.x+st.y)*0.002 + performance.now()*0.001)*0.08;
+        sCtx.beginPath(); sCtx.arc(st.x, st.y, st.r, 0, Math.PI*2); sCtx.fillStyle = '#9ecdfb'; sCtx.fill();
+        st.x -= st.z*0.08; if(st.x< -10) st.x = starCanvas.width+10;
+      });
+      requestAnimationFrame(()=>drawStars());
+    }
+
+    function drawNebula(){
+      nCtx.clearRect(0,0,nebCanvas.width, nebCanvas.height);
+      const grad = nCtx.createRadialGradient(nebCanvas.width*0.7, nebCanvas.height*0.2, 50, nebCanvas.width*0.5, nebCanvas.height*0.1, 600);
+      grad.addColorStop(0,'rgba(124,58,237,0.35)');
+      grad.addColorStop(1,'rgba(14,165,233,0)');
+      nCtx.fillStyle = grad; nCtx.fillRect(0,0,nebCanvas.width, nebCanvas.height);
+    }
+
+    // ===== Toast helper =====
+    function showToast(msg){ toast.textContent = msg; toast.classList.remove('hidden'); setTimeout(()=>toast.classList.add('hidden'), 1800); }
+
+    // ===== Theme =====
+    themeSel.addEventListener('change', ()=>{ document.body.setAttribute('data-theme', themeSel.value); sparkleBurst(CENTER, 20); });
+
+    // ===== Events =====
     nInput.addEventListener('input', applyN);
     rInput.addEventListener('input', applyR);
     randomBtn.addEventListener('click', randomize);
     resetBtn.addEventListener('click', reset);
-    rotateBtn.addEventListener('click', ()=> animateRotationRealistic(true));
+    rotateBtn.addEventListener('click', ()=> animateRotationRealistic(true, 0.9));
+    rotateCCWBtn.addEventListener('click', ()=> animateRotationRealistic(false, 0.9));
     flipBtn.addEventListener('click', flip);
     fixA.addEventListener('change', ()=>{ if(fixA.checked){ const ai = layout.indexOf('A'); if(ai>-1) rotateLayoutToIndex(ai,0); } updateTheory(); });
     cwSame.addEventListener('change', updateTheory);
     scenarioSel.addEventListener('change', ()=>{ validateScenario(); updateTheory(); });
     pairA.addEventListener('change', validateScenario);
     pairB.addEventListener('change', validateScenario);
+    introBtn.addEventListener('click', cinematicIntro);
+    replayLastBtn.addEventListener('click', replayLast);
 
-    // Initial draw
+    // ===== Intro sequence =====
+    function cinematicIntro(){
+      const tl = gsap.timeline();
+      gsap.set(tableG,{scale:0.85, transformOrigin:'450px 340px'});
+      tl.to('#lights',{opacity:0.65, duration:0.6, ease:'power2.out'}, 0)
+        .fromTo('#table',{opacity:0},{opacity:1, duration:0.6, ease:'power2.out'}, 0.1)
+        .fromTo(seatsG,{opacity:0, scale:.96},{opacity:1, scale:1, duration:0.7, ease:'power2.out'}, 0.3)
+        .fromTo(flareG,{opacity:0},{opacity:1, duration:.35, yoyo:true, repeat:1}, 0.25)
+        .to(tableG,{scale:1, duration:0.8, ease:'power2.inOut'}, 0.2)
+        .add(()=>sparkleBurst(CENTER, 20), 0.55);
+    }
+
+    function replayLast(){
+      if(!lastAction) { showToast('Nothing to replay yet.'); return; }
+      if(lastAction.type==='rotate') animateRotationRealistic(lastAction.dir===1, 0.6);
+      else if(lastAction.type==='flip') flip();
+      else if(lastAction.type==='swap'){
+        const {a,b} = lastAction;
+        if(a==null||b==null) return;
+        // visually pulse the two seats
+        [a,b].forEach(i=>{ const c = seatCenterAbsolute(i); sparkleBurst(c, 16); });
+      }
+    }
+
+    // ===== Initial draw
     ensureGradients();
     refreshPairOptions();
     redrawTokens();
+    resizeCanvases();
+    cinematicIntro();
   </script>
 </body>
 </html>
