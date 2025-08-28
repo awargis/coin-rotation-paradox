@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Circular Permutations — Interactive Visual Lab (Enhanced)</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+  <style>
+    :root{
+      --bg: #0b0f17;
+      --panel: #0f1726;
+      --ink: #e6eefb;
+      --muted: #9bb0d1;
+      --accent: #7dd3fc;
+      --accent2:#c084fc;
+      --good:#22c55e;
+      --bad:#ef4444;
+      --gold:#f59e0b;
+    }
+    html,body{height:100%;}
+    body{
+      margin:0; background: radial-gradient(1200px 800px at 70% -20%, #162033, #0b0f17);
+      color:var(--ink); font-family:Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      display:flex; flex-direction:column; gap:14px; align-items:center; justify-content:flex-start;
+    }
+    header{width:clamp(320px, 92vw, 1280px); padding:20px 0 0 0;}
+    h1{margin:0 0 8px 0; font-weight:800; letter-spacing:.3px;}
+    p.sub{margin:0; color:var(--muted)}
+    .wrap{width:clamp(320px, 92vw, 1280px); display:grid; grid-template-columns: 1.2fr .8fr; gap:18px;}
+    @media (max-width: 980px){.wrap{grid-template-columns:1fr;}}
+
+    .stage{background:linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.02));
+      border:1px solid rgba(255,255,255,.06); box-shadow:0 10px 40px rgba(0,0,0,.35);
+      border-radius:18px; position:relative; overflow:hidden; min-height:520px}
+    .controls{background:var(--panel); border:1px solid rgba(255,255,255,.06);
+      border-radius:18px; padding:16px; display:flex; flex-direction:column; gap:12px;}
+
+    .row{display:flex; gap:10px; align-items:center; flex-wrap:wrap}
+    .row label{font-size:14px; color:var(--muted)}
+    .pill{background:#0c1424; border:1px solid rgba(255,255,255,.08); padding:8px 10px; border-radius:12px; display:flex; gap:8px; align-items:center}
+    .btn{cursor:pointer; border:1px solid rgba(255,255,255,.12); background:#0c1424; color:var(--ink); padding:10px 12px; border-radius:12px; font-weight:600; transition:.2s transform, .2s background;}
+    .btn:hover{transform:translateY(-1px); background:#101a30}
+    .btn.ghost{background:transparent}
+    .badge{padding:3px 8px; border-radius:999px; font-size:12px; border:1px solid rgba(255,255,255,.2)}
+
+    .legend{display:flex; gap:8px; align-items:center}
+    .dot{width:10px; height:10px; border-radius:50%}
+
+    .toast{position:absolute; top:16px; left:16px; backdrop-filter: blur(6px);
+      background:rgba(15,23,38,.68); border:1px solid rgba(255,255,255,.12); border-radius:12px; padding:10px 12px; font-size:14px;
+      opacity:1; transition:.3s opacity, .3s transform; pointer-events:none;}
+    .toast.hidden{opacity:0; transform:translateY(-10px)}
+
+    .callout{position:absolute; right:16px; bottom:16px; max-width:340px; background:rgba(15,23,38,.82); border:1px solid rgba(255,255,255,.12); border-radius:14px; padding:12px 14px; font-size:14px;}
+    .callout b{color:#fff}
+
+    .formula{font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; background:#0b1324; padding:4px 8px; border-radius:8px; border:1px solid rgba(255,255,255,.08)}
+
+    .status{font-weight:700}
+    .status.good{color:var(--good)}
+    .status.bad{color:var(--bad)}
+
+    /* Seat highlight class for drag-and-drop */
+    .seat-highlight { stroke: var(--gold) !important; stroke-width:3px !important; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>🎛️ Circular Permutations — Interactive Visual Lab</h1>
+    <p class="sub">Drag people around a round table, fix a seat, rotate realistically, flip, and see when arrangements are identical. Improved rotation and drag behavior.</p>
+  </header>
+
+  <div class="wrap">
+    <div class="stage">
+      <div class="toast" id="toast">Tip: Drag tokens to swap them.</div>
+      <svg id="svg" viewBox="0 0 900 700" width="100%" height="100%">
+        <defs>
+          <radialGradient id="glow" cx="50%" cy="45%" r="60%">
+            <stop offset="0%" stop-color="#16325c" stop-opacity=".8"/>
+            <stop offset="100%" stop-color="#0b0f17" stop-opacity="0"/>
+          </radialGradient>
+          <filter id="softShadow" x="-50%" y="-50%" width="200%" height="200%">
+            <feDropShadow dx="0" dy="6" stdDeviation="8" flood-color="#000" flood-opacity=".5"/>
+          </filter>
+        </defs>
+        <rect x="0" y="0" width="900" height="700" fill="url(#glow)"/>
+
+        <g id="tableGroup" transform="translate(450,340)">
+          <circle cx="0" cy="0" r="220" fill="#0c1424" stroke="rgba(255,255,255,.14)" stroke-width="2"/>
+          <g id="arrows"></g>
+          <g id="seats"></g>
+        </g>
+
+        <g id="overlayTokens"></g>
+        <g id="tmpPaths" visibility="hidden"></g>
+      </svg>
+      <div class="callout" id="callout">
+        <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap">
+          <div class="legend"><div class="dot" style="background:var(--accent)"></div><span>Clockwise</span></div>
+          <div class="legend"><div class="dot" style="background:var(--accent2)"></div><span>Anticlockwise</span></div>
+          <span class="badge" id="equivBadge">CW ≠ ACW</span>
+        </div>
+        <div style="margin-top:8px; line-height:1.5">
+          <div><b>Active items r = <span id="rVal">6</span></b> out of n = <span id="nVal">6</span></div>
+          <div>Formula: <span class="formula" id="formulaText">(nPr)/r</span></div>
+          <div>Count (theoretical): <b id="theoryCount">(nPr)/r</b></div>
+          <div>Arrangement (current): <span id="arrStr">A-B-C-D-E-F</span></div>
+          <div>Scenario: <span id="scenarioStatus" class="status">None</span></div>
+        </div>
+      </div>
+    </div>
+
+    <aside class="controls">
+      <div class="row">
+        <label>People (n):</label>
+        <input id="nInput" type="range" min="3" max="10" value="6"/>
+        <span class="badge" id="nOut">6</span>
+      </div>
+      <div class="row">
+        <label>Active seats (r):</label>
+        <input id="rInput" type="range" min="3" max="10" value="6"/>
+        <span class="badge" id="rOut">6</span>
+      </div>
+      <div class="row">
+        <button class="btn" id="randomBtn">Randomize</button>
+        <button class="btn ghost" id="resetBtn">Reset</button>
+        <button class="btn" id="rotateBtn">Show rotational equivalence</button>
+        <button class="btn" id="flipBtn">Flip (mirror)</button>
+      </div>
+      <div class="row">
+        <label><input type="checkbox" id="fixA"/> Fix 'A' at 12 o'clock</label>
+        <label><input type="checkbox" id="cwSame"/> Treat CW and ACW as same</label>
+      </div>
+
+      <hr style="border-color:rgba(255,255,255,.08); width:100%">
+
+      <div class="row" style="align-items:flex-start; flex-direction:column; gap:10px">
+        <div style="font-weight:700">Scenarios</div>
+        <div class="row">
+          <select id="scenarioSel" class="pill">
+            <option value="none">None</option>
+            <option value="together">Make two people sit together</option>
+            <option value="apart">Force two people to sit apart</option>
+          </select>
+          <div class="pill">
+            <label>Pair:</label>
+            <select id="pairA"></select>
+            <span>—</span>
+            <select id="pairB"></select>
+          </div>
+          <span class="badge">Status: <span id="scenarioBadge">OK</span></span>
+        </div>
+        <div style="font-size:13px; color:var(--muted)">Status turns <span style="color:var(--good); font-weight:700">green</span> when the current arrangement satisfies the scenario.</div>
+      </div>
+
+      <hr style="border-color:rgba(255,255,255,.08); width:100%">
+
+      <div style="font-size:13px; color:var(--muted); line-height:1.6">
+        <b>How to use:</b> Drag tokens to swap them. Use <i>Fix A</i> to anchor 'A'. Toggle <i>CW=ACW</i> to move from <span class="formula">(nPr)/r</span> to <span class="formula">(nPr)/(2r)</span>. The rotation animation moves people realistically to adjacent seats while they stay upright.
+      </div>
+    </aside>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/MotionPathPlugin.min.js"></script>
+  <script>
+    gsap.registerPlugin(MotionPathPlugin);
+
+    // ====== Utilities ======
+    const byId = id => document.getElementById(id);
+    const svg = byId('svg');
+    const seatsG = byId('seats');
+    const tableG = byId('tableGroup');
+    const arrowsG = byId('arrows');
+    const overlay = byId('overlayTokens');
+    const tmpPaths = byId('tmpPaths');
+    const toast = byId('toast');
+
+    const nInput = byId('nInput'), rInput = byId('rInput');
+    const nOut = byId('nOut'), rOut = byId('rOut');
+    const nValSpan = byId('nVal'), rValSpan = byId('rVal');
+    const randomBtn = byId('randomBtn'), resetBtn = byId('resetBtn');
+    const rotateBtn = byId('rotateBtn'), flipBtn = byId('flipBtn');
+    const fixA = byId('fixA'), cwSame = byId('cwSame');
+    const formulaText = byId('formulaText'), theoryCount = byId('theoryCount');
+    const arrStr = byId('arrStr'), equivBadge = byId('equivBadge');
+    const scenarioSel = byId('scenarioSel'), pairA = byId('pairA'), pairB = byId('pairB');
+    const scenarioBadge = byId('scenarioBadge'), scenarioStatus = byId('scenarioStatus');
+
+    const letters = 'ABCDEFGHIJ'.split('');
+    let n = parseInt(nInput.value,10);
+    let r = parseInt(rInput.value,10);
+    let tokens = letters.slice(0,n);
+    let layout = letters.slice(0,r);
+
+    const RADIUS = 260;
+    const TABLE_R = 220;
+    const CENTER = {x:450, y:340};
+
+    function factorial(k){ return k<=1 ? 1 : k*factorial(k-1); }
+    function nPr(n_,r_){ return n_ < r_ ? 0 : factorial(n_) / factorial(n_-r_); }
+
+    function updateTheory(){
+      nOut.textContent = n; rOut.textContent = r; nValSpan.textContent = n; rValSpan.textContent = r;
+      const cwEqual = cwSame.checked;
+      equivBadge.textContent = cwEqual ? 'CW = ACW' : 'CW ≠ ACW';
+      const numerator = `P(${n},${r})`;
+      const denom = cwEqual ? `2*${r}` : `${r}`;
+      formulaText.textContent = `${numerator} / ${denom}`;
+      const count = nPr(n,r) / (cwEqual? (2*r) : r);
+      theoryCount.textContent = isFinite(count) && n >= r ? count.toLocaleString() : '—';
+      arrStr.textContent = layout.join('-');
+      scenarioStatus.textContent = scenarioSel.options[scenarioSel.selectedIndex].text;
+    }
+
+    let seatNodes = [];
+    function drawSeats(){
+      seatsG.innerHTML = '';
+      seatNodes = [];
+      for(let i=0;i<r;i++){
+        const pRel = {x: Math.cos((-Math.PI/2) + i*(2*Math.PI/r)) * RADIUS, y: Math.sin((-Math.PI/2) + i*(2*Math.PI/r)) * RADIUS };
+        const g = document.createElementNS('http://www.w3.org/2000/svg','g');
+        g.setAttribute('transform',`translate(${pRel.x},${pRel.y})`);
+        g.dataset.index = i;
+
+        const chair = document.createElementNS('http://www.w3.org/2000/svg','circle');
+        chair.setAttribute('r', 26);
+        chair.setAttribute('fill', 'rgba(125,211,252,.06)');
+        chair.setAttribute('stroke', 'rgba(255,255,255,.18)');
+        chair.setAttribute('stroke-width','2');
+        g.appendChild(chair);
+
+        const token = makeToken(layout[i] || '?');
+        g.appendChild(token);
+        seatNodes.push({g, chair, token});
+        seatsG.appendChild(g);
+      }
+    }
+
+    function makeToken(letter){
+      const token = document.createElementNS('http://www.w3.org/2000/svg','g');
+      token.classList.add('token');
+      token.dataset.letter = letter;
+      token.style.cursor = 'grab';
+      token.setAttribute('filter','url(#softShadow)');
+
+      const outer = document.createElementNS('http://www.w3.org/2000/svg','circle');
+      outer.setAttribute('r', 20);
+      outer.setAttribute('fill', 'url(#grad'+letter+')');
+      outer.setAttribute('stroke','rgba(255,255,255,.25)');
+      outer.setAttribute('stroke-width','2');
+
+      const txt = document.createElementNS('http://www.w3.org/2000/svg','text');
+      txt.textContent = letter;
+      txt.setAttribute('text-anchor','middle');
+      txt.setAttribute('dominant-baseline','central');
+      txt.setAttribute('font-size','14');
+      txt.setAttribute('font-weight','800');
+      txt.setAttribute('fill','#fff');
+
+      token.appendChild(outer); token.appendChild(txt);
+      token.addEventListener('pointerdown', onDragStart);
+      return token;
+    }
+
+    function ensureGradients(){
+      const defs = svg.querySelector('defs');
+      const palette = ['#60a5fa','#34d399','#f59e0b','#ef4444','#c084fc','#22d3ee','#f472b6','#a3e635','#f97316','#e879f9'];
+      letters.forEach((L,i)=>{
+        if(svg.querySelector('#grad'+L)) return;
+        const lg = document.createElementNS('http://www.w3.org/2000/svg','linearGradient');
+        lg.id = 'grad'+L;
+        const s1 = document.createElementNS('http://www.w3.org/2000/svg','stop'); s1.setAttribute('offset','0%'); s1.setAttribute('stop-color', palette[i%palette.length]);
+        const s2 = document.createElementNS('http://www.w3.org/2000/svg','stop'); s2.setAttribute('offset','100%'); s2.setAttribute('stop-color', '#0ea5e9');
+        lg.appendChild(s1); lg.appendChild(s2); defs.appendChild(lg);
+      });
+    }
+
+    // --- ENHANCED Drag & Drop ---
+    let originSeatIndex = null;
+    let draggedTokenClone = null;
+    let lastHighlightedSeat = -1;
+
+    function getSvgPoint(clientX, clientY){
+      const pt = svg.createSVGPoint(); pt.x = clientX; pt.y = clientY; return pt.matrixTransform(svg.getScreenCTM().inverse());
+    }
+
+    function seatCenterAbsolute(index){
+      const ang = (-Math.PI/2) + index * (2*Math.PI/r);
+      return {x: CENTER.x + Math.cos(ang) * RADIUS, y: CENTER.y + Math.sin(ang) * RADIUS};
+    }
+
+    function nearestSeat(svgX, svgY){
+      let best=-1, bestD=Infinity;
+      for (let i = 0; i < r; i++) {
+          const c = seatCenterAbsolute(i);
+          const d = Math.hypot(c.x - svgX, c.y - svgY);
+          if(d<bestD){ bestD=d; best=i; }
+      }
+      return best;
+    }
+
+    function onDragStart(e){
+      e.preventDefault();
+      const tokenGroup = e.currentTarget;
+      const letter = tokenGroup.dataset.letter;
+
+      if(fixA.checked && letter === 'A') {
+        toast.textContent = "Cannot move 'A' while it's fixed.";
+        toast.classList.remove('hidden');
+        setTimeout(()=>toast.classList.add('hidden'), 2000);
+        return;
+      }
+
+      originSeatIndex = layout.indexOf(letter);
+      if (originSeatIndex === -1) return;
+
+      // Create a visual clone of the token for dragging
+      draggedTokenClone = tokenGroup.cloneNode(true);
+      overlay.appendChild(draggedTokenClone);
+
+      // Hide the original token
+      gsap.to(seatNodes[originSeatIndex].token, { opacity: 0.3, duration: 0.2 });
+
+      // Initial position of the clone
+      const p = getSvgPoint(e.clientX, e.clientY);
+      gsap.set(draggedTokenClone, { x: p.x, y: p.y, scale: 1.1, cursor: 'grabbing' });
+
+      toast.textContent = `Dragging ${letter}... Drop on a seat to swap.`;
+      toast.classList.remove('hidden');
+
+      svg.addEventListener('pointermove', onDragMove);
+      svg.addEventListener('pointerup', onDragEnd, {once:true});
+    }
+
+    function onDragMove(e){
+      const p = getSvgPoint(e.clientX, e.clientY);
+      // Move the clone with the cursor
+      gsap.to(draggedTokenClone, { x: p.x, y: p.y, duration: 0.1 });
+
+      // Highlight the nearest seat
+      const targetSeatIndex = nearestSeat(p.x, p.y);
+      if (targetSeatIndex !== lastHighlightedSeat) {
+        if (lastHighlightedSeat !== -1) {
+          seatNodes[lastHighlightedSeat].chair.classList.remove('seat-highlight');
+        }
+        if (targetSeatIndex !== -1 && targetSeatIndex !== originSeatIndex) {
+          seatNodes[targetSeatIndex].chair.classList.add('seat-highlight');
+        }
+        lastHighlightedSeat = targetSeatIndex;
+      }
+    }
+
+    function onDragEnd(e){
+      svg.removeEventListener('pointermove', onDragMove);
+      toast.classList.add('hidden');
+
+      const p = getSvgPoint(e.clientX, e.clientY);
+      const targetSeatIndex = nearestSeat(p.x, p.y);
+
+      // Clean up highlights and the clone
+      if (lastHighlightedSeat !== -1) seatNodes[lastHighlightedSeat].chair.classList.remove('seat-highlight');
+      draggedTokenClone.remove();
+      draggedTokenClone = null;
+
+      // If dropped on a valid, different seat, perform the swap
+      if(targetSeatIndex !== -1 && originSeatIndex !== -1 && targetSeatIndex !== originSeatIndex){
+        const tmp = layout[targetSeatIndex];
+        layout[targetSeatIndex] = layout[originSeatIndex];
+        layout[originSeatIndex] = tmp;
+      }
+      
+      // Always redraw to restore original token opacity and reflect any changes
+      redrawTokens();
+      
+      originSeatIndex = null;
+      lastHighlightedSeat = -1;
+    }
+
+    function redrawTokens(){
+      drawSeats(); updateTheory(); validateScenario();
+    }
+
+    function randomize(){
+      layout = tokens.slice(0,r).sort(()=>Math.random()-0.5);
+      if(fixA.checked){
+        const ai = layout.indexOf('A'); if(ai>-1) rotateLayoutToIndex(ai,0);
+      }
+      redrawTokens();
+    }
+    function reset(){
+      tokens = letters.slice(0,n);
+      layout = tokens.slice(0,r);
+      redrawTokens();
+    }
+
+    function rotateLayoutToIndex(from, to){
+      const shift = (r + to - from) % r;
+      layout = layout.map((_,i)=> layout[(i - shift + r)%r]);
+      redrawTokens();
+    }
+
+    let isAnimating = false;
+    function animateRotationRealistic(clockwise=true){
+      if(isAnimating || r < 2) return;
+      isAnimating = true;
+
+      const starts = seatNodes.map((s,i)=> seatCenterAbsolute(i));
+      const destIdx = i => (i + (clockwise? 1 : -1) + r) % r;
+      const dests = seatNodes.map((s,i)=> seatCenterAbsolute(destIdx(i)));
+
+      tmpPaths.innerHTML = '';
+      overlay.innerHTML = '';
+
+      const tokensToAnimate = seatNodes.map(s => s.token);
+      seatsG.innerHTML = ''; // Clear original tokens to avoid flicker
+
+      tokensToAnimate.forEach((token, i)=>{
+        overlay.appendChild(token);
+        gsap.set(token, { transformOrigin: 'center center', x: starts[i].x, y: starts[i].y });
+        
+        const path = document.createElementNS('http://www.w3.org/2000/svg','path');
+        const sweep = clockwise ? 1 : 0;
+        path.setAttribute('d', `M ${starts[i].x} ${starts[i].y} A ${RADIUS} ${RADIUS} 0 0 ${sweep} ${dests[i].x} ${dests[i].y}`);
+        tmpPaths.appendChild(path);
+
+        gsap.to(token, {
+          duration: 0.9,
+          ease: 'power2.inOut',
+          motionPath: { path: path, align: path, autoRotate: false, alignOrigin: [0.5, 0.5] },
+          onComplete: ()=>{
+            if (i === tokensToAnimate.length - 1) { // Only run cleanup on the last animation
+              layout = layout.map((_,idx)=> layout[(idx - (clockwise?1:-1) + r)%r]);
+              overlay.innerHTML = '';
+              tmpPaths.innerHTML = '';
+              redrawTokens();
+              isAnimating = false;
+            }
+          }
+        });
+      });
+    }
+
+    function flip(){
+      if (isAnimating) return;
+      // Keep the first element, reverse the rest
+      layout = [layout[0], ...layout.slice(1).reverse()];
+      redrawTokens();
+      gsap.fromTo(seatsG,{opacity:.3},{opacity:1,duration:.4});
+    }
+
+    function validateScenario(){
+      const mode = scenarioSel.value; const A = pairA.value; const B = pairB.value;
+      let ok = true; let msg = 'None';
+      if(mode==='together' || mode==='apart'){
+        const iA = layout.indexOf(A), iB = layout.indexOf(B);
+        if(iA===-1 || iB===-1){ ok=false; msg = 'Pair not seated';}
+        else{
+          const neighbor = (Math.abs(iA-iB)===1) || (Math.min(iA,iB)===0 && Math.max(iA,iB)===r-1);
+          ok = mode==='together' ? neighbor : !neighbor;
+          msg = mode==='together' ? (neighbor? 'Pair together ✓':'Not adjacent ✗') : (!neighbor? 'Separated ✓':'Adjacent ✗');
+        }
+      }
+      scenarioBadge.textContent = msg;
+      scenarioBadge.style.color = ok? 'var(--good)':'var(--bad)';
+      scenarioStatus.textContent = scenarioSel.options[scenarioSel.selectedIndex].text + (mode==='none'?'':' — '+msg);
+      return ok;
+    }
+
+    function refreshPairOptions(){
+      const currentA = pairA.value;
+      const currentB = pairB.value;
+      pairA.innerHTML = '';
+      pairB.innerHTML = '';
+      tokens.forEach(t=>{
+        const o1 = new Option(t, t);
+        const o2 = new Option(t, t);
+        pairA.appendChild(o1);
+        pairB.appendChild(o2);
+      });
+      pairA.value = tokens.includes(currentA) ? currentA : 'A';
+      pairB.value = tokens.includes(currentB) ? currentB : (tokens[1] || tokens[0]);
+    }
+
+    function applyN(){ n = parseInt(nInput.value,10); if(r>n) { r = n; rInput.value = r; } tokens = letters.slice(0,n); refreshPairOptions(); reset(); }
+    function applyR(){ r = parseInt(rInput.value,10); if(r>n){ r=n; rInput.value=r; } layout = tokens.slice(0,r); redrawTokens(); }
+
+    // Events
+    nInput.addEventListener('input', applyN);
+    rInput.addEventListener('input', applyR);
+    randomBtn.addEventListener('click', randomize);
+    resetBtn.addEventListener('click', reset);
+    rotateBtn.addEventListener('click', ()=> animateRotationRealistic(true));
+    flipBtn.addEventListener('click', flip);
+    fixA.addEventListener('change', ()=>{ if(fixA.checked){ const ai = layout.indexOf('A'); if(ai>-1) rotateLayoutToIndex(ai,0); } updateTheory(); });
+    cwSame.addEventListener('change', updateTheory);
+    scenarioSel.addEventListener('change', ()=>{ validateScenario(); updateTheory(); });
+    pairA.addEventListener('change', validateScenario);
+    pairB.addEventListener('change', validateScenario);
+
+    // Initial draw
+    ensureGradients();
+    refreshPairOptions();
+    redrawTokens();
+  </script>
+</body>
+</html>
