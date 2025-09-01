@@ -1,0 +1,989 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cinematic Polygon Explorer</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Exo+2:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Exo 2', 'Arial', sans-serif;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+            color: white;
+            min-height: 100vh;
+            overflow-x: hidden;
+            position: relative;
+        }
+        
+        /* Particle background */
+        #particles-js {
+            position: fixed;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+            position: relative;
+            z-index: 1;
+            width: 100%;
+        }
+        
+        header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 20px;
+            background: rgba(0, 0, 0, 0.4);
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        header::before {
+            content: '';
+            position: absolute;
+            top: -10px;
+            left: -10px;
+            right: -10px;
+            bottom: -10px;
+            z-index: -1;
+            background: linear-gradient(45deg, #ff00cc, #3333ff, #00ccff, #ff00cc);
+            background-size: 400% 400%;
+            animation: gradientShift 15s ease infinite;
+            filter: blur(15px);
+            opacity: 0.7;
+        }
+        
+        h1 {
+            font-size: clamp(2rem, 5vw, 3.5rem);
+            margin-bottom: 10px;
+            text-shadow: 0 0 20px rgba(0, 200, 255, 0.8);
+            font-weight: 700;
+            letter-spacing: 2px;
+            background: linear-gradient(to right, #ff00cc, #3333ff, #00ccff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            animation: glow 2s ease-in-out infinite alternate;
+            padding: 0 10px;
+        }
+        
+        .subtitle {
+            font-size: clamp(1rem, 2.5vw, 1.4rem);
+            opacity: 0.9;
+            margin-top: 15px;
+            text-shadow: 0 0 10px rgba(255, 255, 255, 0.6);
+            padding: 0 10px;
+        }
+        
+        .content {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+        
+        .canvas-container {
+            flex: 1;
+            min-width: 300px;
+            background: rgba(0, 0, 0, 0.4);
+            border-radius: 20px;
+            padding: 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .canvas-container::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 5px;
+            background: linear-gradient(to right, #ff00cc, #3333ff, #00ccff);
+            box-shadow: 0 0 20px rgba(0, 200, 255, 0.8);
+        }
+        
+        .canvas-wrapper {
+            position: relative;
+            width: 100%;
+            flex: 1;
+            min-height: 300px;
+        }
+        
+        #polygonCanvas {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 15px;
+            margin-bottom: 20px;
+            cursor: pointer;
+            box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.5);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            width: 100%;
+            height: 100%;
+            display: block;
+            transition: transform 0.5s ease;
+        }
+        
+        #polygonCanvas:hover {
+            transform: scale(1.01);
+        }
+        
+        .controls {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            width: 100%;
+        }
+        
+        .slider-container {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            background: rgba(0, 0, 0, 0.3);
+            padding: 15px;
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            flex-wrap: wrap;
+        }
+        
+        input[type="range"] {
+            flex: 1;
+            min-width: 150px;
+            -webkit-appearance: none;
+            height: 12px;
+            border-radius: 10px;
+            background: linear-gradient(to right, #ff00cc, #3333ff);
+            outline: none;
+            box-shadow: 0 0 10px rgba(100, 100, 255, 0.5);
+        }
+        
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 25px;
+            height: 25px;
+            border-radius: 50%;
+            background: #00ccff;
+            cursor: pointer;
+            box-shadow: 0 0 15px rgba(0, 200, 255, 0.9);
+            border: 2px solid white;
+            transition: all 0.3s ease;
+        }
+        
+        input[type="range"]::-webkit-slider-thumb:hover {
+            transform: scale(1.2);
+            box-shadow: 0 0 20px rgba(0, 200, 255, 1);
+        }
+        
+        .buttons {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+        
+        button {
+            padding: 15px;
+            border: none;
+            border-radius: 10px;
+            background: linear-gradient(135deg, #6a11cb, #2575fc);
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+            position: relative;
+            overflow: hidden;
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+            letter-spacing: 1px;
+            font-size: clamp(0.8rem, 1.5vw, 1rem);
+        }
+        
+        button::before {
+            content: '';
+            position: absolute;
+            top: -10px;
+            left: -10px;
+            right: -10px;
+            bottom: -10px;
+            background: linear-gradient(45deg, #ff00cc, #3333ff, #00ccff, #ff00cc);
+            background-size: 400% 400%;
+            animation: gradientShift 15s ease infinite;
+            z-index: -1;
+            filter: blur(10px);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        
+        button:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.4);
+        }
+        
+        button:hover::before {
+            opacity: 0.7;
+        }
+        
+        button.active {
+            background: linear-gradient(135deg, #fdbb2d, #b21f1f);
+            box-shadow: 0 0 20px rgba(253, 187, 45, 0.7);
+        }
+        
+        button i {
+            margin-right: 8px;
+        }
+        
+        .explanation {
+            flex: 1;
+            min-width: 300px;
+            background: rgba(0, 0, 0, 0.4);
+            border-radius: 20px;
+            padding: 25px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .explanation::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 5px;
+            background: linear-gradient(to right, #00ccff, #ff00cc);
+            box-shadow: 0 0 20px rgba(255, 0, 204, 0.8);
+        }
+        
+        .explanation h2 {
+            margin-bottom: 20px;
+            text-align: center;
+            color: #00ccff;
+            font-size: clamp(1.5rem, 3vw, 2rem);
+            text-shadow: 0 0 15px rgba(0, 200, 255, 0.8);
+            letter-spacing: 1px;
+        }
+        
+        .formula {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 15px;
+            border-radius: 15px;
+            margin-bottom: 15px;
+            font-family: 'Courier New', monospace;
+            font-size: clamp(0.9rem, 2vw, 1.2rem);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .formula:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
+        }
+        
+        .description {
+            line-height: 1.6;
+            margin-bottom: 20px;
+            font-size: clamp(0.9rem, 2vw, 1.1rem);
+            text-shadow: 0 0 10px rgba(255, 255, 255, 0.3);
+        }
+        
+        .counter {
+            display: flex;
+            justify-content: space-around;
+            margin-top: 25px;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+        
+        .counter-item {
+            text-align: center;
+            padding: 15px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 15px;
+            min-width: 120px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+            transition: all 0.3s ease;
+            flex: 1;
+        }
+        
+        .counter-item:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.4);
+        }
+        
+        .counter-value {
+            font-size: clamp(1.5rem, 4vw, 2.2rem);
+            font-weight: bold;
+            color: #00ccff;
+            text-shadow: 0 0 15px rgba(0, 200, 255, 0.8);
+            margin-bottom: 5px;
+        }
+        
+        .counter-label {
+            font-size: clamp(0.8rem, 1.5vw, 1rem);
+            opacity: 0.9;
+            letter-spacing: 1px;
+        }
+        
+        .highlight {
+            color: #00ccff;
+            font-weight: bold;
+            text-shadow: 0 0 10px rgba(0, 200, 255, 0.6);
+        }
+        
+        @media (max-width: 768px) {
+            .container {
+                padding: 15px;
+            }
+            
+            .content {
+                flex-direction: column;
+                gap: 20px;
+            }
+            
+            header {
+                padding: 15px;
+                margin-bottom: 20px;
+            }
+            
+            .canvas-container, .explanation {
+                padding: 15px;
+            }
+            
+            .buttons {
+                grid-template-columns: 1fr 1fr;
+            }
+            
+            .slider-container {
+                padding: 10px;
+            }
+            
+            .counter-item {
+                min-width: 100px;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .buttons {
+                grid-template-columns: 1fr;
+            }
+            
+            .slider-container {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            
+            input[type="range"] {
+                width: 100%;
+            }
+        }
+        
+        /* Animations */
+        @keyframes glow {
+            from {
+                text-shadow: 0 0 10px rgba(0, 200, 255, 0.8);
+            }
+            to {
+                text-shadow: 0 0 20px rgba(0, 200, 255, 1), 0 0 30px rgba(0, 200, 255, 0.7);
+            }
+        }
+        
+        @keyframes gradientShift {
+            0% {
+                background-position: 0% 50%;
+            }
+            50% {
+                background-position: 100% 50%;
+            }
+            100% {
+                background-position: 0% 50%;
+            }
+        }
+        
+        @keyframes highlight {
+            0% { 
+                background-color: rgba(0, 204, 255, 0); 
+                box-shadow: 0 0 0 rgba(0, 204, 255, 0);
+            }
+            50% { 
+                background-color: rgba(0, 204, 255, 0.3); 
+                box-shadow: 0 0 30px rgba(0, 204, 255, 0.7);
+            }
+            100% { 
+                background-color: rgba(0, 204, 255, 0); 
+                box-shadow: 0 0 0 rgba(0, 204, 255, 0);
+            }
+        }
+        
+        .highlight-animation {
+            animation: highlight 2s ease;
+        }
+        
+        /* Floating animation for elements */
+        .floating {
+            animation: floating 3s ease-in-out infinite;
+        }
+        
+        @keyframes floating {
+            0% { transform: translate(0, 0px); }
+            50% { transform: translate(0, -10px); }
+            100% { transform: translate(0, 0px); }
+        }
+        
+        /* Holographic effect for canvas */
+        .holographic {
+            position: relative;
+        }
+        
+        .holographic::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(transparent 70%, rgba(0, 204, 255, 0.1) 80%, transparent 90%);
+            background-size: 100% 10px;
+            animation: scan 5s linear infinite;
+            pointer-events: none;
+            z-index: 2;
+            border-radius: 15px;
+        }
+        
+        @keyframes scan {
+            0% { background-position: 0 0; }
+            100% { background-position: 0 100%; }
+        }
+        
+        /* Sci-fi pulse effect */
+        .pulse {
+            display: block;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0% {
+                box-shadow: 0 0 0 0 rgba(0, 204, 255, 0.7);
+            }
+            70% {
+                box-shadow: 0 0 0 15px rgba(0, 204, 255, 0);
+            }
+            100% {
+                box-shadow: 0 0 0 0 rgba(0, 204, 255, 0);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="particles-js"></div>
+    
+    <div class="container">
+        <header class="floating">
+            <h1>POLYGON GEOMETRY EXPLORER</h1>
+            <p class="subtitle">Interactive Visualization of Diagonals and Triangles in Polygons</p>
+        </header>
+        
+        <div class="content">
+            <div class="canvas-container holographic">
+                <div class="canvas-wrapper">
+                    <canvas id="polygonCanvas"></canvas>
+                </div>
+                
+                <div class="controls">
+                    <div class="slider-container">
+                        <label for="sidesSlider"><i class="fas fa-shapes"></i> Number of sides (n):</label>
+                        <input type="range" id="sidesSlider" min="4" max="15" value="6">
+                        <span id="sidesValue">6</span>
+                    </div>
+                    
+                    <div class="buttons">
+                        <button id="showVertices" class="active"><i class="fas fa-dot-circle"></i> Vertices</button>
+                        <button id="showDiagonals"><i class="fas fa-project-diagram"></i> Diagonals</button>
+                        <button id="showTriangles"><i class="fas fa-play"></i> All Triangles</button>
+                        <button id="showTwoSides"><i class="fas fa-angle-double-right"></i> 2 Common Sides</button>
+                        <button id="showOneSide"><i class="fas fa-angle-right"></i> 1 Common Side</button>
+                        <button id="showNoSides"><i class="fas fa-ban"></i> No Common Sides</button>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="explanation floating">
+                <h2>MATHEMATICAL FORMULAS</h2>
+                
+                <div id="formulaA" class="formula">
+                    (a) Number of diagonals = <span class="highlight">ⁿC₂ - n</span>
+                </div>
+                
+                <div id="formulaB" class="formula">
+                    (b) Number of triangles formed by vertices = <span class="highlight">ⁿC₃</span>
+                </div>
+                
+                <div id="formulaC" class="formula">
+                    (c) Triangles with 2 common sides = <span class="highlight">n</span>
+                </div>
+                
+                <div id="formulaD" class="formula">
+                    (d) Triangles with 1 common side = <span class="highlight">n × ⁿ⁻⁴C₁</span>
+                </div>
+                
+                <div id="formulaE" class="formula">
+                    (e) Triangles with no common sides = <span class="highlight">ⁿC₃ - n - n×ⁿ⁻⁴C₁</span>
+                </div>
+                
+                <div class="description">
+                    <p>For a polygon with <span class="highlight" id="currentN">6</span> sides:</p>
+                    <p>Select different visualization options to see how these formulas work in practice. Drag the slider to change the number of sides.</p>
+                </div>
+                
+                <div class="counter">
+                    <div class="counter-item">
+                        <div class="counter-value" id="diagonalsCount">9</div>
+                        <div class="counter-label">Diagonals</div>
+                    </div>
+                    <div class="counter-item">
+                        <div class="counter-value" id="trianglesCount">20</div>
+                        <div class="counter-label">Total Triangles</div>
+                    </div>
+                    <div class="counter-item">
+                        <div class="counter-value" id="twoSidesCount">6</div>
+                        <div class="counter-label">2 Common Sides</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Particle.js CDN -->
+    <script src="https://cdn.jsdelivr.net/particles.js/2.0.0/particles.min.js"></script>
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Initialize particles.js
+            particlesJS('particles-js', {
+                particles: {
+                    number: { value: 100, density: { enable: true, value_area: 800 } },
+                    color: { value: "#ffffff" },
+                    shape: { type: "circle" },
+                    opacity: { value: 0.5, random: true },
+                    size: { value: 3, random: true },
+                    line_linked: {
+                        enable: true,
+                        distance: 150,
+                        color: "#ffffff",
+                        opacity: 0.4,
+                        width: 1
+                    },
+                    move: {
+                        enable: true,
+                        speed: 2,
+                        direction: "none",
+                        random: true,
+                        out_mode: "out",
+                        bounce: false
+                    }
+                },
+                interactivity: {
+                    detect_on: "canvas",
+                    events: {
+                        onhover: { enable: true, mode: "repulse" },
+                        onclick: { enable: true, mode: "push" },
+                        resize: true
+                    }
+                },
+                retina_detect: true
+            });
+            
+            const canvas = document.getElementById('polygonCanvas');
+            const ctx = canvas.getContext('2d');
+            const sidesSlider = document.getElementById('sidesSlider');
+            const sidesValue = document.getElementById('sidesValue');
+            const currentN = document.getElementById('currentN');
+            const diagonalsCount = document.getElementById('diagonalsCount');
+            const trianglesCount = document.getElementById('trianglesCount');
+            const twoSidesCount = document.getElementById('twoSidesCount');
+            
+            // Formula elements
+            const formulaA = document.getElementById('formulaA');
+            const formulaB = document.getElementById('formulaB');
+            const formulaC = document.getElementById('formulaC');
+            const formulaD = document.getElementById('formulaD');
+            const formulaE = document.getElementById('formulaE');
+            
+            // Button elements
+            const showVertices = document.getElementById('showVertices');
+            const showDiagonals = document.getElementById('showDiagonals');
+            const showTriangles = document.getElementById('showTriangles');
+            const showTwoSides = document.getElementById('showTwoSides');
+            const showOneSide = document.getElementById('showOneSide');
+            const showNoSides = document.getElementById('showNoSides');
+            
+            let n = parseInt(sidesSlider.value);
+            let vertices = [];
+            let currentMode = 'vertices';
+            let animationFrame;
+            
+            // Set up responsive canvas
+            function setupCanvas() {
+                const canvasWrapper = document.querySelector('.canvas-wrapper');
+                const width = canvasWrapper.clientWidth;
+                const height = canvasWrapper.clientHeight;
+                
+                // Set canvas size
+                canvas.width = width;
+                canvas.height = height;
+                
+                // Redraw polygon with new dimensions
+                drawPolygon();
+            }
+            
+            // Initialize button states
+            setActiveButton(showVertices);
+            
+            // Set up event listeners
+            sidesSlider.addEventListener('input', function() {
+                n = parseInt(this.value);
+                sidesValue.textContent = n;
+                currentN.textContent = n;
+                updateCounts();
+                drawPolygon();
+            });
+            
+            showVertices.addEventListener('click', function() {
+                setActiveButton(this);
+                currentMode = 'vertices';
+                drawPolygon();
+            });
+            
+            showDiagonals.addEventListener('click', function() {
+                setActiveButton(this);
+                currentMode = 'diagonals';
+                drawPolygon();
+            });
+            
+            showTriangles.addEventListener('click', function() {
+                setActiveButton(this);
+                currentMode = 'triangles';
+                drawPolygon();
+            });
+            
+            showTwoSides.addEventListener('click', function() {
+                setActiveButton(this);
+                currentMode = 'twoSides';
+                highlightFormula(formulaC);
+                drawPolygon();
+            });
+            
+            showOneSide.addEventListener('click', function() {
+                setActiveButton(this);
+                currentMode = 'oneSide';
+                highlightFormula(formulaD);
+                drawPolygon();
+            });
+            
+            showNoSides.addEventListener('click', function() {
+                setActiveButton(this);
+                currentMode = 'noSides';
+                highlightFormula(formulaE);
+                drawPolygon();
+            });
+            
+            // Handle window resize
+            window.addEventListener('resize', function() {
+                setupCanvas();
+            });
+            
+            function setActiveButton(button) {
+                // Remove active class from all buttons
+                const buttons = document.querySelectorAll('.buttons button');
+                buttons.forEach(btn => btn.classList.remove('active'));
+                
+                // Add active class to clicked button
+                button.classList.add('active');
+            }
+            
+            function highlightFormula(formulaElement) {
+                formulaElement.classList.add('highlight-animation');
+                setTimeout(() => {
+                    formulaElement.classList.remove('highlight-animation');
+                }, 2000);
+            }
+            
+            function updateCounts() {
+                const diagonals = combinations(n, 2) - n;
+                const totalTriangles = combinations(n, 3);
+                const twoSideTriangles = n;
+                
+                diagonalsCount.textContent = diagonals;
+                trianglesCount.textContent = totalTriangles;
+                twoSidesCount.textContent = twoSideTriangles;
+            }
+            
+            function combinations(n, k) {
+                if (k > n) return 0;
+                if (k === 0 || k === n) return 1;
+                
+                let result = 1;
+                for (let i = 1; i <= k; i++) {
+                    result = result * (n - i + 1) / i;
+                }
+                return result;
+            }
+            
+            function calculateVertices() {
+                vertices = [];
+                const centerX = canvas.width / 2;
+                const centerY = canvas.height / 2;
+                const radius = Math.min(centerX, centerY) - 40;
+                
+                for (let i = 0; i < n; i++) {
+                    const angle = (2 * Math.PI * i / n) - (Math.PI / 2);
+                    const x = centerX + radius * Math.cos(angle);
+                    const y = centerY + radius * Math.sin(angle);
+                    vertices.push({ x, y });
+                }
+            }
+            
+            function drawPolygon() {
+                cancelAnimationFrame(animationFrame);
+                
+                calculateVertices();
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                
+                // Draw the polygon with glow effect
+                ctx.beginPath();
+                ctx.moveTo(vertices[0].x, vertices[0].y);
+                for (let i = 1; i < n; i++) {
+                    ctx.lineTo(vertices[i].x, vertices[i].y);
+                }
+                ctx.closePath();
+                
+                // Create gradient for polygon stroke
+                const strokeGradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
+                strokeGradient.addColorStop(0, '#ff00cc');
+                strokeGradient.addColorStop(0.5, '#3333ff');
+                strokeGradient.addColorStop(1, '#00ccff');
+                
+                ctx.strokeStyle = strokeGradient;
+                ctx.lineWidth = 3;
+                ctx.stroke();
+                
+                // Draw vertices with glow effect
+                for (let i = 0; i < n; i++) {
+                    // Outer glow
+                    ctx.beginPath();
+                    ctx.arc(vertices[i].x, vertices[i].y, 12, 0, Math.PI * 2);
+                    const glowGradient = ctx.createRadialGradient(
+                        vertices[i].x, vertices[i].y, 0, 
+                        vertices[i].x, vertices[i].y, 12
+                    );
+                    glowGradient.addColorStop(0, 'rgba(0, 204, 255, 0.8)');
+                    glowGradient.addColorStop(1, 'rgba(0, 204, 255, 0)');
+                    ctx.fillStyle = glowGradient;
+                    ctx.fill();
+                    
+                    // Inner circle
+                    ctx.beginPath();
+                    ctx.arc(vertices[i].x, vertices[i].y, 8, 0, Math.PI * 2);
+                    ctx.fillStyle = '#00ccff';
+                    ctx.fill();
+                    ctx.strokeStyle = 'white';
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
+                }
+                
+                // Based on current mode, draw additional elements
+                switch (currentMode) {
+                    case 'diagonals':
+                        drawDiagonals();
+                        highlightFormula(formulaA);
+                        break;
+                    case 'triangles':
+                        drawAllTriangles();
+                        highlightFormula(formulaB);
+                        break;
+                    case 'twoSides':
+                        drawTwoSideTriangles();
+                        break;
+                    case 'oneSide':
+                        drawOneSideTriangles();
+                        break;
+                    case 'noSides':
+                        drawNoSideTriangles();
+                        break;
+                }
+            }
+            
+            function drawDiagonals() {
+                for (let i = 0; i < n; i++) {
+                    for (let j = i + 2; j < n; j++) {
+                        // Don't draw adjacent vertices (sides of the polygon)
+                        if (j === i + 1 || (i === 0 && j === n - 1)) continue;
+                        
+                        // Create gradient for each diagonal
+                        const diagonalGradient = ctx.createLinearGradient(
+                            vertices[i].x, vertices[i].y, 
+                            vertices[j].x, vertices[j].y
+                        );
+                        diagonalGradient.addColorStop(0, '#ff00cc');
+                        diagonalGradient.addColorStop(1, '#00ccff');
+                        
+                        ctx.beginPath();
+                        ctx.moveTo(vertices[i].x, vertices[i].y);
+                        ctx.lineTo(vertices[j].x, vertices[j].y);
+                        ctx.strokeStyle = diagonalGradient;
+                        ctx.lineWidth = 2;
+                        ctx.stroke();
+                        
+                        // Add glow effect
+                        ctx.beginPath();
+                        ctx.moveTo(vertices[i].x, vertices[i].y);
+                        ctx.lineTo(vertices[j].x, vertices[j].y);
+                        ctx.strokeStyle = 'rgba(0, 204, 255, 0.2)';
+                        ctx.lineWidth = 10;
+                        ctx.stroke();
+                    }
+                }
+            }
+            
+            function drawAllTriangles() {
+                for (let i = 0; i < n; i++) {
+                    for (let j = i + 1; j < n; j++) {
+                        for (let k = j + 1; k < n; k++) {
+                            drawTriangle(i, j, k, 'rgba(37, 117, 252, 0.2)');
+                        }
+                    }
+                }
+            }
+            
+            function drawTwoSideTriangles() {
+                for (let i = 0; i < n; i++) {
+                    const j = (i + 1) % n;
+                    const k = (i + 2) % n;
+                    drawTriangle(i, j, k, 'rgba(255, 100, 100, 0.4)');
+                }
+            }
+            
+            function drawOneSideTriangles() {
+                ctx.strokeStyle = 'rgba(255, 215, 0, 0.8)';
+                ctx.lineWidth = 3;
+                
+                for (let i = 0; i < n; i++) {
+                    const j = (i + 1) % n;
+                    
+                    // Draw the common side with highlight
+                    ctx.beginPath();
+                    ctx.moveTo(vertices[i].x, vertices[i].y);
+                    ctx.lineTo(vertices[j].x, vertices[j].y);
+                    ctx.stroke();
+                    
+                    // Draw triangles with one common side
+                    for (let k = 0; k < n; k++) {
+                        if (k !== i && k !== j && k !== (i-1+n)%n && k !== (j+1)%n) {
+                            drawTriangle(i, j, k, 'rgba(255, 215, 0, 0.2)');
+                        }
+                    }
+                }
+            }
+            
+            function drawNoSideTriangles() {
+                for (let i = 0; i < n; i++) {
+                    for (let j = i + 1; j < n; j++) {
+                        for (let k = j + 1; k < n; k++) {
+                            // Check if the triangle has no common sides with the polygon
+                            if (!hasCommonSide(i, j, k)) {
+                                drawTriangle(i, j, k, 'rgba(100, 255, 100, 0.3)');
+                            }
+                        }
+                    }
+                }
+            }
+            
+            function hasCommonSide(i, j, k) {
+                // Check if any side of the triangle is also a side of the polygon
+                const sides = [
+                    [i, j], [j, k], [k, i]
+                ];
+                
+                for (const [a, b] of sides) {
+                    const diff = Math.abs(a - b);
+                    if (diff === 1 || diff === n - 1) {
+                        return true;
+                    }
+                }
+                
+                return false;
+            }
+            
+            function drawTriangle(i, j, k, color) {
+                ctx.beginPath();
+                ctx.moveTo(vertices[i].x, vertices[i].y);
+                ctx.lineTo(vertices[j].x, vertices[j].y);
+                ctx.lineTo(vertices[k].x, vertices[k].y);
+                ctx.closePath();
+                
+                // Create gradient for triangle fill
+                const triangleGradient = ctx.createLinearGradient(
+                    (vertices[i].x + vertices[j].x + vertices[k].x) / 3,
+                    (vertices[i].y + vertices[j].y + vertices[k].y) / 3,
+                    vertices[i].x,
+                    vertices[i].y
+                );
+                
+                if (color.includes('37, 117, 252')) {
+                    // Blue gradient for all triangles
+                    triangleGradient.addColorStop(0, 'rgba(37, 117, 252, 0.3)');
+                    triangleGradient.addColorStop(1, 'rgba(0, 204, 255, 0.3)');
+                } else if (color.includes('255, 100, 100')) {
+                    // Red gradient for two-side triangles
+                    triangleGradient.addColorStop(0, 'rgba(255, 100, 100, 0.4)');
+                    triangleGradient.addColorStop(1, 'rgba(255, 0, 0, 0.4)');
+                } else if (color.includes('255, 215, 0')) {
+                    // Yellow gradient for one-side triangles
+                    triangleGradient.addColorStop(0, 'rgba(255, 215, 0, 0.3)');
+                    triangleGradient.addColorStop(1, 'rgba(255, 165, 0, 0.3)');
+                } else {
+                    // Green gradient for no-side triangles
+                    triangleGradient.addColorStop(0, 'rgba(100, 255, 100, 0.3)');
+                    triangleGradient.addColorStop(1, 'rgba(0, 255, 0, 0.3)');
+                }
+                
+                ctx.fillStyle = triangleGradient;
+                ctx.fill();
+                
+                // Draw triangle outline with glow
+                ctx.strokeStyle = color.replace('0.2', '0.8').replace('0.3', '0.8').replace('0.4', '0.8');
+                ctx.lineWidth = 2;
+                ctx.stroke();
+            }
+            
+            // Initialize
+            setupCanvas();
+            updateCounts();
+        });
+    </script>
+</body>
+</html>
