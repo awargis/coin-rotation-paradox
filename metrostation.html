@@ -1,0 +1,606 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Metro Stations Visualization</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #1a237e, #311b92, #4a148c);
+            color: #fff;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1000px;
+            width: 100%;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 25px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+            margin-top: 20px;
+        }
+        
+        header {
+            text-align: center;
+            margin-bottom: 25px;
+        }
+        
+        h1 {
+            font-size: 2.8rem;
+            margin-bottom: 10px;
+            text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+            background: linear-gradient(to right, #ff8a00, #da1b60);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        
+        .problem-box {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 20px;
+            border-radius: 15px;
+            margin-bottom: 25px;
+            font-size: 1.1rem;
+            line-height: 1.6;
+            border-left: 5px solid #ff8a00;
+        }
+        
+        .highlight {
+            color: #ffeb3b;
+            font-weight: bold;
+        }
+        
+        .animation-section {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin: 20px 0;
+        }
+        
+        .canvas-container {
+            position: relative;
+            margin: 20px 0;
+        }
+        
+        #metroCanvas {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 50%;
+            box-shadow: 0 0 40px rgba(255, 255, 255, 0.2);
+        }
+        
+        .controls {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin: 20px 0;
+            flex-wrap: wrap;
+        }
+        
+        button {
+            background: linear-gradient(to bottom, #3498db, #2980b9);
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 50px;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: bold;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+        }
+        
+        button:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.4);
+        }
+        
+        button:active {
+            transform: translateY(1px);
+        }
+        
+        #playBtn {
+            background: linear-gradient(to bottom, #2ecc71, #27ae60);
+        }
+        
+        #resetBtn {
+            background: linear-gradient(to bottom, #e74c3c, #c0392b);
+        }
+        
+        .slider-container {
+            width: 100%;
+            max-width: 500px;
+            margin: 20px 0;
+            background: rgba(0, 0, 0, 0.3);
+            padding: 15px;
+            border-radius: 15px;
+        }
+        
+        .slider-container label {
+            display: block;
+            margin-bottom: 10px;
+            font-weight: bold;
+            text-align: center;
+        }
+        
+        input[type="range"] {
+            width: 100%;
+            height: 18px;
+            -webkit-appearance: none;
+            appearance: none;
+            background: linear-gradient(to right, #1a237e, #5e35b1, #d81b60);
+            outline: none;
+            border-radius: 10px;
+        }
+        
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            background: #3498db;
+            cursor: pointer;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+            border: 2px solid white;
+        }
+        
+        .counters {
+            display: flex;
+            justify-content: space-around;
+            width: 100%;
+            margin: 20px 0;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+        
+        .counter-item {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 15px;
+            border-radius: 12px;
+            min-width: 150px;
+            text-align: center;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+        
+        .counter-value {
+            font-size: 2rem;
+            font-weight: bold;
+            margin-top: 5px;
+            color: #ffeb3b;
+        }
+        
+        .legend {
+            display: flex;
+            justify-content: center;
+            gap: 25px;
+            margin: 15px 0;
+            flex-wrap: wrap;
+        }
+        
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 8px 15px;
+            border-radius: 20px;
+        }
+        
+        .color-box {
+            width: 20px;
+            height: 20px;
+            border-radius: 4px;
+        }
+        
+        .blue-box {
+            background-color: #3498db;
+        }
+        
+        .red-box {
+            background-color: #e74c3c;
+        }
+        
+        .solution-section {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 20px;
+            border-radius: 15px;
+            margin-top: 25px;
+        }
+        
+        .formula {
+            font-family: 'Courier New', monospace;
+            background: rgba(0, 0, 0, 0.3);
+            padding: 15px;
+            border-radius: 10px;
+            margin: 15px 0;
+            overflow-x: auto;
+            white-space: nowrap;
+        }
+        
+        .step {
+            margin: 10px 0;
+            padding-left: 20px;
+            border-left: 3px solid #ff8a00;
+        }
+        
+        .answer {
+            text-align: center;
+            margin-top: 20px;
+            padding: 15px;
+            background: linear-gradient(to right, #2ecc71, #27ae60);
+            border-radius: 15px;
+            font-size: 1.5rem;
+            font-weight: bold;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+        }
+        
+        .metro-icon {
+            font-size: 1.5rem;
+            margin-right: 10px;
+            color: #ff8a00;
+        }
+        
+        @media (max-width: 768px) {
+            .container {
+                padding: 15px;
+            }
+            
+            h1 {
+                font-size: 2.2rem;
+            }
+            
+            #metroCanvas {
+                width: 300px;
+                height: 300px;
+            }
+            
+            .counter-item {
+                min-width: 120px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1><i class="fas fa-subway metro-icon"></i>Metro Stations Visualization</h1>
+        <p>Understanding connections on a circular path</p>
+    </header>
+    
+    <div class="container">
+        <div class="problem-box">
+            <p>Let <span class="highlight">n > 2</span> be an integer. Suppose that there are <span class="highlight">n Metro stations</span> in a city located along a circular path. Each pair of stations is connected by a straight track only. Further, each pair of nearest stations is connected by <span style="color: #3498db;">blue line</span>, whereas all remaining pairs of stations are connected by <span style="color: #e74c3c;">red line</span>. If the number of red lines is <span class="highlight">99 times</span> the number of blue lines, then what is the value of n?</p>
+        </div>
+        
+        <div class="animation-section">
+            <div class="legend">
+                <div class="legend-item">
+                    <div class="color-box blue-box"></div>
+                    <span>Blue lines (nearest stations)</span>
+                </div>
+                <div class="legend-item">
+                    <div class="color-box red-box"></div>
+                    <span>Red lines (all other connections)</span>
+                </div>
+            </div>
+            
+            <div class="canvas-container">
+                <canvas id="metroCanvas" width="500" height="500"></canvas>
+            </div>
+            
+            <div class="counters">
+                <div class="counter-item">
+                    <div>Stations</div>
+                    <div class="counter-value" id="stationCount">6</div>
+                </div>
+                <div class="counter-item">
+                    <div>Blue Lines</div>
+                    <div class="counter-value" id="blueCount">6</div>
+                </div>
+                <div class="counter-item">
+                    <div>Red Lines</div>
+                    <div class="counter-value" id="redCount">9</div>
+                </div>
+                <div class="counter-item">
+                    <div>Red:Blue Ratio</div>
+                    <div class="counter-value" id="ratio">1.5</div>
+                </div>
+            </div>
+            
+            <div class="slider-container">
+                <label for="stationSlider">Adjust number of stations (n):</label>
+                <input type="range" id="stationSlider" min="3" max="50" value="6">
+            </div>
+            
+            <div class="controls">
+                <button id="playBtn"><i class="fas fa-play"></i> Play Animation</button>
+                <button id="stepBtn"><i class="fas fa-forward"></i> Step by Step</button>
+                <button id="resetBtn"><i class="fas fa-redo"></i> Reset</button>
+            </div>
+        </div>
+        
+        <div class="solution-section">
+            <h2><i class="fas fa-calculator"></i> Mathematical Solution</h2>
+            
+            <div class="step">
+                <p>For <span class="highlight">n</span> stations on a circle:</p>
+                <p>Number of blue lines = <span class="formula">n</span></p>
+            </div>
+            
+            <div class="step">
+                <p>Total number of connections = <span class="formula">C(n, 2) = n(n-1)/2</span></p>
+            </div>
+            
+            <div class="step">
+                <p>Number of red lines = Total connections - Blue lines</p>
+                <p class="formula">Red lines = n(n-1)/2 - n = n(n-3)/2</p>
+            </div>
+            
+            <div class="step">
+                <p>Given: Red lines = 99 × Blue lines</p>
+                <p class="formula">n(n-3)/2 = 99 × n</p>
+            </div>
+            
+            <div class="step">
+                <p>Divide both sides by n (since n > 0):</p>
+                <p class="formula">(n-3)/2 = 99</p>
+                <p class="formula">n - 3 = 198</p>
+                <p class="formula">n = 201</p>
+            </div>
+            
+            <div class="answer">
+                <p>Answer: <span class="highlight">n = 201</span></p>
+                <p>When there are 201 stations, the number of red lines is exactly 99 times the number of blue lines.</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const canvas = document.getElementById('metroCanvas');
+            const ctx = canvas.getContext('2d');
+            const stationSlider = document.getElementById('stationSlider');
+            const playBtn = document.getElementById('playBtn');
+            const stepBtn = document.getElementById('stepBtn');
+            const resetBtn = document.getElementById('resetBtn');
+            
+            const stationCountElement = document.getElementById('stationCount');
+            const blueCountElement = document.getElementById('blueCount');
+            const redCountElement = document.getElementById('redCount');
+            const ratioElement = document.getElementById('ratio');
+            
+            let n = 6;
+            let animationPhase = 0;
+            let animationId = null;
+            let stations = [];
+            let blueLines = [];
+            let redLines = [];
+            let isStepping = false;
+            
+            const centerX = canvas.width / 2;
+            const centerY = canvas.height / 2;
+            const circleRadius = 200;
+            
+            // Initialize the animation
+            init();
+            
+            function init() {
+                calculatePositions();
+                calculateLines();
+                draw();
+                setupEventListeners();
+            }
+            
+            function calculatePositions() {
+                stations = [];
+                for (let i = 0; i < n; i++) {
+                    const angle = (2 * Math.PI * i / n) - Math.PI / 2;
+                    const x = centerX + circleRadius * Math.cos(angle);
+                    const y = centerY + circleRadius * Math.sin(angle);
+                    stations.push({ x, y });
+                }
+            }
+            
+            function calculateLines() {
+                blueLines = [];
+                redLines = [];
+                
+                // Blue lines connect adjacent stations (nearest neighbors)
+                for (let i = 0; i < n; i++) {
+                    blueLines.push([i, (i + 1) % n]);
+                }
+                
+                // Red lines connect all other pairs
+                for (let i = 0; i < n; i++) {
+                    for (let j = i + 2; j < n; j++) {
+                        // Skip adjacent stations (already blue) including the wrap-around
+                        if (Math.abs(i - j) === 1 || (i === 0 && j === n - 1)) continue;
+                        redLines.push([i, j]);
+                    }
+                }
+                
+                // Update counters
+                updateCounters();
+            }
+            
+            function updateCounters() {
+                stationCountElement.textContent = n;
+                blueCountElement.textContent = blueLines.length;
+                redCountElement.textContent = redLines.length;
+                ratioElement.textContent = (redLines.length / blueLines.length).toFixed(2);
+            }
+            
+            function draw() {
+                // Clear canvas
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                
+                // Draw the circular path
+                ctx.beginPath();
+                ctx.arc(centerX, centerY, circleRadius, 0, 2 * Math.PI);
+                ctx.strokeStyle = 'rgba(0, 0, 0, 0.2)';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+                
+                // Draw red lines (if phase allows)
+                if (animationPhase >= 2) {
+                    for (const [start, end] of redLines) {
+                        drawLine(start, end, '#e74c3c', 1);
+                    }
+                }
+                
+                // Draw blue lines (if phase allows)
+                if (animationPhase >= 1) {
+                    for (const [start, end] of blueLines) {
+                        drawLine(start, end, '#3498db', 3);
+                    }
+                }
+                
+                // Draw stations
+                for (const station of stations) {
+                    drawStation(station.x, station.y);
+                }
+            }
+            
+            function drawLine(startIdx, endIdx, color, width) {
+                const start = stations[startIdx];
+                const end = stations[endIdx];
+                
+                ctx.beginPath();
+                ctx.moveTo(start.x, start.y);
+                ctx.lineTo(end.x, end.y);
+                ctx.strokeStyle = color;
+                ctx.lineWidth = width;
+                ctx.stroke();
+            }
+            
+            function drawStation(x, y) {
+                ctx.beginPath();
+                ctx.arc(x, y, 10, 0, 2 * Math.PI);
+                ctx.fillStyle = 'white';
+                ctx.fill();
+                ctx.strokeStyle = 'black';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+                
+                // Add a subtle shadow
+                ctx.beginPath();
+                ctx.arc(x, y, 10, 0, 2 * Math.PI);
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
+                ctx.fill();
+            }
+            
+            function animate() {
+                if (isStepping) {
+                    // For step-by-step, just move to the next phase
+                    animationPhase = Math.min(animationPhase + 1, 2);
+                    draw();
+                    
+                    if (animationPhase >= 2) {
+                        isStepping = false;
+                    }
+                    return;
+                }
+                
+                // For continuous animation
+                animationPhase++;
+                if (animationPhase > 2) {
+                    animationPhase = 2;
+                    cancelAnimationFrame(animationId);
+                    return;
+                }
+                
+                draw();
+                
+                // Continue animation after a delay
+                setTimeout(() => {
+                    animationId = requestAnimationFrame(animate);
+                }, 800);
+            }
+            
+            function startAnimation() {
+                if (animationId) {
+                    cancelAnimationFrame(animationId);
+                }
+                
+                animationPhase = 0;
+                calculatePositions();
+                calculateLines();
+                
+                // Initial draw
+                draw();
+                
+                // Start phased animation
+                setTimeout(() => {
+                    animationId = requestAnimationFrame(animate);
+                }, 500);
+            }
+            
+            function startStepByStep() {
+                if (animationId) {
+                    cancelAnimationFrame(animationId);
+                }
+                
+                animationPhase = 0;
+                isStepping = true;
+                calculatePositions();
+                calculateLines();
+                draw();
+            }
+            
+            function resetAnimation() {
+                if (animationId) {
+                    cancelAnimationFrame(animationId);
+                }
+                
+                n = 6;
+                stationSlider.value = n;
+                animationPhase = 0;
+                isStepping = false;
+                
+                calculatePositions();
+                calculateLines();
+                draw();
+            }
+            
+            function setupEventListeners() {
+                stationSlider.addEventListener('input', function() {
+                    n = parseInt(this.value);
+                    calculatePositions();
+                    calculateLines();
+                    draw();
+                });
+                
+                playBtn.addEventListener('click', startAnimation);
+                stepBtn.addEventListener('click', startStepByStep);
+                resetBtn.addEventListener('click', resetAnimation);
+                
+                // Add keyboard controls
+                document.addEventListener('keydown', function(e) {
+                    if (e.key === ' ') {
+                        startAnimation();
+                    } else if (e.key === 's') {
+                        startStepByStep();
+                    } else if (e.key === 'r') {
+                        resetAnimation();
+                    }
+                });
+            }
+        });
+    </script>
+</body>
+</html>
