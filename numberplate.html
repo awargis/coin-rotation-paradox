@@ -1,0 +1,1029 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hollywood-Style License Plate Animation</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            overflow: hidden;
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #0c0c2d 0%, #1a1a3d 100%);
+            color: #fff;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        #canvas-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+        }
+
+        .ui-overlay {
+            position: fixed;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 10;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start;
+            align-items: center;
+            padding-top: 5vh;
+            text-align: center;
+        }
+        
+        .title {
+            font-size: 2.2vmax;
+            font-weight: 700;
+            letter-spacing: 0.05em;
+            opacity: 0;
+            text-shadow: 0 0 15px rgba(255, 255, 255, 0.5);
+            transition: opacity 1.5s ease-out;
+            margin-bottom: 20px;
+            max-width: 90%;
+            background: linear-gradient(90deg, #ffd700, #ff8c00, #ffd700);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-family: 'Arial Black', 'Arial Bold', Gadget, sans-serif;
+        }
+
+        .explanation-box {
+            background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 215, 0, 0.3);
+            border-radius: 12px;
+            padding: 2vmin 4vmin;
+            opacity: 0;
+            transform: translateY(20px);
+            transition: opacity 0.8s ease, transform 0.8s ease;
+            box-shadow: 0 0 20px rgba(255, 215, 0, 0.2);
+        }
+        
+        .calculation-text {
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 1.8vmax;
+            line-height: 1.6;
+            color: #4dffff;
+            text-shadow: 0 0 8px #4dffff;
+            letter-spacing: 2px;
+        }
+
+        .calculation-text .highlight {
+             color: #ffd700;
+             font-weight: 700;
+             text-shadow: 0 0 12px #ffd700;
+        }
+
+        .final-comparison {
+            font-size: 1.5vmax;
+            opacity: 0;
+            position: absolute;
+            bottom: 5vh;
+            max-width: 90%;
+            background: rgba(0, 0, 0, 0.6);
+            padding: 15px 25px;
+            border-radius: 10px;
+            border: 1px solid rgba(255, 215, 0, 0.3);
+            backdrop-filter: blur(5px);
+        }
+
+        .loading-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #0c0c2d;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+            transition: opacity 1s ease-out;
+        }
+        
+        .progress-bar {
+            width: 30%;
+            height: 6px;
+            background: rgba(255, 255, 255, 0.1);
+            margin-top: 20px;
+            border-radius: 3px;
+            overflow: hidden;
+        }
+        
+        .progress {
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(90deg, #ff8c00, #ffd700);
+            transition: width 0.3s ease;
+        }
+        
+        .logo {
+            font-size: 2.5vmax;
+            font-weight: 700;
+            letter-spacing: 0.1em;
+            margin-bottom: 20px;
+            background: linear-gradient(90deg, #ff8c00, #ffd700);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+        }
+
+        /* Navigation controls */
+        .navigation {
+            position: fixed;
+            bottom: 20px;
+            left: 0;
+            width: 100%;
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            pointer-events: all;
+            z-index: 20;
+        }
+        
+        .nav-btn {
+            background: rgba(255, 215, 0, 0.2);
+            backdrop-filter: blur(5px);
+            border: 1px solid rgba(255, 215, 0, 0.5);
+            color: #ffd700;
+            padding: 12px 24px;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            opacity: 0;
+            font-weight: bold;
+            text-shadow: 0 0 5px rgba(255, 215, 0, 0.5);
+        }
+        
+        .nav-btn:hover {
+            background: rgba(255, 215, 0, 0.3);
+            transform: translateY(-2px);
+            box-shadow: 0 0 15px rgba(255, 215, 0, 0.4);
+        }
+        
+        .nav-btn:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+        }
+        
+        /* Hollywood elements */
+        .spotlight {
+            position: fixed;
+            width: 50vw;
+            height: 50vh;
+            background: radial-gradient(circle, rgba(255,215,0,0.2) 0%, rgba(0,0,0,0) 70%);
+            pointer-events: none;
+            z-index: 2;
+            opacity: 0.5;
+            animation: moveSpotlight 15s infinite alternate ease-in-out;
+        }
+        
+        .spotlight:nth-child(1) {
+            top: 10%;
+            left: 10%;
+        }
+        
+        .spotlight:nth-child(2) {
+            bottom: 10%;
+            right: 10%;
+            animation-delay: 5s;
+        }
+        
+        @keyframes moveSpotlight {
+            0% { transform: translate(0, 0) scale(1); }
+            100% { transform: translate(20px, 20px) scale(1.2); }
+        }
+        
+        .film-grain {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.05'/%3E%3C/svg%3E");
+            pointer-events: none;
+            z-index: 3;
+            opacity: 0.1;
+        }
+        
+        .hollywood-sign {
+            position: fixed;
+            top: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 24px;
+            font-weight: 700;
+            color: #ffd700;
+            text-shadow: 0 0 10px rgba(255, 215, 0, 0.7);
+            letter-spacing: 4px;
+            z-index: 4;
+            opacity: 0.7;
+        }
+
+        @media (max-width: 768px) {
+            .title { font-size: 3.5vmax; }
+            .calculation-text { font-size: 2.5vmax; }
+            .final-comparison { font-size: 2vmax; }
+            .progress-bar { width: 60%; }
+            
+            .nav-btn {
+                padding: 15px 25px;
+                font-size: 16px;
+            }
+            
+            .spotlight {
+                width: 80vw;
+                height: 30vh;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="loading-screen">
+        <div class="logo">MATH VISUALS</div>
+        <div class="progress-bar">
+            <div class="progress"></div>
+        </div>
+    </div>
+    
+    <div id="canvas-container"></div>
+    
+    <!-- Hollywood elements -->
+    <div class="spotlight"></div>
+    <div class="spotlight"></div>
+    <div class="film-grain"></div>
+    <div class="hollywood-sign">Aditya Warigis Sir</div>
+    
+    <div class="ui-overlay">
+        <div id="title" class="title">How many unique license plates can this format generate?</div>
+        <div id="explanation-box" class="explanation-box">
+             <div id="calculation" class="calculation-text">
+                 _ _ &nbsp; _ _ &nbsp; _ _ &nbsp; _ _ _ _
+             </div>
+        </div>
+        <div id="final-comparison" class="final-comparison">
+            That's over 4.5 trillion combinations. <br> More than enough for every single person on Earth to own over 570 vehicles.
+        </div>
+    </div>
+    
+    <div class="navigation">
+        <button id="prev-btn" class="nav-btn" disabled>← Back</button>
+        <button id="next-btn" class="nav-btn">Next →</button>
+    </div>
+
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://cdnjs.cloudflare.com/ajax/libs/three.js/0.164.1/three.module.js",
+                "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.164.1/examples/jsm/"
+            }
+        }
+    </script>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { FontLoader } from 'three/addons/loaders/FontLoader.js';
+        import { TextGeometry } from 'three/addons/geometries/TextGeometry.js';
+        import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+        import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+        import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+        import { BokehPass } from 'three/addons/postprocessing/BokehPass.js';
+        import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+        import { RGBELoader } from 'three/addons/loaders/RGBELoader.js';
+        import { gsap } from "https://cdn.jsdelivr.net/npm/gsap@3.12.5/index.js";
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+        let scene, camera, renderer, clock, composer;
+        let numberPlateGroup, earthGroup, stars;
+        let font, plateMesh, borderMesh, textObjects;
+        let bloomPass, bokehPass, outputPass;
+        let controls;
+        let isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+        let currentStep = 0;
+        let slotPositions = [];
+        let plateTexture, screwTexture, metalTexture, smudgeTexture;
+        let vehicleSilhouettes = [];
+
+        // Animation timeline
+        const animationSteps = [];
+        
+        // --- DOM Elements ---
+        const titleEl = document.getElementById('title');
+        const explanationBoxEl = document.getElementById('explanation-box');
+        const calculationEl = document.getElementById('calculation');
+        const finalComparisonEl = document.getElementById('final-comparison');
+        const loadingScreen = document.querySelector('.loading-screen');
+        const progressEl = document.querySelector('.progress');
+        const prevBtn = document.getElementById('prev-btn');
+        const nextBtn = document.getElementById('next-btn');
+        const vehicleContainer = document.getElementById('vehicle-container');
+
+        const loadingManager = new THREE.LoadingManager();
+        const textureLoader = new THREE.TextureLoader(loadingManager);
+        const fontLoader = new FontLoader(loadingManager);
+        const rgbeLoader = new RGBELoader(loadingManager);
+
+        loadingManager.onProgress = (url, itemsLoaded, itemsTotal) => {
+            const progressRatio = itemsLoaded / itemsTotal;
+            progressEl.style.width = `${progressRatio * 100}%`;
+        };
+
+        loadingManager.onLoad = () => {
+            gsap.to(loadingScreen, {
+                opacity: 0,
+                duration: 1,
+                onComplete: () => {
+                    loadingScreen.style.display = 'none';
+                    setupPostProcessing();
+                    createInitialNumberPlates();
+                    setTimeout(startAnimationTimeline, 2000);
+                }
+            });
+        };
+
+        function init() {
+            scene = new THREE.Scene();
+            clock = new THREE.Clock();
+
+            camera = new THREE.PerspectiveCamera(35, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.set(0, 2, 20);
+
+            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+            renderer.toneMapping = THREE.ACESFilmicToneMapping;
+            renderer.toneMappingExposure = 0.8;
+            document.getElementById('canvas-container').appendChild(renderer.domElement);
+            
+            // Load a subtle HDR environment
+            rgbeLoader.load('https://dl.polyhaven.org/file/ph-assets/HDRIs/hdr/1k/artist_workshop_1k.hdr', function(texture) {
+                texture.mapping = THREE.EquirectangularReflectionMapping;
+                scene.background = texture;
+                scene.environment = texture;
+            });
+            
+            // Load PBR textures for plate
+            plateTexture = textureLoader.load('https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/metal_plate/metal_plate_diff_1k.jpg');
+            screwTexture = textureLoader.load('https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/rusty_metal/rusty_metal_02_diff_1k.jpg');
+            metalTexture = textureLoader.load('https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/rusty_metal/rusty_metal_02_rough_1k.jpg');
+            smudgeTexture = textureLoader.load('https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/plastic_pattern/plastic_pattern_smudge_diff_1k.jpg');
+            
+            plateTexture.wrapS = plateTexture.wrapT = THREE.RepeatWrapping;
+            plateTexture.repeat.set(2, 1);
+            
+            // --- Lighting ---
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+            scene.add(ambientLight);
+            
+            const keyLight = new THREE.DirectionalLight(0xffd700, 0.8);
+            keyLight.position.set(5, 5, 10);
+            keyLight.castShadow = true;
+            keyLight.shadow.mapSize.width = 1024;
+            keyLight.shadow.mapSize.height = 1024;
+            scene.add(keyLight);
+            
+            const fillLight = new THREE.DirectionalLight(0x4444ff, 0.3);
+            fillLight.position.set(-5, 3, -5);
+            scene.add(fillLight);
+            
+            const rimLight = new THREE.DirectionalLight(0xffffff, 0.5);
+            rimLight.position.set(0, 0, -10);
+            scene.add(rimLight);
+
+            // --- Load Assets & Create Scene ---
+            fontLoader.load('https://cdn.jsdelivr.net/npm/three@0.164.1/examples/fonts/helvetiker_bold.typeface.json', (loadedFont) => {
+                font = loadedFont;
+                createNumberPlate();
+                earthGroup = createEarth();
+                scene.add(earthGroup);
+            });
+            
+            createStars();
+            
+            // Setup camera controls for mobile
+            if (isMobile) {
+                controls = new OrbitControls(camera, renderer.domElement);
+                controls.enableDamping = true;
+                controls.dampingFactor = 0.05;
+                controls.enableZoom = true;
+                controls.enablePan = false;
+                controls.rotateSpeed = 0.5;
+            }
+            
+            window.addEventListener('resize', onWindowResize);
+            
+            // Navigation event listeners
+            prevBtn.addEventListener('click', goToPreviousStep);
+            nextBtn.addEventListener('click', goToNextStep);
+            
+            // Setup initial navigation state
+            updateNavigation();
+            
+            animate();
+        }
+
+        function setupPostProcessing() {
+            composer = new EffectComposer(renderer);
+            
+            const renderPass = new RenderPass(scene, camera);
+            composer.addPass(renderPass);
+            
+            // Bloom pass
+            bloomPass = new UnrealBloomPass(
+                new THREE.Vector2(window.innerWidth, window.innerHeight),
+                0.8,   // strength
+                0.3,   // radius
+                0.6    // threshold
+            );
+            composer.addPass(bloomPass);
+            
+            // Depth of field pass
+            const focus = 10;
+            const aperture = 0.0002;
+            const maxBlur = 0.005;
+            
+            bokehPass = new BokehPass(scene, camera, {
+                focus: focus,
+                aperture: aperture,
+                maxblur: maxBlur,
+                width: window.innerWidth,
+                height: window.innerHeight,
+            });
+            composer.addPass(bokehPass);
+            
+            outputPass = new OutputPass();
+            composer.addPass(outputPass);
+        }
+
+        function createStars() {
+            const starsGeometry = new THREE.BufferGeometry();
+            const starsVertices = [];
+            const starCount = isMobile ? 5000 : 15000;
+            
+            for (let i = 0; i < starCount; i++) {
+                const x = (Math.random() - 0.5) * 2000;
+                const y = (Math.random() - 0.5) * 2000;
+                const z = (Math.random() - 0.5) * 2000;
+                starsVertices.push(x, y, z);
+            }
+            
+            starsGeometry.setAttribute('position', new THREE.Float32BufferAttribute(starsVertices, 3));
+            const starsMaterial = new THREE.PointsMaterial({ 
+                color: 0xffffff, 
+                size: isMobile ? 0.05 : 0.1, 
+                transparent: true 
+            });
+            
+            stars = new THREE.Points(starsGeometry, starsMaterial);
+            scene.add(stars);
+        }
+        
+        // --- Object Creation ---
+        function createText(text, size, material, height = 0.1) {
+            const geometry = new TextGeometry(text, {
+                font: font,
+                size: size,
+                height: height,
+                curveSegments: 12,
+                bevelEnabled: true,
+                bevelThickness: 0.02,
+                bevelSize: 0.01,
+                bevelOffset: 0,
+                bevelSegments: 5
+            });
+            geometry.center();
+            return new THREE.Mesh(geometry, material);
+        }
+        
+        function createNumberPlate() {
+            numberPlateGroup = new THREE.Group();
+            
+            // Plate with PBR material
+            const plateGeom = new THREE.BoxGeometry(10, 5, 0.1);
+            const plateMat = new THREE.MeshStandardMaterial({
+                map: plateTexture,
+                metalness: 0.4,
+                roughness: 0.6,
+                normalMap: metalTexture,
+                normalScale: new THREE.Vector2(0.3, 0.3),
+                aoMap: smudgeTexture,
+            });
+            
+            plateMesh = new THREE.Mesh(plateGeom, plateMat);
+            plateMesh.castShadow = true;
+            plateMesh.receiveShadow = true;
+            
+            // Border
+            const borderGeom = new THREE.BoxGeometry(10.2, 5.2, 0.1);
+            const borderMat = new THREE.MeshStandardMaterial({ 
+                color: 0x222222,
+                metalness: 0.6,
+                roughness: 0.4
+            });
+            
+            borderMesh = new THREE.Mesh(borderGeom, borderMat);
+            borderMesh.position.z = -0.05;
+            
+            // Add screws
+            const screwPositions = [
+                { x: -4.8, y: 2.3, z: 0.06 },
+                { x: 4.8, y: 2.3, z: 0.06 },
+                { x: -4.8, y: -2.3, z: 0.06 },
+                { x: 4.8, y: -2.3, z: 0.06 }
+            ];
+            
+            screwPositions.forEach(pos => {
+                const screw = createScrew();
+                screw.position.set(pos.x, pos.y, pos.z);
+                numberPlateGroup.add(screw);
+            });
+            
+            numberPlateGroup.add(plateMesh, borderMesh);
+
+            // Text
+            const textMaterial = new THREE.MeshStandardMaterial({ 
+                color: 0x222222,
+                roughness: 0.7,
+                metalness: 0.3
+            });
+            
+            textObjects = {};
+            
+            textObjects.part1 = createText('__', 1.5, textMaterial.clone());
+            textObjects.part1.position.set(-3.5, 0, 0.1);
+            slotPositions.push({ element: textObjects.part1, x: -3.5, y: 0, width: 1.8, height: 1.8, type: 'letter' });
+
+            textObjects.part2 = createText('__', 1.5, textMaterial.clone());
+            textObjects.part2.position.set(-1.2, 0, 0.1);
+            slotPositions.push({ element: textObjects.part2, x: -1.2, y: 0, width: 1.8, height: 1.8, type: 'number' });
+
+            textObjects.part3 = createText('__', 1.5, textMaterial.clone());
+            textObjects.part3.position.set(1.2, 0, 0.1);
+            slotPositions.push({ element: textObjects.part3, x: 1.2, y: 0, width: 1.8, height: 1.8, type: 'letter' });
+
+            textObjects.part4 = createText('____', 1.5, textMaterial.clone());
+            textObjects.part4.position.set(3.7, 0, 0.1);
+            slotPositions.push({ element: textObjects.part4, x: 3.7, y: 0, width: 3.6, height: 1.8, type: 'number' });
+            
+            Object.values(textObjects).forEach(obj => numberPlateGroup.add(obj));
+            numberPlateGroup.userData.textObjects = textObjects;
+
+            scene.add(numberPlateGroup);
+        }
+        
+        function createScrew() {
+            const screwGroup = new THREE.Group();
+            
+            // Screw head
+            const headGeom = new THREE.CylinderGeometry(0.2, 0.2, 0.05, 32);
+            const headMat = new THREE.MeshStandardMaterial({
+                map: screwTexture,
+                metalness: 0.7,
+                roughness: 0.4
+            });
+            const head = new THREE.Mesh(headGeom, headMat);
+            head.rotation.x = Math.PI / 2;
+            
+            // Screw slot
+            const slotGeom = new THREE.BoxGeometry(0.01, 0.1, 0.02);
+            const slotMat = new THREE.MeshStandardMaterial({ color: 0x222222 });
+            const slot = new THREE.Mesh(slotGeom, slotMat);
+            slot.position.y = 0.025;
+            
+            screwGroup.add(head, slot);
+            
+            return screwGroup;
+        }
+
+        function createInitialNumberPlates() {
+            // Create sample Indian number plates floating in space
+            const formats = [
+                "UP 16 AB 1234",
+                "DL 05 XY 4567",
+                "MH 12 CD 7890",
+                "KA 03 EF 2468",
+                "TN 09 GH 1357"
+            ];
+            
+            formats.forEach((format, i) => {
+                const plate = createFloatingPlate(format);
+                const radius = 15;
+                const angle = (i / formats.length) * Math.PI * 2;
+                plate.position.set(
+                    Math.cos(angle) * radius,
+                    Math.sin(angle) * 0.5 + 2,
+                    Math.sin(angle) * radius
+                );
+                plate.rotation.y = angle;
+                scene.add(plate);
+                
+                // Animate floating
+                gsap.to(plate.position, {
+                    y: plate.position.y + 1,
+                    duration: 3,
+                    yoyo: true,
+                    repeat: -1,
+                    ease: "sine.inOut",
+                    delay: i * 0.5
+                });
+                
+                gsap.to(plate.rotation, {
+                    y: plate.rotation.y + Math.PI * 2,
+                    duration: 20,
+                    repeat: -1,
+                    ease: "none"
+                });
+            });
+            
+            // Animate camera through the plates
+            camera.position.set(0, 2, 30);
+            
+            return new Promise(resolve => {
+                gsap.to(camera.position, {
+                    z: 20,
+                    duration: 5,
+                    onComplete: resolve,
+                    ease: "power2.inOut"
+                });
+            });
+        }
+
+        function createFloatingPlate(text) {
+            const group = new THREE.Group();
+            
+            // Plate
+            const plateGeom = new THREE.BoxGeometry(4, 2, 0.1);
+            const plateMat = new THREE.MeshStandardMaterial({
+                color: 0xe0e0e0,
+                metalness: 0.5,
+                roughness: 0.5,
+            });
+            const plate = new THREE.Mesh(plateGeom, plateMat);
+            
+            // Border
+            const borderGeom = new THREE.BoxGeometry(4.1, 2.1, 0.1);
+            const borderMat = new THREE.MeshStandardMaterial({ color: 0x222222 });
+            const border = new THREE.Mesh(borderGeom, borderMat);
+            border.position.z = -0.05;
+            
+            // Text
+            const textMaterial = new THREE.MeshStandardMaterial({ 
+                color: 0x222222,
+                roughness: 0.7
+            });
+            const textMesh = createText(text, 0.3, textMaterial, 0.05);
+            textMesh.position.z = 0.1;
+            
+            group.add(plate, border, textMesh);
+            
+            return group;
+        }
+
+        function createEarth() {
+            const group = new THREE.Group();
+            
+            const earthMap = textureLoader.load('https://raw.githubusercontent.com/turban/webgl-earth/master/images/2_no_clouds_4k.jpg');
+            const earthBumpMap = textureLoader.load('https://raw.githubusercontent.com/turban/webgl-earth/master/images/elev_bump_4k.jpg');
+            const earthSpecMap = textureLoader.load('https://raw.githubusercontent.com/turban/webgl-earth/master/images/water_4k.png');
+            const cloudsMap = textureLoader.load('https://raw.githubusercontent.com/turban/webgl-earth/master/images/fair_clouds_4k.png');
+
+            // Sphere
+            const earthGeom = new THREE.SphereGeometry(3, 64, 64);
+            const earthMat = new THREE.MeshPhongMaterial({
+                map: earthMap,
+                bumpMap: earthBumpMap,
+                bumpScale: 0.05,
+                specularMap: earthSpecMap,
+                specular: new THREE.Color('grey')
+            });
+            const earthMesh = new THREE.Mesh(earthGeom, earthMat);
+            group.add(earthMesh);
+
+            // Clouds
+            const cloudsGeom = new THREE.SphereGeometry(3.03, 64, 64);
+            const cloudsMat = new THREE.MeshPhongMaterial({
+                map: cloudsMap,
+                transparent: true,
+                opacity: 0.6
+            });
+            const cloudsMesh = new THREE.Mesh(cloudsGeom, cloudsMat);
+            group.add(cloudsMesh);
+            group.userData.clouds = cloudsMesh;
+
+            // Atmosphere
+            const atmosphereGeom = new THREE.SphereGeometry(3.2, 64, 64);
+            const atmosphereMat = new THREE.ShaderMaterial({
+                vertexShader: `
+                    varying vec3 vNormal;
+                    void main() {
+                        vNormal = normalize( normalMatrix * normal );
+                        gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );
+                    }
+                `,
+                fragmentShader: `
+                    varying vec3 vNormal;
+                    void main() {
+                        float intensity = pow( 0.6 - dot( vNormal, vec3( 0.0, 0.0, 1.0 ) ), 2.0 );
+                        gl_FragColor = vec4( 0.3, 0.6, 1.0, 1.0 ) * intensity;
+                    }
+                `,
+                side: THREE.BackSide,
+                blending: THREE.AdditiveBlending,
+                transparent: true
+            });
+            const atmosphereMesh = new THREE.Mesh(atmosphereGeom, atmosphereMat);
+            group.add(atmosphereMesh);
+
+            group.position.set(0, 0, -30);
+            group.scale.set(0.01, 0.01, 0.01);
+            return group;
+        }
+        
+        function createVehicleSilhouettes() {
+            const types = ['car', 'bike', 'bus', 'truck'];
+            const colors = ['#ff4444', '#44ff44', '#4444ff', '#ffff44', '#ff44ff', '#44ffff'];
+            
+            for (let i = 0; i < 100; i++) {
+                const type = types[Math.floor(Math.random() * types.length)];
+                const color = colors[Math.floor(Math.random() * colors.length)];
+                
+                const el = document.createElement('div');
+                el.className = 'vehicle-silhouette';
+                el.innerHTML = getVehicleSVG(type, color);
+                
+                // Random position
+                const x = Math.random() * 100;
+                const y = Math.random() * 100;
+                
+                el.style.width = `${20 + Math.random() * 30}px`;
+                el.style.left = `${x}%`;
+                el.style.top = `${y}%`;
+                
+                vehicleContainer.appendChild(el);
+                vehicleSilhouettes.push(el);
+            }
+        }
+        
+        function getVehicleSVG(type, color) {
+            // Simplified SVG representations of vehicles
+            const svgs = {
+                car: `<svg viewBox="0 0 100 40" xmlns="http://www.w3.org/2000/svg">
+                    <rect x="10" y="15" width="80" height="15" rx="5" fill="${color}"/>
+                    <rect x="15" y="5" width="20" height="10" rx="2" fill="${color}"/>
+                    <rect x="65" y="5" width="20" height="10" rx="2" fill="${color}"/>
+                    <circle cx="25" cy="35" r="5" fill="#333"/>
+                    <circle cx="75" cy="35" r="5" fill="#333"/>
+                </svg>`,
+                
+                bike: `<svg viewBox="0 0 100 60" xmlns="http://www.w3.org/2000/svg">
+                    <circle cx="25" cy="45" r="15" fill="#333" stroke="${color}" stroke-width="3"/>
+                    <circle cx="75" cy="45" r="15" fill="#333" stroke="${color}" stroke-width="3"/>
+                    <path d="M25 45 Q40 5 75 45" stroke="${color}" stroke-width="5" fill="none"/>
+                    <rect x="45" y="20" width="10" height="15" rx="2" fill="${color}"/>
+                </svg>`,
+                
+                bus: `<svg viewBox="0 0 100 40" xmlns="http://www.w3.org/2000/svg">
+                    <rect x="5" y="10" width="90" height="20" rx="3" fill="${color}"/>
+                    <rect x="10" y="15" width="10" height="10" fill="#333"/>
+                    <rect x="30" y="15" width="10" height="10" fill="#333"/>
+                    <rect x="50" y="15" width="10" height="10" fill="#333"/>
+                    <rect x="70" y="15" width="10" height="10" fill="#333"/>
+                    <circle cx="20" cy="35" r="5" fill="#333"/>
+                    <circle cx="80" cy="35" r="5" fill="#333"/>
+                </svg>`,
+                
+                truck: `<svg viewBox="0 0 100 40" xmlns="http://www.w3.org/2000/svg">
+                    <rect x="5" y="15" width="60" height="15" rx="2" fill="${color}"/>
+                    <rect x="65" y="10" width="30" height="20" rx="3" fill="${color}"/>
+                    <circle cx="20" cy="35" r="5" fill="#333"/>
+                    <circle cx="50" cy="35" r="5" fill="#333"/>
+                    <circle cx="80" cy="35" r="5" fill="#333"/>
+                </svg>`
+            };
+            
+            return svgs[type] || svgs.car;
+        }
+        
+        function animateVehicleSilhouettes() {
+            vehicleSilhouettes.forEach((el, i) => {
+                // Random delay
+                setTimeout(() => {
+                    el.style.opacity = 0.7;
+                    
+                    // Animate movement
+                    gsap.to(el, {
+                        x: `+=${(Math.random() - 0.5) * 100}`,
+                        y: `+=${(Math.random() - 0.5) * 50}`,
+                        rotation: Math.random() * 10,
+                        duration: 3,
+                        repeat: -1,
+                        yoyo: true,
+                        ease: "sine.inOut"
+                    });
+                }, i * 50);
+            });
+        }
+        
+        // --- Animation Control ---
+        function goToNextStep() {
+            if (currentStep < animationSteps.length - 1) {
+                currentStep++;
+                updateNavigation();
+                animationSteps[currentStep]();
+            }
+        }
+        
+        function goToPreviousStep() {
+            if (currentStep > 0) {
+                currentStep--;
+                updateNavigation();
+                animationSteps[currentStep]();
+            }
+        }
+        
+        function updateNavigation() {
+            prevBtn.disabled = currentStep === 0;
+            nextBtn.disabled = currentStep === animationSteps.length - 1;
+            
+            // Show navigation buttons after initial load
+            if (currentStep > 0) {
+                gsap.to('.nav-btn', { opacity: 1, duration: 0.5 });
+            }
+        }
+
+        // --- Animation ---
+        function startAnimationTimeline() {
+            // Clear initial plates
+            scene.children.filter(child => child.userData && child.userData.isFloatingPlate).forEach(child => scene.remove(child));
+            
+            // Build animation steps
+            buildAnimationSteps();
+            
+            // Start from the first step
+            currentStep = 0;
+            animationSteps[currentStep]();
+            
+            // Show navigation
+            gsap.to('.nav-btn', { opacity: 1, duration: 0.5, delay: 2 });
+        }
+        
+        function buildAnimationSteps() {
+            const { part1, part2, part3, part4 } = textObjects;
+            
+            // Step 0: Initial setup
+            animationSteps.push(() => {
+                camera.position.set(0, 2, 20);
+                numberPlateGroup.position.set(0, 0, 0);
+                numberPlateGroup.rotation.set(0, 0, 0);
+                
+                titleEl.textContent = "How many unique license plates can this format generate?";
+                calculationEl.innerHTML = "_ _ &nbsp; _ _ &nbsp; _ _ &nbsp; _ _ _ _";
+                
+                gsap.to(camera.position, { z: 15, duration: 2, ease: 'power2.inOut' });
+                gsap.to([titleEl, explanationBoxEl], { opacity: 1, y: 0, stagger: 0.3, duration: 1 }, "-=0.5");
+            });
+            
+            // Step 1: First two letters
+            animationSteps.push(() => {
+                gsap.to(camera.position, { x: -3.5, z: 10, duration: 2, ease: 'power2.inOut' });
+                gsap.to(bokehPass.uniforms.focus, { value: 10, duration: 2 });
+                
+                titleEl.textContent = "Each of the first two slots can be any letter from A-Z.";
+                calculationEl.innerHTML = `<span class="highlight">26</span> x _ &nbsp; _ _ &nbsp; _ _ &nbsp; _ _ _ _`;
+                
+                gsap.to(part1.scale, { x: 1.1, y: 1.1, z: 1.1, repeat: 1, yoyo: true, duration: 0.5 });
+                
+                setTimeout(() => {
+                    calculationEl.innerHTML = `<span class="highlight">26 x 26</span> &nbsp; _ _ &nbsp; _ _ &nbsp; _ _ _ _`;
+                }, 1500);
+            });
+            
+            // Step 2: First two numbers
+            animationSteps.push(() => {
+                gsap.to(camera.position, { x: -1.2, duration: 2, ease: 'power2.inOut' });
+                gsap.to(bokehPass.uniforms.focus, { value: 10, duration: 2 });
+                
+                titleEl.textContent = "The next two slots can be any digit from 0-9.";
+                calculationEl.innerHTML = `26 x 26 x <span class="highlight">10</span> &nbsp; _ &nbsp; _ _ &nbsp; _ _ _ _`;
+                
+                gsap.to(part2.scale, { x: 1.1, y: 1.1, z: 1.1, repeat: 1, yoyo: true, duration: 0.5 });
+                
+                setTimeout(() => {
+                    calculationEl.innerHTML = `26 x 26 x <span class="highlight">10 x 10</span> &nbsp; _ _ &nbsp; _ _ _ _`;
+                }, 1500);
+            });
+            
+            // Step 3: Second two letters
+            animationSteps.push(() => {
+                gsap.to(camera.position, { x: 1.2, duration: 2, ease: 'power2.inOut' });
+                gsap.to(bokehPass.uniforms.focus, { value: 10, duration: 2 });
+                
+                titleEl.textContent = "Followed by two more letters...";
+                calculationEl.innerHTML = `26² x 10² x <span class="highlight">26</span> &nbsp; _ &nbsp; _ _ _ _`;
+                
+                gsap.to(part3.scale, { x: 1.1, y: 1.1, z: 1.1, repeat: 1, yoyo: true, duration: 0.5 });
+                
+                setTimeout(() => {
+                    calculationEl.innerHTML = `26² x 10² x <span class="highlight">26 x 26</span> &nbsp; _ _ _ _`;
+                }, 1500);
+            });
+            
+            // Step 4: Last four numbers
+            animationSteps.push(() => {
+                gsap.to(camera.position, { x: 3.7, duration: 2, ease: 'power2.inOut' });
+                gsap.to(bokehPass.uniforms.focus, { value: 10, duration: 2 });
+                
+                titleEl.textContent = "And finally, four more digits.";
+                calculationEl.innerHTML = `26² x 10² x 26² x <span class="highlight">10 x 10 x 10 x 10</span>`;
+            });
+            
+            // Step 5: Final Calculation & Earth Reveal
+            animationSteps.push(() => {
+                gsap.to(camera.position, { x: 0, y: 2, z: 20, duration: 2.5, ease: 'power2.inOut' });
+                gsap.to(bokehPass.uniforms.focus, { value: 20, duration: 2.5 });
+                
+                gsap.to(numberPlateGroup.position, { z: -5, y: 3, duration: 2.5, ease: 'power2.inOut' }, "<");
+                gsap.to(numberPlateGroup.rotation, { x: -0.3, duration: 2.5, ease: 'power2.inOut' }, "<");
+                
+                titleEl.textContent = "The Fundamental Counting Principle: Multiply the possibilities.";
+                calculationEl.innerHTML = `26⁴ × 10⁶ = <span class="highlight">4,569,760,000,000</span>`;
+                
+                gsap.to(earthGroup.position, { z: 0, duration: 4, ease: 'power2.out' }, ">-1");
+                gsap.to(earthGroup.scale, { x: 1, y: 1, z: 1, duration: 4, ease: 'power2.out' }, "<");
+                
+                gsap.to([titleEl, explanationBoxEl], { opacity: 0, duration: 1.5 }, ">-0.5");
+                gsap.to(finalComparisonEl, { opacity: 1, duration: 2 }, ">");
+                
+                // Create and animate vehicle silhouettes
+                createVehicleSilhouettes();
+                setTimeout(animateVehicleSilhouettes, 1000);
+            });
+        }
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            
+            if (composer) {
+                composer.setSize(window.innerWidth, window.innerHeight);
+            }
+            
+            if (bloomPass) {
+                bloomPass.setSize(window.innerWidth, window.innerHeight);
+            }
+            
+            if (bokehPass) {
+                bokehPass.uniforms.width.value = window.innerWidth;
+                bokehPass.uniforms.height.value = window.innerHeight;
+            }
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            const delta = clock.getDelta();
+            
+            if (stars) {
+                stars.rotation.y += delta * 0.002;
+            }
+            
+            if (earthGroup && earthGroup.userData.clouds) {
+                earthGroup.rotation.y += delta * 0.02;
+                earthGroup.userData.clouds.rotation.y += delta * 0.025;
+            }
+            
+            if(numberPlateGroup && !gsap.isTweening(numberPlateGroup.rotation)) {
+                numberPlateGroup.rotation.y = Math.sin(clock.getElapsedTime() * 0.2) * 0.1;
+            }
+            
+            if (controls) {
+                controls.update();
+            }
+            
+            if (composer) {
+                composer.render();
+            } else {
+                renderer.render(scene, camera);
+            }
+        }
+
+        init();
+    </script>
+</body>
+</html>
