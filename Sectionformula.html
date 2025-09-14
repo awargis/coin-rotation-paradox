@@ -1,0 +1,676 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Section Formula & Harmonic Conjugates</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/EffectComposer.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/RenderPass.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/ShaderPass.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/UnrealBloomPass.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/CopyShader.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/FXAAShader.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/LuminosityHighPassShader.min.js"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            font-family: 'Roboto', Arial, sans-serif;
+            background: linear-gradient(to bottom, #000022, #001144);
+            color: #fff;
+        }
+        #container {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+        }
+        #ui {
+            position: absolute;
+            bottom: clamp(10px, 2vw, 20px);
+            left: clamp(10px, 2vw, 20px);
+            background: rgba(10, 20, 50, 0.85);
+            padding: clamp(10px, 2vw, 20px);
+            border-radius: 12px;
+            box-shadow: 0 4px 30px rgba(0, 200, 255, 0.4);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(0, 200, 255, 0.5);
+            max-width: 300px;
+            transition: all 0.3s ease;
+        }
+        .slider-container {
+            margin: 15px 0;
+            width: 100%;
+            max-width: 260px;
+        }
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #00ccff;
+            font-weight: 500;
+            font-size: clamp(14px, 1.5vw, 16px);
+        }
+        input[type="range"] {
+            width: 100%;
+            height: 8px;
+            -webkit-appearance: none;
+            background: linear-gradient(to right, #003366, #00ccff);
+            border-radius: 4px;
+            outline: none;
+            transition: all 0.2s ease;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            background: #ffdd44;
+            cursor: pointer;
+            box-shadow: 0 0 15px rgba(255, 221, 68, 0.9);
+            transition: all 0.2s ease;
+        }
+        input[type="range"]:hover::-webkit-slider-thumb {
+            transform: scale(1.15);
+        }
+        .toggle {
+            display: flex;
+            margin: 15px 0;
+            gap: 2px;
+        }
+        .toggle-btn {
+            padding: 8px 18px;
+            background: rgba(0, 50, 100, 0.7);
+            color: #00ccff;
+            border: 1px solid #00ccff;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: clamp(12px, 1.4vw, 14px);
+        }
+        .toggle-btn:first-child {
+            border-radius: 8px 0 0 8px;
+        }
+        .toggle-btn:last-child {
+            border-radius: 0 8px 8px 0;
+        }
+        .toggle-btn.active {
+            background: #00ccff;
+            color: #001122;
+            box-shadow: 0 0 12px rgba(0, 204, 255, 0.9);
+        }
+        .toggle-btn:hover {
+            background: rgba(0, 204, 255, 0.7);
+        }
+        .formula {
+            margin-top: 15px;
+            padding: 12px;
+            background: rgba(0, 0, 30, 0.7);
+            border-radius: 8px;
+            border-left: 4px solid #ffdd44;
+            font-family: 'Courier New', monospace;
+            font-size: clamp(12px, 1.4vw, 14px);
+        }
+        h1 {
+            margin: 0 0 12px 0;
+            color: #ffdd44;
+            font-size: clamp(18px, 2vw, 20px);
+            text-shadow: 0 0 10px rgba(255, 221, 68, 0.8);
+        }
+        @media (max-width: 600px) {
+            #ui {
+                max-width: 85%;
+                padding: 10px;
+            }
+            .slider-container {
+                max-width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="container"></div>
+    
+    <div id="ui">
+        <h1>Section Formula & Harmonic Conjugates</h1>
+        <div class="slider-container">
+            <label for="m-slider">Ratio m: <span id="m-value">3</span></label>
+            <input type="range" id="m-slider" min="1" max="20" value="3" step="0.1">
+        </div>
+        <div class="slider-container">
+            <label for="n-slider">Ratio n: <span id="n-value">2</span></label>
+            <input type="range" id="n-slider" min="1" max="20" value="2" step="0.1">
+        </div>
+        <div class="toggle">
+            <div class="toggle-btn active" id="internal-btn">Internal Division</div>
+            <div class="toggle-btn" id="external-btn">External Division</div>
+        </div>
+        <div class="formula">
+            R = (nP + mQ)/(m + n)<br>
+            Current R: <span id="r-coords">(0, 0)</span><br>
+            Harmonic S: <span id="s-coords">(0, 0)</span>
+        </div>
+    </div>
+
+    <script>
+        let scene, camera, renderer, composer;
+        let controls, raycaster, mouse;
+        let grid, segment, pointP, pointQ, pointR, pointS;
+        let labelP, labelQ, labelR, labelS;
+        let particles = [];
+        let isInternal = true;
+        let m = 3, n = 2;
+        let selectedObject = null;
+        let isInitialized = false;
+        
+        function init() {
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x000511);
+            
+            camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.set(0, 7, 12);
+            camera.lookAt(0, 0, 0);
+            
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap; // Softer shadows
+            document.getElementById('container').appendChild(renderer.domElement);
+            
+            controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.1;
+            controls.minDistance = 5;
+            controls.maxDistance = 20;
+            
+            raycaster = new THREE.Raycaster();
+            mouse = new THREE.Vector2();
+            
+            setupPostProcessing();
+            addLighting();
+            createGrid();
+            createPointsAndSegment();
+            createLabels();
+            createParticles();
+            setupEventListeners();
+            window.addEventListener('resize', onWindowResize);
+            
+            isInitialized = true;
+            updatePointPositions();
+            animate();
+        }
+        
+        function setupPostProcessing() {
+            composer = new THREE.EffectComposer(renderer);
+            const renderPass = new THREE.RenderPass(scene, camera);
+            composer.addPass(renderPass);
+            
+            const bloomPass = new THREE.UnrealBloomPass(
+                new THREE.Vector2(window.innerWidth, window.innerHeight),
+                0.5,  // Reduced strength for subtler glow
+                0.3,  // Tighter radius
+                0.9   // Higher threshold for cleaner effect
+            );
+            composer.addPass(bloomPass);
+            
+            const fxaaPass = new THREE.ShaderPass(THREE.FXAAShader);
+            fxaaPass.uniforms['resolution'].value.set(1 / (window.innerWidth * window.devicePixelRatio), 1 / (window.innerHeight * window.devicePixelRatio));
+            composer.addPass(fxaaPass);
+        }
+        
+        function addLighting() {
+            const ambientLight = new THREE.AmbientLight(0x404066, 0.6); // Slightly brighter
+            scene.add(ambientLight);
+            
+            const keyLight = new THREE.DirectionalLight(0xffeeaa, 1.3); // Warmer light
+            keyLight.position.set(5, 10, 7);
+            keyLight.castShadow = true;
+            keyLight.shadow.mapSize.width = 1024;
+            keyLight.shadow.mapSize.height = 1024;
+            keyLight.shadow.bias = -0.0001; // Reduce shadow artifacts
+            keyLight.shadow.radius = 2; // Softer shadow edges
+            scene.add(keyLight);
+            
+            const fillLight = new THREE.DirectionalLight(0x66aaff, 0.7); // Cooler fill light
+            fillLight.position.set(-5, 5, -7);
+            scene.add(fillLight);
+            
+            const backLight = new THREE.DirectionalLight(0x00ddff, 0.5); // Brighter backlight
+            backLight.position.set(0, 5, -10);
+            scene.add(backLight);
+        }
+        
+        function createGrid() {
+            const gridHelper = new THREE.GridHelper(20, 20, 0x0066ff, 0x003366);
+            gridHelper.rotation.x = Math.PI / 2;
+            gridHelper.material.opacity = 0.7;
+            gridHelper.material.transparent = true;
+            scene.add(gridHelper);
+            
+            const planeGeometry = new THREE.PlaneGeometry(20, 20);
+            const planeMaterial = new THREE.MeshStandardMaterial({
+                color: 0x001122,
+                metalness: 0.85,
+                roughness: 0.15,
+                transparent: true,
+                opacity: 0.5,
+                side: THREE.DoubleSide
+            });
+            const plane = new THREE.Mesh(planeGeometry, planeMaterial);
+            plane.rotation.x = -Math.PI / 2;
+            plane.position.y = -0.1;
+            plane.receiveShadow = true;
+            plane.name = 'plane';
+            scene.add(plane);
+        }
+        
+        function createPointsAndSegment() {
+            const pointGeometry = new THREE.SphereGeometry(0.3, 32, 32);
+            const pointMaterial = new THREE.MeshStandardMaterial({
+                color: 0xffaa00, // Brighter orange
+                emissive: 0xff7700,
+                emissiveIntensity: 0.8,
+                metalness: 0.7,
+                roughness: 0.15
+            });
+            
+            pointP = new THREE.Mesh(pointGeometry, pointMaterial);
+            pointP.position.set(-3, 0, 0);
+            pointP.castShadow = true;
+            pointP.name = 'pointP';
+            scene.add(pointP);
+            
+            pointQ = new THREE.Mesh(pointGeometry, pointMaterial);
+            pointQ.position.set(3, 0, 0);
+            pointQ.castShadow = true;
+            pointQ.name = 'pointQ';
+            scene.add(pointQ);
+            
+            const segmentGeometry = new THREE.CylinderGeometry(0.05, 0.05, 6, 32);
+            const segmentMaterial = new THREE.MeshStandardMaterial({
+                color: 0x00ddff, // Brighter cyan
+                emissive: 0x00aaff,
+                emissiveIntensity: 0.6,
+                metalness: 0.8,
+                roughness: 0.15,
+                transparent: true,
+                opacity: 0.9
+            });
+            
+            segment = new THREE.Mesh(segmentGeometry, segmentMaterial);
+            segment.castShadow = true;
+            scene.add(segment);
+            
+            const pointRMaterial = new THREE.MeshStandardMaterial({
+                color: 0xffff55, // Brighter yellow
+                emissive: 0xffdd33,
+                emissiveIntensity: 1.0,
+                metalness: 0.6,
+                roughness: 0.1
+            });
+            
+            pointR = new THREE.Mesh(pointGeometry, pointRMaterial);
+            pointR.scale.set(1.3, 1.3, 1.3);
+            pointR.castShadow = true;
+            scene.add(pointR);
+            
+            const pointSMaterial = new THREE.MeshStandardMaterial({
+                color: 0xff33cc, // Brighter magenta
+                emissive: 0xcc00aa,
+                emissiveIntensity: 1.0,
+                metalness: 0.6,
+                roughness: 0.1
+            });
+            
+            pointS = new THREE.Mesh(pointGeometry, pointSMaterial);
+            pointS.scale.set(1.3, 1.3, 1.3);
+            pointS.castShadow = true;
+            scene.add(pointS);
+            pointS.visible = false;
+        }
+        
+        function createLabels() {
+            function createLabel(text, color) {
+                const canvas = document.createElement('canvas');
+                canvas.width = 128;
+                canvas.height = 32;
+                const context = canvas.getContext('2d');
+                context.fillStyle = 'rgba(0, 0, 30, 0.9)';
+                context.fillRect(0, 0, canvas.width, canvas.height);
+                context.font = 'bold 22px Roboto';
+                context.fillStyle = color;
+                context.textAlign = 'center';
+                context.fillText(text, 64, 22);
+                const texture = new THREE.CanvasTexture(canvas);
+                const spriteMaterial = new THREE.SpriteMaterial({ map: texture });
+                const sprite = new THREE.Sprite(spriteMaterial);
+                sprite.scale.set(1.6, 0.45, 1);
+                return sprite;
+            }
+            
+            labelP = createLabel('P', '#ffaa00');
+            labelQ = createLabel('Q', '#ffaa00');
+            labelR = createLabel('R', '#ffff55');
+            labelS = createLabel('S', '#ff33cc');
+            
+            scene.add(labelP, labelQ, labelR, labelS);
+            labelS.visible = false;
+        }
+        
+        function createParticles() {
+            const particleCount = 1200; // Slightly more particles
+            const particleGeometry = new THREE.BufferGeometry();
+            const positions = new Float32Array(particleCount * 3);
+            const colors = new Float32Array(particleCount * 3);
+            const velocities = new Float32Array(particleCount * 3);
+            
+            for (let i = 0; i < particleCount; i++) {
+                const i3 = i * 3;
+                positions[i3] = (Math.random() - 0.5) * 15;
+                positions[i3 + 1] = (Math.random() - 0.5) * 15;
+                positions[i3 + 2] = (Math.random() - 0.5) * 15;
+                
+                velocities[i3] = (Math.random() - 0.5) * 0.03; // Faster particles
+                velocities[i3 + 1] = (Math.random() - 0.5) * 0.03;
+                velocities[i3 + 2] = (Math.random() - 0.5) * 0.03;
+                
+                // Dynamic color variation
+                const hue = Math.random();
+                colors[i3] = Math.sin(hue * Math.PI * 2) * 0.5 + 0.5;
+                colors[i3 + 1] = Math.sin((hue + 0.33) * Math.PI * 2) * 0.5 + 0.5;
+                colors[i3 + 2] = Math.sin((hue + 0.66) * Math.PI * 2) * 0.5 + 0.5;
+            }
+            
+            particleGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+            particleGeometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+            particleGeometry.setAttribute('velocity', new THREE.BufferAttribute(velocities, 3));
+            
+            const particleMaterial = new THREE.PointsMaterial({
+                size: 0.07, // Slightly smaller particles
+                vertexColors: true,
+                transparent: true,
+                opacity: 0.8,
+                blending: THREE.AdditiveBlending
+            });
+            
+            const particleSystem = new THREE.Points(particleGeometry, particleMaterial);
+            scene.add(particleSystem);
+            particles.push(particleSystem);
+        }
+        
+        function setupEventListeners() {
+            const mSlider = document.getElementById('m-slider');
+            const nSlider = document.getElementById('n-slider');
+            const mValue = document.getElementById('m-value');
+            const nValue = document.getElementById('n-value');
+            
+            mSlider.addEventListener('input', function() {
+                m = parseFloat(this.value);
+                mValue.textContent = m.toFixed(1);
+                updatePointPositions();
+            });
+            
+            nSlider.addEventListener('input', function() {
+                n = parseFloat(this.value);
+                nValue.textContent = n.toFixed(1);
+                updatePointPositions();
+            });
+            
+            const internalBtn = document.getElementById('internal-btn');
+            const externalBtn = document.getElementById('external-btn');
+            
+            internalBtn.addEventListener('click', function() {
+                isInternal = true;
+                internalBtn.classList.add('active');
+                externalBtn.classList.remove('active');
+                updatePointPositions();
+            });
+            
+            externalBtn.addEventListener('click', function() {
+                isInternal = false;
+                externalBtn.classList.add('active');
+                internalBtn.classList.remove('active');
+                updatePointPositions();
+            });
+            
+            renderer.domElement.addEventListener('mousedown', onMouseDown);
+            renderer.domElement.addEventListener('mousemove', onMouseMove);
+            renderer.domElement.addEventListener('mouseup', onMouseUp);
+            renderer.domElement.addEventListener('touchstart', onTouchStart);
+            renderer.domElement.addEventListener('touchmove', onTouchMove);
+            renderer.domElement.addEventListener('touchend', onMouseUp);
+        }
+        
+        function onMouseDown(event) {
+            if (!isInitialized) return;
+            event.preventDefault();
+            mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+            mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+            
+            raycaster.setFromCamera(mouse, camera);
+            const intersects = raycaster.intersectObjects([pointP, pointQ].filter(obj => obj));
+            
+            if (intersects.length > 0) {
+                controls.enabled = false;
+                selectedObject = intersects[0].object;
+                selectedObject.material.emissiveIntensity = 1.3; // Stronger highlight
+            }
+        }
+        
+        function onTouchStart(event) {
+            if (!isInitialized) return;
+            event.preventDefault();
+            const touch = event.touches[0];
+            mouse.x = (touch.clientX / window.innerWidth) * 2 - 1;
+            mouse.y = -(touch.clientY / window.innerHeight) * 2 + 1;
+            
+            raycaster.setFromCamera(mouse, camera);
+            const intersects = raycaster.intersectObjects([pointP, pointQ].filter(obj => obj));
+            
+            if (intersects.length > 0) {
+                controls.enabled = false;
+                selectedObject = intersects[0].object;
+                selectedObject.material.emissiveIntensity = 1.3;
+            }
+        }
+        
+        function onMouseMove(event) {
+            if (!selectedObject || !isInitialized) return;
+            
+            event.preventDefault();
+            mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+            mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+            
+            raycaster.setFromCamera(mouse, camera);
+            const intersects = raycaster.intersectObject(scene.getObjectByName('plane'));
+            
+            if (intersects.length > 0) {
+                const point = intersects[0].point;
+                selectedObject.position.set(point.x, 0, point.z);
+                updateSegment();
+                updatePointPositions();
+            }
+        }
+        
+        function onTouchMove(event) {
+            if (!selectedObject || !isInitialized) return;
+            event.preventDefault();
+            const touch = event.touches[0];
+            mouse.x = (touch.clientX / window.innerWidth) * 2 - 1;
+            mouse.y = -(touch.clientY / window.innerHeight) * 2 + 1;
+            
+            raycaster.setFromCamera(mouse, camera);
+            const intersects = raycaster.intersectObject(scene.getObjectByName('plane'));
+            
+            if (intersects.length > 0) {
+                const point = intersects[0].point;
+                selectedObject.position.set(point.x, 0, point.z);
+                updateSegment();
+                updatePointPositions();
+            }
+        }
+        
+        function onMouseUp() {
+            if (selectedObject) {
+                selectedObject.material.emissiveIntensity = selectedObject === pointP || selectedObject === pointQ ? 0.8 : 1.0;
+                selectedObject = null;
+            }
+            controls.enabled = true;
+        }
+        
+        function updateSegment() {
+            if (!pointP || !pointQ || !segment) return;
+            
+            const center = new THREE.Vector3()
+                .addVectors(pointP.position, pointQ.position)
+                .multiplyScalar(0.5);
+                
+            segment.position.copy(center);
+            
+            const direction = new THREE.Vector3()
+                .subVectors(pointQ.position, pointP.position);
+                
+            segment.lookAt(pointQ.position);
+            const length = pointP.position.distanceTo(pointQ.position);
+            segment.scale.set(1, 1, length / 6);
+        }
+        
+        function updatePointPositions() {
+            if (!isInitialized || !pointP || !pointQ || !pointR || !pointS || !labelP || !labelQ || !labelR || !labelS) {
+                console.warn("Objects not fully initialized");
+                return;
+            }
+            
+            updateSegment();
+            
+            const p = pointP.position;
+            const q = pointQ.position;
+            
+            let rPosition, sPosition;
+            try {
+                if (isInternal) {
+                    if (Math.abs(m + n) < 0.0001) throw new Error("m + n cannot be zero");
+                    rPosition = new THREE.Vector3()
+                        .copy(p)
+                        .multiplyScalar(n)
+                        .add(
+                            new THREE.Vector3()
+                            .copy(q)
+                            .multiplyScalar(m)
+                        )
+                        .divideScalar(m + n);
+                        
+                    pointS.visible = false;
+                    labelS.visible = false;
+                    document.getElementById('s-coords').textContent = 'N/A';
+                } else {
+                    if (Math.abs(m - n) < 0.0001) throw new Error("m - n cannot be zero");
+                    rPosition = new THREE.Vector3()
+                        .copy(p)
+                        .multiplyScalar(-n)
+                        .add(
+                            new THREE.Vector3()
+                            .copy(q)
+                            .multiplyScalar(m)
+                        )
+                        .divideScalar(m - n);
+                        
+                    sPosition = new THREE.Vector3()
+                        .copy(p)
+                        .multiplyScalar(n)
+                        .add(
+                            new THREE.Vector3()
+                            .copy(q)
+                            .multiplyScalar(-m)
+                        )
+                        .divideScalar(n - m);
+                        
+                    pointS.position.copy(sPosition);
+                    pointS.visible = true;
+                    labelS.visible = true;
+                    labelS.position.copy(sPosition).add(new THREE.Vector3(0, 0.5, 0));
+                    
+                    document.getElementById('s-coords').textContent = 
+                        `(${sPosition.x.toFixed(2)}, ${sPosition.z.toFixed(2)})`;
+                }
+                
+                pointR.position.copy(rPosition);
+                
+                labelP.position.copy(p).add(new THREE.Vector3(0, 0.5, 0));
+                labelQ.position.copy(q).add(new THREE.Vector3(0, 0.5, 0));
+                labelR.position.copy(rPosition).add(new THREE.Vector3(0, 0.5, 0));
+                
+                document.getElementById('r-coords').textContent = 
+                    `(${rPosition.x.toFixed(2)}, ${rPosition.z.toFixed(2)})`;
+            } catch (error) {
+                console.warn("Calculation error:", error.message);
+                document.getElementById('r-coords').textContent = 'Invalid';
+                document.getElementById('s-coords').textContent = 'Invalid';
+            }
+        }
+        
+        function onWindowResize() {
+            if (!camera || !renderer || !composer) return;
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            composer.setSize(window.innerWidth, window.innerHeight);
+            const fxaaPass = composer.passes[composer.passes.length - 1];
+            fxaaPass.uniforms['resolution'].value.set(1 / (window.innerWidth * window.devicePixelRatio), 1 / (window.innerHeight * window.devicePixelRatio));
+        }
+        
+        function animate() {
+            requestAnimationFrame(animate);
+            if (!isInitialized || !controls || !composer) return;
+            controls.update();
+            
+            if (particles.length > 0 && pointR && (isInternal || pointS)) {
+                const particleSystem = particles[0];
+                const positions = particleSystem.geometry.attributes.position.array;
+                const velocities = particleSystem.geometry.attributes.velocity.array;
+                
+                const target = isInternal ? pointR.position : (pointS ? pointS.position : null);
+                
+                if (target) {
+                    for (let i = 0; i < positions.length; i += 3) {
+                        const dx = target.x - positions[i];
+                        const dy = target.y - positions[i + 1];
+                        const dz = target.z - positions[i + 2];
+                        
+                        const dist = Math.sqrt(dx*dx + dy*dy + dz*dz);
+                        
+                        if (dist < 0.3) {
+                            positions[i] = (Math.random() - 0.5) * 15;
+                            positions[i + 1] = (Math.random() - 0.5) * 15;
+                            positions[i + 2] = (Math.random() - 0.5) * 15;
+                            velocities[i] = (Math.random() - 0.5) * 0.03;
+                            velocities[i + 1] = (Math.random() - 0.5) * 0.03;
+                            velocities[i + 2] = (Math.random() - 0.5) * 0.03;
+                        } else {
+                            const speed = 0.02 * (1 + Math.sin(Date.now() * 0.0015)); // Faster, smoother motion
+                            positions[i] += dx * speed + velocities[i];
+                            positions[i + 1] += dy * speed + velocities[i + 1];
+                            positions[i + 2] += dz * speed + velocities[i + 2];
+                        }
+                    }
+                    
+                    particleSystem.geometry.attributes.position.needsUpdate = true;
+                }
+            }
+            
+            if (pointR) {
+                const scale = 1.3 + 0.2 * Math.sin(Date.now() * 0.006); // Slightly larger pulse
+                pointR.scale.set(scale, scale, scale);
+                if (!isInternal && pointS) {
+                    pointS.scale.set(scale, scale, scale);
+                }
+            }
+            
+            composer.render();
+        }
+        
+        init();
+    </script>
+</body>
+</html>
