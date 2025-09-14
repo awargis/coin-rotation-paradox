@@ -1,0 +1,759 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cinematic Line Equations</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Avenir', 'Arial', sans-serif;
+        }
+        
+        body {
+            background: #000;
+            color: #fff;
+            overflow: hidden;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .container {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            width: 100%;
+        }
+        
+        .header {
+            padding: 20px;
+            text-align: center;
+            background: rgba(0, 0, 0, 0.8);
+            border-bottom: 1px solid #00f7ff;
+            box-shadow: 0 0 15px rgba(0, 247, 255, 0.5);
+            z-index: 10;
+        }
+        
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            text-shadow: 0 0 10px #00f7ff;
+            letter-spacing: 2px;
+        }
+        
+        .subtitle {
+            color: #ff00ff;
+            font-size: 1.2rem;
+            margin-bottom: 20px;
+        }
+        
+        .content {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+        }
+        
+        .canvas-container {
+            flex: 3;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        #main-canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+        
+        .controls {
+            flex: 1;
+            background: rgba(10, 15, 30, 0.8);
+            padding: 20px;
+            border-left: 1px solid #ff00ff;
+            box-shadow: -5px 0 15px rgba(255, 0, 255, 0.3);
+            overflow-y: auto;
+            min-width: 300px;
+        }
+        
+        .control-group {
+            margin-bottom: 25px;
+            padding: 15px;
+            background: rgba(0, 10, 20, 0.6);
+            border-radius: 8px;
+            border: 1px solid #00f7ff;
+            box-shadow: 0 0 10px rgba(0, 247, 255, 0.3);
+        }
+        
+        h2 {
+            color: #00f7ff;
+            margin-bottom: 15px;
+            font-size: 1.3rem;
+            text-shadow: 0 0 5px #00f7ff;
+        }
+        
+        h3 {
+            color: #ff00ff;
+            margin: 10px 0;
+            font-size: 1.1rem;
+        }
+        
+        .slider-container {
+            margin: 10px 0;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 5px;
+            color: #fff;
+        }
+        
+        input[type="range"] {
+            width: 100%;
+            height: 8px;
+            -webkit-appearance: none;
+            background: linear-gradient(to right, #00f7ff, #ff00ff);
+            border-radius: 4px;
+            outline: none;
+        }
+        
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #fff;
+            cursor: pointer;
+            box-shadow: 0 0 10px rgba(255, 255, 255, 0.8);
+        }
+        
+        .buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        
+        button {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            border-radius: 6px;
+            background: linear-gradient(45deg, #00f7ff, #ff00ff);
+            color: #000;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 0 10px rgba(255, 0, 255, 0.5);
+        }
+        
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 0 15px rgba(255, 0, 255, 0.8);
+        }
+        
+        .equation-display {
+            margin-top: 20px;
+            padding: 15px;
+            background: rgba(0, 0, 0, 0.6);
+            border-radius: 8px;
+            border: 1px solid #ff00ff;
+            font-family: 'Courier New', monospace;
+            font-size: 1.2rem;
+            text-align: center;
+            min-height: 80px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .formula {
+            color: #00f7ff;
+            text-shadow: 0 0 5px #00f7ff;
+        }
+        
+        .value {
+            color: #ff00ff;
+            text-shadow: 0 0 5px #ff00ff;
+        }
+        
+        .visual-effects {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+        }
+        
+        .particle {
+            position: absolute;
+            width: 4px;
+            height: 4px;
+            border-radius: 50%;
+            background: #00f7ff;
+            box-shadow: 0 0 8px #00f7ff;
+        }
+        
+        .hud-element {
+            position: absolute;
+            padding: 10px;
+            background: rgba(0, 10, 30, 0.7);
+            border: 1px solid #00f7ff;
+            border-radius: 6px;
+            box-shadow: 0 0 15px rgba(0, 247, 255, 0.5);
+            color: #00f7ff;
+            font-family: 'Courier New', monospace;
+        }
+        
+        @media (max-width: 768px) {
+            .content {
+                flex-direction: column;
+            }
+            
+            .controls {
+                border-left: none;
+                border-top: 1px solid #ff00ff;
+                max-height: 40vh;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>CINEMATIC LINE EQUATION VISUALIZER</h1>
+            <div class="subtitle">Experience Mathematics in a New Dimension</div>
+        </div>
+        
+        <div class="content">
+            <div class="canvas-container">
+                <canvas id="main-canvas"></canvas>
+                <div class="visual-effects" id="visual-effects"></div>
+            </div>
+            
+            <div class="controls">
+                <div class="control-group">
+                    <h2>LINE EQUATION FORMS</h2>
+                    
+                    <div class="buttons">
+                        <button id="point-slope-btn">Point-Slope</button>
+                        <button id="intercept-btn">Intercept</button>
+                        <button id="normal-btn">Normal</button>
+                    </div>
+                    
+                    <div class="equation-display">
+                        <span id="equation">y - y₁ = m(x - x₁)</span>
+                    </div>
+                </div>
+                
+                <div class="control-group">
+                    <h3>POINT-SLOPE PARAMETERS</h3>
+                    
+                    <div class="slider-container">
+                        <label for="x1-slider">X₁: <span class="value" id="x1-value">2</span></label>
+                        <input type="range" id="x1-slider" min="-10" max="10" step="0.1" value="2">
+                    </div>
+                    
+                    <div class="slider-container">
+                        <label for="y1-slider">Y₁: <span class="value" id="y1-value">3</span></label>
+                        <input type="range" id="y1-slider" min="-10" max="10" step="0.1" value="3">
+                    </div>
+                    
+                    <div class="slider-container">
+                        <label for="slope-slider">Slope (m): <span class="value" id="slope-value">-0.5</span></label>
+                        <input type="range" id="slope-slider" min="-5" max="5" step="0.1" value="-0.5">
+                    </div>
+                </div>
+                
+                <div class="control-group">
+                    <h3>INTERCEPT PARAMETERS</h3>
+                    
+                    <div class="slider-container">
+                        <label for="x-intercept">X-Intercept (a): <span class="value" id="a-value">6</span></label>
+                        <input type="range" id="x-intercept" min="-10" max="10" step="0.1" value="6">
+                    </div>
+                    
+                    <div class="slider-container">
+                        <label for="y-intercept">Y-Intercept (b): <span class="value" id="b-value">3</span></label>
+                        <input type="range" id="y-intercept" min="-10" max="10" step="0.1" value="3">
+                    </div>
+                </div>
+                
+                <div class="control-group">
+                    <h3>NORMAL FORM PARAMETERS</h3>
+                    
+                    <div class="slider-container">
+                        <label for="alpha-slider">Angle (α): <span class="value" id="alpha-value">60</span>°</label>
+                        <input type="range" id="alpha-slider" min="0" max="360" step="1" value="60">
+                    </div>
+                    
+                    <div class="slider-container">
+                        <label for="p-slider">Distance (p): <span class="value" id="p-value">2</span></label>
+                        <input type="range" id="p-slider" min="0" max="10" step="0.1" value="2">
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Canvas setup
+        const canvas = document.getElementById('main-canvas');
+        const ctx = canvas.getContext('2d');
+        const visualEffects = document.getElementById('visual-effects');
+        
+        // Set canvas size
+        function resizeCanvas() {
+            canvas.width = canvas.parentElement.clientWidth;
+            canvas.height = canvas.parentElement.clientHeight;
+        }
+        
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+        
+        // Parameters with initial values
+        let params = {
+            x1: 2,
+            y1: 3,
+            slope: -0.5,
+            a: 6,
+            b: 3,
+            alpha: 60, // in degrees
+            p: 2,
+            currentForm: 'point-slope'
+        };
+        
+        // Update displayed values from sliders
+        document.getElementById('x1-slider').addEventListener('input', function() {
+            params.x1 = parseFloat(this.value);
+            document.getElementById('x1-value').textContent = this.value;
+            updateEquation();
+            draw();
+        });
+        
+        document.getElementById('y1-slider').addEventListener('input', function() {
+            params.y1 = parseFloat(this.value);
+            document.getElementById('y1-value').textContent = this.value;
+            updateEquation();
+            draw();
+        });
+        
+        document.getElementById('slope-slider').addEventListener('input', function() {
+            params.slope = parseFloat(this.value);
+            document.getElementById('slope-value').textContent = this.value;
+            updateEquation();
+            draw();
+        });
+        
+        document.getElementById('x-intercept').addEventListener('input', function() {
+            params.a = parseFloat(this.value);
+            document.getElementById('a-value').textContent = this.value;
+            updateEquation();
+            draw();
+        });
+        
+        document.getElementById('y-intercept').addEventListener('input', function() {
+            params.b = parseFloat(this.value);
+            document.getElementById('b-value').textContent = this.value;
+            updateEquation();
+            draw();
+        });
+        
+        document.getElementById('alpha-slider').addEventListener('input', function() {
+            params.alpha = parseFloat(this.value);
+            document.getElementById('alpha-value').textContent = this.value;
+            updateEquation();
+            draw();
+        });
+        
+        document.getElementById('p-slider').addEventListener('input', function() {
+            params.p = parseFloat(this.value);
+            document.getElementById('p-value').textContent = this.value;
+            updateEquation();
+            draw();
+        });
+        
+        // Form selection buttons
+        document.getElementById('point-slope-btn').addEventListener('click', function() {
+            params.currentForm = 'point-slope';
+            updateEquation();
+            draw();
+        });
+        
+        document.getElementById('intercept-btn').addEventListener('click', function() {
+            params.currentForm = 'intercept';
+            updateEquation();
+            draw();
+        });
+        
+        document.getElementById('normal-btn').addEventListener('click', function() {
+            params.currentForm = 'normal';
+            updateEquation();
+            draw();
+        });
+        
+        // Update equation display
+        function updateEquation() {
+            let equationElement = document.getElementById('equation');
+            
+            switch(params.currentForm) {
+                case 'point-slope':
+                    equationElement.innerHTML = `y - <span class="value">${params.y1}</span> = <span class="value">${params.slope}</span>(x - <span class="value">${params.x1}</span>)`;
+                    break;
+                case 'intercept':
+                    equationElement.innerHTML = `x/<span class="value">${params.a}</span> + y/<span class="value">${params.b}</span> = 1`;
+                    break;
+                case 'normal':
+                    equationElement.innerHTML = `x·cos(<span class="value">${params.alpha}°</span>) + y·sin(<span class="value">${params.alpha}°</span>) = <span class="value">${params.p}</span>`;
+                    break;
+            }
+        }
+        
+        // Coordinate transformation functions
+        function toCanvasX(x) {
+            return canvas.width / 2 + x * 30;
+        }
+        
+        function toCanvasY(y) {
+            return canvas.height / 2 - y * 30;
+        }
+        
+        // Draw the Cartesian grid
+        function drawGrid() {
+            ctx.strokeStyle = 'rgba(0, 247, 255, 0.2)';
+            ctx.lineWidth = 1;
+            
+            // Vertical lines
+            for (let x = -10; x <= 10; x++) {
+                ctx.beginPath();
+                ctx.moveTo(toCanvasX(x), toCanvasY(-10));
+                ctx.lineTo(toCanvasX(x), toCanvasY(10));
+                ctx.stroke();
+            }
+            
+            // Horizontal lines
+            for (let y = -10; y <= 10; y++) {
+                ctx.beginPath();
+                ctx.moveTo(toCanvasX(-10), toCanvasY(y));
+                ctx.lineTo(toCanvasX(10), toCanvasY(y));
+                ctx.stroke();
+            }
+            
+            // Draw axes
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 2;
+            
+            // X-axis
+            ctx.beginPath();
+            ctx.moveTo(toCanvasX(-10), toCanvasY(0));
+            ctx.lineTo(toCanvasX(10), toCanvasY(0));
+            ctx.stroke();
+            
+            // Y-axis
+            ctx.beginPath();
+            ctx.moveTo(toCanvasX(0), toCanvasY(-10));
+            ctx.lineTo(toCanvasX(0), toCanvasY(10));
+            ctx.stroke();
+            
+            // Draw axis labels
+            ctx.fillStyle = '#ffffff';
+            ctx.font = '12px Arial';
+            
+            for (let x = -10; x <= 10; x += 2) {
+                if (x === 0) continue;
+                ctx.fillText(x, toCanvasX(x) - 5, toCanvasY(0) + 15);
+            }
+            
+            for (let y = -10; y <= 10; y += 2) {
+                if (y === 0) continue;
+                ctx.fillText(y, toCanvasX(0) + 5, toCanvasY(y) + 5);
+            }
+            
+            // Origin
+            ctx.fillText('O', toCanvasX(0) + 5, toCanvasY(0) + 15);
+        }
+        
+        // Draw point-slope form
+        function drawPointSlope() {
+            const {x1, y1, slope} = params;
+            
+            // Calculate line endpoints
+            const xStart = -10;
+            const yStart = slope * (xStart - x1) + y1;
+            const xEnd = 10;
+            const yEnd = slope * (xEnd - x1) + y1;
+            
+            // Draw the line
+            ctx.strokeStyle = '#ffcc00';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.moveTo(toCanvasX(xStart), toCanvasY(yStart));
+            ctx.lineTo(toCanvasX(xEnd), toCanvasY(yEnd));
+            ctx.stroke();
+            
+            // Draw the point
+            ctx.fillStyle = '#00f7ff';
+            ctx.beginPath();
+            ctx.arc(toCanvasX(x1), toCanvasY(y1), 8, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Add glow effect
+            ctx.shadowBlur = 15;
+            ctx.shadowColor = '#00f7ff';
+            ctx.fill();
+            ctx.shadowBlur = 0;
+            
+            // Draw point label
+            ctx.fillStyle = '#00f7ff';
+            ctx.font = 'bold 14px Arial';
+            ctx.fillText(`P(${x1}, ${y1})`, toCanvasX(x1) + 10, toCanvasY(y1) - 10);
+            
+            // Draw slope indicator
+            const midX = (xStart + xEnd) / 2;
+            const midY = (yStart + yEnd) / 2;
+            
+            ctx.strokeStyle = '#ff00ff';
+            ctx.setLineDash([5, 5]);
+            ctx.beginPath();
+            ctx.moveTo(toCanvasX(midX), toCanvasY(midY));
+            ctx.lineTo(toCanvasX(midX + 1), toCanvasY(midY - slope));
+            ctx.stroke();
+            ctx.setLineDash([]);
+            
+            // Draw slope label
+            ctx.fillStyle = '#ff00ff';
+            ctx.fillText(`m = ${slope}`, toCanvasX(midX) + 10, toCanvasY(midY) - 10);
+        }
+        
+        // Draw intercept form
+        function drawIntercept() {
+            const {a, b} = params;
+            
+            // Draw the line
+            ctx.strokeStyle = '#ff00ff';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.moveTo(toCanvasX(a), toCanvasY(0));
+            ctx.lineTo(toCanvasX(0), toCanvasY(b));
+            ctx.stroke();
+            
+            // Draw x-intercept
+            ctx.fillStyle = '#00f7ff';
+            ctx.beginPath();
+            ctx.arc(toCanvasX(a), toCanvasY(0), 8, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Add glow effect
+            ctx.shadowBlur = 15;
+            ctx.shadowColor = '#00f7ff';
+            ctx.fill();
+            ctx.shadowBlur = 0;
+            
+            // Draw x-intercept label
+            ctx.fillStyle = '#00f7ff';
+            ctx.font = 'bold 14px Arial';
+            ctx.fillText(`(${a}, 0)`, toCanvasX(a) + 10, toCanvasY(0) - 10);
+            
+            // Draw y-intercept
+            ctx.fillStyle = '#ff00ff';
+            ctx.beginPath();
+            ctx.arc(toCanvasX(0), toCanvasY(b), 8, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Add glow effect
+            ctx.shadowBlur = 15;
+            ctx.shadowColor = '#ff00ff';
+            ctx.fill();
+            ctx.shadowBlur = 0;
+            
+            // Draw y-intercept label
+            ctx.fillStyle = '#ff00ff';
+            ctx.fillText(`(0, ${b})`, toCanvasX(0) + 10, toCanvasY(b) - 10);
+        }
+        
+        // Draw normal form
+        function drawNormal() {
+            const {alpha, p} = params;
+            const alphaRad = alpha * Math.PI / 180;
+            
+            // Calculate line endpoints
+            const cosAlpha = Math.cos(alphaRad);
+            const sinAlpha = Math.sin(alphaRad);
+            
+            // The line equation: x*cosα + y*sinα = p
+            // We'll find two points on this line
+            
+            // Point 1: when x = p/cosα (if cosα ≠ 0)
+            let x1, y1, x2, y2;
+            
+            if (Math.abs(cosAlpha) > 0.001) {
+                x1 = p / cosAlpha;
+                y1 = 0;
+            } else {
+                x1 = 0;
+                y1 = p / sinAlpha;
+            }
+            
+            // Point 2: when y = p/sinα (if sinα ≠ 0)
+            if (Math.abs(sinAlpha) > 0.001) {
+                x2 = 0;
+                y2 = p / sinAlpha;
+            } else {
+                x2 = p / cosAlpha;
+                y2 = 0;
+            }
+            
+            // Draw the line
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.moveTo(toCanvasX(x1), toCanvasY(y1));
+            ctx.lineTo(toCanvasX(x2), toCanvasY(y2));
+            ctx.stroke();
+            
+            // Draw the normal from origin to the line
+            const normalX = p * cosAlpha;
+            const normalY = p * sinAlpha;
+            
+            ctx.strokeStyle = '#00f7ff';
+            ctx.setLineDash([5, 5]);
+            ctx.beginPath();
+            ctx.moveTo(toCanvasX(0), toCanvasY(0));
+            ctx.lineTo(toCanvasX(normalX), toCanvasY(normalY));
+            ctx.stroke();
+            ctx.setLineDash([]);
+            
+            // Draw the normal point on the line
+            ctx.fillStyle = '#ff00ff';
+            ctx.beginPath();
+            ctx.arc(toCanvasX(normalX), toCanvasY(normalY), 8, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Add glow effect
+            ctx.shadowBlur = 15;
+            ctx.shadowColor = '#ff00ff';
+            ctx.fill();
+            ctx.shadowBlur = 0;
+            
+            // Draw normal label
+            ctx.fillStyle = '#00f7ff';
+            ctx.font = 'bold 14px Arial';
+            ctx.fillText(`p = ${p}`, toCanvasX(normalX/2) + 5, toCanvasY(normalY/2) - 5);
+            
+            // Draw angle indicator
+            ctx.strokeStyle = 'rgba(255, 0, 255, 0.7)';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.arc(toCanvasX(0), toCanvasY(0), 30, 0, alphaRad, false);
+            ctx.stroke();
+            
+            // Draw angle label
+            ctx.fillStyle = '#ff00ff';
+            ctx.fillText(`α = ${alpha}°`, toCanvasX(0) + 40, toCanvasY(0) - 20);
+        }
+        
+        // Create particles for visual effects
+        function createParticles() {
+            // Clear previous particles
+            visualEffects.innerHTML = '';
+            
+            // Create new particles based on current form
+            let count = 30;
+            let color;
+            
+            switch(params.currentForm) {
+                case 'point-slope':
+                    color = '#ffcc00';
+                    break;
+                case 'intercept':
+                    color = '#ff00ff';
+                    break;
+                case 'normal':
+                    color = '#00f7ff';
+                    break;
+            }
+            
+            for (let i = 0; i < count; i++) {
+                const particle = document.createElement('div');
+                particle.className = 'particle';
+                particle.style.backgroundColor = color;
+                particle.style.left = Math.random() * 100 + '%';
+                particle.style.top = Math.random() * 100 + '%';
+                particle.style.animation = `moveParticle ${2 + Math.random() * 3}s linear infinite`;
+                visualEffects.appendChild(particle);
+            }
+        }
+        
+        // Main draw function
+        function draw() {
+            // Clear canvas
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // Draw grid
+            drawGrid();
+            
+            // Draw the current form
+            switch(params.currentForm) {
+                case 'point-slope':
+                    drawPointSlope();
+                    break;
+                case 'intercept':
+                    drawIntercept();
+                    break;
+                case 'normal':
+                    drawNormal();
+                    break;
+            }
+            
+            // Create visual effects
+            createParticles();
+        }
+        
+        // Add CSS animation for particles
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes moveParticle {
+                0% {
+                    transform: translate(0, 0);
+                    opacity: 0;
+                }
+                50% {
+                    opacity: 1;
+                }
+                100% {
+                    transform: translate(${Math.random() * 100 - 50}px, ${Math.random() * 100 - 50}px);
+                    opacity: 0;
+                }
+            }
+        `;
+        document.head.appendChild(style);
+        
+        // Initialize
+        updateEquation();
+        draw();
+        
+        // Add HUD elements
+        function addHUD() {
+            const hud1 = document.createElement('div');
+            hud1.className = 'hud-element';
+            hud1.style.top = '20%';
+            hud1.style.left = '5%';
+            hud1.textContent = 'LINE VISUALIZER ACTIVE';
+            document.querySelector('.canvas-container').appendChild(hud1);
+            
+            const hud2 = document.createElement('div');
+            hud2.className = 'hud-element';
+            hud2.style.bottom = '20%';
+            hud2.style.right = '5%';
+            hud2.innerHTML = 'MATH RENDER MODE: <span style="color:#ff00ff">' + params.currentForm.toUpperCase() + '</span>';
+            document.querySelector('.canvas-container').appendChild(hud2);
+        }
+        
+        addHUD();
+    </script>
+</body>
+</html>
