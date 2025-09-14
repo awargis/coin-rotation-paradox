@@ -1,0 +1,803 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Holographic Slope Visualization</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;700&display=swap');
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            overflow: hidden;
+            background: linear-gradient(135deg, #000011 0%, #0a0a2a 100%);
+            font-family: 'Orbitron', sans-serif;
+            color: #0ff;
+            height: 100vh;
+            perspective: 1000px;
+        }
+        
+        #canvas-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+        }
+        
+        #ui-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 2;
+        }
+        
+        .hud-panel {
+            position: absolute;
+            background: rgba(0, 10, 20, 0.85);
+            border: 2px solid #0ff;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 0 25px rgba(0, 255, 255, 0.7), 
+                        inset 0 0 15px rgba(0, 255, 255, 0.3);
+            backdrop-filter: blur(5px);
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+        
+        .hud-panel::before {
+            content: '';
+            position: absolute;
+            top: -2px;
+            left: -2px;
+            right: -2px;
+            bottom: -2px;
+            border: 2px solid transparent;
+            border-radius: 12px;
+            background: linear-gradient(45deg, #0ff, #0ff, #f0f, #0ff);
+            mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+            mask-composite: exclude;
+            -webkit-mask-composite: xor;
+            z-index: -1;
+            animation: border-glow 3s linear infinite;
+        }
+        
+        #info-panel {
+            top: 20px;
+            left: 20px;
+            width: 320px;
+            animation: panel-float 8s ease-in-out infinite;
+        }
+        
+        #controls {
+            bottom: 20px;
+            left: 20px;
+            width: 320px;
+            pointer-events: all;
+            animation: panel-float 10s ease-in-out infinite 1s;
+        }
+        
+        #tan-graph {
+            top: 20px;
+            right: 20px;
+            width: 420px;
+            height: 220px;
+            animation: panel-float 12s ease-in-out infinite 2s;
+        }
+        
+        h1, h2 {
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            margin-bottom: 15px;
+            text-shadow: 0 0 10px #0ff, 0 0 20px #0ff;
+            background: linear-gradient(90deg, #0ff, #f0f);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            animation: title-glow 2s ease-in-out infinite alternate;
+        }
+        
+        .value-display {
+            color: #ff0;
+            font-weight: bold;
+            text-shadow: 0 0 8px rgba(255, 255, 0, 0.7);
+            font-size: 1.1em;
+        }
+        
+        .slider-container {
+            margin: 15px 0;
+        }
+        
+        input[type="range"] {
+            width: 100%;
+            height: 8px;
+            -webkit-appearance: none;
+            background: linear-gradient(90deg, #033, #0aa);
+            border-radius: 10px;
+            outline: none;
+            margin: 10px 0;
+            box-shadow: 0 0 5px #0ff;
+        }
+        
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 20px;
+            height: 20px;
+            background: #0ff;
+            border-radius: 50%;
+            cursor: pointer;
+            box-shadow: 0 0 10px #0ff, 0 0 20px #0ff;
+            transition: all 0.2s ease;
+        }
+        
+        input[type="range"]::-webkit-slider-thumb:hover {
+            transform: scale(1.2);
+            box-shadow: 0 0 15px #0ff, 0 0 30px #0ff;
+        }
+        
+        button {
+            background: linear-gradient(45deg, rgba(0, 255, 255, 0.2), rgba(255, 0, 255, 0.2));
+            border: 1px solid #0ff;
+            color: #0ff;
+            padding: 8px 15px;
+            margin: 8px;
+            cursor: pointer;
+            border-radius: 6px;
+            font-family: 'Orbitron', sans-serif;
+            font-weight: 500;
+            letter-spacing: 1px;
+            text-shadow: 0 0 5px #0ff;
+            box-shadow: 0 0 10px rgba(0, 255, 255, 0.5);
+            transition: all 0.3s ease;
+            pointer-events: all;
+        }
+        
+        button:hover {
+            background: linear-gradient(45deg, rgba(0, 255, 255, 0.4), rgba(255, 0, 255, 0.4));
+            box-shadow: 0 0 15px #0ff, 0 0 25px #0ff;
+            transform: translateY(-2px);
+        }
+        
+        button:active {
+            transform: translateY(1px);
+            box-shadow: 0 0 5px #0ff;
+        }
+        
+        .data-row {
+            display: flex;
+            justify-content: space-between;
+            margin: 8px 0;
+            padding: 5px;
+            border-bottom: 1px solid rgba(0, 255, 255, 0.3);
+        }
+        
+        .scan-line {
+            position: absolute;
+            height: 2px;
+            width: 100%;
+            background: linear-gradient(90deg, transparent, #0ff, transparent);
+            top: 0;
+            left: 0;
+            opacity: 0.7;
+            animation: scan 3s linear infinite;
+        }
+        
+        .particle {
+            position: absolute;
+            background: rgba(0, 255, 255, 0.7);
+            border-radius: 50%;
+            pointer-events: none;
+        }
+        
+        @keyframes scan {
+            0% { top: 0; opacity: 0; }
+            10% { opacity: 1; }
+            90% { opacity: 1; }
+            100% { top: 100%; opacity: 0; }
+        }
+        
+        @keyframes border-glow {
+            0% { opacity: 0.7; }
+            50% { opacity: 1; }
+            100% { opacity: 0.7; }
+        }
+        
+        @keyframes title-glow {
+            0% { text-shadow: 0 0 10px #0ff, 0 0 20px #0ff; }
+            100% { text-shadow: 0 0 15px #0ff, 0 0 30px #0ff, 0 0 40px #0ff; }
+        }
+        
+        @keyframes panel-float {
+            0% { transform: translateY(0) rotate(0.5deg); }
+            50% { transform: translateY(-8px) rotate(-0.5deg); }
+            100% { transform: translateY(0) rotate(0.5deg); }
+        }
+        
+        .grid-pulse {
+            animation: grid-pulse 2s ease-in-out infinite alternate;
+        }
+        
+        @keyframes grid-pulse {
+            0% { opacity: 0.3; }
+            100% { opacity: 0.7; }
+        }
+        
+        #particle-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 0;
+        }
+    </style>
+</head>
+<body>
+    <div id="particle-container"></div>
+    <div id="canvas-container"></div>
+    
+    <div id="ui-container">
+        <div class="scan-line"></div>
+        
+        <div class="hud-panel" id="info-panel">
+            <h1>HOLO-SLOPE VISUALIZER</h1>
+            <div class="data-row">
+                <span>Angle (θ):</span>
+                <span id="angle-value" class="value-display">0°</span>
+            </div>
+            <div class="data-row">
+                <span>Slope (m):</span>
+                <span id="slope-value" class="value-display">0.00</span>
+            </div>
+            <div class="data-row">
+                <span>Rise:</span>
+                <span id="rise-value" class="value-display">0.00</span>
+            </div>
+            <div class="data-row">
+                <span>Run:</span>
+                <span id="run-value" class="value-display">1.00</span>
+            </div>
+            <div class="data-row">
+                <span>Equation:</span>
+                <span id="equation" class="value-display">y = 0.00x</span>
+            </div>
+        </div>
+        
+        <div class="hud-panel" id="controls">
+            <h2>CONTROLS</h2>
+            <div class="slider-container">
+                <label for="angle-slider">Angle: <span id="angle-display">0°</span></label>
+                <input type="range" id="angle-slider" min="0" max="360" value="0">
+            </div>
+            <div>
+                <button id="auto-rotate">AUTO ROTATE: OFF</button>
+                <button id="reset-btn">RESET</button>
+            </div>
+        </div>
+        
+        <div class="hud-panel" id="tan-graph">
+            <h2>TAN(θ) CURVE</h2>
+            <canvas id="tan-canvas" width="380" height="150"></canvas>
+        </div>
+    </div>
+
+    <script>
+        // Initialize Three.js scene
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x000011);
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setClearColor(0x000011);
+        renderer.shadowMap.enabled = true;
+        document.getElementById('canvas-container').appendChild(renderer.domElement);
+        
+        // Add OrbitControls for camera movement
+        const controls = new THREE.OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.05;
+        
+        // Position camera
+        camera.position.z = 10;
+        camera.position.y = 5;
+        camera.position.x = 5;
+        controls.update();
+        
+        // Add ambient light
+        const ambientLight = new THREE.AmbientLight(0x444466, 0.5);
+        scene.add(ambientLight);
+        
+        // Add colored directional lights
+        const light1 = new THREE.DirectionalLight(0x00ffff, 1);
+        light1.position.set(5, 5, 5);
+        light1.castShadow = true;
+        light1.shadow.mapSize.width = 1024;
+        light1.shadow.mapSize.height = 1024;
+        scene.add(light1);
+        
+        const light2 = new THREE.DirectionalLight(0xff00ff, 0.8);
+        light2.position.set(-5, 5, -5);
+        scene.add(light2);
+        
+        const light3 = new THREE.DirectionalLight(0xffff00, 0.5);
+        light3.position.set(0, -5, 0);
+        scene.add(light3);
+        
+        // Create a more visually interesting grid
+        const gridSize = 20;
+        const gridDivisions = 20;
+        const gridHelper = new THREE.GridHelper(gridSize, gridDivisions, 0x00ffff, 0x004444);
+        gridHelper.material.opacity = 0.3;
+        gridHelper.material.transparent = true;
+        gridHelper.rotation.x = Math.PI / 2;
+        scene.add(gridHelper);
+        
+        // Create axes with glow effect
+        const axesSize = 10;
+        const axesHelper = new THREE.AxesHelper(axesSize);
+        scene.add(axesHelper);
+        
+        // Create pulsating origin point
+        const pivotGeometry = new THREE.SphereGeometry(0.3, 32, 32);
+        const pivotMaterial = new THREE.MeshBasicMaterial({ 
+            color: 0xffff00,
+            emissive: 0xffff00,
+            emissiveIntensity: 0.5
+        });
+        const pivot = new THREE.Mesh(pivotGeometry, pivotMaterial);
+        scene.add(pivot);
+        
+        // Create the rotating line with glow effect
+        const lineMaterial = new THREE.LineBasicMaterial({ 
+            color: 0x00ffff, 
+            linewidth: 4,
+            emissive: 0x00ffff,
+            emissiveIntensity: 0.3
+        });
+        let lineGeometry = new THREE.BufferGeometry();
+        const linePoints = [
+            new THREE.Vector3(0, 0, 0),
+            new THREE.Vector3(5, 0, 0)
+        ];
+        lineGeometry.setFromPoints(linePoints);
+        const line = new THREE.Line(lineGeometry, lineMaterial);
+        scene.add(line);
+        
+        // Create rise line (vertical) with glow
+        const riseMaterial = new THREE.LineBasicMaterial({ 
+            color: 0xff00ff, 
+            linewidth: 3,
+            emissive: 0xff00ff,
+            emissiveIntensity: 0.3
+        });
+        let riseGeometry = new THREE.BufferGeometry();
+        const risePoints = [
+            new THREE.Vector3(5, 0, 0),
+            new THREE.Vector3(5, 0, 0)
+        ];
+        riseGeometry.setFromPoints(risePoints);
+        const riseLine = new THREE.Line(riseGeometry, riseMaterial);
+        scene.add(riseLine);
+        
+        // Create run line (horizontal) with glow
+        const runMaterial = new THREE.LineBasicMaterial({ 
+            color: 0x00ffff, 
+            linewidth: 3,
+            emissive: 0x00ffff,
+            emissiveIntensity: 0.3
+        });
+        let runGeometry = new THREE.BufferGeometry();
+        const runPoints = [
+            new THREE.Vector3(0, 0, 0),
+            new THREE.Vector3(5, 0, 0)
+        ];
+        runGeometry.setFromPoints(runPoints);
+        const runLine = new THREE.Line(runGeometry, runMaterial);
+        scene.add(runLine);
+        
+        // Create hypotenuse line with animated dash
+        const hypMaterial = new THREE.LineDashedMaterial({ 
+            color: 0xffffff, 
+            linewidth: 2, 
+            dashSize: 0.2, 
+            gapSize: 0.1,
+            emissive: 0xffffff,
+            emissiveIntensity: 0.2
+        });
+        let hypGeometry = new THREE.BufferGeometry();
+        const hypPoints = [
+            new THREE.Vector3(5, 0, 0),
+            new THREE.Vector3(5, 0, 0)
+        ];
+        hypGeometry.setFromPoints(hypPoints);
+        const hypLine = new THREE.Line(hypGeometry, hypMaterial);
+        hypLine.computeLineDistances();
+        scene.add(hypLine);
+        
+        // Add particles for holographic effect
+        const particles = [];
+        const particleCount = 100;
+        
+        for (let i = 0; i < particleCount; i++) {
+            const particle = document.createElement('div');
+            particle.className = 'particle';
+            particle.style.width = Math.random() * 4 + 2 + 'px';
+            particle.style.height = particle.style.width;
+            particle.style.opacity = Math.random() * 0.5 + 0.1;
+            
+            // Random position
+            particle.style.left = Math.random() * 100 + '%';
+            particle.style.top = Math.random() * 100 + '%';
+            
+            document.getElementById('particle-container').appendChild(particle);
+            particles.push({
+                element: particle,
+                x: Math.random() * window.innerWidth,
+                y: Math.random() * window.innerHeight,
+                speedX: (Math.random() - 0.5) * 0.5,
+                speedY: (Math.random() - 0.5) * 0.5,
+                size: parseFloat(particle.style.width)
+            });
+        }
+        
+        // Initialize variables
+        let angle = 0;
+        let autoRotate = false;
+        const angleSlider = document.getElementById('angle-slider');
+        const angleDisplay = document.getElementById('angle-display');
+        const angleValue = document.getElementById('angle-value');
+        const slopeValue = document.getElementById('slope-value');
+        const riseValue = document.getElementById('rise-value');
+        const runValue = document.getElementById('run-value');
+        const equation = document.getElementById('equation');
+        const autoRotateBtn = document.getElementById('auto-rotate');
+        const resetBtn = document.getElementById('reset-btn');
+        const tanCanvas = document.getElementById('tan-canvas');
+        const tanCtx = tanCanvas.getContext('2d');
+        
+        // Draw the initial tan curve
+        drawTanCurve(0);
+        
+        // Event listeners
+        angleSlider.addEventListener('input', function() {
+            angle = parseInt(this.value);
+            updateLineRotation();
+        });
+        
+        autoRotateBtn.addEventListener('click', function() {
+            autoRotate = !autoRotate;
+            this.textContent = 'AUTO ROTATE: ' + (autoRotate ? 'ON' : 'OFF');
+            
+            // Visual feedback for auto-rotate
+            if (autoRotate) {
+                this.style.boxShadow = '0 0 15px #0ff, 0 0 30px #0ff';
+            } else {
+                this.style.boxShadow = '0 0 10px rgba(0, 255, 255, 0.5)';
+            }
+        });
+        
+        resetBtn.addEventListener('click', function() {
+            angle = 0;
+            angleSlider.value = 0;
+            autoRotate = false;
+            autoRotateBtn.textContent = 'AUTO ROTATE: OFF';
+            autoRotateBtn.style.boxShadow = '0 0 10px rgba(0, 255, 255, 0.5)';
+            updateLineRotation();
+            
+            // Visual feedback for reset
+            const originalColor = resetBtn.style.background;
+            resetBtn.style.background = 'linear-gradient(45deg, rgba(0, 255, 255, 0.6), rgba(255, 0, 255, 0.6))';
+            setTimeout(() => {
+                resetBtn.style.background = originalColor;
+            }, 300);
+        });
+        
+        // Function to update line rotation and all dependent elements
+        function updateLineRotation() {
+            // Convert angle to radians
+            const radians = angle * Math.PI / 180;
+            
+            // Update line end point
+            const length = 5;
+            const x = Math.cos(radians) * length;
+            const y = Math.sin(radians) * length;
+            
+            lineGeometry = new THREE.BufferGeometry().setFromPoints([
+                new THREE.Vector3(0, 0, 0),
+                new THREE.Vector3(x, y, 0)
+            ]);
+            line.geometry = lineGeometry;
+            
+            // Update rise and run lines
+            riseGeometry = new THREE.BufferGeometry().setFromPoints([
+                new THREE.Vector3(x, 0, 0),
+                new THREE.Vector3(x, y, 0)
+            ]);
+            riseLine.geometry = riseGeometry;
+            
+            runGeometry = new THREE.BufferGeometry().setFromPoints([
+                new THREE.Vector3(0, 0, 0),
+                new THREE.Vector3(x, 0, 0)
+            ]);
+            runLine.geometry = runGeometry;
+            
+            // Update hypotenuse line
+            hypGeometry = new THREE.BufferGeometry().setFromPoints([
+                new THREE.Vector3(0, 0, 0),
+                new THREE.Vector3(x, y, 0)
+            ]);
+            hypLine.geometry = hypGeometry;
+            hypLine.computeLineDistances();
+            
+            // Calculate slope (rise/run)
+            let slope = 0;
+            if (x !== 0) {
+                slope = y / x;
+            } else if (y !== 0) {
+                slope = Infinity;
+            }
+            
+            // Update HUD displays
+            angleDisplay.textContent = angle + '°';
+            angleValue.textContent = angle + '°';
+            slopeValue.textContent = slope === Infinity ? '∞' : slope.toFixed(2);
+            riseValue.textContent = y.toFixed(2);
+            runValue.textContent = x === 0 ? '0.00' : x.toFixed(2);
+            
+            // Update equation
+            if (x === 0) {
+                equation.textContent = 'undefined (vertical line)';
+            } else if (y === 0) {
+                equation.textContent = '0.00x';
+            } else {
+                equation.textContent = slope.toFixed(2) + 'x';
+            }
+            
+            // Update tan curve
+            drawTanCurve(angle);
+            
+            // Create visual feedback particles at line endpoint
+            createParticlesAtEndpoint(x, y);
+        }
+        
+        // Function to create particles at line endpoint
+        function createParticlesAtEndpoint(x, y) {
+            // Convert 3D coordinates to screen coordinates
+            const vector = new THREE.Vector3(x, y, 0);
+            vector.project(camera);
+            
+            const screenX = (vector.x * 0.5 + 0.5) * window.innerWidth;
+            const screenY = -(vector.y * 0.5 - 0.5) * window.innerHeight;
+            
+            // Create 5-10 particles
+            const count = Math.floor(Math.random() * 6) + 5;
+            for (let i = 0; i < count; i++) {
+                const particle = document.createElement('div');
+                particle.className = 'particle';
+                const size = Math.random() * 5 + 2;
+                particle.style.width = size + 'px';
+                particle.style.height = size + 'px';
+                particle.style.opacity = Math.random() * 0.7 + 0.3;
+                particle.style.left = screenX + 'px';
+                particle.style.top = screenY + 'px';
+                
+                document.getElementById('particle-container').appendChild(particle);
+                
+                // Animate and remove particle
+                setTimeout(() => {
+                    particle.style.transition = 'all 1s ease-out';
+                    particle.style.transform = 'translate(' + 
+                        (Math.random() * 40 - 20) + 'px, ' + 
+                        (Math.random() * 40 - 20) + 'px)';
+                    particle.style.opacity = '0';
+                    
+                    setTimeout(() => {
+                        if (particle.parentNode) {
+                            particle.parentNode.removeChild(particle);
+                        }
+                    }, 1000);
+                }, 10);
+            }
+        }
+        
+        // Function to draw the tan(θ) curve
+        function drawTanCurve(currentAngle) {
+            const width = tanCanvas.width;
+            const height = tanCanvas.height;
+            
+            // Clear canvas with gradient
+            const gradient = tanCtx.createLinearGradient(0, 0, width, 0);
+            gradient.addColorStop(0, 'rgba(0, 10, 20, 0.8)');
+            gradient.addColorStop(1, 'rgba(0, 20, 40, 0.8)');
+            tanCtx.fillStyle = gradient;
+            tanCtx.fillRect(0, 0, width, height);
+            
+            // Draw grid
+            tanCtx.strokeStyle = 'rgba(0, 255, 255, 0.2)';
+            tanCtx.lineWidth = 1;
+            
+            // Vertical grid lines
+            for (let x = 0; x <= width; x += 30) {
+                tanCtx.beginPath();
+                tanCtx.moveTo(x, 0);
+                tanCtx.lineTo(x, height);
+                tanCtx.stroke();
+            }
+            
+            // Horizontal grid lines
+            for (let y = 0; y <= height; y += 30) {
+                tanCtx.beginPath();
+                tanCtx.moveTo(0, y);
+                tanCtx.lineTo(width, y);
+                tanCtx.stroke();
+            }
+            
+            // Draw axes
+            tanCtx.strokeStyle = '#00ffff';
+            tanCtx.lineWidth = 2;
+            tanCtx.beginPath();
+            tanCtx.moveTo(0, height / 2);
+            tanCtx.lineTo(width, height / 2);
+            tanCtx.stroke();
+            
+            tanCtx.beginPath();
+            tanCtx.moveTo(width / 2, 0);
+            tanCtx.lineTo(width / 2, height);
+            tanCtx.stroke();
+            
+            // Draw tan curve with gradient
+            const curveGradient = tanCtx.createLinearGradient(0, 0, width, 0);
+            curveGradient.addColorStop(0, '#ff00ff');
+            curveGradient.addColorStop(0.5, '#00ffff');
+            curveGradient.addColorStop(1, '#ff00ff');
+            
+            tanCtx.strokeStyle = curveGradient;
+            tanCtx.lineWidth = 3;
+            tanCtx.beginPath();
+            
+            const scale = 30;
+            const xOffset = width / 2;
+            const yOffset = height / 2;
+            
+            for (let i = 0; i < width; i++) {
+                const x = (i - xOffset) / scale;
+                const angleRad = x;
+                
+                // Skip values near asymptotes
+                if (Math.abs(x - Math.PI/2) < 0.1 || Math.abs(x + Math.PI/2) < 0.1 ||
+                    Math.abs(x - 3*Math.PI/2) < 0.1 || Math.abs(x + 3*Math.PI/2) < 0.1) {
+                    continue;
+                }
+                
+                let y = Math.tan(angleRad);
+                
+                // Limit y range for visualization
+                if (y > 10) y = 10;
+                if (y < -10) y = -10;
+                
+                const pixelY = yOffset - y * scale;
+                
+                if (i === 0) {
+                    tanCtx.moveTo(i, pixelY);
+                } else {
+                    tanCtx.lineTo(i, pixelY);
+                }
+            }
+            
+            tanCtx.stroke();
+            
+            // Draw current angle marker with glow
+            const currentX = xOffset + (currentAngle * Math.PI / 180) * scale;
+            let currentY = Math.tan(currentAngle * Math.PI / 180);
+            
+            // Limit y range
+            if (currentY > 10) currentY = 10;
+            if (currentY < -10) currentY = -10;
+            
+            const pixelY = yOffset - currentY * scale;
+            
+            // Draw glow
+            tanCtx.beginPath();
+            tanCtx.arc(currentX, pixelY, 10, 0, Math.PI * 2);
+            tanCtx.fillStyle = 'rgba(255, 255, 0, 0.3)';
+            tanCtx.fill();
+            
+            // Draw marker
+            tanCtx.fillStyle = '#ffff00';
+            tanCtx.beginPath();
+            tanCtx.arc(currentX, pixelY, 5, 0, Math.PI * 2);
+            tanCtx.fill();
+            
+            // Draw asymptotes
+            tanCtx.strokeStyle = 'rgba(255, 0, 0, 0.5)';
+            tanCtx.setLineDash([5, 5]);
+            tanCtx.beginPath();
+            
+            // Draw vertical lines at ±π/2, ±3π/2
+            const asymptotes = [-3*Math.PI/2, -Math.PI/2, Math.PI/2, 3*Math.PI/2];
+            asymptotes.forEach(a => {
+                const asymptoteX = xOffset + a * scale;
+                tanCtx.moveTo(asymptoteX, 0);
+                tanCtx.lineTo(asymptoteX, height);
+            });
+            
+            tanCtx.stroke();
+            tanCtx.setLineDash([]);
+        }
+        
+        // Animation loop
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            if (autoRotate) {
+                angle = (angle + 0.5) % 360;
+                angleSlider.value = angle;
+                updateLineRotation();
+            }
+            
+            // Animate the origin point
+            const pulse = Math.sin(Date.now() * 0.005) * 0.1 + 1;
+            pivot.scale.set(pulse, pulse, pulse);
+            
+            // Animate the dashed line
+            hypMaterial.dashOffset -= 0.01;
+            
+            controls.update();
+            renderer.render(scene, camera);
+            
+            // Animate background particles
+            updateParticles();
+        }
+        
+        // Function to update background particles
+        function updateParticles() {
+            particles.forEach(p => {
+                p.x += p.speedX;
+                p.y += p.speedY;
+                
+                // Wrap around edges
+                if (p.x > window.innerWidth) p.x = 0;
+                if (p.x < 0) p.x = window.innerWidth;
+                if (p.y > window.innerHeight) p.y = 0;
+                if (p.y < 0) p.y = window.innerHeight;
+                
+                // Update position
+                p.element.style.left = p.x + 'px';
+                p.element.style.top = p.y + 'px';
+                
+                // Add subtle size pulse
+                const pulse = Math.sin(Date.now() * 0.001 + p.x * 0.1) * 0.2 + 1;
+                p.element.style.width = (p.size * pulse) + 'px';
+                p.element.style.height = (p.size * pulse) + 'px';
+            });
+        }
+        
+        // Handle window resize
+        window.addEventListener('resize', function() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            
+            // Update particles container
+            document.getElementById('particle-container').style.width = window.innerWidth + 'px';
+            document.getElementById('particle-container').style.height = window.innerHeight + 'px';
+        });
+        
+        // Initialize
+        updateLineRotation();
+        animate();
+    </script>
+</body>
+</html>
