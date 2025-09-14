@@ -1,0 +1,738 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Angle Between Two Lines - Cinematic Visualization</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Avenir', 'Helvetica Neue', sans-serif;
+        }
+        
+        body {
+            background: #0a0a1a;
+            color: #e0e0ff;
+            overflow: hidden;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+        }
+        
+        .container {
+            width: 100%;
+            max-width: 1200px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+            z-index: 10;
+        }
+        
+        h1 {
+            font-size: 2.8rem;
+            margin-bottom: 1.5rem;
+            text-align: center;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            color: #ffffff;
+            text-shadow: 0 0 15px rgba(0, 225, 255, 0.7),
+                         0 0 25px rgba(0, 150, 255, 0.5);
+        }
+        
+        .subtitle {
+            font-size: 1.2rem;
+            margin-bottom: 2.5rem;
+            text-align: center;
+            max-width: 800px;
+            line-height: 1.6;
+            color: #a0c8ff;
+        }
+        
+        .visualization-container {
+            position: relative;
+            width: 800px;
+            height: 500px;
+            margin-bottom: 30px;
+            border: 1px solid rgba(0, 150, 255, 0.3);
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 0 40px rgba(0, 100, 255, 0.2),
+                        inset 0 0 40px rgba(0, 50, 150, 0.1);
+            background: rgba(5, 10, 30, 0.7);
+        }
+        
+        canvas {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+        }
+        
+        .controls {
+            display: flex;
+            gap: 25px;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background: rgba(10, 20, 50, 0.4);
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid rgba(0, 150, 255, 0.2);
+            min-width: 200px;
+        }
+        
+        .control-group h3 {
+            margin-bottom: 15px;
+            color: #4dc7ff;
+            font-size: 1.1rem;
+            font-weight: 500;
+        }
+        
+        .slider-container {
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        
+        .slider-label {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.9rem;
+            color: #a0c8ff;
+        }
+        
+        input[type="range"] {
+            width: 100%;
+            height: 6px;
+            -webkit-appearance: none;
+            background: linear-gradient(to right, #0044aa, #0088ff);
+            border-radius: 3px;
+            outline: none;
+        }
+        
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #00ccff;
+            cursor: pointer;
+            box-shadow: 0 0 10px rgba(0, 200, 255, 0.8);
+            border: 2px solid #ffffff;
+        }
+        
+        .button-group {
+            display: flex;
+            gap: 15px;
+            margin-top: 10px;
+        }
+        
+        button {
+            padding: 10px 20px;
+            background: linear-gradient(to bottom, #0066cc, #0044aa);
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: 500;
+            letter-spacing: 0.5px;
+            transition: all 0.3s ease;
+            border: 1px solid rgba(0, 150, 255, 0.4);
+        }
+        
+        button:hover {
+            background: linear-gradient(to bottom, #0088ff, #0066cc);
+            box-shadow: 0 0 15px rgba(0, 150, 255, 0.5);
+        }
+        
+        .formula-display {
+            background: rgba(5, 15, 40, 0.6);
+            padding: 20px;
+            border-radius: 8px;
+            margin-top: 20px;
+            text-align: center;
+            border: 1px solid rgba(0, 150, 255, 0.2);
+            font-size: 1.4rem;
+            color: #4dc7ff;
+            width: 100%;
+            max-width: 800px;
+        }
+        
+        .formula {
+            font-family: 'Times New Roman', serif;
+            margin: 10px 0;
+        }
+        
+        .angle-display {
+            font-size: 1.2rem;
+            margin-top: 10px;
+            color: #ffa74d;
+        }
+        
+        .particles {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+        }
+        
+        .grid {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: 
+                linear-gradient(to right, rgba(0, 100, 255, 0.1) 1px, transparent 1px),
+                linear-gradient(to bottom, rgba(0, 100, 255, 0.1) 1px, transparent 1px);
+            background-size: 40px 40px;
+            z-index: 2;
+        }
+        
+        .special-effect {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 0;
+            height: 0;
+            border-radius: 50%;
+            z-index: 5;
+            opacity: 0;
+            pointer-events: none;
+        }
+        
+        .perpendicular-effect {
+            background: radial-gradient(circle, rgba(255, 215, 0, 0.7) 0%, transparent 70%);
+        }
+        
+        .parallel-effect {
+            background: radial-gradient(circle, rgba(0, 225, 255, 0.5) 0%, transparent 70%);
+        }
+        
+        .info-panel {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(5, 15, 40, 0.7);
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid rgba(0, 150, 255, 0.3);
+            font-size: 0.9rem;
+            max-width: 300px;
+            z-index: 10;
+        }
+        
+        .info-panel h3 {
+            color: #4dc7ff;
+            margin-bottom: 10px;
+            font-size: 1rem;
+        }
+        
+        .info-panel p {
+            color: #a0c8ff;
+            line-height: 1.5;
+            margin-bottom: 8px;
+        }
+        
+        .hud-element {
+            position: absolute;
+            background: rgba(0, 20, 50, 0.6);
+            border: 1px solid rgba(0, 150, 255, 0.3);
+            padding: 10px;
+            border-radius: 6px;
+            font-size: 0.9rem;
+            color: #a0c8ff;
+            z-index: 10;
+        }
+        
+        .line1-hud {
+            top: 70px;
+            left: 20px;
+        }
+        
+        .line2-hud {
+            top: 70px;
+            right: 20px;
+        }
+        
+        .angle-hud {
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            text-align: center;
+            min-width: 200px;
+        }
+        
+        @media (max-width: 900px) {
+            .visualization-container {
+                width: 95%;
+                height: 400px;
+            }
+            
+            h1 {
+                font-size: 2rem;
+            }
+            
+            .subtitle {
+                font-size: 1rem;
+                padding: 0 15px;
+            }
+            
+            .controls {
+                gap: 15px;
+            }
+            
+            .control-group {
+                min-width: 160px;
+            }
+            
+            .formula-display {
+                font-size: 1.1rem;
+                padding: 15px;
+            }
+        }
+        
+        @media (max-width: 600px) {
+            .controls {
+                flex-direction: column;
+                align-items: center;
+            }
+            
+            .control-group {
+                width: 90%;
+            }
+            
+            .visualization-container {
+                height: 300px;
+            }
+            
+            h1 {
+                font-size: 1.7rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Angle Between Two Lines</h1>
+        <p class="subtitle">Interactive visualization of the angle between two lines with dynamic formula calculation and cinematic effects</p>
+        
+        <div class="visualization-container">
+            <div class="grid"></div>
+            <div class="particles" id="particles"></div>
+            <div class="special-effect perpendicular-effect" id="perpendicular-effect"></div>
+            <div class="special-effect parallel-effect" id="parallel-effect"></div>
+            
+            <div class="hud-element line1-hud">
+                Line 1: y = <span id="line1-equation">1.00x</span>
+            </div>
+            
+            <div class="hud-element line2-hud">
+                Line 2: y = <span id="line2-equation">-0.50x</span>
+            </div>
+            
+            <div class="hud-element angle-hud">
+                Angle θ = <span id="angle-value">71.57°</span>
+            </div>
+            
+            <canvas id="visualization-canvas"></canvas>
+        </div>
+        
+        <div class="controls">
+            <div class="control-group">
+                <h3>Line 1 Slope (m₁)</h3>
+                <div class="slider-container">
+                    <div class="slider-label">
+                        <span>-5.0</span>
+                        <span id="slider1-value">1.00</span>
+                        <span>5.0</span>
+                    </div>
+                    <input type="range" id="slider1" min="-5" max="5" step="0.01" value="1">
+                </div>
+            </div>
+            
+            <div class="control-group">
+                <h3>Line 2 Slope (m₂)</h3>
+                <div class="slider-container">
+                    <div class="slider-label">
+                        <span>-5.0</span>
+                        <span id="slider2-value">-0.50</span>
+                        <span>5.0</span>
+                    </div>
+                    <input type="range" id="slider2" min="-5" max="5" step="0.01" value="-0.5">
+                </div>
+            </div>
+            
+            <div class="control-group">
+                <h3>Special Cases</h3>
+                <div class="button-group">
+                    <button id="parallel-btn">Parallel</button>
+                    <button id="perpendicular-btn">Perpendicular</button>
+                    <button id="random-btn">Random</button>
+                </div>
+            </div>
+        </div>
+        
+        <div class="formula-display">
+            <div>Formula:</div>
+            <div class="formula">tan θ = |(m₁ - m₂) / (1 + m₁m₂)|</div>
+            <div class="angle-display" id="formula-calculation">tan θ = |(1.00 - (-0.50)) / (1 + (1.00)(-0.50))| = 3.00</div>
+        </div>
+    </div>
+    
+    <div class="info-panel">
+        <h3>About This Visualization</h3>
+        <p>This interactive demo shows the angle between two lines using the formula:</p>
+        <p>tan θ = |(m₁ - m₂) / (1 + m₁m₂)|</p>
+        <p>Adjust the sliders to change the slopes and observe how the angle changes. Special cases like parallel and perpendicular lines are highlighted with visual effects.</p>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const canvas = document.getElementById('visualization-canvas');
+            const ctx = canvas.getContext('2d');
+            const slider1 = document.getElementById('slider1');
+            const slider2 = document.getElementById('slider2');
+            const slider1Value = document.getElementById('slider1-value');
+            const slider2Value = document.getElementById('slider2-value');
+            const line1Equation = document.getElementById('line1-equation');
+            const line2Equation = document.getElementById('line2-equation');
+            const angleValue = document.getElementById('angle-value');
+            const formulaCalculation = document.getElementById('formula-calculation');
+            const parallelBtn = document.getElementById('parallel-btn');
+            const perpendicularBtn = document.getElementById('perpendicular-btn');
+            const randomBtn = document.getElementById('random-btn');
+            const perpendicularEffect = document.getElementById('perpendicular-effect');
+            const parallelEffect = document.getElementById('parallel-effect');
+            
+            // Set canvas size
+            canvas.width = canvas.parentElement.offsetWidth;
+            canvas.height = canvas.parentElement.offsetHeight;
+            
+            // Initial values
+            let m1 = parseFloat(slider1.value);
+            let m2 = parseFloat(slider2.value);
+            
+            // Handle window resize
+            window.addEventListener('resize', function() {
+                canvas.width = canvas.parentElement.offsetWidth;
+                canvas.height = canvas.parentElement.offsetHeight;
+                drawVisualization();
+            });
+            
+            // Create particle effect
+            function createParticles() {
+                const particlesEl = document.getElementById('particles');
+                particlesEl.innerHTML = '';
+                
+                for (let i = 0; i < 40; i++) {
+                    const particle = document.createElement('div');
+                    particle.style.position = 'absolute';
+                    particle.style.width = Math.random() * 3 + 1 + 'px';
+                    particle.style.height = particle.style.width;
+                    particle.style.backgroundColor = i % 2 === 0 ? '#00ccff' : '#ff00cc';
+                    particle.style.borderRadius = '50%';
+                    particle.style.boxShadow = '0 0 5px ' + (i % 2 === 0 ? 'rgba(0, 204, 255, 0.8)' : 'rgba(255, 0, 204, 0.8)');
+                    particle.style.opacity = Math.random() * 0.5 + 0.3;
+                    particlesEl.appendChild(particle);
+                }
+                
+                animateParticles();
+            }
+            
+            // Animate particles
+            function animateParticles() {
+                const particles = document.querySelectorAll('#particles div');
+                const centerX = canvas.width / 2;
+                const centerY = canvas.height / 2;
+                
+                particles.forEach(particle => {
+                    const angle = Math.random() * Math.PI * 2;
+                    const distance = Math.random() * 150 + 50;
+                    const speed = Math.random() * 0.02 + 0.005;
+                    const size = parseFloat(particle.style.width);
+                    
+                    let currentAngle = angle;
+                    
+                    function update() {
+                        currentAngle += speed;
+                        const x = centerX + Math.cos(currentAngle) * distance;
+                        const y = centerY + Math.sin(currentAngle) * distance;
+                        
+                        particle.style.left = x + 'px';
+                        particle.style.top = y + 'px';
+                        
+                        requestAnimationFrame(update);
+                    }
+                    
+                    update();
+                });
+            }
+            
+            // Draw the visualization
+            function drawVisualization() {
+                const width = canvas.width;
+                const height = canvas.height;
+                const centerX = width / 2;
+                const centerY = height / 2;
+                const scale = 40; // pixels per unit
+                
+                // Clear canvas
+                ctx.clearRect(0, 0, width, height);
+                
+                // Draw coordinate axes
+                ctx.beginPath();
+                ctx.strokeStyle = 'rgba(0, 180, 255, 0.6)';
+                ctx.lineWidth = 1.5;
+                
+                // X-axis
+                ctx.moveTo(0, centerY);
+                ctx.lineTo(width, centerY);
+                
+                // Y-axis
+                ctx.moveTo(centerX, 0);
+                ctx.lineTo(centerX, height);
+                
+                ctx.stroke();
+                
+                // Draw grid lines
+                ctx.beginPath();
+                ctx.strokeStyle = 'rgba(0, 120, 255, 0.2)';
+                ctx.lineWidth = 1;
+                
+                // Vertical grid lines
+                for (let x = centerX % scale; x < width; x += scale) {
+                    ctx.moveTo(x, 0);
+                    ctx.lineTo(x, height);
+                }
+                
+                // Horizontal grid lines
+                for (let y = centerY % scale; y < height; y += scale) {
+                    ctx.moveTo(0, y);
+                    ctx.lineTo(width, y);
+                }
+                
+                ctx.stroke();
+                
+                // Draw coordinate labels
+                ctx.fillStyle = 'rgba(160, 200, 255, 0.8)';
+                ctx.font = '12px Arial';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                
+                // X-axis labels
+                for (let x = scale; x < width/2; x += scale) {
+                    ctx.fillText((x/scale).toString(), centerX + x, centerY + 15);
+                    ctx.fillText((-x/scale).toString(), centerX - x, centerY + 15);
+                }
+                
+                // Y-axis labels
+                for (let y = scale; y < height/2; y += scale) {
+                    ctx.fillText((y/scale).toString(), centerX - 15, centerY - y);
+                    ctx.fillText((-y/scale).toString(), centerX - 15, centerY + y);
+                }
+                
+                // Draw origin
+                ctx.fillStyle = '#00ccff';
+                ctx.beginPath();
+                ctx.arc(centerX, centerY, 3, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // Draw line 1
+                drawLine(ctx, m1, centerX, centerY, scale, '#00ccff');
+                
+                // Draw line 2
+                drawLine(ctx, m2, centerX, centerY, scale, '#ff00cc');
+                
+                // Draw angle between lines
+                drawAngle(ctx, m1, m2, centerX, centerY, scale);
+            }
+            
+            // Draw a line with given slope
+            function drawLine(ctx, m, centerX, centerY, scale, color) {
+                const width = ctx.canvas.width;
+                const height = ctx.canvas.height;
+                
+                ctx.beginPath();
+                ctx.strokeStyle = color;
+                ctx.lineWidth = 2.5;
+                
+                if (!isFinite(m)) {
+                    // Vertical line
+                    ctx.moveTo(centerX, 0);
+                    ctx.lineTo(centerX, height);
+                } else {
+                    // Calculate start and end points
+                    const x1 = 0;
+                    const y1 = centerY - (m * (x1 - centerX) / scale) * scale;
+                    
+                    const x2 = width;
+                    const y2 = centerY - (m * (x2 - centerX) / scale) * scale;
+                    
+                    ctx.moveTo(x1, y1);
+                    ctx.lineTo(x2, y2);
+                }
+                
+                ctx.stroke();
+                
+                // Add glow effect
+                ctx.beginPath();
+                ctx.strokeStyle = color;
+                ctx.lineWidth = 8;
+                ctx.globalAlpha = 0.2;
+                
+                if (!isFinite(m)) {
+                    ctx.moveTo(centerX, 0);
+                    ctx.lineTo(centerX, height);
+                } else {
+                    const x1 = 0;
+                    const y1 = centerY - (m * (x1 - centerX) / scale) * scale;
+                    
+                    const x2 = width;
+                    const y2 = centerY - (m * (x2 - centerX) / scale) * scale;
+                    
+                    ctx.moveTo(x1, y1);
+                    ctx.lineTo(x2, y2);
+                }
+                
+                ctx.stroke();
+                ctx.globalAlpha = 1.0;
+            }
+            
+            // Draw angle between lines
+            function drawAngle(ctx, m1, m2, centerX, centerY, scale) {
+                // Calculate angles of lines with x-axis
+                const angle1 = Math.atan(m1);
+                const angle2 = Math.atan(m2);
+                
+                // Calculate the angle between the lines
+                let angleBetween = Math.abs(angle1 - angle2);
+                if (angleBetween > Math.PI / 2) {
+                    angleBetween = Math.PI - angleBetween;
+                }
+                
+                // Draw arc for the angle
+                const radius = 60;
+                const startAngle = Math.min(angle1, angle2);
+                const endAngle = Math.max(angle1, angle2);
+                
+                ctx.beginPath();
+                const gradient = ctx.createLinearGradient(centerX, centerY - radius, centerX, centerY + radius);
+                gradient.addColorStop(0, '#00ccff');
+                gradient.addColorStop(1, '#ff00cc');
+                
+                ctx.strokeStyle = gradient;
+                ctx.lineWidth = 2;
+                ctx.arc(centerX, centerY, radius, -startAngle, -endAngle, m1 > m2);
+                ctx.stroke();
+                
+                // Add angle label
+                const angleDegrees = (angleBetween * 180 / Math.PI).toFixed(2);
+                angleValue.textContent = `${angleDegrees}°`;
+                
+                // Update formula calculation
+                const numerator = Math.abs(m1 - m2).toFixed(2);
+                const denominator = (1 + m1 * m2).toFixed(2);
+                const result = (Math.abs((m1 - m2) / (1 + m1 * m2))).toFixed(2);
+                
+                formulaCalculation.innerHTML = `tan θ = |(${m1.toFixed(2)} - ${m2.toFixed(2)}) / (1 + ${m1.toFixed(2)}×${m2.toFixed(2)})| = ${result}`;
+                
+                // Special cases
+                if (Math.abs(m1 - m2) < 0.01) {
+                    // Parallel lines
+                    showSpecialEffect(parallelEffect);
+                } else if (Math.abs(1 + m1 * m2) < 0.01) {
+                    // Perpendicular lines
+                    showSpecialEffect(perpendicularEffect);
+                }
+                
+                return angleBetween;
+            }
+            
+            // Show special effect
+            function showSpecialEffect(element) {
+                element.style.width = '300px';
+                element.style.height = '300px';
+                element.style.opacity = '0.7';
+                
+                setTimeout(() => {
+                    element.style.opacity = '0';
+                    setTimeout(() => {
+                        element.style.width = '0';
+                        element.style.height = '0';
+                    }, 1000);
+                }, 1500);
+            }
+            
+            // Update equation displays
+            function updateEquations() {
+                line1Equation.textContent = `${m1.toFixed(2)}x`;
+                line2Equation.textContent = `${m2.toFixed(2)}x`;
+                slider1Value.textContent = m1.toFixed(2);
+                slider2Value.textContent = m2.toFixed(2);
+            }
+            
+            // Event listeners for sliders
+            slider1.addEventListener('input', function() {
+                m1 = parseFloat(this.value);
+                updateEquations();
+                drawVisualization();
+            });
+            
+            slider2.addEventListener('input', function() {
+                m2 = parseFloat(this.value);
+                updateEquations();
+                drawVisualization();
+            });
+            
+            // Event listeners for buttons
+            parallelBtn.addEventListener('click', function() {
+                m1 = 1.5;
+                m2 = 1.5;
+                slider1.value = m1;
+                slider2.value = m2;
+                updateEquations();
+                drawVisualization();
+            });
+            
+            perpendicularBtn.addEventListener('click', function() {
+                m1 = 2.0;
+                m2 = -0.5;
+                slider1.value = m1;
+                slider2.value = m2;
+                updateEquations();
+                drawVisualization();
+            });
+            
+            randomBtn.addEventListener('click', function() {
+                m1 = (Math.random() * 10 - 5).toFixed(2);
+                m2 = (Math.random() * 10 - 5).toFixed(2);
+                slider1.value = m1;
+                slider2.value = m2;
+                updateEquations();
+                drawVisualization();
+            });
+            
+            // Initialize
+            createParticles();
+            updateEquations();
+            drawVisualization();
+        });
+    </script>
+</body>
+</html>
