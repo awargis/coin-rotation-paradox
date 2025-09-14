@@ -1,0 +1,654 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cinematic Polygon Area Visualization</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.min.js"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background-color: #000;
+            font-family: 'Arial', sans-serif;
+            color: #fff;
+            background: linear-gradient(135deg, #0b0b2a, #000);
+        }
+        
+        #canvas-container {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+        }
+        
+        #ui-container {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            z-index: 100;
+            background: rgba(0, 10, 30, 0.7);
+            padding: 15px;
+            border-radius: 10px;
+            backdrop-filter: blur(5px);
+            border: 1px solid rgba(0, 200, 255, 0.3);
+            box-shadow: 0 0 15px rgba(0, 200, 255, 0.5);
+        }
+        
+        #info-panel {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            z-index: 100;
+            background: rgba(0, 10, 30, 0.7);
+            padding: 15px;
+            border-radius: 10px;
+            backdrop-filter: blur(5px);
+            border: 1px solid rgba(255, 200, 0, 0.3);
+            box-shadow: 0 0 15px rgba(255, 200, 0, 0.5);
+            max-width: 350px;
+        }
+        
+        h1 {
+            margin-top: 0;
+            color: #0ff;
+            font-size: 1.5em;
+            text-shadow: 0 0 10px #0ff;
+        }
+        
+        h2 {
+            color: #ff0;
+            font-size: 1.2em;
+            text-shadow: 0 0 5px #ff0;
+        }
+        
+        button {
+            background: linear-gradient(to bottom, #0066cc, #003366);
+            color: white;
+            border: 1px solid #0ff;
+            padding: 8px 15px;
+            margin: 5px;
+            border-radius: 5px;
+            cursor: pointer;
+            text-shadow: 0 0 5px #0ff;
+            box-shadow: 0 0 10px rgba(0, 200, 255, 0.7);
+            transition: all 0.3s ease;
+        }
+        
+        button:hover {
+            background: linear-gradient(to bottom, #0088ff, #004488);
+            box-shadow: 0 0 15px rgba(0, 200, 255, 1);
+        }
+        
+        button.active {
+            background: linear-gradient(to bottom, #00ccff, #0066ff);
+            box-shadow: 0 0 15px rgba(0, 200, 255, 1);
+        }
+        
+        #area-display {
+            font-size: 1.5em;
+            color: #0ff;
+            text-shadow: 0 0 10px #0ff;
+            margin: 10px 0;
+        }
+        
+        .formula {
+            font-family: 'Courier New', monospace;
+            background: rgba(0, 0, 0, 0.5);
+            padding: 10px;
+            border-radius: 5px;
+            border: 1px solid rgba(255, 200, 0, 0.3);
+            margin: 10px 0;
+        }
+        
+        .instructions {
+            font-size: 0.9em;
+            color: #ccc;
+            margin-top: 15px;
+        }
+        
+        .highlight {
+            color: #ff9900;
+            font-weight: bold;
+        }
+        
+        .glowing-text {
+            color: #0ff;
+            text-shadow: 0 0 5px #0ff, 0 0 10px #0ff;
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { opacity: 0.8; }
+            50% { opacity: 1; text-shadow: 0 0 10px #0ff, 0 0 20px #0ff; }
+            100% { opacity: 0.8; }
+        }
+        
+        .particle {
+            position: absolute;
+            background: rgba(0, 200, 255, 0.7);
+            border-radius: 50%;
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body>
+    <div id="canvas-container"></div>
+    
+    <div id="ui-container">
+        <h1>Polygon Area Visualization</h1>
+        <div>
+            <button id="mode-triangle" class="active">Triangle</button>
+            <button id="mode-quad">Quadrilateral</button>
+            <button id="mode-polygon">Polygon</button>
+            <button id="clear-btn">Clear</button>
+        </div>
+        <div id="area-display">Area: 0.00 units²</div>
+        <div class="instructions">
+            <p>Click on the grid to place vertices</p>
+            <p>Drag points to adjust the shape</p>
+        </div>
+    </div>
+    
+    <div id="info-panel">
+        <h2>Shoelace Formula</h2>
+        <div class="formula">
+            Area = ½ |Σ(x<sub>i</sub>y<sub>i+1</sub> - x<sub>i+1</sub>y<sub>i</sub>)|
+        </div>
+        <p class="instructions">The <span class="highlight">shoelace formula</span> calculates the area of a simple polygon using the coordinates of its vertices.</p>
+        <p class="instructions">As you create or modify the polygon, the formula computes the area in real-time.</p>
+    </div>
+
+    <script>
+        // Main Three.js variables
+        let scene, camera, renderer, controls;
+        let grid, points = [], lines = [], fillMesh;
+        let currentMode = 'triangle';
+        let isDragging = false;
+        let selectedPoint = null;
+        let raycaster, mouse;
+        let particles = [];
+
+        // Initialize the application
+        function init() {
+            // Create scene
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x000010);
+            
+            // Create camera
+            camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.set(0, 0, 15);
+            
+            // Create renderer
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(window.devicePixelRatio);
+            document.getElementById('canvas-container').appendChild(renderer.domElement);
+            
+            // Add orbit controls
+            controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.05;
+            
+            // Create grid
+            createGrid();
+            
+            // Setup raycasting for mouse interaction
+            raycaster = new THREE.Raycaster();
+            mouse = new THREE.Vector2();
+            
+            // Add event listeners
+            window.addEventListener('resize', onWindowResize);
+            renderer.domElement.addEventListener('mousedown', onMouseDown);
+            renderer.domElement.addEventListener('mousemove', onMouseMove);
+            renderer.domElement.addEventListener('mouseup', onMouseUp);
+            
+            // Setup UI event listeners
+            document.getElementById('mode-triangle').addEventListener('click', () => setMode('triangle'));
+            document.getElementById('mode-quad').addEventListener('click', () => setMode('quad'));
+            document.getElementById('mode-polygon').addEventListener('click', () => setMode('polygon'));
+            document.getElementById('clear-btn').addEventListener('click', clearAll);
+            
+            // Create sample shapes based on current mode
+            createSampleShape();
+            
+            // Start animation loop
+            animate();
+            
+            // Create background particles
+            createParticles();
+        }
+        
+        // Create the Cartesian grid
+        function createGrid() {
+            const gridHelper = new THREE.GridHelper(20, 20, 0x0066cc, 0x003366);
+            gridHelper.rotation.x = Math.PI / 2;
+            scene.add(gridHelper);
+            
+            // Add axes
+            const axesHelper = new THREE.AxesHelper(10);
+            scene.add(axesHelper);
+            
+            // Add ambient light
+            const ambientLight = new THREE.AmbientLight(0x404040);
+            scene.add(ambientLight);
+            
+            // Add directional lights for glow effect
+            const blueLight = new THREE.DirectionalLight(0x00ffff, 0.5);
+            blueLight.position.set(5, 5, 5);
+            scene.add(blueLight);
+            
+            const goldLight = new THREE.DirectionalLight(0xffcc00, 0.3);
+            goldLight.position.set(-5, 3, -5);
+            scene.add(goldLight);
+            
+            // Add point lights for glow
+            const pointLight1 = new THREE.PointLight(0x00ffff, 0.5, 20);
+            pointLight1.position.set(5, 5, 5);
+            scene.add(pointLight1);
+            
+            const pointLight2 = new THREE.PointLight(0xff9900, 0.3, 20);
+            pointLight2.position.set(-5, -5, 5);
+            scene.add(pointLight2);
+        }
+        
+        // Set the current drawing mode
+        function setMode(mode) {
+            currentMode = mode;
+            
+            // Update active button
+            document.getElementById('mode-triangle').classList.remove('active');
+            document.getElementById('mode-quad').classList.remove('active');
+            document.getElementById('mode-polygon').classList.remove('active');
+            document.getElementById(`mode-${mode}`).classList.add('active');
+            
+            clearAll();
+            createSampleShape();
+        }
+        
+        // Create sample shape based on current mode
+        function createSampleShape() {
+            const samplePoints = [];
+            
+            switch(currentMode) {
+                case 'triangle':
+                    samplePoints.push(new THREE.Vector3(-3, -2, 0));
+                    samplePoints.push(new THREE.Vector3(3, -2, 0));
+                    samplePoints.push(new THREE.Vector3(0, 3, 0));
+                    break;
+                case 'quad':
+                    samplePoints.push(new THREE.Vector3(-3, -2, 0));
+                    samplePoints.push(new THREE.Vector3(3, -2, 0));
+                    samplePoints.push(new THREE.Vector3(3, 3, 0));
+                    samplePoints.push(new THREE.Vector3(-3, 3, 0));
+                    break;
+                case 'polygon':
+                    samplePoints.push(new THREE.Vector3(-3, -2, 0));
+                    samplePoints.push(new THREE.Vector3(0, -3, 0));
+                    samplePoints.push(new THREE.Vector3(3, -2, 0));
+                    samplePoints.push(new THREE.Vector3(2, 2, 0));
+                    samplePoints.push(new THREE.Vector3(-2, 3, 0));
+                    break;
+            }
+            
+            // Add points and create shape
+            samplePoints.forEach(point => {
+                addPoint(point, true);
+            });
+            
+            // Complete the shape
+            if (points.length > 2) {
+                drawLine(points[points.length - 1].position, points[0].position);
+                createFill();
+                updateAreaDisplay();
+            }
+        }
+        
+        // Clear all points and lines
+        function clearAll() {
+            // Remove all points
+            points.forEach(point => scene.remove(point));
+            points = [];
+            
+            // Remove all lines
+            lines.forEach(line => scene.remove(line));
+            lines = [];
+            
+            // Remove fill mesh
+            if (fillMesh) {
+                scene.remove(fillMesh);
+                fillMesh = null;
+            }
+            
+            updateAreaDisplay();
+        }
+        
+        // Add a point at the specified position
+        function addPoint(position, isSample = false) {
+            // Check if we've reached the limit for the current mode
+            if ((currentMode === 'triangle' && points.length >= 3) ||
+                (currentMode === 'quad' && points.length >= 4)) {
+                return;
+            }
+            
+            // Create point geometry and material
+            const geometry = new THREE.SphereGeometry(0.2, 32, 32);
+            const material = new THREE.MeshPhongMaterial({ 
+                color: 0x00ffff,
+                emissive: 0x0066cc,
+                emissiveIntensity: 0.5,
+                specular: 0x00ffff,
+                shininess: 100
+            });
+            
+            // Create point mesh
+            const point = new THREE.Mesh(geometry, material);
+            point.position.copy(position);
+            scene.add(point);
+            points.push(point);
+            
+            // Add point light for glow
+            const pointLight = new THREE.PointLight(0x00ffff, 0.5, 2);
+            point.add(pointLight);
+            
+            // Draw lines if we have at least 2 points
+            if (points.length > 1) {
+                drawLine(points[points.length - 2].position, points[points.length - 1].position);
+            }
+            
+            // If we have enough points for the current mode, complete the polygon
+            if (!isSample && (
+                (currentMode === 'triangle' && points.length === 3) ||
+                (currentMode === 'quad' && points.length === 4))) {
+                drawLine(points[points.length - 1].position, points[0].position);
+                createFill();
+            }
+            
+            updateAreaDisplay();
+            
+            // Create particle effect when adding point
+            createClickParticles(position);
+        }
+        
+        // Draw a line between two points
+        function drawLine(start, end) {
+            const geometry = new THREE.BufferGeometry().setFromPoints([start, end]);
+            const material = new THREE.LineBasicMaterial({ 
+                color: 0x00ffff,
+                linewidth: 2
+            });
+            
+            const line = new THREE.Line(geometry, material);
+            scene.add(line);
+            lines.push(line);
+            
+            // Add a glowing line
+            const glowGeometry = new THREE.BufferGeometry().setFromPoints([start, end]);
+            const glowMaterial = new THREE.LineBasicMaterial({
+                color: 0x00ffff,
+                linewidth: 4,
+                transparent: true,
+                opacity: 0.3
+            });
+            
+            const glowLine = new THREE.Line(glowGeometry, glowMaterial);
+            scene.add(glowLine);
+            lines.push(glowLine);
+        }
+        
+        // Create the fill for the polygon
+        function createFill() {
+            if (points.length < 3) return;
+            
+            // Create a shape from the points
+            const shape = new THREE.Shape();
+            shape.moveTo(points[0].position.x, points[0].position.y);
+            
+            for (let i = 1; i < points.length; i++) {
+                shape.lineTo(points[i].position.x, points[i].position.y);
+            }
+            
+            // Create geometry from the shape
+            const geometry = new THREE.ShapeGeometry(shape);
+            const material = new THREE.MeshPhongMaterial({
+                color: 0x0066cc,
+                transparent: true,
+                opacity: 0.3,
+                side: THREE.DoubleSide,
+                emissive: 0x0044aa,
+                emissiveIntensity: 0.2
+            });
+            
+            // Create mesh and add to scene
+            fillMesh = new THREE.Mesh(geometry, material);
+            fillMesh.position.z = 0.01; // Slightly above the grid
+            scene.add(fillMesh);
+        }
+        
+        // Calculate area using the shoelace formula
+        function calculateArea() {
+            if (points.length < 3) return 0;
+            
+            let area = 0;
+            const n = points.length;
+            
+            // Shoelace formula
+            for (let i = 0; i < n; i++) {
+                const j = (i + 1) % n;
+                area += points[i].position.x * points[j].position.y;
+                area -= points[j].position.x * points[i].position.y;
+            }
+            
+            return Math.abs(area) / 2;
+        }
+        
+        // Update the area display
+        function updateAreaDisplay() {
+            const area = calculateArea();
+            document.getElementById('area-display').textContent = `Area: ${area.toFixed(2)} units²`;
+        }
+        
+        // Handle window resize
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+        
+        // Handle mouse down event
+        function onMouseDown(event) {
+            event.preventDefault();
+            
+            // Calculate mouse position in normalized device coordinates
+            mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+            mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+            
+            // Update the raycaster
+            raycaster.setFromCamera(mouse, camera);
+            
+            // Check if we're clicking on an existing point
+            const intersects = raycaster.intersectObjects(points);
+            
+            if (intersects.length > 0) {
+                // Start dragging a point
+                isDragging = true;
+                selectedPoint = intersects[0].object;
+                controls.enabled = false;
+            } else {
+                // Check if we're clicking on the grid
+                const gridIntersects = raycaster.intersectObjects(scene.children);
+                
+                if (gridIntersects.length > 0 && 
+                    (currentMode === 'polygon' || 
+                     (currentMode === 'triangle' && points.length < 3) ||
+                     (currentMode === 'quad' && points.length < 4))) {
+                    // Add a new point
+                    addPoint(gridIntersects[0].point);
+                }
+            }
+        }
+        
+        // Handle mouse move event
+        function onMouseMove(event) {
+            event.preventDefault();
+            
+            // Calculate mouse position in normalized device coordinates
+            mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+            mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+            
+            if (isDragging && selectedPoint) {
+                // Drag the selected point
+                raycaster.setFromCamera(mouse, camera);
+                const intersects = raycaster.intersectObjects(scene.children);
+                
+                if (intersects.length > 0) {
+                    selectedPoint.position.copy(intersects[0].point);
+                    
+                    // Update lines
+                    updateLines();
+                    
+                    // Update fill if it exists
+                    if (fillMesh) {
+                        scene.remove(fillMesh);
+                        createFill();
+                    }
+                    
+                    updateAreaDisplay();
+                }
+            }
+        }
+        
+        // Handle mouse up event
+        function onMouseUp() {
+            isDragging = false;
+            selectedPoint = null;
+            controls.enabled = true;
+        }
+        
+        // Update line positions when points are moved
+        function updateLines() {
+            // Remove all existing lines
+            lines.forEach(line => scene.remove(line));
+            lines = [];
+            
+            // Draw new lines
+            for (let i = 0; i < points.length; i++) {
+                const nextIndex = (i + 1) % points.length;
+                drawLine(points[i].position, points[nextIndex].position);
+            }
+        }
+        
+        // Create particle effects
+        function createParticles() {
+            for (let i = 0; i < 50; i++) {
+                const particle = document.createElement('div');
+                particle.className = 'particle';
+                document.body.appendChild(particle);
+                
+                const size = Math.random() * 5 + 2;
+                particle.style.width = `${size}px`;
+                particle.style.height = `${size}px`;
+                
+                particles.push({
+                    element: particle,
+                    x: Math.random() * window.innerWidth,
+                    y: Math.random() * window.innerHeight,
+                    speedX: (Math.random() - 0.5) * 0.5,
+                    speedY: (Math.random() - 0.5) * 0.5
+                });
+            }
+        }
+        
+        // Create click particle effect
+        function createClickParticles(position) {
+            for (let i = 0; i < 20; i++) {
+                const particle = document.createElement('div');
+                particle.className = 'particle';
+                document.body.appendChild(particle);
+                
+                const size = Math.random() * 4 + 1;
+                particle.style.width = `${size}px`;
+                particle.style.height = `${size}px`;
+                
+                // Convert 3D position to screen coordinates
+                const vector = position.clone();
+                vector.project(camera);
+                
+                const x = (vector.x * 0.5 + 0.5) * window.innerWidth;
+                const y = -(vector.y * 0.5 - 0.5) * window.innerHeight;
+                
+                particle.style.left = `${x}px`;
+                particle.style.top = `${y}px`;
+                
+                const angle = Math.random() * Math.PI * 2;
+                const speed = Math.random() * 2 + 1;
+                
+                const particleObj = {
+                    element: particle,
+                    x: x,
+                    y: y,
+                    speedX: Math.cos(angle) * speed,
+                    speedY: Math.sin(angle) * speed,
+                    life: 50
+                };
+                
+                particles.push(particleObj);
+            }
+        }
+        
+        // Update particles
+        function updateParticles() {
+            for (let i = 0; i < particles.length; i++) {
+                const particle = particles[i];
+                
+                particle.x += particle.speedX;
+                particle.y += particle.speedY;
+                
+                if (particle.life !== undefined) {
+                    particle.life--;
+                    if (particle.life <= 0) {
+                        particle.element.remove();
+                        particles.splice(i, 1);
+                        i--;
+                        continue;
+                    }
+                    
+                    particle.element.style.opacity = particle.life / 50;
+                }
+                
+                // Wrap around screen edges
+                if (particle.x > window.innerWidth) particle.x = 0;
+                if (particle.x < 0) particle.x = window.innerWidth;
+                if (particle.y > window.innerHeight) particle.y = 0;
+                if (particle.y < 0) particle.y = window.innerHeight;
+                
+                particle.element.style.left = `${particle.x}px`;
+                particle.element.style.top = `${particle.y}px`;
+            }
+        }
+        
+        // Animation loop
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            // Update controls
+            controls.update();
+            
+            // Update particles
+            updateParticles();
+            
+            // Animate the fill if it exists
+            if (fillMesh) {
+                fillMesh.material.opacity = 0.3 + Math.sin(Date.now() * 0.002) * 0.1;
+            }
+            
+            // Render the scene
+            renderer.render(scene, camera);
+        }
+        
+        // Initialize the application
+        init();
+    </script>
+</body>
+</html>
