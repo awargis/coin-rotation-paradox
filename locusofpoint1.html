@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Locus Visualization - Coordinate Geometry</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
     <style>
         * {
             margin: 0;
@@ -36,6 +37,7 @@
             left: 0;
             width: 100%;
             display: flex;
+            flex-wrap: wrap;
             justify-content: center;
             align-items: center;
             gap: 20px;
@@ -119,6 +121,7 @@
             font-size: 16px;
             transition: all 0.3s;
             font-weight: 500;
+            position: relative;
         }
 
         button:hover {
@@ -206,6 +209,34 @@
             color: #ffd700;
             font-weight: bold;
         }
+
+        .tooltip {
+            visibility: hidden;
+            position: absolute;
+            background: rgba(0, 0, 0, 0.9);
+            color: #fff;
+            padding: 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            white-space: nowrap;
+            z-index: 100;
+        }
+
+        button:hover .tooltip {
+            visibility: visible;
+        }
+
+        #parameter-controls {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            padding: 10px;
+            background: rgba(0, 0, 0, 0.7);
+            border-radius: 6px;
+        }
     </style>
 </head>
 <body>
@@ -223,8 +254,8 @@
         <div id="coordinates">Position: (0.00, 0.00)</div>
         <div id="ui">
             <div class="controls-group">
-                <button id="play-pause">Pause</button>
-                <button id="reset">Reset</button>
+                <button id="play-pause"><span class="tooltip">Toggle animation</span>Pause</button>
+                <button id="reset"><span class="tooltip">Reset visualization</span>Reset</button>
             </div>
             <div class="slider-container">
                 <span>Trace Decay: </span>
@@ -239,25 +270,29 @@
             <div class="controls-group">
                 <span>Locus Type:</span>
                 <div id="mode-selector">
-                    <button id="mode-parabola" class="active">Parabola</button>
-                    <button id="mode-circle">Circle</button>
-                    <button id="mode-ellipse">Ellipse</button>
-                    <button id="mode-line">Line</button>
+                    <button id="mode-parabola" class="active"><span class="tooltip">Parabola: y = ax²</span>Parabola</button>
+                    <button id="mode-circle"><span class="tooltip">Circle: x² + y² = r²</span>Circle</button>
+                    <button id="mode-ellipse"><span class="tooltip">Ellipse: x²/a² + y²/b² = 1</span>Ellipse</button>
+                    <button id="mode-line"><span class="tooltip">Line: y = mx + c</span>Line</button>
                 </div>
             </div>
+            <div id="parameter-controls"></div>
         </div>
     </div>
 
     <script>
-        // Main Three.js application
+        // Font loader for axis labels
+        const fontLoader = new THREE.FontLoader();
+
         class LocusVisualization {
             constructor() {
                 this.scene = null;
                 this.camera = null;
                 this.renderer = null;
+                this.controls = null;
 
                 this.isPlaying = true;
-                this.decayTime = 4.0; // seconds
+                this.decayTime = 4.0;
                 this.speed = 1.0;
 
                 this.laser = null;
@@ -265,7 +300,39 @@
                 this.traceGeometry = null;
                 this.traceMaterial = null;
                 this.traceMesh = null;
-                this.locusLine = null; // New member to store the static locus line
+                this.locusLine = null;
+
+                this.parameters = {
+                    parabola: { a: 1 },
+                    circle: { r: 3 },
+                    ellipse: { a: 2, b: 3 },
+                    line: { m: 2, c: 1 }
+                };
+
+                this.modes = {
+                    parabola: { 
+                        equation: () => `y = ${this.parameters.parabola.a.toFixed(2)}x²`, 
+                        func: (x) => this.parameters.parabola.a * x * x, 
+                        range: [-3, 3]
+                    },
+                    circle: { 
+                        equation: () => `x² + y² = ${this.parameters.circle.r.toFixed(2)}²`, 
+                        func: (t) => [this.parameters.circle.r * Math.cos(t), this.parameters.circle.r * Math.sin(t)], 
+                        parametric: true, 
+                        range: [0, 2 * Math.PI]
+                    },
+                    ellipse: { 
+                        equation: () => `x²/${this.parameters.ellipse.a.toFixed(2)}² + y²/${this.parameters.ellipse.b.toFixed(2)}² = 1`, 
+                        func: (t) => [this.parameters.ellipse.a * Math.cos(t), this.parameters.ellipse.b * Math.sin(t)], 
+                        parametric: true, 
+                        range: [0, 2 * Math.PI]
+                    },
+                    line: { 
+                        equation: () => `y = ${this.parameters.line.m.toFixed(2)}x + ${this.parameters.line.c.toFixed(2)}`, 
+                        func: (x) => this.parameters.line.m * x + this.parameters.line.c, 
+                        range: [-3, 3]
+                    }
+                };
 
                 this.coordinateSystem = null;
                 this.axes = [];
@@ -279,60 +346,47 @@
                 this.traceCompleted = false;
 
                 this.currentMode = 'parabola';
-                this.modes = {
-                    parabola: { equation: 'y = x²', func: (x) => x*x, range: [-3, 3] },
-                    circle: { equation: 'x² + y² = 9', func: (t) => [3*Math.cos(t), 3*Math.sin(t)], parametric: true, range: [0, 2*Math.PI] },
-                    ellipse: { equation: 'x²/4 + y²/9 = 1', func: (t) => [2*Math.cos(t), 3*Math.sin(t)], parametric: true, range: [0, 2*Math.PI] },
-                    line: { equation: 'y = 2x + 1', func: (x) => 2*x + 1, range: [-3, 3] }
-                };
 
                 this.init();
             }
 
             init() {
-                // Create scene
                 this.scene = new THREE.Scene();
                 this.scene.fog = new THREE.Fog(0x0a0a12, 5, 20);
 
-                // Create camera
                 this.camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 100);
                 this.camera.position.copy(this.cameraStartPosition);
                 this.camera.lookAt(0, 0, 0);
 
-                // Create renderer
                 this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
                 this.renderer.setSize(window.innerWidth, window.innerHeight);
                 this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
                 this.renderer.outputEncoding = THREE.sRGBEncoding;
                 document.getElementById('canvas-container').appendChild(this.renderer.domElement);
 
-                // Create classroom environment
+                this.controls = new THREE.OrbitControls(this.camera, this.renderer.domElement);
+                this.controls.enableDamping = true;
+                this.controls.dampingFactor = 0.05;
+                this.controls.minDistance = 2;
+                this.controls.maxDistance = 20;
+                this.controls.maxPolarAngle = Math.PI / 2;
+
                 this.createClassroom();
-
-                // Create coordinate system
                 this.createCoordinateSystem();
-
-                // Create laser and trace
                 this.createLaser();
                 this.createTrace();
-
-                // Setup event listeners
                 this.setupEventListeners();
-
-                // Set initial mode
                 this.setMode(this.currentMode);
+                this.updateParameterControls();
 
-                // Start animation
                 this.animate();
 
-                // Hide loading
                 setTimeout(() => {
                     document.getElementById('loading').style.display = 'none';
                 }, 1000);
             }
 
             createClassroom() {
-                // Floor with grid pattern
                 const floorGeometry = new THREE.PlaneGeometry(30, 20);
                 const floorMaterial = new THREE.MeshStandardMaterial({ 
                     color: 0x222222, 
@@ -344,12 +398,10 @@
                 floor.position.y = -0.1;
                 this.scene.add(floor);
 
-                // Add grid to floor
                 const gridHelper = new THREE.GridHelper(30, 30, 0x444444, 0x333333);
                 gridHelper.position.y = 0.01;
                 this.scene.add(gridHelper);
 
-                // Back wall (chalkboard)
                 const wallGeometry = new THREE.PlaneGeometry(30, 12);
                 const wallMaterial = new THREE.MeshStandardMaterial({ 
                     color: 0x1a1a1a,
@@ -360,7 +412,6 @@
                 backWall.position.y = 6;
                 this.scene.add(backWall);
 
-                // Add chalkboard to back wall
                 const chalkboardGeometry = new THREE.PlaneGeometry(20, 8);
                 const chalkboardMaterial = new THREE.MeshStandardMaterial({ 
                     color: 0x003300,
@@ -372,7 +423,6 @@
                 chalkboard.position.y = 6;
                 this.scene.add(chalkboard);
 
-                // Side walls
                 const sideWallGeometry = new THREE.PlaneGeometry(20, 12);
                 const leftWall = new THREE.Mesh(sideWallGeometry, wallMaterial);
                 leftWall.position.x = -15;
@@ -386,13 +436,11 @@
                 rightWall.rotation.y = -Math.PI / 2;
                 this.scene.add(rightWall);
 
-                // Ceiling
                 const ceiling = new THREE.Mesh(new THREE.PlaneGeometry(30, 20), wallMaterial);
                 ceiling.position.y = 12;
                 ceiling.rotation.x = Math.PI / 2;
                 this.scene.add(ceiling);
 
-                // Teacher's desk
                 const deskGeometry = new THREE.BoxGeometry(5, 0.8, 2.5);
                 const deskMaterial = new THREE.MeshStandardMaterial({ 
                     color: 0x8B4513,
@@ -402,7 +450,6 @@
                 desk.position.set(0, 0.4, -7);
                 this.scene.add(desk);
 
-                // Student desks (simplified)
                 for (let i = -4; i <= 4; i += 2.5) {
                     for (let j = 3; j <= 6; j += 2) {
                         const studentDesk = new THREE.Mesh(
@@ -414,16 +461,13 @@
                     }
                 }
 
-                // Ambient lighting
                 const ambientLight = new THREE.AmbientLight(0x404040, 0.4);
                 this.scene.add(ambientLight);
 
-                // Directional light (from the front)
                 const directionalLight = new THREE.DirectionalLight(0xfff5e1, 0.6);
                 directionalLight.position.set(0, 8, 8);
                 this.scene.add(directionalLight);
 
-                // Subtle spotlight on the stage area
                 const spotLight = new THREE.SpotLight(0xfff5e1, 0.5);
                 spotLight.position.set(0, 8, 0);
                 spotLight.angle = Math.PI / 5;
@@ -432,15 +476,12 @@
                 spotLight.distance = 25;
                 this.scene.add(spotLight);
 
-                // Add some floating dust particles for atmosphere
                 this.createDustParticles();
             }
 
             createCoordinateSystem() {
-                // Create x and y axes
                 const axisMaterial = new THREE.LineBasicMaterial({ color: 0x4444ff, linewidth: 2 });
 
-                // X-axis
                 const xAxisGeometry = new THREE.BufferGeometry().setFromPoints([
                     new THREE.Vector3(-10, 0, 0),
                     new THREE.Vector3(10, 0, 0)
@@ -448,7 +489,6 @@
                 const xAxis = new THREE.Line(xAxisGeometry, axisMaterial);
                 this.scene.add(xAxis);
 
-                // Y-axis
                 const yAxisGeometry = new THREE.BufferGeometry().setFromPoints([
                     new THREE.Vector3(0, -5, 0),
                     new THREE.Vector3(0, 5, 0)
@@ -456,16 +496,10 @@
                 const yAxis = new THREE.Line(yAxisGeometry, axisMaterial);
                 this.scene.add(yAxis);
 
-                // Add axis labels
-                this.createAxisLabel('X', new THREE.Vector3(10.5, 0, 0));
-                this.createAxisLabel('Y', new THREE.Vector3(0, 5.5, 0));
-
-                // Add grid lines
                 const gridMaterial = new THREE.LineBasicMaterial({ color: 0x333333 });
 
-                // Vertical grid lines
                 for (let x = -10; x <= 10; x += 1) {
-                    if (x === 0) continue; // Skip the y-axis
+                    if (x === 0) continue;
                     const gridGeometry = new THREE.BufferGeometry().setFromPoints([
                         new THREE.Vector3(x, -5, 0),
                         new THREE.Vector3(x, 5, 0)
@@ -474,9 +508,8 @@
                     this.scene.add(gridLine);
                 }
 
-                // Horizontal grid lines
                 for (let y = -5; y <= 5; y += 1) {
-                    if (y === 0) continue; // Skip the x-axis
+                    if (y === 0) continue;
                     const gridGeometry = new THREE.BufferGeometry().setFromPoints([
                         new THREE.Vector3(-10, y, 0),
                         new THREE.Vector3(10, y, 0)
@@ -484,11 +517,32 @@
                     const gridLine = new THREE.Line(gridGeometry, gridMaterial);
                     this.scene.add(gridLine);
                 }
+
+                fontLoader.load('https://threejs.org/examples/fonts/helvetiker_regular.typeface.json', (font) => {
+                    this.createAxisLabel(font, 'X', new THREE.Vector3(10.5, 0, 0));
+                    this.createAxisLabel(font, 'Y', new THREE.Vector3(0, 5.5, 0));
+                    for (let x = -10; x <= 10; x++) {
+                        if (x !== 0) this.createAxisLabel(font, x.toString(), new THREE.Vector3(x, -0.3, 0), 0.15);
+                    }
+                    for (let y = -5; y <= 5; y++) {
+                        if (y !== 0) this.createAxisLabel(font, y.toString(), new THREE.Vector3(-0.3, y, 0), 0.15);
+                    }
+                });
             }
 
-            createAxisLabel(text, position) {
-                // In a real implementation, you would use Three.js text geometry
-                // For simplicity, we'll just note that this would create text labels
+            createAxisLabel(font, text, position, scale = 0.3) {
+                const textGeometry = new THREE.TextGeometry(text, {
+                    font: font,
+                    size: scale,
+                    height: 0.05,
+                    curveSegments: 12,
+                    bevelEnabled: false
+                });
+                const textMaterial = new THREE.MeshBasicMaterial({ color: 0x999999 });
+                const textMesh = new THREE.Mesh(textGeometry, textMaterial);
+                textMesh.position.copy(position);
+                textMesh.position.z = 0.1;
+                this.scene.add(textMesh);
             }
 
             createDustParticles() {
@@ -497,9 +551,9 @@
                 const positions = new Float32Array(particleCount * 3);
 
                 for (let i = 0; i < particleCount * 3; i += 3) {
-                    positions[i] = (Math.random() - 0.5) * 30;     // x
-                    positions[i + 1] = Math.random() * 10;         // y
-                    positions[i + 2] = (Math.random() - 0.5) * 20; // z
+                    positions[i] = (Math.random() - 0.5) * 30;
+                    positions[i + 1] = Math.random() * 10;
+                    positions[i + 2] = (Math.random() - 0.5) * 20;
                 }
 
                 particles.setAttribute('position', new THREE.BufferAttribute(positions, 3));
@@ -516,7 +570,6 @@
             }
 
             createLaser() {
-                // Laser dot
                 const laserGeometry = new THREE.SphereGeometry(0.05, 16, 16);
                 const laserMaterial = new THREE.MeshBasicMaterial({ 
                     color: 0xff0000,
@@ -526,7 +579,6 @@
                 this.laser = new THREE.Mesh(laserGeometry, laserMaterial);
                 this.scene.add(this.laser);
 
-                // Laser beam
                 const beamGeometry = new THREE.CylinderGeometry(0.01, 0.01, 5, 8);
                 const beamMaterial = new THREE.MeshBasicMaterial({
                     color: 0xff0000,
@@ -540,10 +592,8 @@
             }
 
             createTrace() {
-                // Particle system for the golden trace
                 this.traceGeometry = new THREE.BufferGeometry();
 
-                // Create a custom shader material for the glowing effect
                 this.traceMaterial = new THREE.ShaderMaterial({
                     uniforms: {
                         time: { value: 0 }
@@ -567,14 +617,11 @@
                             float dist = length(coord);
                             if (dist > 0.5) discard;
 
-                            // Create a glowing effect
                             float intensity = 1.0 - dist * 2.0;
                             intensity = pow(intensity, 2.0);
 
-                            // Golden color with some variation
                             vec3 color = mix(vec3(1.0, 0.8, 0.2), vec3(1.0, 1.0, 0.5), intensity);
 
-                            // Add a subtle pulse effect
                             float pulse = sin(time * 3.0) * 0.1 + 0.9;
 
                             gl_FragColor = vec4(color, vAlpha * intensity * pulse);
@@ -588,9 +635,8 @@
                 this.traceMesh = new THREE.Points(this.traceGeometry, this.traceMaterial);
                 this.scene.add(this.traceMesh);
             }
-            
+
             createLocusLine() {
-                // Remove existing line if it exists
                 if (this.locusLine) {
                     this.scene.remove(this.locusLine);
                     this.locusLine.geometry.dispose();
@@ -600,7 +646,7 @@
                 const mode = this.modes[this.currentMode];
                 const points = [];
                 const segments = 200;
-                
+
                 if (mode.parametric) {
                     for (let i = 0; i <= segments; i++) {
                         const t = mode.range[0] + (mode.range[1] - mode.range[0]) * (i / segments);
@@ -619,7 +665,7 @@
                 const geometry = new THREE.BufferGeometry().setFromPoints(points);
                 const material = new THREE.LineBasicMaterial({
                     color: 0x44ffaa,
-                    linewidth: 2, // Note: linewidth > 1 requires a custom shader on most platforms
+                    linewidth: 2,
                     transparent: true,
                     opacity: 0.6
                 });
@@ -627,71 +673,76 @@
                 this.scene.add(this.locusLine);
             }
 
+            updateParameterControls() {
+                const container = document.getElementById('parameter-controls');
+                container.innerHTML = '';
+
+                const params = this.parameters[this.currentMode];
+                for (const [key, value] of Object.entries(params)) {
+                    const controlDiv = document.createElement('div');
+                    controlDiv.className = 'slider-container';
+                    controlDiv.innerHTML = `
+                        <span>${key.toUpperCase()}: </span>
+                        <input type="range" id="param-${key}" min="${key === 'r' || key === 'a' || key === 'b' ? 0.5 : -2}" 
+                               max="${key === 'r' || key === 'a' || key === 'b' ? 5 : 2}" step="0.1" value="${value}">
+                        <span id="param-${key}-value">${value.toFixed(2)}</span>
+                    `;
+                    container.appendChild(controlDiv);
+
+                    const slider = document.getElementById(`param-${key}`);
+                    const valueSpan = document.getElementById(`param-${key}-value`);
+                    slider.addEventListener('input', (e) => {
+                        this.parameters[this.currentMode][key] = parseFloat(e.target.value);
+                        valueSpan.textContent = e.target.value;
+                        this.updateEquationAndLocus();
+                    });
+                }
+            }
+
+            updateEquationAndLocus() {
+                document.getElementById('equation-display').textContent = this.modes[this.currentMode].equation();
+                this.createLocusLine();
+            }
+
             setupEventListeners() {
                 window.addEventListener('resize', () => this.onWindowResize());
 
-                // Play/Pause button
                 document.getElementById('play-pause').addEventListener('click', () => {
                     this.isPlaying = !this.isPlaying;
                     document.getElementById('play-pause').textContent = this.isPlaying ? 'Pause' : 'Play';
                 });
 
-                // Reset button
                 document.getElementById('reset').addEventListener('click', () => {
                     this.resetAnimation();
                 });
 
-                // Decay slider
                 const decaySlider = document.getElementById('decay-slider');
                 const decayValue = document.getElementById('decay-value');
-
                 decaySlider.addEventListener('input', (e) => {
                     this.decayTime = parseFloat(e.target.value);
                     decayValue.textContent = this.decayTime.toFixed(1) + 's';
                 });
 
-                // Speed slider
                 const speedSlider = document.getElementById('speed-slider');
                 const speedValue = document.getElementById('speed-value');
-
                 speedSlider.addEventListener('input', (e) => {
                     this.speed = parseFloat(e.target.value);
                     speedValue.textContent = this.speed.toFixed(1) + 'x';
                 });
 
-                // Mode selector buttons
-                document.getElementById('mode-parabola').addEventListener('click', () => {
-                    this.setMode('parabola');
-                });
-
-                document.getElementById('mode-circle').addEventListener('click', () => {
-                    this.setMode('circle');
-                });
-
-                document.getElementById('mode-ellipse').addEventListener('click', () => {
-                    this.setMode('ellipse');
-                });
-
-                document.getElementById('mode-line').addEventListener('click', () => {
-                    this.setMode('line');
-                });
+                document.getElementById('mode-parabola').addEventListener('click', () => this.setMode('parabola'));
+                document.getElementById('mode-circle').addEventListener('click', () => this.setMode('circle'));
+                document.getElementById('mode-ellipse').addEventListener('click', () => this.setMode('ellipse'));
+                document.getElementById('mode-line').addEventListener('click', () => this.setMode('line'));
             }
 
             setMode(mode) {
                 this.currentMode = mode;
-
-                // Update active button
-                document.querySelectorAll('#mode-selector button').forEach(btn => {
-                    btn.classList.remove('active');
-                });
+                document.querySelectorAll('#mode-selector button').forEach(btn => btn.classList.remove('active'));
                 document.getElementById(`mode-${mode}`).classList.add('active');
-
-                // Update equation display
-                document.getElementById('equation-display').textContent = this.modes[mode].equation;
-
-                // Reset animation and recreate locus line for new mode
+                this.updateParameterControls();
+                this.updateEquationAndLocus();
                 this.resetAnimation();
-                this.createLocusLine();
             }
 
             resetAnimation() {
@@ -700,7 +751,8 @@
                 this.traceCompleted = false;
                 this.cameraAnimationProgress = 0;
                 this.camera.position.copy(this.cameraStartPosition);
-                this.camera.lookAt(0, 0, 0);
+                this.controls.target.set(0, 0, 0);
+                this.controls.update();
             }
 
             onWindowResize() {
@@ -710,7 +762,6 @@
             }
 
             animateLaser() {
-                // Calculate laser position based on current mode
                 const deltaTime = this.clock.getDelta() * this.speed;
                 this.time += deltaTime;
 
@@ -718,61 +769,44 @@
                 let x, y;
 
                 if (mode.parametric) {
-                    // For parametric equations (circle, ellipse), use time as the angle 't'
                     const t = this.time;
                     [x, y] = mode.func(t);
-                    
                     if (t >= mode.range[1]) {
                         this.traceCompleted = true;
-                        this.time = mode.range[1]; // Stop advancing time
+                        this.time = mode.range[1];
                     }
                 } else {
-                    // For Cartesian equations (parabola, line), map time to the x-range
                     const [minX, maxX] = mode.range;
                     const range = maxX - minX;
-                    const traversalTime = range * 2; // Time to traverse the full range
+                    const traversalTime = range * 2;
                     let progress = (this.time % traversalTime) / traversalTime;
-                    
-                    // Animate a back-and-forth movement across the x-axis
-                    if (progress > 0.5) {
-                        progress = 1 - progress; // Move back from maxX to minX
-                    }
+                    if (progress > 0.5) progress = 1 - progress;
                     x = minX + progress * range * 2;
                     y = mode.func(x);
-
                     if (this.time >= traversalTime && !this.traceCompleted) {
                         this.traceCompleted = true;
                     }
                 }
 
-                // Add slight hand wobble for realism
                 const wobble = 0.02;
                 const wobbleX = wobble * Math.sin(this.time * 8);
                 const wobbleY = wobble * Math.cos(this.time * 6);
 
-                this.laser.position.set(
-                    x + wobbleX,
-                    y + wobbleY,
-                    0
-                );
+                this.laser.position.set(x + wobbleX, y + wobbleY, 0);
 
-                // Update coordinates display
                 document.getElementById('coordinates').textContent = 
                     `Position: (${x.toFixed(2)}, ${y.toFixed(2)})`;
 
-                // Add point to trace
                 this.tracePoints.push({
                     position: new THREE.Vector3(x + wobbleX, y + wobbleY, 0),
                     creationTime: this.time
                 });
 
-                // Remove old points based on decay time
                 const currentTime = this.time;
                 this.tracePoints = this.tracePoints.filter(point => {
                     return currentTime - point.creationTime < this.decayTime;
                 });
 
-                // Update trace geometry
                 const positions = new Float32Array(this.tracePoints.length * 3);
                 const alphas = new Float32Array(this.tracePoints.length);
 
@@ -780,8 +814,6 @@
                     positions[i * 3] = point.position.x;
                     positions[i * 3 + 1] = point.position.y;
                     positions[i * 3 + 2] = point.position.z;
-
-                    // Calculate alpha based on age
                     const age = currentTime - point.creationTime;
                     alphas[i] = 1.0 - (age / this.decayTime);
                 });
@@ -794,17 +826,14 @@
 
             animateCamera() {
                 if (this.traceCompleted && this.cameraAnimationProgress < 1) {
-                    this.cameraAnimationProgress += 0.0015; // Slow push-in
-
-                    // Interpolate camera position
+                    this.cameraAnimationProgress += 0.0015;
                     this.camera.position.lerpVectors(
                         this.cameraStartPosition,
                         this.cameraTargetPosition,
                         this.cameraAnimationProgress
                     );
-
-                    // Keep looking at the center of the trace
-                    this.camera.lookAt(0, 0, 0);
+                    this.controls.target.set(0, 0, 0);
+                    this.controls.update();
                 }
             }
 
@@ -816,15 +845,12 @@
                     this.animateCamera();
                 }
 
-                // Update shader time
                 this.traceMaterial.uniforms.time.value = this.time;
-
-                // Render the scene
+                this.controls.update();
                 this.renderer.render(this.scene, this.camera);
             }
         }
 
-        // Initialize the application when the page loads
         window.addEventListener('DOMContentLoaded', () => {
             new LocusVisualization();
         });
