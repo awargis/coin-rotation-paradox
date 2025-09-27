@@ -1,0 +1,901 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Enhanced Parabolic Laser Grid: When Math Meets Security</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/dat.gui@0.7.7/build/dat.gui.min.js"></script>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            font-family: 'Arial', sans-serif;
+            background-color: #0a0a1a;
+            color: #e0e0ff;
+        }
+        #container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+        }
+        #canvas-container {
+            width: 100%;
+            height: 100%;
+        }
+        #controls {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            width: 300px;
+            background: rgba(10, 15, 30, 0.9);
+            border: 1px solid #2a3a6a;
+            border-radius: 8px;
+            padding: 15px;
+            box-shadow: 0 0 20px rgba(0, 100, 255, 0.3);
+            z-index: 10;
+        }
+        #info-panel {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            width: 400px;
+            background: rgba(10, 15, 30, 0.9);
+            border: 1px solid #2a3a6a;
+            border-radius: 8px;
+            padding: 15px;
+            box-shadow: 0 0 20px rgba(0, 100, 255, 0.3);
+            z-index: 10;
+        }
+        .control-group {
+            margin-bottom: 15px;
+        }
+        .control-label {
+            display: block;
+            margin-bottom: 5px;
+            font-size: 14px;
+            color: #a0b0ff;
+        }
+        .slider-container {
+            display: flex;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+        .slider {
+            flex: 1;
+            height: 5px;
+            background: #1a2a4a;
+            outline: none;
+            border-radius: 3px;
+            -webkit-appearance: none;
+        }
+        .slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 15px;
+            height: 15px;
+            border-radius: 50%;
+            background: #4a8aff;
+            cursor: pointer;
+        }
+        .value-display {
+            width: 50px;
+            text-align: center;
+            margin-left: 10px;
+            font-size: 14px;
+        }
+        .toggle-container {
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        .toggle {
+            position: relative;
+            display: inline-block;
+            width: 50px;
+            height: 24px;
+            margin-right: 10px;
+        }
+        .toggle input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+        .slider-toggle {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #1a2a4a;
+            transition: .4s;
+            border-radius: 24px;
+        }
+        .slider-toggle:before {
+            position: absolute;
+            content: "";
+            height: 16px;
+            width: 16px;
+            left: 4px;
+            bottom: 4px;
+            background-color: #a0b0ff;
+            transition: .4s;
+            border-radius: 50%;
+        }
+        input:checked + .slider-toggle {
+            background-color: #2a5aaa;
+        }
+        input:checked + .slider-toggle:before {
+            transform: translateX(26px);
+        }
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+        .safe {
+            background-color: #00ff00;
+            box-shadow: 0 0 10px #00ff00;
+        }
+        .alert {
+            background-color: #ffff00;
+            box-shadow: 0 0 10px #ffff00;
+            animation: pulse 1s infinite;
+        }
+        .breach {
+            background-color: #ff0000;
+            box-shadow: 0 0 15px #ff0000;
+            animation: pulse 0.5s infinite;
+        }
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+        h3 {
+            margin-top: 0;
+            color: #4a8aff;
+            border-bottom: 1px solid #2a3a6a;
+            padding-bottom: 5px;
+        }
+        .equation {
+            font-family: 'Courier New', monospace;
+            background: rgba(20, 30, 60, 0.5);
+            padding: 5px 10px;
+            border-radius: 4px;
+            margin: 5px 0;
+        }
+        .alarm {
+            color: #ff5555;
+            font-weight: bold;
+            text-align: center;
+            animation: alarm-flash 0.5s infinite;
+        }
+        @keyframes alarm-flash {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+        #title {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: #e0e0ff;
+            background: rgba(10, 15, 30, 0.7);
+            padding: 10px 15px;
+            border-radius: 8px;
+            border: 1px solid #2a3a6a;
+            z-index: 10;
+        }
+        #title h1 {
+            margin: 0;
+            font-size: 18px;
+            color: #4a8aff;
+        }
+        #title p {
+            margin: 5px 0 0 0;
+            font-size: 12px;
+        }
+        .button {
+            background: #2a5aaa;
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-top: 10px;
+            font-size: 14px;
+            transition: background 0.3s;
+        }
+        .button:hover {
+            background: #3a6aba;
+        }
+        .tooltip {
+            position: relative;
+            display: inline-block;
+            margin-left: 5px;
+            color: #4a8aff;
+            cursor: help;
+        }
+        .tooltip .tooltiptext {
+            visibility: hidden;
+            width: 200px;
+            background-color: #0a142a;
+            color: #e0e0ff;
+            text-align: center;
+            border-radius: 6px;
+            padding: 5px;
+            position: absolute;
+            z-index: 1;
+            bottom: 125%;
+            left: 50%;
+            margin-left: -100px;
+            opacity: 0;
+            transition: opacity 0.3s;
+            border: 1px solid #2a3a6a;
+            font-size: 12px;
+        }
+        .tooltip:hover .tooltiptext {
+            visibility: visible;
+            opacity: 1;
+        }
+        #instructions {
+            position: absolute;
+            top: 100px;
+            left: 20px;
+            width: 250px;
+            background: rgba(10, 15, 30, 0.8);
+            border: 1px solid #2a3a6a;
+            border-radius: 8px;
+            padding: 15px;
+            box-shadow: 0 0 20px rgba(0, 100, 255, 0.3);
+            z-index: 10;
+            font-size: 12px;
+        }
+        #instructions h3 {
+            margin-top: 0;
+        }
+        #instructions ul {
+            padding-left: 15px;
+        }
+        #instructions li {
+            margin-bottom: 8px;
+        }
+    </style>
+</head>
+<body>
+    <div id="container">
+        <div id="canvas-container"></div>
+        
+        <div id="title">
+            <h1>Parabolic Laser Grid</h1>
+            <p>When Math Meets Security</p>
+        </div>
+        
+        <div id="instructions">
+            <h3>How It Works</h3>
+            <ul>
+                <li>Adjust laser slopes and intercepts using sliders</li>
+                <li>Move the intruder (gray sphere) to test security</li>
+                <li>When intruder touches a laser: <span style="color:yellow">ALERT</span></li>
+                <li>When intruder touches both lasers: <span style="color:red">BREACH</span></li>
+                <li>The joint equation equals zero at intersection points</li>
+            </ul>
+            <p><strong>Keyboard Controls:</strong> Use arrow keys to move intruder</p>
+        </div>
+        
+        <div id="controls">
+            <h3>LASER SECURITY CONTROLS</h3>
+            
+            <div class="control-group">
+                <div class="control-label">Laser 1 Slope (m₁):
+                    <span class="tooltip">ℹ
+                        <span class="tooltiptext">Controls the angle of the red laser beam</span>
+                    </span>
+                </div>
+                <div class="slider-container">
+                    <input type="range" min="-5" max="5" step="0.1" value="2" class="slider" id="m1-slider">
+                    <span class="value-display" id="m1-value">2.0</span>
+                </div>
+                
+                <div class="control-label">Laser 1 Intercept (c₁):
+                    <span class="tooltip">ℹ
+                        <span class="tooltiptext">Controls the vertical position of the red laser</span>
+                    </span>
+                </div>
+                <div class="slider-container">
+                    <input type="range" min="-10" max="10" step="0.1" value="1" class="slider" id="c1-slider">
+                    <span class="value-display" id="c1-value">1.0</span>
+                </div>
+            </div>
+            
+            <div class="control-group">
+                <div class="control-label">Laser 2 Slope (m₂):
+                    <span class="tooltip">ℹ
+                        <span class="tooltiptext">Controls the angle of the blue laser beam</span>
+                    </span>
+                </div>
+                <div class="slider-container">
+                    <input type="range" min="-5" max="5" step="0.1" value="-0.5" class="slider" id="m2-slider">
+                    <span class="value-display" id="m2-value">-0.5</span>
+                </div>
+                
+                <div class="control-label">Laser 2 Intercept (c₂):
+                    <span class="tooltip">ℹ
+                        <span class="tooltiptext">Controls the vertical position of the blue laser</span>
+                    </span>
+                </div>
+                <div class="slider-container">
+                    <input type="range" min="-10" max="10" step="0.1" value="4" class="slider" id="c2-slider">
+                    <span class="value-display" id="c2-value">4.0</span>
+                </div>
+            </div>
+            
+            <div class="control-group">
+                <div class="control-label">Intruder Position:
+                    <span class="tooltip">ℹ
+                        <span class="tooltiptext">Move the intruder to test the security system</span>
+                    </span>
+                </div>
+                <div class="slider-container">
+                    <span class="control-label">X:</span>
+                    <input type="range" min="-5" max="5" step="0.1" value="2" class="slider" id="x-slider">
+                    <span class="value-display" id="x-value">2.0</span>
+                </div>
+                <div class="slider-container">
+                    <span class="control-label">Y:</span>
+                    <input type="range" min="-5" max="5" step="0.1" value="5" class="slider" id="y-slider">
+                    <span class="value-display" id="y-value">5.0</span>
+                </div>
+            </div>
+            
+            <div class="control-group">
+                <div class="toggle-container">
+                    <label class="toggle">
+                        <input type="checkbox" id="show-equations" checked>
+                        <span class="slider-toggle"></span>
+                    </label>
+                    <span>Show Equations</span>
+                </div>
+                
+                <div class="toggle-container">
+                    <label class="toggle">
+                        <input type="checkbox" id="show-grid" checked>
+                        <span class="slider-toggle"></span>
+                    </label>
+                    <span>Show Security Grid</span>
+                </div>
+                
+                <div class="toggle-container">
+                    <label class="toggle">
+                        <input type="checkbox" id="show-substitution" checked>
+                        <span class="slider-toggle"></span>
+                    </label>
+                    <span>Show Coordinate Substitution</span>
+                </div>
+                
+                <button class="button" id="reset-button">Reset to Default</button>
+            </div>
+        </div>
+        
+        <div id="info-panel">
+            <h3>SECURITY STATUS</h3>
+            <div id="status">
+                <span class="status-indicator safe"></span>
+                <span>SYSTEM STATUS: <span id="status-text">SAFE</span></span>
+            </div>
+            
+            <div class="equation">
+                L1: y = <span id="eq-m1">2</span>x + <span id="eq-c1">1</span>
+            </div>
+            <div class="equation">
+                L2: y = <span id="eq-m2">-0.5</span>x + <span id="eq-c2">4</span>
+            </div>
+            
+            <div id="joint-equation" class="equation">
+                Joint: (y - <span id="je-m1">2</span>x - <span id="je-c1">1</span>)(y - <span id="je-m2">-0.5</span>x - <span id="je-c2">4</span>) = 0
+            </div>
+            
+            <div id="substitution" class="equation">
+                Substitution: (5 - 2×2 - 1)(5 + 0.5×2 - 4) = (0)(0) = 0
+            </div>
+            
+            <div id="alarm-message"></div>
+        </div>
+    </div>
+
+    <script>
+        // Initialize Three.js scene
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setClearColor(0x0a0a1a);
+        document.getElementById('canvas-container').appendChild(renderer.domElement);
+        
+        // Add ambient lighting
+        const ambientLight = new THREE.AmbientLight(0x2a3a6a, 0.3);
+        scene.add(ambientLight);
+        
+        // Add directional lighting
+        const directionalLight = new THREE.DirectionalLight(0x4a8aff, 0.8);
+        directionalLight.position.set(5, 10, 7);
+        scene.add(directionalLight);
+        
+        // Create vault room
+        const roomGeometry = new THREE.BoxGeometry(20, 10, 20);
+        const roomMaterial = new THREE.MeshPhongMaterial({ 
+            color: 0x0a142a,
+            transparent: true,
+            opacity: 0.1,
+            side: THREE.DoubleSide
+        });
+        const room = new THREE.Mesh(roomGeometry, roomMaterial);
+        scene.add(room);
+        
+        // Create floor with grid pattern
+        const floorGeometry = new THREE.PlaneGeometry(20, 20);
+        const floorMaterial = new THREE.MeshPhongMaterial({ 
+            color: 0x101830,
+            shininess: 30
+        });
+        const floor = new THREE.Mesh(floorGeometry, floorMaterial);
+        floor.rotation.x = -Math.PI / 2;
+        floor.position.y = -5;
+        scene.add(floor);
+        
+        // Add grid lines to floor
+        const gridHelper = new THREE.GridHelper(20, 20, 0x1a2a4a, 0x1a2a4a);
+        gridHelper.position.y = -4.95;
+        scene.add(gridHelper);
+        
+        // Create diamond artifact
+        const diamondGeometry = new THREE.OctahedronGeometry(1, 0);
+        const diamondMaterial = new THREE.MeshPhongMaterial({ 
+            color: 0xffffff,
+            shininess: 100,
+            emissive: 0x0044ff,
+            emissiveIntensity: 0.2
+        });
+        const diamond = new THREE.Mesh(diamondGeometry, diamondMaterial);
+        diamond.position.set(0, 0, 0);
+        scene.add(diamond);
+        
+        // Create pedestal
+        const pedestalGeometry = new THREE.CylinderGeometry(0.5, 1, 2, 32);
+        const pedestalMaterial = new THREE.MeshPhongMaterial({ 
+            color: 0x2a3a6a,
+            shininess: 50
+        });
+        const pedestal = new THREE.Mesh(pedestalGeometry, pedestalMaterial);
+        pedestal.position.set(0, -3, 0);
+        scene.add(pedestal);
+        
+        // Create laser emitters
+        const emitterGeometry = new THREE.CylinderGeometry(0.3, 0.3, 1, 32);
+        const redEmitterMaterial = new THREE.MeshPhongMaterial({ 
+            color: 0xff0000,
+            emissive: 0xff0000,
+            emissiveIntensity: 0.5
+        });
+        const blueEmitterMaterial = new THREE.MeshPhongMaterial({ 
+            color: 0x0044ff,
+            emissive: 0x0044ff,
+            emissiveIntensity: 0.5
+        });
+        
+        const redEmitter = new THREE.Mesh(emitterGeometry, redEmitterMaterial);
+        redEmitter.position.set(-8, 3, 0);
+        redEmitter.rotation.z = Math.PI / 2;
+        scene.add(redEmitter);
+        
+        const blueEmitter = new THREE.Mesh(emitterGeometry, blueEmitterMaterial);
+        blueEmitter.position.set(8, 3, 0);
+        blueEmitter.rotation.z = -Math.PI / 2;
+        scene.add(blueEmitter);
+        
+        // Create laser beams
+        const laserBeamGeometry = new THREE.CylinderGeometry(0.05, 0.05, 20, 8);
+        const redLaserMaterial = new THREE.MeshPhongMaterial({ 
+            color: 0xff0000,
+            emissive: 0xff0000,
+            emissiveIntensity: 0.7,
+            transparent: true,
+            opacity: 0.8
+        });
+        const blueLaserMaterial = new THREE.MeshPhongMaterial({ 
+            color: 0x0044ff,
+            emissive: 0x0044ff,
+            emissiveIntensity: 0.7,
+            transparent: true,
+            opacity: 0.8
+        });
+        
+        const redLaser = new THREE.Mesh(laserBeamGeometry, redLaserMaterial);
+        redLaser.position.set(-4, 0, 0);
+        redLaser.rotation.z = Math.atan2(2, 1); // Based on slope
+        scene.add(redLaser);
+        
+        const blueLaser = new THREE.Mesh(laserBeamGeometry, blueLaserMaterial);
+        blueLaser.position.set(4, 0, 0);
+        blueLaser.rotation.z = Math.atan2(-0.5, 1); // Based on slope
+        scene.add(blueLaser);
+        
+        // Create intruder
+        const intruderGeometry = new THREE.SphereGeometry(0.3, 16, 16);
+        const intruderMaterial = new THREE.MeshPhongMaterial({ 
+            color: 0xaaaaaa,
+            emissive: 0x333333,
+            emissiveIntensity: 0.2
+        });
+        const intruder = new THREE.Mesh(intruderGeometry, intruderMaterial);
+        intruder.position.set(2, 5, 0);
+        scene.add(intruder);
+        
+        // Create coordinate axes
+        const axesHelper = new THREE.AxesHelper(10);
+        scene.add(axesHelper);
+        
+        // Create grid lines
+        const gridLines = new THREE.Group();
+        scene.add(gridLines);
+        
+        // Create particle system for breach effect
+        const breachParticles = new THREE.Group();
+        scene.add(breachParticles);
+        
+        function createParticles(x, y, color) {
+            const particleGeometry = new THREE.SphereGeometry(0.1, 8, 8);
+            const particleMaterial = new THREE.MeshBasicMaterial({ 
+                color: color,
+                transparent: true,
+                opacity: 0.7
+            });
+            
+            for (let i = 0; i < 20; i++) {
+                const particle = new THREE.Mesh(particleGeometry, particleMaterial);
+                particle.position.set(x, y, 0);
+                
+                // Random velocity
+                particle.userData.velocity = new THREE.Vector3(
+                    (Math.random() - 0.5) * 0.1,
+                    (Math.random() - 0.5) * 0.1,
+                    (Math.random() - 0.5) * 0.1
+                );
+                
+                particle.userData.life = 1.0;
+                breachParticles.add(particle);
+            }
+        }
+        
+        function updateParticles() {
+            for (let i = breachParticles.children.length - 1; i >= 0; i--) {
+                const particle = breachParticles.children[i];
+                particle.userData.life -= 0.02;
+                
+                if (particle.userData.life <= 0) {
+                    breachParticles.remove(particle);
+                } else {
+                    particle.position.add(particle.userData.velocity);
+                    particle.material.opacity = particle.userData.life * 0.7;
+                    particle.scale.setScalar(particle.userData.life);
+                }
+            }
+        }
+        
+        function createGridLines(m1, c1, m2, c2) {
+            // Clear existing grid lines
+            while(gridLines.children.length > 0) { 
+                gridLines.remove(gridLines.children[0]); 
+            }
+            
+            // Create red grid lines (parallel to L1)
+            for (let k = -3; k <= 3; k++) {
+                const lineGeometry = new THREE.BufferGeometry();
+                const vertices = new Float32Array(6);
+                
+                // Calculate points for the line
+                const x1 = -8;
+                const y1 = m1 * x1 + c1 + k;
+                const x2 = 8;
+                const y2 = m1 * x2 + c1 + k;
+                
+                vertices[0] = x1;
+                vertices[1] = y1;
+                vertices[2] = 0;
+                vertices[3] = x2;
+                vertices[4] = y2;
+                vertices[5] = 0;
+                
+                lineGeometry.setAttribute('position', new THREE.BufferAttribute(vertices, 3));
+                
+                const opacity = k === 0 ? 0.8 : 0.3; // Main line is more opaque
+                const lineMaterial = new THREE.LineBasicMaterial({ 
+                    color: k === 0 ? 0xff5050 : 0xff0000,
+                    transparent: true,
+                    opacity: opacity
+                });
+                
+                const line = new THREE.Line(lineGeometry, lineMaterial);
+                gridLines.add(line);
+            }
+            
+            // Create blue grid lines (parallel to L2)
+            for (let k = -3; k <= 3; k++) {
+                const lineGeometry = new THREE.BufferGeometry();
+                const vertices = new Float32Array(6);
+                
+                // Calculate points for the line
+                const x1 = -8;
+                const y1 = m2 * x1 + c2 + k;
+                const x2 = 8;
+                const y2 = m2 * x2 + c2 + k;
+                
+                vertices[0] = x1;
+                vertices[1] = y1;
+                vertices[2] = 0;
+                vertices[3] = x2;
+                vertices[4] = y2;
+                vertices[5] = 0;
+                
+                lineGeometry.setAttribute('position', new THREE.BufferAttribute(vertices, 3));
+                
+                const opacity = k === 0 ? 0.8 : 0.3; // Main line is more opaque
+                const lineMaterial = new THREE.LineBasicMaterial({ 
+                    color: k === 0 ? 0x5050ff : 0x0044ff,
+                    transparent: true,
+                    opacity: opacity
+                });
+                
+                const line = new THREE.Line(lineGeometry, lineMaterial);
+                gridLines.add(line);
+            }
+        }
+        
+        // Initialize grid lines
+        createGridLines(2, 1, -0.5, 4);
+        
+        // Position camera
+        camera.position.set(0, 0, 15);
+        camera.lookAt(0, 0, 0);
+        
+        // Animation variables
+        let time = 0;
+        let alarmActive = false;
+        let lastBreachTime = 0;
+        
+        // Update function
+        function updateScene() {
+            time += 0.02;
+            
+            // Update laser beam positions and rotations based on equations
+            const m1 = parseFloat(document.getElementById('m1-slider').value);
+            const c1 = parseFloat(document.getElementById('c1-slider').value);
+            const m2 = parseFloat(document.getElementById('m2-slider').value);
+            const c2 = parseFloat(document.getElementById('c2-slider').value);
+            const x = parseFloat(document.getElementById('x-slider').value);
+            const y = parseFloat(document.getElementById('y-slider').value);
+            
+            // Update laser beams
+            redLaser.rotation.z = Math.atan2(m1, 1);
+            blueLaser.rotation.z = Math.atan2(m2, 1);
+            
+            // Update grid lines if enabled
+            if (document.getElementById('show-grid').checked) {
+                gridLines.visible = true;
+                createGridLines(m1, c1, m2, c2);
+            } else {
+                gridLines.visible = false;
+            }
+            
+            // Update intruder position
+            intruder.position.set(x, y, 0);
+            
+            // Calculate distances to lines
+            const distL1 = Math.abs(y - m1 * x - c1) / Math.sqrt(m1 * m1 + 1);
+            const distL2 = Math.abs(y - m2 * x - c2) / Math.sqrt(m2 * m2 + 1);
+            
+            // Check if intruder is on either line or at intersection
+            const onL1 = distL1 < 0.1;
+            const onL2 = distL2 < 0.1;
+            
+            // Update status
+            const statusElement = document.getElementById('status');
+            const statusText = document.getElementById('status-text');
+            const statusIndicator = statusElement.querySelector('.status-indicator');
+            const alarmMessage = document.getElementById('alarm-message');
+            
+            if (onL1 && onL2) {
+                // Breach detected - intruder at intersection
+                statusIndicator.className = 'status-indicator breach';
+                statusText.textContent = 'BREACH DETECTED!';
+                alarmMessage.innerHTML = '<div class="alarm">DUAL BEAM BREACH DETECTED!</div>';
+                
+                if (!alarmActive) {
+                    // Trigger alarm effects
+                    alarmActive = true;
+                    redEmitter.material.emissiveIntensity = 1.0;
+                    blueEmitter.material.emissiveIntensity = 1.0;
+                }
+                
+                // Create particles at breach point
+                if (time - lastBreachTime > 0.2) {
+                    createParticles(x, y, 0xff0000);
+                    lastBreachTime = time;
+                }
+            } else if (onL1 || onL2) {
+                // Alert - intruder on one laser
+                statusIndicator.className = 'status-indicator alert';
+                statusText.textContent = 'ALERT';
+                alarmMessage.innerHTML = onL1 ? 
+                    '<div style="color: #ffaa00;">Laser 1 beam crossed!</div>' : 
+                    '<div style="color: #00aaff;">Laser 2 beam crossed!</div>';
+                alarmActive = false;
+                redEmitter.material.emissiveIntensity = onL1 ? 0.8 : 0.5;
+                blueEmitter.material.emissiveIntensity = onL2 ? 0.8 : 0.5;
+                
+                // Create particles at alert point
+                if (time - lastBreachTime > 0.3) {
+                    createParticles(x, y, onL1 ? 0xff5500 : 0x0055ff);
+                    lastBreachTime = time;
+                }
+            } else {
+                // Safe
+                statusIndicator.className = 'status-indicator safe';
+                statusText.textContent = 'SAFE';
+                alarmMessage.innerHTML = '';
+                alarmActive = false;
+                redEmitter.material.emissiveIntensity = 0.5;
+                blueEmitter.material.emissiveIntensity = 0.5;
+            }
+            
+            // Update equations in UI
+            document.getElementById('eq-m1').textContent = m1.toFixed(1);
+            document.getElementById('eq-c1').textContent = c1.toFixed(1);
+            document.getElementById('eq-m2').textContent = m2.toFixed(1);
+            document.getElementById('eq-c2').textContent = c2.toFixed(1);
+            
+            document.getElementById('je-m1').textContent = m1.toFixed(1);
+            document.getElementById('je-c1').textContent = c1.toFixed(1);
+            document.getElementById('je-m2').textContent = m2.toFixed(1);
+            document.getElementById('je-c2').textContent = c2.toFixed(1);
+            
+            // Update substitution in UI
+            if (document.getElementById('show-substitution').checked) {
+                document.getElementById('substitution').style.display = 'block';
+                const term1 = (y - m1*x - c1).toFixed(2);
+                const term2 = (y - m2*x - c2).toFixed(2);
+                const product = (term1 * term2).toFixed(2);
+                
+                document.getElementById('substitution').innerHTML = 
+                    `Substitution: (${y.toFixed(1)} - ${m1.toFixed(1)}×${x.toFixed(1)} - ${c1.toFixed(1)})` +
+                    `(${y.toFixed(1)} - ${m2.toFixed(1)}×${x.toFixed(1)} - ${c2.toFixed(1)}) = ` +
+                    `(${term1})(${term2}) = ${product}`;
+            } else {
+                document.getElementById('substitution').style.display = 'none';
+            }
+            
+            // Pulsing effect for diamond
+            diamond.scale.setScalar(1 + 0.05 * Math.sin(time * 2));
+            
+            // Rotate diamond slowly
+            diamond.rotation.y += 0.01;
+            
+            // Update particles
+            updateParticles();
+        }
+        
+        // Render loop
+        function animate() {
+            requestAnimationFrame(animate);
+            updateScene();
+            renderer.render(scene, camera);
+        }
+        
+        // Handle window resize
+        window.addEventListener('resize', function() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+        
+        // Initialize UI controls
+        document.getElementById('m1-slider').addEventListener('input', function() {
+            document.getElementById('m1-value').textContent = this.value;
+        });
+        
+        document.getElementById('c1-slider').addEventListener('input', function() {
+            document.getElementById('c1-value').textContent = this.value;
+        });
+        
+        document.getElementById('m2-slider').addEventListener('input', function() {
+            document.getElementById('m2-value').textContent = this.value;
+        });
+        
+        document.getElementById('c2-slider').addEventListener('input', function() {
+            document.getElementById('c2-value').textContent = this.value;
+        });
+        
+        document.getElementById('x-slider').addEventListener('input', function() {
+            document.getElementById('x-value').textContent = this.value;
+        });
+        
+        document.getElementById('y-slider').addEventListener('input', function() {
+            document.getElementById('y-value').textContent = this.value;
+        });
+        
+        document.getElementById('show-equations').addEventListener('change', function() {
+            const equations = document.querySelectorAll('.equation');
+            equations.forEach(eq => {
+                if (eq.id !== 'substitution' || document.getElementById('show-substitution').checked) {
+                    eq.style.display = this.checked ? 'block' : 'none';
+                }
+            });
+        });
+        
+        document.getElementById('show-substitution').addEventListener('change', function() {
+            document.getElementById('substitution').style.display = 
+                (this.checked && document.getElementById('show-equations').checked) ? 'block' : 'none';
+        });
+        
+        // Reset button functionality
+        document.getElementById('reset-button').addEventListener('click', function() {
+            document.getElementById('m1-slider').value = 2;
+            document.getElementById('m1-value').textContent = '2.0';
+            
+            document.getElementById('c1-slider').value = 1;
+            document.getElementById('c1-value').textContent = '1.0';
+            
+            document.getElementById('m2-slider').value = -0.5;
+            document.getElementById('m2-value').textContent = '-0.5';
+            
+            document.getElementById('c2-slider').value = 4;
+            document.getElementById('c2-value').textContent = '4.0';
+            
+            document.getElementById('x-slider').value = 2;
+            document.getElementById('x-value').textContent = '2.0';
+            
+            document.getElementById('y-slider').value = 5;
+            document.getElementById('y-value').textContent = '5.0';
+        });
+        
+        // Keyboard controls for intruder
+        document.addEventListener('keydown', function(event) {
+            const xSlider = document.getElementById('x-slider');
+            const ySlider = document.getElementById('y-slider');
+            let xValue = parseFloat(xSlider.value);
+            let yValue = parseFloat(ySlider.value);
+            const step = 0.2;
+            
+            switch(event.key) {
+                case 'ArrowUp':
+                    yValue = Math.min(5, yValue + step);
+                    ySlider.value = yValue;
+                    document.getElementById('y-value').textContent = yValue.toFixed(1);
+                    break;
+                case 'ArrowDown':
+                    yValue = Math.max(-5, yValue - step);
+                    ySlider.value = yValue;
+                    document.getElementById('y-value').textContent = yValue.toFixed(1);
+                    break;
+                case 'ArrowLeft':
+                    xValue = Math.max(-5, xValue - step);
+                    xSlider.value = xValue;
+                    document.getElementById('x-value').textContent = xValue.toFixed(1);
+                    break;
+                case 'ArrowRight':
+                    xValue = Math.min(5, xValue + step);
+                    xSlider.value = xValue;
+                    document.getElementById('x-value').textContent = xValue.toFixed(1);
+                    break;
+            }
+        });
+        
+        // Start animation
+        animate();
+    </script>
+</body>
+</html>
