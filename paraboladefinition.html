@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Parabola: The Director of Gravity</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            overflow: hidden;
+        }
+        canvas {
+            cursor: crosshair;
+            touch-action: none;
+        }
+        .label {
+            position: absolute;
+            background-color: rgba(0,0,0,0.6);
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            pointer-events: none;
+            user-select: none;
+        }
+        .focus-handle {
+            position: absolute;
+            width: 24px;
+            height: 24px;
+            background-color: #ef4444; /* red-500 */
+            border-radius: 50%;
+            cursor: grab;
+            transform: translate(-50%, -50%);
+            border: 2px solid white;
+            box-shadow: 0 0 10px rgba(239, 68, 68, 0.7);
+        }
+        .directrix-handle {
+            position: absolute;
+            width: 100%;
+            height: 10px;
+            cursor: ns-resize;
+            transform: translateY(-50%);
+            z-index: 10;
+        }
+        .toast {
+            animation: fadeInOut 3s forwards;
+        }
+        @keyframes fadeInOut {
+            0%, 100% { opacity: 0; transform: translateY(20px); }
+            10%, 90% { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-white flex flex-col items-center justify-center h-screen m-0 p-4 overflow-hidden">
+
+    <div id="container" class="w-full h-full flex flex-col items-center justify-center bg-gray-800 rounded-2xl shadow-2xl relative border border-gray-700">
+        <div id="canvas-container" class="w-full flex-grow relative rounded-t-2xl">
+            <canvas id="parabolaCanvas"></canvas>
+            <!-- Custom HTML elements for Focus and Directrix -->
+            <div id="focusHandle" class="focus-handle"></div>
+            <div class="label" id="focusLabel">F</div>
+            <div id="directrixHandle" class="directrix-handle"></div>
+            <div class="label" id="directrixLabel">Directrix</div>
+        </div>
+        
+        <div class="w-full bg-gray-700 p-4 rounded-b-2xl flex flex-wrap items-center justify-center gap-4 z-20">
+            <div class="text-center">
+                <h1 class="text-xl md:text-2xl font-bold text-red-400">The Director of Gravity</h1>
+                <p class="text-sm text-gray-300">Find points equidistant from the Focus (F) and the Directrix.</p>
+            </div>
+            <div class="flex items-center gap-3">
+                <button id="revealBtn" class="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-lg transition-transform transform hover:scale-105 shadow-lg">
+                    Reveal Parabola
+                </button>
+                <button id="resetBtn" class="bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded-lg transition-transform transform hover:scale-105 shadow-lg">
+                    Reset
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="toast fixed bottom-24 bg-green-500 text-white py-2 px-5 rounded-lg shadow-xl text-center z-50 opacity-0">
+        That's a perfect point!
+    </div>
+
+
+    <script>
+        const canvas = document.getElementById('parabolaCanvas');
+        const ctx = canvas.getContext('2d');
+        const container = document.getElementById('canvas-container');
+        const revealBtn = document.getElementById('revealBtn');
+        const resetBtn = document.getElementById('resetBtn');
+        const toast = document.getElementById('toast');
+
+        // Interactive HTML elements
+        const focusHandle = document.getElementById('focusHandle');
+        const focusLabel = document.getElementById('focusLabel');
+        const directrixHandle = document.getElementById('directrixHandle');
+        const directrixLabel = document.getElementById('directrixLabel');
+
+        let width, height, centerX, centerY;
+        let scale = 40; // Pixels per unit
+
+        let focus = { x: 0, y: 2 }; // In coordinate system units
+        let directrixY = -2; // In coordinate system units
+
+        let userPoints = [];
+        let parabolaPoints = [];
+        let animationFrameId;
+
+        // Dragging state for focus
+        let isDraggingFocus = false;
+        
+        // Dragging state for directrix
+        let isDraggingDirectrix = false;
+
+        // --- Coordinate Transformation ---
+        const toCanvasX = x => centerX + x * scale;
+        const toCanvasY = y => centerY - y * scale;
+        const fromCanvasX = x => (x - centerX) / scale;
+        const fromCanvasY = y => (centerY - y) / scale;
+
+        // --- Setup and Resize ---
+        function setup() {
+            width = container.clientWidth;
+            height = container.clientHeight;
+            canvas.width = width;
+            canvas.height = height;
+            centerX = width / 2;
+            centerY = height / 2;
+            draw();
+        }
+
+        // --- Drawing Functions ---
+        function drawGrid() {
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+            ctx.lineWidth = 1;
+
+            // Vertical lines
+            for (let x = -Math.ceil(centerX / scale); x * scale < width - centerX; x++) {
+                ctx.beginPath();
+                ctx.moveTo(toCanvasX(x), 0);
+                ctx.lineTo(toCanvasX(x), height);
+                ctx.stroke();
+            }
+            // Horizontal lines
+            for (let y = -Math.ceil(centerY / scale); y * scale < height - centerY; y++) {
+                ctx.beginPath();
+                ctx.moveTo(0, toCanvasY(y));
+                ctx.lineTo(width, toCanvasY(y));
+                ctx.stroke();
+            }
+
+            // Axes
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(centerX, 0);
+            ctx.lineTo(centerX, height);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.moveTo(0, centerY);
+            ctx.lineTo(width, centerY);
+            ctx.stroke();
+        }
+
+        function drawDirectrix() {
+            const y = toCanvasY(directrixY);
+            ctx.strokeStyle = '#38bdf8'; // light blue
+            ctx.lineWidth = 3;
+            ctx.lineDashOffset = 5;
+            ctx.setLineDash([10, 10]);
+            ctx.beginPath();
+            ctx.moveTo(0, y);
+            ctx.lineTo(width, y);
+            ctx.stroke();
+            ctx.setLineDash([]);
+            
+            // Update HTML directrix handle
+            directrixHandle.style.top = `${y}px`;
+            directrixLabel.style.left = `10px`;
+            directrixLabel.style.top = `${y - 25}px`;
+        }
+        
+        function drawFocus() {
+            const cx = toCanvasX(focus.x);
+            const cy = toCanvasY(focus.y);
+            
+            // Update HTML focus handle
+            focusHandle.style.left = `${cx}px`;
+            focusHandle.style.top = `${cy}px`;
+            focusLabel.style.left = `${cx + 15}px`;
+            focusLabel.style.top = `${cy - 10}px`;
+        }
+
+        function drawUserPoints() {
+            userPoints.forEach(p => {
+                const distToFocus = Math.hypot(p.x - focus.x, p.y - focus.y);
+                const distToDirectrix = Math.abs(p.y - directrixY);
+                const isEquidistant = Math.abs(distToFocus - distToDirectrix) < 0.1;
+
+                // Draw the point
+                ctx.beginPath();
+                ctx.arc(toCanvasX(p.x), toCanvasY(p.y), 6, 0, Math.PI * 2);
+                ctx.fillStyle = isEquidistant ? '#4ade80' : '#f87171'; // green or light red
+                ctx.fill();
+
+                // Draw measurement lines
+                // To Focus
+                ctx.beginPath();
+                ctx.moveTo(toCanvasX(p.x), toCanvasY(p.y));
+                ctx.lineTo(toCanvasX(focus.x), toCanvasY(focus.y));
+                ctx.strokeStyle = '#f87171'; // light red
+                ctx.setLineDash([5, 5]);
+                ctx.stroke();
+
+                // To Directrix
+                ctx.beginPath();
+                ctx.moveTo(toCanvasX(p.x), toCanvasY(p.y));
+                ctx.lineTo(toCanvasX(p.x), toCanvasY(directrixY));
+                ctx.strokeStyle = '#38bdf8'; // light blue
+                ctx.stroke();
+                ctx.setLineDash([]);
+            });
+        }
+        
+        function drawParabola() {
+            ctx.beginPath();
+            parabolaPoints.forEach((p, index) => {
+                const canvasP = { x: toCanvasX(p.x), y: toCanvasY(p.y) };
+                if (index === 0) {
+                    ctx.moveTo(canvasP.x, canvasP.y);
+                } else {
+                    ctx.lineTo(canvasP.x, canvasP.y);
+                }
+            });
+            ctx.strokeStyle = 'white';
+            ctx.lineWidth = 3;
+            ctx.stroke();
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, width, height);
+            drawGrid();
+            drawDirectrix();
+            drawFocus();
+            drawUserPoints();
+            drawParabola();
+        }
+
+        // --- Animation ---
+        function animateParabola() {
+            cancelAnimationFrame(animationFrameId);
+            parabolaPoints = [];
+            
+            const p = (focus.y - directrixY) / 2;
+            const vertex = { x: focus.x, y: (focus.y + directrixY) / 2 };
+
+            const step = 0.05;
+            const rangeX = width / scale;
+            let currentX = -rangeX / 2;
+
+            function animate() {
+                if (currentX > rangeX / 2) {
+                    revealBtn.disabled = true;
+                    return;
+                }
+                
+                const y = (1 / (4 * p)) * Math.pow(currentX, 2) + vertex.y;
+                const x = currentX + vertex.x;
+                
+                parabolaPoints.push({ x, y });
+                
+                draw();
+                
+                currentX += step;
+                animationFrameId = requestAnimationFrame(animate);
+            }
+            animate();
+        }
+
+        // --- Event Listeners ---
+        function handleCanvasClick(e) {
+            const rect = canvas.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left;
+            const mouseY = e.clientY - rect.top;
+
+            const p = { x: fromCanvasX(mouseX), y: fromCanvasY(mouseY) };
+            userPoints.push(p);
+
+            const distToFocus = Math.hypot(p.x - focus.x, p.y - focus.y);
+            const distToDirectrix = Math.abs(p.y - directrixY);
+
+            if (Math.abs(distToFocus - distToDirectrix) < 0.1) {
+                toast.style.display = 'block';
+                toast.style.animation = 'none';
+                void toast.offsetWidth; // Trigger reflow
+                toast.style.animation = 'fadeInOut 3s forwards';
+            }
+            
+            draw();
+        }
+        
+        function handleReset() {
+            userPoints = [];
+            parabolaPoints = [];
+            cancelAnimationFrame(animationFrameId);
+            focus = { x: 0, y: 2 };
+            directrixY = -2;
+            revealBtn.disabled = false;
+            draw();
+        }
+        
+        // --- Dragging Logic ---
+        function startDragFocus(e) {
+            isDraggingFocus = true;
+            focusHandle.style.cursor = 'grabbing';
+            document.body.style.cursor = 'grabbing';
+        }
+
+        function startDragDirectrix(e) {
+            isDraggingDirectrix = true;
+            document.body.style.cursor = 'ns-resize';
+        }
+
+        function handleDrag(e) {
+            if (!isDraggingFocus && !isDraggingDirectrix) return;
+            e.preventDefault();
+
+            const rect = container.getBoundingClientRect();
+            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+
+            const mouseX = clientX - rect.left;
+            const mouseY = clientY - rect.top;
+
+            if (isDraggingFocus) {
+                focus.x = fromCanvasX(mouseX);
+                focus.y = fromCanvasY(mouseY);
+            }
+            
+            if (isDraggingDirectrix) {
+                directrixY = fromCanvasY(mouseY);
+            }
+            
+            // Prevent focus and directrix from being at the same y-level
+            if (Math.abs(focus.y - directrixY) < 0.2) {
+                if (isDraggingFocus) focus.y = directrixY + 0.2;
+                if (isDraggingDirectrix) directrixY = focus.y - 0.2;
+            }
+
+            parabolaPoints = [];
+            revealBtn.disabled = false;
+            cancelAnimationFrame(animationFrameId);
+            draw();
+        }
+
+        function stopDrag() {
+            isDraggingFocus = false;
+            isDraggingDirectrix = false;
+            focusHandle.style.cursor = 'grab';
+            document.body.style.cursor = 'default';
+        }
+
+        // --- Initialization ---
+        window.addEventListener('resize', setup);
+        canvas.addEventListener('click', handleCanvasClick);
+        revealBtn.addEventListener('click', animateParabola);
+        resetBtn.addEventListener('click', handleReset);
+        
+        // Mouse events for dragging
+        focusHandle.addEventListener('mousedown', startDragFocus);
+        directrixHandle.addEventListener('mousedown', startDragDirectrix);
+        window.addEventListener('mousemove', handleDrag);
+        window.addEventListener('mouseup', stopDrag);
+        
+        // Touch events for dragging
+        focusHandle.addEventListener('touchstart', startDragFocus);
+        directrixHandle.addEventListener('touchstart', startDragDirectrix);
+        window.addEventListener('touchmove', handleDrag, { passive: false });
+        window.addEventListener('touchend', stopDrag);
+
+        setup();
+
+    </script>
+</body>
+</html>
