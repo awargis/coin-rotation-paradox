@@ -1,0 +1,752 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Parabola Applications: Real-World Physics Visualization</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            overflow: hidden;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #000;
+            color: #fff;
+            line-height: 1.6;
+        }
+        
+        #container {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+        }
+        
+        #ui {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            z-index: 100;
+            background: rgba(0, 0, 0, 0.85);
+            padding: 25px;
+            border-radius: 15px;
+            max-width: 380px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            transition: transform 0.3s ease;
+        }
+        
+        #ui:hover {
+            transform: translateY(-5px);
+        }
+        
+        h1 {
+            margin-bottom: 15px;
+            font-size: 1.8rem;
+            color: #4fc3f7;
+            text-shadow: 0 0 10px #4fc3f7;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .control-group {
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-size: 0.95rem;
+            color: #bbbbbb;
+            font-weight: 500;
+        }
+        
+        input[type="range"] {
+            width: 100%;
+            margin-bottom: 10px;
+            cursor: pointer;
+            -webkit-appearance: none;
+            height: 6px;
+            border-radius: 3px;
+            background: rgba(255, 255, 255, 0.1);
+            outline: none;
+        }
+        
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #4fc3f7;
+            cursor: pointer;
+            box-shadow: 0 0 10px #4fc3f7;
+        }
+        
+        .toggle {
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        
+        .toggle input {
+            margin-right: 10px;
+            transform: scale(1.2);
+        }
+        
+        #focus-intensity {
+            font-size: 1.1rem;
+            font-weight: bold;
+            color: #ff9800;
+            margin-top: 5px;
+            text-shadow: 0 0 5px #ff9800;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        #loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 1.5rem;
+            color: #4fc3f7;
+            z-index: 200;
+            text-align: center;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 0 30px rgba(79, 195, 247, 0.5);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 15px;
+        }
+        
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 5px solid rgba(79, 195, 247, 0.3);
+            border-top: 5px solid #4fc3f7;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        #info-display {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 100;
+            background: rgba(0, 0, 0, 0.85);
+            padding: 20px;
+            border-radius: 15px;
+            max-width: 600px;
+            width: 90%;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            text-align: center;
+            transition: all 0.5s ease;
+        }
+        
+        #info-display h3 {
+            margin-bottom: 10px;
+            color: #4fc3f7;
+            font-size: 1.3rem;
+        }
+        
+        #info-display p {
+            font-size: 1rem;
+            color: #cccccc;
+            margin-bottom: 15px;
+        }
+        
+        .equation {
+            font-family: 'Cambria Math', serif;
+            font-size: 1.2rem;
+            color: #ff9800;
+            margin: 15px 0;
+            padding: 10px;
+            background: rgba(255, 152, 0, 0.1);
+            border-radius: 5px;
+            display: inline-block;
+        }
+        
+        .btn {
+            background: linear-gradient(45deg, #4fc3f7, #2196f3);
+            border: none;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s ease;
+            margin: 5px;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(79, 195, 247, 0.4);
+        }
+        
+        .btn-secondary {
+            background: linear-gradient(45deg, #ff9800, #f57c00);
+        }
+        
+        .btn.active {
+            box-shadow: 0 0 15px currentColor;
+        }
+        
+        #controls {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-top: 15px;
+            flex-wrap: wrap;
+        }
+        
+        .application-card {
+            display: none;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+            padding: 15px;
+            margin-top: 15px;
+            text-align: left;
+            border-left: 4px solid #4fc3f7;
+        }
+        
+        .application-card h4 {
+            color: #ff9800;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .application-card p {
+            font-size: 0.9rem;
+            color: #cccccc;
+        }
+        
+        .application-card.active {
+            display: block;
+            animation: fadeIn 0.5s ease;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+            #ui {
+                max-width: 90%;
+                left: 5%;
+                padding: 15px;
+            }
+            
+            h1 {
+                font-size: 1.5rem;
+            }
+            
+            #info-display {
+                width: 95%;
+                padding: 15px;
+            }
+            
+            #controls {
+                flex-direction: column;
+                align-items: center;
+            }
+            
+            .btn {
+                width: 100%;
+                justify-content: center;
+            }
+        }
+    </style>
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "https://cdn.jsdelivr.net/npm/three@0.165.0/build/three.module.js",
+          "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.165.0/examples/jsm/"
+        }
+      }
+    </script>
+</head>
+<body>
+    <div id="container"></div>
+    
+    <div id="ui">
+        <h1><i class="fas fa-satellite-dish"></i> Parabolic Reflector Simulator</h1>
+        
+        <div class="control-group">
+            <label for="parabola-depth">Parabola Depth (a-value): <span id="a-value">0.5</span></label>
+            <input type="range" id="parabola-depth" min="0.1" max="2.0" step="0.05" value="0.5">
+            <div class="equation">y = a·x²</div>
+        </div>
+        
+        <div class="control-group">
+            <div class="toggle">
+                <input type="checkbox" id="distortion-toggle">
+                <label for="distortion-toggle">Enable Surface Imperfections</label>
+            </div>
+        </div>
+        
+        <div class="control-group">
+            <div id="focus-intensity"><i class="fas fa-bullseye"></i> Focus Efficiency: <span>100%</span></div>
+        </div>
+        
+        <div class="control-group">
+            <label>Visualization Mode:</label>
+            <div id="controls">
+                <button class="btn active" id="mode-satellite"><i class="fas fa-satellite"></i> Satellite Dish</button>
+                <button class="btn" id="mode-telescope"><i class="fas fa-eye"></i> Telescope</button>
+                <button class="btn" id="mode-solar"><i class="fas fa-sun"></i> Solar Collector</button>
+            </div>
+        </div>
+    </div>
+    
+           
+        <div class="application-card" id="telescope-card">
+            <h4><i class="fas fa-star"></i> Reflecting Telescopes</h4>
+            <p>Large parabolic mirrors in telescopes collect and focus light from distant stars, enabling astronomers to study the universe. This property allows astronomers to study faint celestial objects that would otherwise be invisible.</p>
+        </div>
+        
+        <div class="application-card" id="solar-card">
+            <h4><i class="fas fa-sun"></i> Solar Power Collectors</h4>
+            <p>Parabolic troughs concentrate sunlight onto a receiver tube, heating fluid to generate steam for electricity production. This efficient method of concentrating solar energy makes it a sustainable power generation technology.</p>
+        </div>
+    </div>
+    
+    <div id="loading">
+        <div class="spinner"></div>
+        <div>Loading Advanced Parabola Simulation...</div>
+    </div>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+        import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+        import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+        import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+
+        // Scene setup
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(window.devicePixelRatio);
+        renderer.toneMapping = THREE.ACESFilmicToneMapping;
+        renderer.toneMappingExposure = 1;
+        document.getElementById('container').appendChild(renderer.domElement);
+        
+        // Enhanced post-processing setup
+        const composer = new EffectComposer(renderer);
+        const renderPass = new RenderPass(scene, camera);
+        composer.addPass(renderPass);
+        
+        const bloomPass = new UnrealBloomPass(
+            new THREE.Vector2(window.innerWidth, window.innerHeight), 1.5, 0.4, 0.85
+        );
+        composer.addPass(bloomPass);
+        
+        const controls = new OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.05;
+        controls.minDistance = 5;
+        controls.maxDistance = 50;
+        
+        // Enhanced lighting
+        scene.add(new THREE.AmbientLight(0x404040, 0.7));
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 1.2);
+        directionalLight.position.set(10, 10, 5);
+        scene.add(directionalLight);
+        
+        // Add point lights for better visual effects
+        const pointLight1 = new THREE.PointLight(0x4fc3f7, 0.5, 50);
+        pointLight1.position.set(5, 10, 5);
+        scene.add(pointLight1);
+        
+        const pointLight2 = new THREE.PointLight(0xff9800, 0.3, 50);
+        pointLight2.position.set(-5, 5, -5);
+        scene.add(pointLight2);
+        
+        const loadingManager = new THREE.LoadingManager();
+        loadingManager.onLoad = () => {
+            document.getElementById('loading').style.display = 'none';
+            // Add stars to the background
+            addStarfield();
+        };
+
+        // Enhanced environment texture
+        const envTexture = new THREE.CubeTextureLoader(loadingManager).load([
+            'https://threejs.org/examples/textures/cube/milkyway/px.jpg', 'https://threejs.org/examples/textures/cube/milkyway/nx.jpg',
+            'https://threejs.org/examples/textures/cube/milkyway/py.jpg', 'https://threejs.org/examples/textures/cube/milkyway/ny.jpg',
+            'https://threejs.org/examples/textures/cube/milkyway/pz.jpg', 'https://threejs.org/examples/textures/cube/milkyway/nz.jpg'
+        ]);
+        scene.background = envTexture;
+        scene.environment = envTexture;
+        
+        let dishGeometry, dishMesh, focusPoint, receiverMesh;
+        let aValue = 0.5;
+        let isDistorted = false;
+        let currentMode = 'satellite';
+        const rayCount = 2000;
+        const rayOrigins = [];
+        const rayGeometry = new THREE.BufferGeometry();
+        const rayPositions = new Float32Array(rayCount * 3 * 2);
+        const rayColors = new Float32Array(rayCount * 3 * 2);
+        let rayMesh;
+        
+        // Enhanced materials
+        const dishMaterial = new THREE.MeshStandardMaterial({
+            color: 0xaaaaaa, 
+            metalness: 0.95, 
+            roughness: 0.05, 
+            envMap: envTexture, 
+            envMapIntensity: 1.2,
+            transparent: true,
+            opacity: 0.9
+        });
+        
+        const receiverMaterial = new THREE.MeshStandardMaterial({
+            color: 0xffaa00, 
+            emissive: 0xff8800, 
+            emissiveIntensity: 0,
+            metalness: 0.8,
+            roughness: 0.2
+        });
+        
+        // Add starfield for enhanced visuals
+        function addStarfield() {
+            const starGeometry = new THREE.BufferGeometry();
+            const starCount = 5000;
+            const starPositions = new Float32Array(starCount * 3);
+            
+            for (let i = 0; i < starCount * 3; i += 3) {
+                starPositions[i] = (Math.random() - 0.5) * 2000;
+                starPositions[i+1] = (Math.random() - 0.5) * 2000;
+                starPositions[i+2] = (Math.random() - 0.5) * 2000;
+            }
+            
+            starGeometry.setAttribute('position', new THREE.BufferAttribute(starPositions, 3));
+            
+            const starMaterial = new THREE.PointsMaterial({
+                color: 0xffffff,
+                size: 1.5,
+                sizeAttenuation: true
+            });
+            
+            const stars = new THREE.Points(starGeometry, starMaterial);
+            scene.add(stars);
+        }
+        
+        // Enhanced dish geometry with more detail
+        function createDishGeometry(a, distorted) {
+            const segments = 64, radius = 5;
+            const geometry = new THREE.BufferGeometry();
+            const vertices = [], indices = [];
+            const uvs = [];
+
+            for (let i = 0; i <= segments; i++) {
+                const angle = (i / segments) * Math.PI * 2;
+                for (let j = 0; j <= segments; j++) {
+                    const r = (j / segments) * radius;
+                    const x = Math.cos(angle) * r;
+                    const z = Math.sin(angle) * r;
+                    let y = distorted ? a * r * r + 0.3 * Math.sin(3 * r) : a * r * r;
+                    vertices.push(x, y, z);
+                    uvs.push(i / segments, j / segments);
+                }
+            }
+
+            for (let i = 0; i < segments; i++) {
+                for (let j = 0; j < segments; j++) {
+                    const a_ = i * (segments + 1) + j, b = a_ + 1;
+                    const c = a_ + (segments + 1), d = c + 1;
+                    indices.push(a_, b, d, a_, d, c);
+                }
+            }
+
+            geometry.setIndex(indices);
+            geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+            geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+            geometry.computeVertexNormals();
+            return geometry;
+        }
+        
+        // Enhanced dish creation with support structure
+        function createDish() {
+            if (dishMesh) { 
+                scene.remove(dishMesh); 
+                dishGeometry.dispose(); 
+            }
+            
+            dishGeometry = createDishGeometry(aValue, isDistorted);
+            dishMesh = new THREE.Mesh(dishGeometry, dishMaterial);
+            
+            // Add support structure
+            const supportGeometry = new THREE.CylinderGeometry(0.2, 0.3, 3, 16);
+            const supportMaterial = new THREE.MeshStandardMaterial({ color: 0x666666, metalness: 0.7, roughness: 0.3 });
+            const support = new THREE.Mesh(supportGeometry, supportMaterial);
+            support.position.y = -1.5;
+            dishMesh.add(support);
+            
+            scene.add(dishMesh);
+            updateFocusPoint();
+        }
+        
+        function updateFocusPoint() {
+            if (!focusPoint) {
+                focusPoint = new THREE.Mesh(new THREE.SphereGeometry(0.1, 16, 16), new THREE.MeshBasicMaterial({ color: 0xff0000 }));
+                focusPoint.visible = false;
+                scene.add(focusPoint);
+                
+                // Enhanced receiver geometry
+                const receiverGeometry = new THREE.CylinderGeometry(0.3, 0.4, 0.2, 32);
+                receiverMesh = new THREE.Mesh(receiverGeometry, receiverMaterial);
+                scene.add(receiverMesh);
+            }
+            
+            const focusY = 1 / (4 * aValue);
+            focusPoint.position.set(0, focusY, 0);
+            receiverMesh.position.set(0, focusY, 0);
+            
+            // Update equation with focus position
+            document.querySelector('.equation').textContent = `Focus = 1/(4a) = ${focusY.toFixed(2)} units above vertex`;
+        }
+        
+        // Enhanced ray creation with different modes
+        function createRays() {
+            rayOrigins.length = 0;
+            
+            if (currentMode === 'satellite') {
+                // Satellite mode: rays come from various directions but are parallel
+                for (let i = 0; i < rayCount; i++) {
+                    const angle = Math.random() * Math.PI * 2;
+                    const radius = Math.random() * 4.5 + 0.5;
+                    rayOrigins.push({ 
+                        angle: angle, 
+                        radius: radius,
+                        direction: new THREE.Vector3(0, -1, 0) // Parallel rays from above
+                    });
+                }
+            } else if (currentMode === 'telescope') {
+                // Telescope mode: rays come from a distant point (simulating a star)
+                const starPosition = new THREE.Vector3(20, 20, 0); // Position of simulated star
+                
+                for (let i = 0; i < rayCount; i++) {
+                    const angle = Math.random() * Math.PI * 2;
+                    const radius = Math.random() * 4.5 + 0.5;
+                    const x = Math.cos(angle) * radius;
+                    const z = Math.sin(angle) * radius;
+                    const y = aValue * radius * radius;
+                    
+                    // Direction from star to point on dish
+                    const direction = new THREE.Vector3(x, y, z).sub(starPosition).normalize();
+                    rayOrigins.push({ 
+                        angle: angle, 
+                        radius: radius,
+                        direction: direction
+                    });
+                }
+            } else if (currentMode === 'solar') {
+                // Solar collector mode: rays come from a single direction (sun)
+                for (let i = 0; i < rayCount; i++) {
+                    const angle = Math.random() * Math.PI * 2;
+                    const radius = Math.random() * 4.5 + 0.5;
+                    rayOrigins.push({ 
+                        angle: angle, 
+                        radius: radius,
+                        direction: new THREE.Vector3(0, -1, 0).normalize() // Sun rays from above
+                    });
+                }
+            }
+            
+            // Set up ray geometry
+            rayGeometry.setAttribute('position', new THREE.BufferAttribute(rayPositions, 3));
+            rayGeometry.setAttribute('color', new THREE.BufferAttribute(rayColors, 3));
+            
+            const rayMaterial = new THREE.LineBasicMaterial({ 
+                vertexColors: true, 
+                transparent: true, 
+                opacity: 0.7,
+                linewidth: 2
+            });
+            
+            if (rayMesh) scene.remove(rayMesh);
+            rayMesh = new THREE.LineSegments(rayGeometry, rayMaterial);
+            scene.add(rayMesh);
+        }
+        
+        function updateRays() {
+            let focusedCount = 0;
+            const focusY = 1 / (4 * aValue);
+            
+            for (let i = 0; i < rayCount; i++) {
+                const { angle, radius, direction } = rayOrigins[i];
+                const startX = Math.cos(angle) * radius;
+                const startZ = Math.sin(angle) * radius;
+                const startY = isDistorted ? aValue * radius * radius + 0.3 * Math.sin(3 * radius) : aValue * radius * radius;
+
+                const normal = calculateNormal(startX, startZ, radius);
+                const reflected = direction.clone().reflect(normal);
+                
+                const t = (focusY - startY) / reflected.y;
+                let endX, endY, endZ;
+                
+                if (t > 0) {
+                    endX = startX + reflected.x * t;
+                    endY = startY + reflected.y * t;
+                    endZ = startZ + reflected.z * t;
+                    
+                    // Check if ray hits the receiver
+                    if (new THREE.Vector2(endX, endZ).length() < 0.3) focusedCount++;
+                } else {
+                    // Ray goes off into space
+                    endX = startX + reflected.x * 10;
+                    endY = startY + reflected.y * 10;
+                    endZ = startZ + reflected.z * 10;
+                }
+                
+                const idx = i * 6;
+                [rayPositions[idx], rayPositions[idx+1], rayPositions[idx+2]] = [startX, startY, startZ];
+                [rayPositions[idx+3], rayPositions[idx+4], rayPositions[idx+5]] = [endX, endY, endZ];
+                
+                // Set colors based on mode
+                if (currentMode === 'satellite') {
+                    [rayColors[idx], rayColors[idx+1], rayColors[idx+2]] = [0.2, 0.5, 1.0]; // Blue
+                    [rayColors[idx+3], rayColors[idx+4], rayColors[idx+5]] = [1.0, 0.8, 0.2]; // Yellow
+                } else if (currentMode === 'telescope') {
+                    [rayColors[idx], rayColors[idx+1], rayColors[idx+2]] = [0.8, 0.2, 0.8]; // Purple
+                    [rayColors[idx+3], rayColors[idx+4], rayColors[idx+5]] = [1.0, 0.5, 0.0]; // Orange
+                } else {
+                    [rayColors[idx], rayColors[idx+1], rayColors[idx+2]] = [1.0, 0.5, 0.0]; // Orange
+                    [rayColors[idx+3], rayColors[idx+4], rayColors[idx+5]] = [1.0, 0.8, 0.2]; // Yellow
+                }
+            }
+            
+            const focusIntensity = isDistorted ? (focusedCount / rayCount) : 1.0;
+            document.querySelector('#focus-intensity span').textContent = `${Math.round(focusIntensity * 100)}%`;
+            receiverMaterial.emissiveIntensity = focusIntensity * 2;
+            rayGeometry.attributes.position.needsUpdate = true;
+            rayGeometry.attributes.color.needsUpdate = true;
+        }
+        
+        function calculateNormal(x, z, r) {
+            if (!isDistorted) {
+                return new THREE.Vector3(-2 * aValue * x, 1, -2 * aValue * z).normalize();
+            } else {
+                const epsilon = 0.01;
+                const y1 = aValue * r * r + 0.3 * Math.sin(3 * r);
+                const y2 = aValue * (r + epsilon) * (r + epsilon) + 0.3 * Math.sin(3 * (r + epsilon));
+                const dy_dr = (y2 - y1) / epsilon;
+                return new THREE.Vector3(-x/r * dy_dr, 1, -z/r * dy_dr).normalize();
+            }
+        }
+        
+        function setMode(mode) {
+            currentMode = mode;
+            createRays();
+            updateRays();
+            
+            // Update UI
+            document.querySelectorAll('.btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            document.getElementById(`mode-${mode}`).classList.add('active');
+            
+            // Update info display based on mode
+            const infoDisplay = document.getElementById('info-display');
+            const cards = document.querySelectorAll('.application-card');
+            
+            cards.forEach(card => card.classList.remove('active'));
+            
+            if (mode === 'satellite') {
+                infoDisplay.querySelector('h3').textContent = 'Satellite Dish Operation';
+                infoDisplay.querySelector('p').textContent = 'Satellite dishes use parabolic shapes to focus radio waves from satellites to a single point. This allows for clear signal reception even from satellites thousands of kilometers away.';
+                document.getElementById('satellite-card').classList.add('active');
+            } else if (mode === 'telescope') {
+                infoDisplay.querySelector('h3').textContent = 'Reflecting Telescope Principle';
+                infoDisplay.querySelector('p').textContent = 'Large parabolic mirrors in telescopes collect and focus light from distant stars. This property allows astronomers to study faint celestial objects that would otherwise be invisible.';
+                document.getElementById('telescope-card').classList.add('active');
+            } else if (mode === 'solar') {
+                infoDisplay.querySelector('h3').textContent = 'Solar Power Collector';
+                infoDisplay.querySelector('p').textContent = 'Parabolic troughs concentrate sunlight onto a receiver tube, heating fluid to generate steam for electricity production. This efficient method makes solar energy a sustainable power source.';
+                document.getElementById('solar-card').classList.add('active');
+            }
+        }
+        
+        function init() {
+            createDish(); 
+            createRays(); 
+            updateRays();
+            camera.position.set(10, 5, 10); 
+            camera.lookAt(0, 0, 0);
+            
+            // Set up event listeners
+            document.getElementById('parabola-depth').addEventListener('input', (e) => {
+                aValue = parseFloat(e.target.value);
+                document.getElementById('a-value').textContent = aValue.toFixed(2);
+                createDish(); 
+                updateRays();
+            });
+            
+            document.getElementById('distortion-toggle').addEventListener('change', (e) => {
+                isDistorted = e.target.checked; 
+                createDish(); 
+                updateRays();
+            });
+            
+            document.getElementById('mode-satellite').addEventListener('click', () => setMode('satellite'));
+            document.getElementById('mode-telescope').addEventListener('click', () => setMode('telescope'));
+            document.getElementById('mode-solar').addEventListener('click', () => setMode('solar'));
+        }
+        
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            composer.setSize(window.innerWidth, window.innerHeight);
+        });
+        
+        function animate() {
+            requestAnimationFrame(animate);
+            controls.update();
+            
+            // Add subtle animation to the receiver
+            if (receiverMesh) {
+                receiverMesh.rotation.y += 0.01;
+            }
+            
+            // Animate point lights for visual interest
+            pointLight1.position.x = 5 + Math.sin(Date.now() * 0.001) * 2;
+            pointLight2.position.z = -5 + Math.cos(Date.now() * 0.001) * 2;
+            
+            composer.render();
+        }
+        
+        init();
+        animate();
+    </script>
+</body>
+</html>
