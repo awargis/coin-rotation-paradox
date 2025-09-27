@@ -1,0 +1,737 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Enhanced Laser Security: Pair of Straight Lines</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128/examples/js/controls/OrbitControls.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128/examples/js/loaders/FontLoader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128/examples/js/geometries/TextGeometry.js"></script>
+    <style>
+        body { 
+            margin: 0; 
+            overflow: hidden; 
+            background: black; 
+            font-family: 'Arial', sans-serif;
+        }
+        canvas { 
+            display: block; 
+        }
+        #ui-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            color: white;
+            pointer-events: none;
+            z-index: 10;
+        }
+        .ui-panel {
+            background: rgba(0, 0, 0, 0.7);
+            padding: 15px;
+            border-radius: 10px;
+            backdrop-filter: blur(5px);
+            border: 1px solid rgba(0, 168, 255, 0.5);
+        }
+        #equation {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 28px;
+            text-shadow: 0 0 10px cyan;
+            text-align: center;
+            font-family: 'Courier New', monospace;
+        }
+        #math-info {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            width: 300px;
+        }
+        #controls {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            width: 250px;
+            pointer-events: all;
+        }
+        #mode-toggle {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            padding: 10px 15px;
+            border-radius: 5px;
+            color: white;
+            cursor: pointer;
+            pointer-events: all;
+            background: rgba(0, 30, 60, 0.8);
+            border: 1px solid #00a8ff;
+            font-size: 16px;
+            transition: all 0.3s;
+        }
+        #mode-toggle:hover {
+            background: rgba(0, 50, 100, 0.9);
+            box-shadow: 0 0 10px #00a8ff;
+        }
+        .slider-container {
+            margin: 10px 0;
+        }
+        .slider-container label {
+            display: block;
+            margin-bottom: 5px;
+            color: #00a8ff;
+        }
+        .slider-container input {
+            width: 100%;
+        }
+        .value-display {
+            display: inline-block;
+            width: 40px;
+            text-align: center;
+            margin-left: 10px;
+        }
+        .info-item {
+            margin: 10px 0;
+            padding: 8px;
+            background: rgba(0, 20, 40, 0.5);
+            border-radius: 5px;
+        }
+        .alarm-active {
+            animation: alarmFlash 0.5s infinite alternate;
+        }
+        @keyframes alarmFlash {
+            0% { background: rgba(255, 0, 0, 0.3); }
+            100% { background: rgba(255, 0, 0, 0.7); }
+        }
+        #cinematic-text {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 36px;
+            text-align: center;
+            opacity: 0;
+            transition: opacity 2s;
+            text-shadow: 0 0 20px #00ffff;
+            color: #00ffff;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div id="ui-overlay">
+        <div id="equation" class="ui-panel"></div>
+        <div id="math-info" class="ui-panel">
+            <div class="info-item">
+                <strong>Angle between lasers:</strong> 
+                <span id="angle-value">60°</span>
+            </div>
+            <div class="info-item">
+                <strong>Discriminant (h² - ab):</strong> 
+                <span id="discriminant-value">3.0</span>
+                <span id="discriminant-status"> (Two distinct lines)</span>
+            </div>
+            <div class="info-item">
+                <strong>Security Status:</strong> 
+                <span id="security-status">ACTIVE</span>
+            </div>
+        </div>
+        <div id="controls" class="ui-panel">
+            <h3 style="color: #00a8ff; margin-top: 0;">Laser Controls</h3>
+            <div class="slider-container">
+                <label for="a-slider">Parameter a: <span class="value-display" id="a-value">1.0</span></label>
+                <input type="range" id="a-slider" min="-5" max="5" step="0.1" value="1">
+            </div>
+            <div class="slider-container">
+                <label for="h-slider">Parameter h: <span class="value-display" id="h-value">2.0</span></label>
+                <input type="range" id="h-slider" min="-5" max="5" step="0.1" value="2">
+            </div>
+            <div class="slider-container">
+                <label for="b-slider">Parameter b: <span class="value-display" id="b-value">1.0</span></label>
+                <input type="range" id="b-slider" min="-5" max="5" step="0.1" value="1">
+            </div>
+        </div>
+        <button id="mode-toggle">Switch to Math Mode</button>
+        <div id="cinematic-text">Pair of Straight Lines – The Mathematics of Security</div>
+    </div>
+
+    <script>
+        // Enhanced Three.js scene setup
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setClearColor(0x000011);
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        document.body.appendChild(renderer.domElement);
+
+        // Enhanced lighting
+        const ambientLight = new THREE.AmbientLight(0x404040, 0.3);
+        scene.add(ambientLight);
+        
+        const pointLight = new THREE.PointLight(0xffffff, 1, 100);
+        pointLight.position.set(5, 10, 5);
+        pointLight.castShadow = true;
+        pointLight.shadow.mapSize.width = 2048;
+        pointLight.shadow.mapSize.height = 2048;
+        scene.add(pointLight);
+        
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 0.5);
+        directionalLight.position.set(0, 10, 0);
+        directionalLight.castShadow = true;
+        scene.add(directionalLight);
+
+        // Create a more realistic vault room
+        // Floor with grid texture
+        const floorGeometry = new THREE.PlaneGeometry(40, 40, 20, 20);
+        const floorMaterial = new THREE.MeshPhongMaterial({ 
+            color: 0x0a0a2a,
+            emissive: 0x050520,
+            shininess: 30,
+            transparent: true,
+            opacity: 0.9
+        });
+        const floor = new THREE.Mesh(floorGeometry, floorMaterial);
+        floor.rotation.x = -Math.PI / 2;
+        floor.position.y = -0.5;
+        floor.receiveShadow = true;
+        scene.add(floor);
+
+        // Add grid lines to floor
+        const gridHelper = new THREE.GridHelper(40, 40, 0x00a8ff, 0x00a8ff);
+        gridHelper.material.transparent = true;
+        gridHelper.material.opacity = 0.2;
+        gridHelper.position.y = -0.49;
+        scene.add(gridHelper);
+
+        // Walls (simplified for performance)
+        const wallGeometry = new THREE.BoxGeometry(40, 10, 1);
+        const wallMaterial = new THREE.MeshPhongMaterial({ 
+            color: 0x111133,
+            emissive: 0x050525
+        });
+        
+        const backWall = new THREE.Mesh(wallGeometry, wallMaterial);
+        backWall.position.z = -20;
+        backWall.position.y = 4;
+        scene.add(backWall);
+
+        // Diamond with enhanced appearance
+        const diamondGeometry = new THREE.OctahedronGeometry(1.2, 0);
+        const diamondMaterial = new THREE.MeshPhongMaterial({
+            color: 0x00ffff,
+            shininess: 100,
+            emissive: 0x00aaaa,
+            transparent: true,
+            opacity: 0.9,
+            side: THREE.DoubleSide
+        });
+        const diamond = new THREE.Mesh(diamondGeometry, diamondMaterial);
+        diamond.position.y = 1.5;
+        diamond.castShadow = true;
+        scene.add(diamond);
+
+        // Pedestal for diamond
+        const pedestalGeometry = new THREE.CylinderGeometry(1.2, 1.5, 1.5, 32);
+        const pedestalMaterial = new THREE.MeshPhongMaterial({ 
+            color: 0x333333,
+            shininess: 30
+        });
+        const pedestal = new THREE.Mesh(pedestalGeometry, pedestalMaterial);
+        pedestal.position.y = 0.25;
+        pedestal.castShadow = true;
+        scene.add(pedestal);
+
+        // Laser beams with glow effect
+        let line1, line2;
+        const lineMaterialRed = new THREE.LineBasicMaterial({ 
+            color: 0xff0000, 
+            linewidth: 3 
+        });
+        const lineMaterialGold = new THREE.LineBasicMaterial({ 
+            color: 0xffcc00, 
+            linewidth: 5 
+        });
+
+        // Add glow effects to lasers using additional lines
+        function createLaserWithGlow(points, isGolden = false) {
+            const group = new THREE.Group();
+            
+            // Main laser line
+            const geometry = new THREE.BufferGeometry().setFromPoints(points);
+            const mainLine = new THREE.Line(geometry, isGolden ? lineMaterialGold : lineMaterialRed);
+            group.add(mainLine);
+            
+            // Glow effect with thinner, more transparent lines
+            const glowGeometry = new THREE.BufferGeometry().setFromPoints(points);
+            const glowMaterial = new THREE.LineBasicMaterial({ 
+                color: isGolden ? 0xffaa00 : 0xff6666, 
+                linewidth: 1,
+                transparent: true,
+                opacity: 0.5
+            });
+            const glowLine = new THREE.Line(glowGeometry, glowMaterial);
+            group.add(glowLine);
+            
+            return group;
+        }
+
+        // Intruder orb with enhanced appearance
+        const intruderGeometry = new THREE.SphereGeometry(0.3, 32, 32);
+        const intruderMaterial = new THREE.MeshPhongMaterial({ 
+            color: 0x00ff00,
+            emissive: 0x004400,
+            shininess: 50
+        });
+        const intruder = new THREE.Mesh(intruderGeometry, intruderMaterial);
+        intruder.position.set(5, 1.5, 0);
+        intruder.castShadow = true;
+        scene.add(intruder);
+
+        // Create a bounding box for the intruder for better visualization
+        const intruderBox = new THREE.BoxHelper(intruder, 0x00ff00);
+        intruderBox.visible = false;
+        scene.add(intruderBox);
+
+        // Alarm effect
+        const alarmLight = new THREE.PointLight(0xff0000, 0, 10);
+        alarmLight.position.set(0, 5, 0);
+        scene.add(alarmLight);
+
+        // Orbit controls
+        const controls = new THREE.OrbitControls(camera, renderer.domElement);
+        camera.position.set(0, 8, 12);
+        controls.update();
+
+        // Font loader for equation text in 3D
+        const loader = new THREE.FontLoader();
+        let font;
+        let equationText;
+        
+        loader.load('https://threejs.org/examples/fonts/helvetiker_regular.typeface.json', (loadedFont) => {
+            font = loadedFont;
+            createEquationText();
+        });
+
+        function createEquationText() {
+            if (equationText) scene.remove(equationText);
+            
+            const textGeometry = new THREE.TextGeometry(`ax² + 2hxy + by² = 0`, {
+                font: font,
+                size: 0.5,
+                height: 0.1,
+            });
+            
+            const textMaterial = new THREE.MeshPhongMaterial({ 
+                color: 0x00ffff,
+                emissive: 0x0088ff
+            });
+            
+            equationText = new THREE.Mesh(textGeometry, textMaterial);
+            equationText.position.set(-4, 6, -5);
+            equationText.rotation.x = -0.2;
+            scene.add(equationText);
+        }
+
+        // Math parameters
+        let a = 1, h = 2, b = 1;
+        let mode = 'movie'; // 'movie' or 'math'
+        let isAlarmActive = false;
+
+        // UI elements
+        const equationDiv = document.getElementById('equation');
+        const angleDiv = document.getElementById('angle-value');
+        const discriminantDiv = document.getElementById('discriminant-value');
+        const discriminantStatus = document.getElementById('discriminant-status');
+        const securityStatus = document.getElementById('security-status');
+        const modeToggle = document.getElementById('mode-toggle');
+        const cinematicText = document.getElementById('cinematic-text');
+        const aValueDisplay = document.getElementById('a-value');
+        const hValueDisplay = document.getElementById('h-value');
+        const bValueDisplay = document.getElementById('b-value');
+
+        // Sliders
+        const aSlider = document.getElementById('a-slider');
+        const hSlider = document.getElementById('h-slider');
+        const bSlider = document.getElementById('b-slider');
+
+        aSlider.addEventListener('input', (e) => { 
+            a = parseFloat(e.target.value); 
+            aValueDisplay.textContent = a.toFixed(1);
+            updateLasers(); 
+        });
+        
+        hSlider.addEventListener('input', (e) => { 
+            h = parseFloat(e.target.value); 
+            hValueDisplay.textContent = h.toFixed(1);
+            updateLasers(); 
+        });
+        
+        bSlider.addEventListener('input', (e) => { 
+            b = parseFloat(e.target.value); 
+            bValueDisplay.textContent = b.toFixed(1);
+            updateLasers(); 
+        });
+
+        // Mode toggle
+        modeToggle.addEventListener('click', () => {
+            mode = mode === 'movie' ? 'math' : 'movie';
+            modeToggle.textContent = `Switch to ${mode === 'movie' ? 'Math' : 'Movie'} Mode`;
+            toggleMode();
+        });
+
+        // Update lasers based on equation parameters
+        function updateLasers() {
+            // Remove old lasers
+            if (line1) scene.remove(line1);
+            if (line2) scene.remove(line2);
+
+            // Calculate discriminant
+            const disc = h*h - a*b;
+            
+            // Update equation display
+            equationDiv.textContent = `${a.toFixed(1)}x² + ${(2*h).toFixed(1)}xy + ${b.toFixed(1)}y² = 0`;
+            
+            if (equationText) {
+                equationText.geometry = new THREE.TextGeometry(
+                    `${a.toFixed(1)}x² + ${(2*h).toFixed(1)}xy + ${b.toFixed(1)}y² = 0`, 
+                    {
+                        font: font,
+                        size: 0.5,
+                        height: 0.1,
+                    }
+                );
+                equationText.geometry.computeBoundingBox();
+                equationText.geometry.computeVertexNormals();
+            }
+
+            discriminantDiv.textContent = disc.toFixed(2);
+
+            if (disc < 0) {
+                // Imaginary lines - vault vulnerable
+                angleDiv.textContent = 'N/A';
+                discriminantStatus.textContent = ' (Imaginary lines)';
+                discriminantStatus.style.color = '#ff0000';
+                securityStatus.textContent = 'VULNERABLE';
+                securityStatus.style.color = '#ff0000';
+                gridHelper.material.color.set(0xff0000);
+                return;
+            } else if (disc === 0) {
+                // Coincident lines
+                angleDiv.textContent = '0°';
+                discriminantStatus.textContent = ' (Coincident lines)';
+                discriminantStatus.style.color = '#ffff00';
+                securityStatus.textContent = 'SUPER SECURE';
+                securityStatus.style.color = '#ffff00';
+                gridHelper.material.color.set(0x00a8ff);
+            } else {
+                // Two distinct lines
+                discriminantStatus.textContent = ' (Two distinct lines)';
+                discriminantStatus.style.color = '#00ff00';
+                securityStatus.textContent = 'ACTIVE';
+                securityStatus.style.color = '#00ff00';
+                gridHelper.material.color.set(0x00a8ff);
+            }
+
+            // Calculate line directions based on equation parameters
+            // For ax² + 2hxy + by² = 0, the slopes satisfy: b*m² + 2h*m + a = 0
+            const A = b;
+            const B = 2 * h;
+            const C = a;
+            
+            if (A === 0 && B === 0) {
+                // Degenerate case
+                return;
+            }
+            
+            let m1, m2;
+            
+            if (A !== 0) {
+                const discQuad = B*B - 4*A*C;
+                m1 = (-B + Math.sqrt(discQuad)) / (2*A);
+                m2 = (-B - Math.sqrt(discQuad)) / (2*A);
+            } else {
+                // When b=0, the equation becomes ax² + 2hxy = 0 => x(ax + 2hy) = 0
+                m1 = Infinity; // Vertical line
+                m2 = -a/(2*h);
+            }
+
+            // Calculate angle between lines
+            if (disc > 0) {
+                const theta1 = Math.atan(m1);
+                const theta2 = Math.atan(m2);
+                const angleBetween = Math.abs(theta1 - theta2) * (180 / Math.PI);
+                angleDiv.textContent = `${angleBetween.toFixed(1)}°`;
+            }
+
+            // Create laser lines
+            if (disc === 0) {
+                // One line (coincident)
+                const points = [];
+                if (m1 === Infinity) {
+                    points.push(new THREE.Vector3(0, -10, 0));
+                    points.push(new THREE.Vector3(0, 10, 0));
+                } else {
+                    points.push(new THREE.Vector3(-10, -10 * m1, 0));
+                    points.push(new THREE.Vector3(10, 10 * m1, 0));
+                }
+                line1 = createLaserWithGlow(points, true);
+                scene.add(line1);
+            } else if (disc > 0) {
+                // Two lines
+                const points1 = [];
+                if (m1 === Infinity) {
+                    points1.push(new THREE.Vector3(0, -10, 0));
+                    points1.push(new THREE.Vector3(0, 10, 0));
+                } else {
+                    points1.push(new THREE.Vector3(-10, -10 * m1, 0));
+                    points1.push(new THREE.Vector3(10, 10 * m1, 0));
+                }
+                line1 = createLaserWithGlow(points1);
+                scene.add(line1);
+
+                const points2 = [];
+                if (m2 === Infinity) {
+                    points2.push(new THREE.Vector3(0, -10, 0));
+                    points2.push(new THREE.Vector3(0, 10, 0));
+                } else {
+                    points2.push(new THREE.Vector3(-10, -10 * m2, 0));
+                    points2.push(new THREE.Vector3(10, 10 * m2, 0));
+                }
+                line2 = createLaserWithGlow(points2);
+                scene.add(line2);
+            }
+        }
+
+        // Check if intruder intersects with lasers
+        function checkIntersection() {
+            if (isAlarmActive) return;
+            
+            const pos = intruder.position;
+            const threshold = 0.5;
+            
+            // Simple distance-based intersection check
+            let intersect1 = false, intersect2 = false;
+            
+            if (line1) {
+                const line1Points = line1.children[0].geometry.attributes.position.array;
+                const p1 = new THREE.Vector3(line1Points[0], line1Points[1], line1Points[2]);
+                const p2 = new THREE.Vector3(line1Points[3], line1Points[4], line1Points[5]);
+                
+                const line1Dir = new THREE.Vector3().subVectors(p2, p1).normalize();
+                const toIntruder = new THREE.Vector3().subVectors(pos, p1);
+                const projection = toIntruder.dot(line1Dir);
+                const closestPoint = new THREE.Vector3().copy(line1Dir).multiplyScalar(projection).add(p1);
+                
+                if (pos.distanceTo(closestPoint) < threshold) {
+                    intersect1 = true;
+                }
+            }
+            
+            if (line2) {
+                const line2Points = line2.children[0].geometry.attributes.position.array;
+                const p1 = new THREE.Vector3(line2Points[0], line2Points[1], line2Points[2]);
+                const p2 = new THREE.Vector3(line2Points[3], line2Points[4], line2Points[5]);
+                
+                const line2Dir = new THREE.Vector3().subVectors(p2, p1).normalize();
+                const toIntruder = new THREE.Vector3().subVectors(pos, p1);
+                const projection = toIntruder.dot(line2Dir);
+                const closestPoint = new THREE.Vector3().copy(line2Dir).multiplyScalar(projection).add(p1);
+                
+                if (pos.distanceTo(closestPoint) < threshold) {
+                    intersect2 = true;
+                }
+            }
+            
+            // Trigger alarm if intersecting both lines or the single line (coincident case)
+            if ((line1 && line2 && intersect1 && intersect2) || (line1 && !line2 && intersect1)) {
+                triggerAlarm();
+            }
+        }
+
+        // Trigger alarm with visual and sound effects
+        function triggerAlarm() {
+            if (isAlarmActive) return;
+            
+            isAlarmActive = true;
+            alarmLight.intensity = 2;
+            
+            // Visual alarm effect
+            document.body.classList.add('alarm-active');
+            
+            // Create alarm sound using Web Audio API
+            try {
+                const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                const oscillator = audioContext.createOscillator();
+                const gainNode = audioContext.createGain();
+                
+                oscillator.connect(gainNode);
+                gainNode.connect(audioContext.destination);
+                
+                oscillator.frequency.setValueAtTime(800, audioContext.currentTime);
+                oscillator.frequency.setValueAtTime(600, audioContext.currentTime + 0.1);
+                
+                gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
+                
+                oscillator.start(audioContext.currentTime);
+                oscillator.stop(audioContext.currentTime + 0.5);
+            } catch (e) {
+                console.log("Web Audio API not supported");
+            }
+            
+            // Screen shake effect
+            const originalCameraPosition = camera.position.clone();
+            let shakeIntensity = 0.1;
+            const shakeInterval = setInterval(() => {
+                camera.position.x = originalCameraPosition.x + (Math.random() - 0.5) * shakeIntensity;
+                camera.position.y = originalCameraPosition.y + (Math.random() - 0.5) * shakeIntensity;
+                shakeIntensity *= 0.9; // Reduce intensity over time
+            }, 50);
+            
+            // Reset after 2 seconds
+            setTimeout(() => {
+                clearInterval(shakeInterval);
+                camera.position.copy(originalCameraPosition);
+                alarmLight.intensity = 0;
+                document.body.classList.remove('alarm-active');
+                isAlarmActive = false;
+            }, 2000);
+        }
+
+        // Toggle between movie and math modes
+        function toggleMode() {
+            if (mode === 'movie') {
+                // Cinematic mode: dark, glowing effects
+                scene.background = new THREE.Color(0x000011);
+                ambientLight.intensity = 0.3;
+                pointLight.intensity = 1;
+                directionalLight.intensity = 0.5;
+                floorMaterial.emissive.set(0x050520);
+                diamondMaterial.emissive.set(0x00aaaa);
+                gridHelper.material.opacity = 0.2;
+                
+                // Show cinematic text
+                cinematicText.style.opacity = 1;
+                setTimeout(() => {
+                    cinematicText.style.opacity = 0;
+                }, 3000);
+            } else {
+                // Math mode: clean, well-lit environment
+                scene.background = new THREE.Color(0xffffff);
+                ambientLight.intensity = 0.8;
+                pointLight.intensity = 0.5;
+                directionalLight.intensity = 0.8;
+                floorMaterial.emissive.set(0x000000);
+                diamondMaterial.emissive.set(0x000000);
+                gridHelper.material.opacity = 0.5;
+                cinematicText.style.opacity = 0;
+            }
+        }
+
+        // Initialize
+        updateLasers();
+        toggleMode();
+
+        // Animation loop
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            // Rotate diamond
+            diamond.rotation.y += 0.01;
+            
+            // Pulsing glow effect for diamond
+            const pulse = Math.sin(Date.now() * 0.005) * 0.5 + 0.5;
+            diamondMaterial.emissiveIntensity = pulse * 0.5;
+            
+            controls.update();
+            renderer.render(scene, camera);
+        }
+        animate();
+
+        // Handle window resize
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        // Drag controls for intruder
+        let isDragging = false;
+        let dragOffset = new THREE.Vector3();
+        
+        renderer.domElement.addEventListener('mousedown', onMouseDown);
+        renderer.domElement.addEventListener('mousemove', onMouseMove);
+        renderer.domElement.addEventListener('mouseup', onMouseUp);
+        
+        function onMouseDown(event) {
+            if (event.button !== 0) return; // Only left mouse button
+            
+            // Calculate mouse position in normalized device coordinates (-1 to +1)
+            const mouse = new THREE.Vector2();
+            mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+            mouse.y = - (event.clientY / window.innerHeight) * 2 + 1;
+            
+            // Raycasting to check if we clicked the intruder
+            const raycaster = new THREE.Raycaster();
+            raycaster.setFromCamera(mouse, camera);
+            
+            const intersects = raycaster.intersectObject(intruder);
+            
+            if (intersects.length > 0) {
+                isDragging = true;
+                dragOffset.copy(intersects[0].point).sub(intruder.position);
+                intruderBox.visible = true;
+            }
+        }
+        
+        function onMouseMove(event) {
+            if (!isDragging) return;
+            
+            const mouse = new THREE.Vector2();
+            mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+            mouse.y = - (event.clientY / window.innerHeight) * 2 + 1;
+            
+            const raycaster = new THREE.Raycaster();
+            raycaster.setFromCamera(mouse, camera);
+            
+            // Create a plane at the intruder's height for dragging
+            const plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), -intruder.position.y);
+            const intersectionPoint = new THREE.Vector3();
+            raycaster.ray.intersectPlane(plane, intersectionPoint);
+            
+            if (intersectionPoint) {
+                intruder.position.copy(intersectionPoint).sub(dragOffset);
+                
+                // Constrain movement to within the room
+                intruder.position.x = Math.max(-15, Math.min(15, intruder.position.x));
+                intruder.position.z = Math.max(-15, Math.min(15, intruder.position.z));
+                
+                checkIntersection();
+            }
+        }
+        
+        function onMouseUp() {
+            isDragging = false;
+            intruderBox.visible = false;
+        }
+
+        // Intro animation
+        setTimeout(() => {
+            // Simulate equation "splitting" into lasers
+            equationDiv.style.transition = 'all 2s';
+            equationDiv.style.transform = 'translateX(-50%) scale(1.2)';
+            equationDiv.style.textShadow = '0 0 20px cyan';
+            
+            setTimeout(() => {
+                equationDiv.style.transform = 'translateX(-50%) scale(1)';
+                equationDiv.style.textShadow = '0 0 10px cyan';
+            }, 1000);
+        }, 500);
+    </script>
+</body>
+</html>
