@@ -1,0 +1,578 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Discriminant Visualization (h² – ab)</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: #0a0a1a;
+            color: white;
+            font-family: 'Arial', sans-serif;
+            overflow: hidden;
+        }
+        
+        .container {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            width: 100vw;
+        }
+        
+        .header {
+            text-align: center;
+            padding: 20px;
+            background: rgba(10, 10, 30, 0.8);
+            z-index: 10;
+        }
+        
+        h1 {
+            margin: 0;
+            font-size: 2.5rem;
+            background: linear-gradient(90deg, #ff8a00, #e52e71);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-shadow: 0 0 10px rgba(229, 46, 113, 0.5);
+        }
+        
+        .subtitle {
+            font-size: 1.2rem;
+            margin-top: 10px;
+            color: #a0a0ff;
+        }
+        
+        .content {
+            display: flex;
+            flex: 1;
+        }
+        
+        .controls {
+            width: 300px;
+            padding: 20px;
+            background: rgba(20, 20, 40, 0.7);
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        
+        .control-group {
+            margin-bottom: 15px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 5px;
+            color: #a0a0ff;
+        }
+        
+        input[type="range"] {
+            width: 100%;
+        }
+        
+        .value-display {
+            display: flex;
+            justify-content: space-between;
+            color: #ff8a00;
+        }
+        
+        .visualization {
+            flex: 1;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+        
+        .equation {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            font-size: 1.5rem;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 10px 20px;
+            border-radius: 10px;
+            border: 1px solid rgba(255, 138, 0, 0.5);
+            box-shadow: 0 0 20px rgba(255, 138, 0, 0.3);
+        }
+        
+        .discriminant-value {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            font-size: 1.5rem;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 10px 20px;
+            border-radius: 10px;
+            border: 1px solid rgba(0, 255, 255, 0.5);
+            box-shadow: 0 0 20px rgba(0, 255, 255, 0.3);
+        }
+        
+        .status-label {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 3rem;
+            font-weight: bold;
+            text-shadow: 0 0 20px currentColor;
+            opacity: 0;
+            transition: opacity 0.5s;
+        }
+        
+        .coincident {
+            color: gold;
+        }
+        
+        .imaginary {
+            color: #a0a0ff;
+        }
+        
+        .distinct {
+            color: #ff8a00;
+        }
+        
+        .animate-button {
+            background: linear-gradient(90deg, #ff8a00, #e52e71);
+            border: none;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        
+        .animate-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(229, 46, 113, 0.4);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Discriminant Visualization (h² – ab)</h1>
+            <div class="subtitle">Explore how the discriminant determines the relationship between two lines</div>
+        </div>
+        
+        <div class="content">
+            <div class="controls">
+                <div class="control-group">
+                    <label for="h">Parameter h:</label>
+                    <input type="range" id="h" min="-5" max="5" step="0.1" value="2">
+                    <div class="value-display">
+                        <span>Value:</span>
+                        <span id="h-value">2.0</span>
+                    </div>
+                </div>
+                
+                <div class="control-group">
+                    <label for="a">Parameter a:</label>
+                    <input type="range" id="a" min="0" max="5" step="0.1" value="1">
+                    <div class="value-display">
+                        <span>Value:</span>
+                        <span id="a-value">1.0</span>
+                    </div>
+                </div>
+                
+                <div class="control-group">
+                    <label for="b">Parameter b:</label>
+                    <input type="range" id="b" min="0" max="5" step="0.1" value="1">
+                    <div class="value-display">
+                        <span>Value:</span>
+                        <span id="b-value">1.0</span>
+                    </div>
+                </div>
+                
+                <button id="animate-btn" class="animate-button">Animate Transition</button>
+                
+                <div class="info">
+                    <h3>About the Discriminant</h3>
+                    <p>The discriminant D = h² - ab determines the nature of the lines:</p>
+                    <ul>
+                        <li><strong>D > 0</strong>: Two distinct lines</li>
+                        <li><strong>D = 0</strong>: Coincident lines</li>
+                        <li><strong>D < 0</strong>: Imaginary lines</li>
+                    </ul>
+                </div>
+            </div>
+            
+            <div class="visualization">
+                <canvas id="main-canvas"></canvas>
+                
+                <div class="equation">
+                    D = h² - ab
+                </div>
+                
+                <div class="discriminant-value">
+                    D = <span id="d-value">3.00</span>
+                </div>
+                
+                <div id="status-label" class="status-label">Two Distinct Lines</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Get DOM elements
+        const canvas = document.getElementById('main-canvas');
+        const ctx = canvas.getContext('2d');
+        const hSlider = document.getElementById('h');
+        const aSlider = document.getElementById('a');
+        const bSlider = document.getElementById('b');
+        const hValue = document.getElementById('h-value');
+        const aValue = document.getElementById('a-value');
+        const bValue = document.getElementById('b-value');
+        const dValue = document.getElementById('d-value');
+        const statusLabel = document.getElementById('status-label');
+        const animateBtn = document.getElementById('animate-btn');
+
+        // Set canvas dimensions
+        function resizeCanvas() {
+            canvas.width = canvas.offsetWidth;
+            canvas.height = canvas.offsetHeight;
+        }
+        
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        // Parameters
+        let h = parseFloat(hSlider.value);
+        let a = parseFloat(aSlider.value);
+        let b = parseFloat(bSlider.value);
+        let D = h*h - a*b;
+
+        // Animation state
+        let isAnimating = false;
+        let animationStartTime = 0;
+        const animationDuration = 3000; // 3 seconds
+
+        // Update parameter displays
+        function updateDisplays() {
+            hValue.textContent = h.toFixed(1);
+            aValue.textContent = a.toFixed(1);
+            bValue.textContent = b.toFixed(1);
+            dValue.textContent = D.toFixed(2);
+        }
+
+        // Update parameters from sliders
+        function updateParameters() {
+            if (isAnimating) return;
+            
+            h = parseFloat(hSlider.value);
+            a = parseFloat(aSlider.value);
+            b = parseFloat(bSlider.value);
+            D = h*h - a*b;
+            
+            updateDisplays();
+            updateStatusLabel();
+        }
+
+        // Update status label based on discriminant
+        function updateStatusLabel() {
+            statusLabel.classList.remove('distinct', 'coincident', 'imaginary');
+            
+            if (D > 0) {
+                statusLabel.textContent = "Two Distinct Lines";
+                statusLabel.classList.add('distinct');
+                statusLabel.style.opacity = "0.8";
+            } else if (D === 0) {
+                statusLabel.textContent = "Coincident Lines";
+                statusLabel.classList.add('coincident');
+                statusLabel.style.opacity = "1";
+            } else {
+                statusLabel.textContent = "Imaginary Lines";
+                statusLabel.classList.add('imaginary');
+                statusLabel.style.opacity = "0.8";
+            }
+        }
+
+        // Draw the visualization
+        function draw() {
+            // Clear canvas with a dark background
+            ctx.fillStyle = '#0a0a1a';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Draw grid
+            drawGrid();
+            
+            // Calculate line properties based on discriminant
+            if (D > 0) {
+                drawDistinctLines();
+            } else if (D === 0) {
+                drawCoincidentLines();
+            } else {
+                drawImaginaryLines();
+            }
+            
+            // Draw axes
+            drawAxes();
+        }
+
+        // Draw grid
+        function drawGrid() {
+            const gridSize = 50;
+            const centerX = canvas.width / 2;
+            const centerY = canvas.height / 2;
+            
+            ctx.strokeStyle = 'rgba(100, 100, 150, 0.2)';
+            ctx.lineWidth = 1;
+            
+            // Vertical lines
+            for (let x = centerX % gridSize; x < canvas.width; x += gridSize) {
+                ctx.beginPath();
+                ctx.moveTo(x, 0);
+                ctx.lineTo(x, canvas.height);
+                ctx.stroke();
+            }
+            
+            // Horizontal lines
+            for (let y = centerY % gridSize; y < canvas.height; y += gridSize) {
+                ctx.beginPath();
+                ctx.moveTo(0, y);
+                ctx.lineTo(canvas.width, y);
+                ctx.stroke();
+            }
+        }
+
+        // Draw axes
+        function drawAxes() {
+            const centerX = canvas.width / 2;
+            const centerY = canvas.height / 2;
+            
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+            ctx.lineWidth = 2;
+            
+            // X-axis
+            ctx.beginPath();
+            ctx.moveTo(0, centerY);
+            ctx.lineTo(canvas.width, centerY);
+            ctx.stroke();
+            
+            // Y-axis
+            ctx.beginPath();
+            ctx.moveTo(centerX, 0);
+            ctx.lineTo(centerX, canvas.height);
+            ctx.stroke();
+            
+            // Axis labels
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+            ctx.font = '16px Arial';
+            ctx.fillText('x', canvas.width - 20, centerY - 10);
+            ctx.fillText('y', centerX + 10, 20);
+        }
+
+        // Draw two distinct lines
+        function drawDistinctLines() {
+            const centerX = canvas.width / 2;
+            const centerY = canvas.height / 2;
+            const scale = 30;
+            
+            // Calculate slopes
+            const m1 = (-h + Math.sqrt(D)) / b;
+            const m2 = (-h - Math.sqrt(D)) / b;
+            
+            // Draw first line (glowing orange)
+            drawGlowingLine(centerX, centerY, m1, scale, '#ff8a00');
+            
+            // Draw second line (glowing pink)
+            drawGlowingLine(centerX, centerY, m2, scale, '#e52e71');
+        }
+
+        // Draw coincident lines
+        function drawCoincidentLines() {
+            const centerX = canvas.width / 2;
+            const centerY = canvas.height / 2;
+            const scale = 30;
+            
+            // Calculate slope
+            const m = -h / b;
+            
+            // Draw golden line with stronger glow
+            drawGlowingLine(centerX, centerY, m, scale, 'gold', 3);
+        }
+
+        // Draw imaginary lines effect
+        function drawImaginaryLines() {
+            const centerX = canvas.width / 2;
+            const centerY = canvas.height / 2;
+            const scale = 30;
+            
+            // Calculate "imaginary" slopes
+            const realPart = -h / b;
+            const imaginaryPart = Math.sqrt(-D) / b;
+            
+            // Create a misty, fading effect
+            const time = Date.now() * 0.001;
+            const pulse = 0.5 + 0.5 * Math.sin(time * 2);
+            
+            // Draw fading lines with a mist effect
+            for (let i = 0; i < 5; i++) {
+                const offset = i * 0.2;
+                const alpha = 0.3 * pulse * (1 - i/5);
+                
+                // "Real" part lines
+                drawFadingLine(centerX, centerY, realPart + offset, scale, `rgba(160, 160, 255, ${alpha})`);
+                drawFadingLine(centerX, centerY, realPart - offset, scale, `rgba(160, 160, 255, ${alpha})`);
+            }
+            
+            // Add particles for mist effect
+            drawMistParticles(centerX, centerY, time);
+        }
+
+        // Draw a glowing line
+        function drawGlowingLine(centerX, centerY, slope, scale, color, glowIntensity = 1) {
+            const length = Math.max(canvas.width, canvas.height);
+            const angle = Math.atan(slope);
+            const dx = Math.cos(angle) * length;
+            const dy = Math.sin(angle) * length;
+            
+            // Draw multiple lines with decreasing width and increasing transparency for glow effect
+            const glowLayers = 10;
+            for (let i = glowLayers; i > 0; i--) {
+                const width = i * 2 * glowIntensity;
+                const alpha = 0.1 * i / glowLayers;
+                
+                ctx.strokeStyle = color.replace(')', `, ${alpha})`).replace('rgb', 'rgba');
+                ctx.lineWidth = width;
+                ctx.lineCap = 'round';
+                
+                ctx.beginPath();
+                ctx.moveTo(centerX - dx, centerY - dy);
+                ctx.lineTo(centerX + dx, centerY + dy);
+                ctx.stroke();
+            }
+            
+            // Draw the main line
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 3;
+            ctx.lineCap = 'round';
+            
+            ctx.beginPath();
+            ctx.moveTo(centerX - dx, centerY - dy);
+            ctx.lineTo(centerX + dx, centerY + dy);
+            ctx.stroke();
+        }
+
+        // Draw a fading line for imaginary case
+        function drawFadingLine(centerX, centerY, slope, scale, color) {
+            const length = Math.max(canvas.width, canvas.height);
+            const angle = Math.atan(slope);
+            const dx = Math.cos(angle) * length;
+            const dy = Math.sin(angle) * length;
+            
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 2;
+            ctx.lineCap = 'round';
+            
+            ctx.beginPath();
+            ctx.moveTo(centerX - dx, centerY - dy);
+            ctx.lineTo(centerX + dx, centerY + dy);
+            ctx.stroke();
+        }
+
+        // Draw mist particles for imaginary case
+        function drawMistParticles(centerX, centerY, time) {
+            const particleCount = 50;
+            const maxDistance = 200;
+            
+            for (let i = 0; i < particleCount; i++) {
+                const angle = (i / particleCount) * Math.PI * 2;
+                const distance = (Math.sin(time + i * 0.2) * 0.5 + 0.5) * maxDistance;
+                const size = 2 + Math.sin(time * 3 + i) * 1.5;
+                const alpha = 0.3 + Math.sin(time * 2 + i) * 0.2;
+                
+                const x = centerX + Math.cos(angle) * distance;
+                const y = centerY + Math.sin(angle) * distance;
+                
+                ctx.fillStyle = `rgba(160, 160, 255, ${alpha})`;
+                ctx.beginPath();
+                ctx.arc(x, y, size, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+
+        // Animation function
+        function animateTransition() {
+            if (isAnimating) return;
+            
+            isAnimating = true;
+            animationStartTime = Date.now();
+            
+            // Store initial values
+            const startH = h;
+            const startA = a;
+            const startB = b;
+            
+            // Target values for the animation
+            const targetH = 1;
+            const targetA = 1;
+            const targetB = 1;
+            
+            // Animation loop
+            function animationStep() {
+                const currentTime = Date.now();
+                const elapsed = currentTime - animationStartTime;
+                const progress = Math.min(elapsed / animationDuration, 1);
+                
+                // Use easing function for smooth animation
+                const easedProgress = easeInOutCubic(progress);
+                
+                // Interpolate values
+                h = startH + (targetH - startH) * easedProgress;
+                a = startA + (targetA - startA) * easedProgress;
+                b = startB + (targetB - startB) * easedProgress;
+                
+                // Update slider positions and displays
+                hSlider.value = h;
+                aSlider.value = a;
+                bSlider.value = b;
+                D = h*h - a*b;
+                updateDisplays();
+                updateStatusLabel();
+                
+                // Continue animation if not finished
+                if (progress < 1) {
+                    requestAnimationFrame(animationStep);
+                } else {
+                    isAnimating = false;
+                }
+            }
+            
+            animationStep();
+        }
+
+        // Easing function for smooth animation
+        function easeInOutCubic(t) {
+            return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+        }
+
+        // Event listeners
+        hSlider.addEventListener('input', updateParameters);
+        aSlider.addEventListener('input', updateParameters);
+        bSlider.addEventListener('input', updateParameters);
+        animateBtn.addEventListener('click', animateTransition);
+
+        // Initial setup
+        updateDisplays();
+        updateStatusLabel();
+
+        // Animation loop
+        function animate() {
+            draw();
+            requestAnimationFrame(animate);
+        }
+
+        // Start animation
+        animate();
+    </script>
+</body>
+</html>
