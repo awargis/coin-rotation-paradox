@@ -1,388 +1,514 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <title>Radar Hyperbola Scene</title>
-    <style>
-        body { margin: 0; }
-        canvas { display: block; }
-        #math-overlay {
-            position: absolute;
-            top: 10px;
-            left: 10px;
-            background: rgba(0, 0, 0, 0.7);
-            color: white;
-            padding: 10px;
-            font-family: monospace;
-            display: none;
-            max-width: 400px;
-        }
-    </style>
+<meta charset="UTF-8" />
+<title>Hyperbola Explorer: Interactive Radar Geometry</title>
+<style>
+  body { 
+    margin: 0; 
+    background: #000;
+    overflow: hidden;
+    font-family: 'Arial', sans-serif;
+  }
+  canvas { display: block; }
+  #ui-container {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    right: 10px;
+    display: flex;
+    justify-content: space-between;
+    pointer-events: none;
+    z-index: 10;
+  }
+  #math-overlay {
+    background: rgba(0, 0, 0, 0.85);
+    color: #00ff00;
+    padding: 15px;
+    border-radius: 10px;
+    border: 1px solid #00ff00;
+    max-width: 400px;
+    font-family: 'Courier New', monospace;
+    box-shadow: 0 0 20px rgba(0, 255, 0, 0.6);
+    pointer-events: auto;
+  }
+  #controls {
+    background: rgba(0, 0, 0, 0.85);
+    color: white;
+    padding: 15px;
+    border-radius: 10px;
+    border: 1px solid #ff00ff;
+    width: 300px;
+    pointer-events: auto;
+  }
+  #story-modal {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: rgba(0, 0, 0, 0.95);
+    color: white;
+    padding: 30px;
+    border-radius: 15px;
+    border: 2px solid #ffff00;
+    max-width: 600px;
+    display: none;
+    z-index: 1000;
+  }
+  button {
+    background: linear-gradient(45deg, #ff00ff, #00ffff);
+    border: none;
+    padding: 10px 15px;
+    margin: 5px;
+    border-radius: 5px;
+    color: white;
+    cursor: pointer;
+    font-weight: bold;
+    transition: transform 0.2s, background 0.3s;
+  }
+  button:hover {
+    transform: scale(1.05);
+    background: linear-gradient(45deg, #ffff00, #ff8800);
+  }
+  .slider-container {
+    margin: 10px 0;
+  }
+  input[type="range"] {
+    width: 100%;
+  }
+  #pulse-indicator {
+    width: 20px;
+    height: 20px;
+    background: #00ff00;
+    border-radius: 50%;
+    display: inline-block;
+    margin-left: 10px;
+    animation: pulse 2s infinite;
+  }
+  @keyframes pulse {
+    0% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.5; transform: scale(1.2); }
+    100% { opacity: 1; transform: scale(1); }
+  }
+  .highlight {
+    color: #ffff00;
+    font-weight: bold;
+  }
+</style>
 </head>
 <body>
-    <div id="math-overlay"></div>
-    <script type="importmap">
-        {
-            "imports": {
-                "three": "https://unpkg.com/three@0.168.0/build/three.module.js?module",
-                "three/addons/": "https://unpkg.com/three@0.168.0/examples/jsm/"
-            }
-        }
-    </script>
-    <script type="module">
-        import * as THREE from 'three';
-        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-        import { DragControls } from 'three/addons/controls/DragControls.js';
-        import { RGBELoader } from 'three/addons/loaders/RGBELoader.js';
-        import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
-        import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
-        import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
-        import { BokehPass } from 'three/addons/postprocessing/BokehPass.js';
-        import { GUI } from 'three/addons/libs/lil-gui.module.min.js';
+<div id="ui-container">
+  <div id="math-overlay">
+    <h3>🚀 Hyperbola Explorer</h3>
+    <div id="math-content"></div>
+  </div>
+  <div id="controls">
+    <h3>🎮 Controls</h3>
+    <button id="story-btn">📖 Start Story</button>
+    <button id="pulse-btn">🌊 Emit Pulse <span id="pulse-indicator"></span></button>
+    <button id="auto-sweep">🔄 Toggle Auto Sweep</button>
+    <div class="slider-container">
+      <label>Wave Speed: <span id="speed-value">Light</span></label>
+      <input type="range" id="speed-slider" min="0" max="100" value="100">
+    </div>
+    <div class="slider-container">
+      <label>Noise Level: <span id="noise-value">0%</span></label>
+      <input type="range" id="noise-slider" min="0" max="100" value="0">
+    </div>
+    <button id="reset-btn">🔄 Reset Scene</button>
+    <button id="help-btn">❓ Help</button>
+  </div>
+</div>
 
-        // Scene setup
-        const scene = new THREE.Scene();
-        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-        camera.position.set(0, 50, 0);
-        camera.lookAt(0, 0, 0);
+<div id="story-modal">
+  <h2>🎯 The Hyperbola Adventure</h2>
+  <p>Welcome to <span class="highlight">Hyperbola Explorer</span>! You're about to discover one of the most fascinating curves in mathematics.</p>
+  <p><strong>Mission:</strong> You're a radar operator tracking a mysterious signal source. Your two receivers (R1 and R2) detect signals, but there's a time difference!</p>
+  <p><strong>Key Insight:</strong> The set of all points where the <span class="highlight">difference in distances</span> to two fixed points (foci) is constant forms a <span class="highlight">hyperbola</span>!</p>
+  <p>Drag the green signal source and watch the magic unfold!</p>
+  <button id="start-btn">Let's Begin!</button>
+</div>
 
-        const renderer = new THREE.WebGLRenderer({ antialias: true });
-        renderer.setSize(window.innerWidth, window.innerHeight);
-        renderer.toneMapping = THREE.ACESFilmicToneMapping;
-        renderer.toneMappingExposure = 1;
-        document.body.appendChild(renderer.domElement);
+<!-- Import Three.js and controls -->
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://unpkg.com/three@0.168.0/build/three.module.js?module",
+    "three/addons/": "https://unpkg.com/three@0.168.0/examples/jsm/"
+  }
+}
+</script>
 
-        // HDRI Lighting
-        new RGBELoader().load('https://threejs.org/examples/textures/equirectangular/venice_sunset_1k.hdr', function (texture) {
-            texture.mapping = THREE.EquirectangularReflectionMapping;
-            scene.environment = texture;
-            scene.background = texture;
-        });
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { DragControls } from 'three/addons/controls/DragControls.js';
+import { RGBELoader } from 'three/addons/loaders/RGBELoader.js';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 
-        // Ground plane with grid
-        const gridHelper = new THREE.GridHelper(100, 100, 0x444444, 0x888888);
-        gridHelper.position.y = -0.01;
-        scene.add(gridHelper);
+// Scene setup
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 2000);
+camera.position.set(0, 80, 80);
+camera.lookAt(0, 0, 0);
 
-        // Post-processing for DOF and Bloom
-        const composer = new EffectComposer(renderer);
-        const renderPass = new RenderPass(scene, camera);
-        composer.addPass(renderPass);
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.2;
+document.body.appendChild(renderer.domElement);
 
-        const bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 1.5, 0.4, 0.85);
-        composer.addPass(bloomPass);
+// Environment HDRI for fantastic lighting
+new RGBELoader()
+  .load('https://threejs.org/examples/textures/equirectangular/venice_sunset_1k.hdr', (texture) => {
+    texture.mapping = THREE.EquirectangularReflectionMapping;
+    scene.environment = texture;
+    scene.background = texture;
+  });
 
-        const bokehPass = new BokehPass(scene, camera, {
-            focus: 50,
-            aperture: 0.005,
-            maxblur: 0.01,
-            width: window.innerWidth,
-            height: window.innerHeight
-        });
-        composer.addPass(bokehPass);
+// Ground grid with vibrant color
+const gridHelper = new THREE.GridHelper(200, 50, 0x4444ff, 0x8888ff);
+gridHelper.position.y = -0.01;
+scene.add(gridHelper);
 
-        // Controls
-        const orbitControls = new OrbitControls(camera, renderer.domElement);
-        orbitControls.enableDamping = true;
+// Postprocessing for glow
+const composer = new EffectComposer(renderer);
+const renderScene = new RenderPass(scene, camera);
+composer.addPass(renderScene);
 
-        // Receiver nodes R1 and R2
-        const r1Geometry = new THREE.SphereGeometry(1, 32, 32);
-        const r1Material = new THREE.MeshBasicMaterial({ color: 0xff0000 });
-        const r1 = new THREE.Mesh(r1Geometry, r1Material);
-        r1.position.set(-10, 0, 0);
-        scene.add(r1);
+const bloomParams = {
+  exposure: 1,
+  bloomStrength: 2.5,
+  bloomRadius: 0,
+  bloomThreshold: 0
+};
+const bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), bloomParams.bloomStrength, 0.4, 0.85);
+composer.addPass(bloomPass);
 
-        const r2 = new THREE.Mesh(r1Geometry, r1Material.clone());
-        r2.material.color.set(0x0000ff);
-        r2.position.set(10, 0, 0);
-        scene.add(r2);
+// Orbit controls for scene navigation
+const orbitControls = new OrbitControls(camera, renderer.domElement);
+orbitControls.enableDamping = true;
+orbitControls.dampingFactor = 0.05;
 
-        // Signal source S (draggable)
-        const sGeometry = new THREE.SphereGeometry(1, 32, 32);
-        const sMaterial = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
-        const s = new THREE.Mesh(sGeometry, sMaterial);
-        s.position.set(0, 0, 10);
-        scene.add(s);
+// Function to create glow material
+function createGlowMaterial(colorHex, linewidth = 4) {
+  return new THREE.LineBasicMaterial({ color: colorHex, linewidth: linewidth });
+}
 
-        const dragObjects = [s];
-        const dragControls = new DragControls(dragObjects, camera, renderer.domElement);
-        dragControls.addEventListener('dragstart', () => orbitControls.enabled = false);
-        dragControls.addEventListener('dragend', () => {
-            orbitControls.enabled = true;
-            emitPulse();
-        });
+// Create Receiver nodes with glow effect
+function createReceiver(colorHex, position) {
+  const geometry = new THREE.SphereGeometry(1.5, 32, 32);
+  const material = new THREE.MeshStandardMaterial({ color: colorHex, emissive: colorHex, emissiveIntensity: 0.5, metalness: 0.2, roughness: 0.4 });
+  const receiver = new THREE.Mesh(geometry, material);
+  receiver.position.copy(position);
+  // Add antenna
+  const antennaGeometry = new THREE.CylinderGeometry(0.1, 0.1, 3, 8);
+  const antennaMaterial = new THREE.MeshStandardMaterial({ color: colorHex, emissive: colorHex, emissiveIntensity: 0.3 });
+  const antenna = new THREE.Mesh(antennaGeometry, antennaMaterial);
+  antenna.position.y = 2;
+  receiver.add(antenna);
+  return receiver;
+}
 
-        // Labels for coordinates
-        function createLabel(text, position) {
-            const canvas = document.createElement('canvas');
-            canvas.width = 256;
-            canvas.height = 128;
-            const ctx = canvas.getContext('2d');
-            ctx.fillStyle = 'white';
-            ctx.font = 'bold 40px Arial';
-            ctx.fillText(text, 10, 60);
-            const texture = new THREE.CanvasTexture(canvas);
-            const spriteMaterial = new THREE.SpriteMaterial({ map: texture });
-            const sprite = new THREE.Sprite(spriteMaterial);
-            sprite.position.copy(position).add(new THREE.Vector3(0, 2, 0));
-            sprite.scale.set(5, 2.5, 1);
-            return sprite;
-        }
+// Create receivers R1 and R2
+const r1 = createReceiver(0xff4444, new THREE.Vector3(-15, 0, 0));
+const r2 = createReceiver(0x4444ff, new THREE.Vector3(15, 0, 0));
+scene.add(r1);
+scene.add(r2);
 
-        let r1Label = createLabel(`R1: (${r1.position.x}, ${r1.position.z})`, r1.position);
-        scene.add(r1Label);
-        let r2Label = createLabel(`R2: (${r2.position.x}, ${r2.position.z})`, r2.position);
-        scene.add(r2Label);
-        let sLabel = createLabel(`S: (${s.position.x}, ${s.position.z})`, s.position);
-        scene.add(sLabel);
+// Create signal source S with glow
+const sGeometry = new THREE.SphereGeometry(1.2, 32, 32);
+const sMaterial = new THREE.MeshStandardMaterial({ color: 0x00ff00, emissive: 0x00ff00, emissiveIntensity: 0.6, metalness: 0.3, roughness: 0.4 });
+const s = new THREE.Mesh(sGeometry, sMaterial);
+s.position.set(0, 0, 20);
+scene.add(s);
 
-        // Wavefront particles (simple ring using shader)
-        let wavefront;
-        function createWavefront() {
-            if (wavefront) scene.remove(wavefront);
-            const geometry = new THREE.RingGeometry(0.1, 0.1, 64);
-            const material = new THREE.ShaderMaterial({
-                uniforms: {
-                    time: { value: 0 },
-                    center: { value: s.position },
-                    speed: { value: c }
-                },
-                vertexShader: `
-                    varying vec2 vUv;
-                    void main() {
-                        vUv = uv;
-                        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-                    }
-                `,
-                fragmentShader: `
-                    uniform float time;
-                    uniform vec3 center;
-                    uniform float speed;
-                    varying vec2 vUv;
-                    void main() {
-                        float dist = length(gl_FragCoord.xy - center.xz) / speed * time; // Simplified
-                        gl_FragColor = vec4(1.0, 1.0, 1.0, smoothstep(0.05, 0.0, abs(dist - time)));
-                    }
-                `,
-                transparent: true,
-                blending: THREE.AdditiveBlending
-            });
-            wavefront = new THREE.Mesh(geometry, material);
-            wavefront.position.copy(s.position);
-            scene.add(wavefront);
-        }
+// Labels for objects
+function createLabel(text, position, color = 0xffffff) {
+  const canvas = document.createElement('canvas');
+  canvas.width = 256;
+  canvas.height = 128;
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = `rgb(${(color >> 16) & 255}, ${(color >> 8) & 255}, ${color & 255})`;
+  ctx.font = 'bold 24px Arial';
+  ctx.fillText(text, 10, 40);
+  const texture = new THREE.CanvasTexture(canvas);
+  const spriteMaterial = new THREE.SpriteMaterial({ map: texture, transparent: true });
+  const sprite = new THREE.Sprite(spriteMaterial);
+  sprite.position.copy(position).add(new THREE.Vector3(0, 3, 0));
+  sprite.scale.set(8, 4, 1);
+  return sprite;
+}
+let r1Label = createLabel('R1 (Receiver 1)', r1.position, 0xff4444);
+let r2Label = createLabel('R2 (Receiver 2)', r2.position, 0x4444ff);
+let sLabel = createLabel('S (Signal Source)', s.position, 0x00ff00);
+scene.add(r1Label);
+scene.add(r2Label);
+scene.add(sLabel);
 
-        // Hyperbola rendering (parametric curve)
-        let hyperbolaCurve;
-        function renderHyperbola(deltaD) {
-            if (hyperbolaCurve) scene.remove(hyperbolaCurve);
+// Wavefront system for pulses
+class WavefrontSystem {
+  constructor() {
+    this.waves = [];
+    this.maxWaves = 5;
+  }
+  emitPulse(sourcePosition) {
+    if (this.waves.length >= this.maxWaves) {
+      scene.remove(this.waves.shift());
+    }
+    const waveGeometry = new THREE.RingGeometry(0.1, 0.2, 64);
+    const waveMaterial = new THREE.MeshBasicMaterial({ color: 0x00ff00, transparent: true, opacity: 0.8, side: THREE.DoubleSide });
+    const wave = new THREE.Mesh(waveGeometry, waveMaterial);
+    wave.position.copy(sourcePosition);
+    wave.userData = { radius: 0, speed: c, startTime: Date.now() };
+    this.waves.push(wave);
+    scene.add(wave);
+  }
+  update() {
+    const currentTime = Date.now();
+    this.waves.forEach((wave, index) => {
+      const elapsed = (currentTime - wave.userData.startTime) / 1000;
+      wave.userData.radius = elapsed * wave.userData.speed * 0.1;
+      wave.scale.set(wave.userData.radius, wave.userData.radius, 1);
+      wave.material.opacity = Math.max(0, 0.8 * (1 - elapsed / 3));
+      // Check for hitting receivers
+      this.checkReceiverHit(wave, r1, 0xff4444);
+      this.checkReceiverHit(wave, r2, 0x4444ff);
+      if (elapsed > 3) {
+        scene.remove(wave);
+        this.waves.splice(index, 1);
+      }
+    });
+  }
+  checkReceiverHit(wave, receiver, hitColor) {
+    const distance = wave.position.distanceTo(receiver.position);
+    if (Math.abs(distance - wave.userData.radius) < 2) {
+      // glowing effect on receiver
+      receiver.material.emissive.setHex(hitColor);
+      receiver.material.emissiveIntensity = 1;
+      setTimeout(() => {
+        receiver.material.emissive.setHex(receiver.material.color.getHex());
+        receiver.material.emissiveIntensity = 0.5;
+      }, 200);
+    }
+  }
+}
+const waveSystem = new WavefrontSystem();
 
-            const f1 = r1.position;
-            const f2 = r2.position;
-            const distFoci = f1.distanceTo(f2);
-            if (deltaD >= distFoci) return; // Invalid hyperbola
+// Hyperbola rendering
+let hyperbolaCurves = [];
+let asymptotes = [];
 
-            const a = deltaD / 2;
-            const c = distFoci / 2;
-            const b = Math.sqrt(c*c - a*a);
-            const e = c / a;
+function renderHyperbola(deltaD) {
+  // Remove previous
+  hyperbolaCurves.forEach(c => scene.remove(c));
+  asymptotes.forEach(l => scene.remove(l));
+  hyperbolaCurves = [];
+  asymptotes = [];
 
-            // Parametric equations for hyperbola (right branch, assume along x)
-            const points = [];
-            for (let t = -5; t <= 5; t += 0.1) {
-                const x = a * Math.cosh(t);
-                const y = b * Math.sinh(t);
-                points.push(new THREE.Vector3(x + c, 0, y)); // Center between foci
-            }
-            // Rotate to align with foci direction
-            const direction = new THREE.Vector3().subVectors(f2, f1).normalize();
-            const center = new THREE.Vector3().addVectors(f1, f2).multiplyScalar(0.5);
-            const matrix = new THREE.Matrix4().lookAt(f1, f2, new THREE.Vector3(0,1,0));
-            points.forEach(p => p.applyMatrix4(matrix).add(center));
+  const f1 = r1.position;
+  const f2 = r2.position;
+  const distFoci = f1.distanceTo(f2);
+  if (deltaD >= distFoci || deltaD <= 0) return;
 
-            const geometry = new THREE.BufferGeometry().setFromPoints(points);
-            const material = new THREE.LineBasicMaterial({ color: 0xffff00 });
-            hyperbolaCurve = new THREE.Line(geometry, material);
-            scene.add(hyperbolaCurve);
+  const a = deltaD / 2;
+  const c = distFoci / 2;
+  const b = Math.sqrt(c * c - a * a);
 
-            // Asymptotes (faint lines)
-            const asymptote1 = new THREE.Line(geometry.clone(), new THREE.LineBasicMaterial({ color: 0x888888, opacity: 0.5, transparent: true }));
-            // Simplified: extend lines from center at angles
-            // TODO: Proper asymptotes y = ±(b/a)x
+  // Draw both branches
+  const branches = [
+    { sign: 1, color: 0xffcc00 },   // Bright yellow
+    { sign: -1, color: 0xff6600 }   // Vibrant orange
+  ];
 
-            // Foci points (already R1/R2)
+  branches.forEach(branch => {
+    const points = [];
+    for (let t = -3; t <= 3; t += 0.05) {
+      const x = branch.sign * a * Math.cosh(t);
+      const y = b * Math.sinh(t);
+      points.push(new THREE.Vector3(x, 0, y));
+    }
+    // Rotate based on focus direction
+    const direction = new THREE.Vector3().subVectors(f2, f1).normalize();
+    const angle = Math.atan2(direction.z, direction.x);
+    const center = new THREE.Vector3().addVectors(f1, f2).multiplyScalar(0.5);
+    const rotatedPoints = points.map(p => {
+      const rotatedX = p.x * Math.cos(angle) - p.z * Math.sin(angle);
+      const rotatedZ = p.x * Math.sin(angle) + p.z * Math.cos(angle);
+      return new THREE.Vector3(rotatedX, 0, rotatedZ).add(center);
+    });
+    const geometry = new THREE.BufferGeometry().setFromPoints(rotatedPoints);
+    const material = new THREE.LineBasicMaterial({ color: branch.color, linewidth: 6 });
+    const line = new THREE.Line(geometry, material);
+    // Add glow effect
+    line.material = new THREE.MeshStandardMaterial({ color: branch.color, emissive: branch.color, emissiveIntensity: 0.6, flatShading: true });
+    hyperbolaCurves.push(line);
+    scene.add(line);
+  });
 
-            // Numeric readouts
-            console.log(`a: ${a}, b: ${b}, c: ${c}, e: ${e}`); // For now, log; add to GUI later
-        }
+  // Asymptotes
+  const asymptoteLength = 100;
+  const asymptoteLines = [
+    [new THREE.Vector3(-asymptoteLength, 0, -b * asymptoteLength / a), new THREE.Vector3(asymptoteLength, 0, b * asymptoteLength / a)],
+    [new THREE.Vector3(-asymptoteLength, 0, b * asymptoteLength / a), new THREE.Vector3(asymptoteLength, 0, -b * asymptoteLength / a)]
+  ];
 
-        // Heatmap for hyperbola (simplified as contour)
-        // For heatmap, use a plane with shader showing distance difference
-        let heatmap;
-        function createHeatmap() {
-            if (heatmap) scene.remove(heatmap);
-            const geometry = new THREE.PlaneGeometry(100, 100, 100, 100);
-            const material = new THREE.ShaderMaterial({
-                uniforms: {
-                    f1: { value: r1.position },
-                    f2: { value: r2.position },
-                    deltaD: { value: 0 }
-                },
-                vertexShader: `
-                    varying vec3 vPosition;
-                    void main() {
-                        vPosition = position;
-                        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-                    }
-                `,
-                fragmentShader: `
-                    uniform vec3 f1;
-                    uniform vec3 f2;
-                    uniform float deltaD;
-                    varying vec3 vPosition;
-                    void main() {
-                        float d1 = distance(vPosition, f1);
-                        float d2 = distance(vPosition, f2);
-                        float diff = abs(d1 - d2);
-                        float intensity = smoothstep(0.1, 0.0, abs(diff - deltaD));
-                        gl_FragColor = vec4(1.0, 0.5, 0.0, intensity);
-                    }
-                `,
-                transparent: true,
-                blending: THREE.AdditiveBlending
-            });
-            heatmap = new THREE.Mesh(geometry, material);
-            heatmap.rotation.x = -Math.PI / 2;
-            scene.add(heatmap);
-        }
-        createHeatmap();
+  asymptoteLines.forEach(([start, end]) => {
+    const geometry = new THREE.BufferGeometry().setFromPoints([start, end]);
+    const material = new THREE.LineDashedMaterial({ color: 0x888888, dashSize: 1, gapSize: 1, linewidth: 4, transparent: true, opacity: 0.8 });
+    const line = new THREE.Line(geometry, material);
+    line.computeLineDistances();
+    asymptotes.push(line);
+    scene.add(line);
+  });
 
-        // Wave speed
-        let c = 3e8; // m/s
-        let noise = 0;
-        let isSoundSpeed = false;
+  return { a, b, c, eccentricity: c / a };
+}
 
-        function computeDelta() {
-            const d1 = s.position.distanceTo(r1.position);
-            const d2 = s.position.distanceTo(r2.position);
-            let t1 = d1 / c + (noise * (Math.random() - 0.5));
-            let t2 = d2 / c + (noise * (Math.random() - 0.5));
-            const deltaT = Math.abs(t1 - t2);
-            const deltaD = c * deltaT;
-            console.log(`Δt: ${deltaT}, Δd: ${deltaD}`); // Add to GUI
-            return deltaD;
-        }
+// Distance lines from source to receivers
+let distanceLines = [];
+function updateDistanceLines() {
+  // Remove previous
+  distanceLines.forEach(l => scene.remove(l));
+  distanceLines = [];
+  const d1 = s.position.distanceTo(r1.position);
+  const d2 = s.position.distanceTo(r2.position);
+  const lineMaterial1 = new THREE.LineDashedMaterial({ color: 0xff4444, dashSize: 0.5, gapSize: 0.2, linewidth: 4 });
+  const lineMaterial2 = new THREE.LineDashedMaterial({ color: 0x4444ff, dashSize: 0.5, gapSize: 0.2, linewidth: 4 });
+  [ { receiver: r1, distance: d1, material: lineMaterial1 },
+      { receiver: r2, distance: d2, material: lineMaterial2 } ].forEach(({ receiver, distance, material }) => {
+    const points = [s.position.clone(), receiver.position.clone()];
+    const geometry = new THREE.BufferGeometry().setFromPoints(points);
+    const line = new THREE.Line(geometry, material);
+    line.computeLineDistances();
+    distanceLines.push(line);
+    scene.add(line);
+  });
+  return { d1, d2, deltaD: Math.abs(d1 - d2) };
+}
 
-        function emitPulse() {
-            const deltaD = computeDelta();
-            renderHyperbola(deltaD);
-            heatmap.material.uniforms.deltaD.value = deltaD;
-            // Animate wavefront (simplified, no real animation here)
-            // TODO: Animate ring expansion
-        }
+// Update math overlay
+function updateMathOverlay() {
+  const distances = updateDistanceLines();
+  const hyperbolaParams = renderHyperbola(distances.deltaD);
+  const mathContent = document.getElementById('math-content');
+  mathContent.innerHTML = `
+    <div style="margin-bottom: 10px;">
+      <span class="highlight">d₁</span> = distance(S, R1) = ${distances.d1.toFixed(2)} units<br>
+      <span class="highlight">d₂</span> = distance(S, R2) = ${distances.d2.toFixed(2)} units<br>
+      <span class="highlight">Δd</span> = |d₁ - d₂| = ${distances.deltaD.toFixed(2)} units
+    </div>
+    ${hyperbolaParams ? `
+    <div style="margin-bottom: 10px;">
+      <strong>Hyperbola Parameters:</strong><br>
+      a = Δd/2 = ${hyperbolaParams.a.toFixed(2)}<br>
+      b = √(c² - a²) = ${hyperbolaParams.b.toFixed(2)}<br>
+      c = distance between foci/2 = ${hyperbolaParams.c.toFixed(2)}<br>
+      e = c/a = ${hyperbolaParams.eccentricity.toFixed(2)}
+    </div>
+    <div>
+      <strong>Equation:</strong><br>
+      x²/a² - y²/b² = 1<br>
+      where a = ${hyperbolaParams.a.toFixed(2)}, b = ${hyperbolaParams.b.toFixed(2)}
+    </div>
+    ` : '<div>Move signal source to see hyperbola</div>'}
+  `;
+}
 
-        // UI with GUI
-        const gui = new GUI();
-        gui.add({ emit: emitPulse }, 'emit').name('Emit Pulse');
+// Drag controls for S
+const dragObjects = [s];
+const dragControls = new DragControls(dragObjects, camera, renderer.domElement);
+dragControls.addEventListener('dragstart', () => {
+  orbitControls.enabled = false;
+  s.material.emissiveIntensity = 1;
+});
+dragControls.addEventListener('drag', () => {
+  sLabel.position.copy(s.position).add(new THREE.Vector3(0, 3, 0));
+  updateMathOverlay();
+});
+dragControls.addEventListener('dragend', () => {
+  orbitControls.enabled = true;
+  s.material.emissiveIntensity = 0.6;
+  waveSystem.emitPulse(s.position.clone());
+});
 
-        const r1Folder = gui.addFolder('R1 Position');
-        r1Folder.add(r1.position, 'x', -50, 50).onChange(() => {
-            r1Label.material.map = createLabel(`R1: (${r1.position.x.toFixed(2)}, ${r1.position.z.toFixed(2)}`, r1.position).material.map;
-            emitPulse();
-        });
-        r1Folder.add(r1.position, 'z', -50, 50).onChange(() => {
-            r1Label.material.map = createLabel(`R1: (${r1.position.x.toFixed(2)}, ${r1.position.z.toFixed(2)}`, r1.position).material.map;
-            emitPulse();
-        });
+// UI buttons
+document.getElementById('pulse-btn').addEventListener('click', () => {
+  waveSystem.emitPulse(s.position.clone());
+});
+let autoSweep = false;
+document.getElementById('auto-sweep').addEventListener('click', function() {
+  autoSweep = !autoSweep;
+  this.style.background = autoSweep ? 'linear-gradient(45deg, #ffff00, #ff8800)' : 'linear-gradient(45deg, #ff00ff, #00ffff)';
+});
+document.getElementById('speed-slider').addEventListener('input', function() {
+  const val = this.value;
+  c = 50 + val * 5; // scale for visualization
+  document.getElementById('speed-value').textContent = val > 80 ? 'Light' : val > 40 ? 'Sound' : 'Slow';
+});
+document.getElementById('noise-slider').addEventListener('input', function() {
+  noise = this.value / 100;
+  document.getElementById('noise-value').textContent = Math.round(noise * 100) + '%';
+});
+document.getElementById('reset-btn').addEventListener('click', () => {
+  s.position.set(0, 0, 20);
+  sLabel.position.copy(s.position).add(new THREE.Vector3(0, 3, 0));
+  updateMathOverlay();
+});
+document.getElementById('story-btn').addEventListener('click', () => {
+  document.getElementById('story-modal').style.display = 'block';
+});
+document.getElementById('start-btn').addEventListener('click', () => {
+  document.getElementById('story-modal').style.display = 'none';
+});
+document.getElementById('help-btn').addEventListener('click', () => {
+  alert(`Hyperbola Explorer Help:
+- Drag the GREEN signal source to see how the hyperbola changes
+- Click "Emit Pulse" to see wave propagation
+- Use "Auto Sweep" for automatic movement
+- Adjust wave speed and noise levels
+- The YELLOW curves show all possible locations for the signal source based on time differences!`);
+});
 
-        const r2Folder = gui.addFolder('R2 Position');
-        r2Folder.add(r2.position, 'x', -50, 50).onChange(() => {
-            r2Label.material.map = createLabel(`R2: (${r2.position.x.toFixed(2)}, ${r2.position.z.toFixed(2)}`, r2.position).material.map;
-            emitPulse();
-        });
-        r2Folder.add(r2.position, 'z', -50, 50).onChange(() => {
-            r2Label.material.map = createLabel(`R2: (${r2.position.x.toFixed(2)}, ${r2.position.z.toFixed(2)}`, r2.position).material.map;
-            emitPulse();
-        });
+// Animation loop
+let c = 300; // wave speed
+let noise = 0;
+let sweepAngle = 0;
+function animate() {
+  requestAnimationFrame(animate);
+  orbitControls.update();
 
-        gui.add({ speed: () => {
-            isSoundSpeed = !isSoundSpeed;
-            c = isSoundSpeed ? 343 : 3e8;
-            emitPulse();
-        } }, 'speed').name('Toggle Sound/Light Speed');
+  waveSystem.update();
 
-        gui.add({ noise: 0 }, 'noise', 0, 0.1, 0.001).onChange(val => noise = val);
+  if (autoSweep) {
+    sweepAngle += 0.01;
+    s.position.x = 25 * Math.sin(sweepAngle);
+    s.position.z = 25 * Math.cos(sweepAngle);
+    sLabel.position.copy(s.position).add(new THREE.Vector3(0, 3, 0));
+    updateMathOverlay();
+  }
 
-        // Auto-sweep
-        let sweepRunning = false;
-        gui.add({ sweep: () => {
-            sweepRunning = !sweepRunning;
-        } }, 'sweep').name('Auto Sweep');
+  // Animate labels pulsation
+  [r1Label, r2Label, sLabel].forEach(label => {
+    label.scale.x = 1 + Math.sin(Date.now() * 0.005) * 0.2;
+    label.scale.y = 1 + Math.sin(Date.now() * 0.005) * 0.2;
+  });
 
-        // Math view toggle
-        let mathView = false;
-        const mathOverlay = document.getElementById('math-overlay');
-        gui.add({ math: () => {
-            mathView = !mathView;
-            mathOverlay.style.display = mathView ? 'block' : 'none';
-            updateMathOverlay();
-        } }, 'math').name('Math View');
+  composer.render();
+}
+updateMathOverlay();
+document.getElementById('story-modal').style.display = 'block';
+animate();
 
-        function updateMathOverlay() {
-            if (!mathView) return;
-            const deltaD = computeDelta();
-            const distFoci = r1.position.distanceTo(r2.position);
-            const a = deltaD / 2;
-            const c = distFoci / 2;
-            const b = Math.sqrt(c*c - a*a);
-            const e = c / a;
-            mathOverlay.innerHTML = `
-Hyperbola Equation:<br>
-√((x + c)^2 + y^2) - √((x - c)^2 + y^2) = 2a<br>
-Where 2c = distance between R1 and R2<br>
-a = Δd / 2 = ${a.toFixed(2)}<br>
-b = √(c² - a²) = ${b.toFixed(2)}<br>
-c = ${c.toFixed(2)}<br>
-Eccentricity e = c/a = ${e.toFixed(2)}<br>
-Step-by-step:<br>
-1. Compute d1 = distance(S, R1)<br>
-2. Compute d2 = distance(S, R2)<br>
-3. Δd = |d1 - d2|<br>
-4. Hyperbola: |d to R1 - d to R2| = Δd
-            `;
-        }
-
-        // Animation loop
-        function animate(time) {
-            requestAnimationFrame(animate);
-            orbitControls.update();
-
-            if (sweepRunning) {
-                s.position.x = 20 * Math.sin(time / 1000);
-                s.position.z = 20 * Math.cos(time / 1000);
-                sLabel.position.copy(s.position).add(new THREE.Vector3(0, 2, 0));
-                sLabel.material.map = createLabel(`S: (${s.position.x.toFixed(2)}, ${s.position.z.toFixed(2)}`, s.position).material.map;
-                emitPulse();
-            }
-
-            // Update wavefront if animating
-            // TODO: Proper time-based expansion
-
-            updateMathOverlay();
-            composer.render();
-        }
-        animate(0);
-
-        // Initial emit
-        emitPulse();
-
-        // Window resize
-        window.addEventListener('resize', () => {
-            camera.aspect = window.innerWidth / window.innerHeight;
-            camera.updateProjectionMatrix();
-            renderer.setSize(window.innerWidth, window.innerHeight);
-            composer.setSize(window.innerWidth, window.innerHeight);
-        });
-    </script>
+// Handle resize
+window.addEventListener('resize', () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  composer.setSize(window.innerWidth, window.innerHeight);
+});
+</script>
 </body>
 </html>
