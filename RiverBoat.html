@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Scene 1: Dadi’s Boat (Relative Motion)</title>
+    <style>
+        :root {
+            --boat-speed: 50;
+            --water-speed: 50;
+            --boat-angle: 0; /* Degrees, 0 = north */
+            --water-angle: 90; /* Degrees, 90 = east */
+            --green: #4ade80;
+            --blue: #60a5fa;
+            --red: #f87171;
+            --orange: #fb923c;
+            --glow: rgba(255, 255, 230, 0.85);
+        }
+
+        body {
+            margin: 0;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background-color: #1a1a1a;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+        }
+
+        .scene-container {
+            width: 100%;
+            height: 100%;
+            position: relative;
+            background-image: url('D:/Youtube/Vector/New folder/ocean3.jpg1'); /* Replace with your ocean image */
+            background-size: 200px 200px; /* Adjust for your image */
+            background-repeat: repeat;
+            background-position: 0 0;
+            overflow: hidden;
+            box-shadow: 0 0 30px rgba(0,0,0,0.5) inset;
+        }
+
+        .scene-container::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0) 25%, rgba(255,255,255,0) 75%, rgba(255,255,255,0.1) 100%);
+            animation: shimmer 10s infinite linear;
+            pointer-events: none;
+        }
+
+        @keyframes shimmer {
+            0% { background-position: -200% 0; }
+            100% { background-position: 200% 0; }
+        }
+
+        #boat {
+            position: absolute;
+            width: 120px;
+            height: auto;
+            transform: translate(-50%, -50%);
+            transition: transform 0.1s linear;
+            z-index: 10;
+        }
+
+        .vector-overlay {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            z-index: 15;
+            transition: all 0.3s ease-out;
+            pointer-events: none;
+        }
+        
+        .arrow {
+            position: absolute;
+            left: 0;
+            bottom: 0;
+            background-color: currentColor;
+            height: 5px;
+            transform-origin: left bottom;
+            transition: all 0.3s ease-out;
+            box-shadow: 0 0 10px currentColor;
+        }
+
+        .arrow::after {
+            content: "";
+            position: absolute;
+            right: -10px;
+            top: 0;
+            width: 0;
+            height: 0;
+            border-top: 5px solid transparent;
+            border-bottom: 5px solid transparent;
+            border-left: 10px solid currentColor;
+        }
+
+        #v_boat { color: var(--green); }
+        #v_water { color: var(--blue); }
+        #v_rel { color: var(--red); }
+        
+        .arrow-label {
+            position: absolute;
+            color: white;
+            font-weight: bold;
+            font-size: 1.2rem;
+            text-shadow: 0 0 5px black, 0 0 10px currentColor;
+        }
+
+        #trajectory {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            z-index: 5;
+            pointer-events: none;
+        }
+
+        #trajectory path {
+            stroke: var(--orange);
+            stroke-width: 4;
+            stroke-dasharray: 10, 10;
+            fill: none;
+            filter: drop-shadow(0 0 5px var(--orange));
+            transition: d 0.3s ease-out;
+        }
+
+        #compass {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            width: 100px;
+            height: 100px;
+            opacity: 0.8;
+            filter: drop-shadow(0 0 10px black);
+        }
+
+        #equation {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            font-size: 1.8rem;
+            font-weight: bold;
+            color: var(--glow);
+            text-shadow: 0 0 8px var(--glow), 0 0 15px black;
+            margin: 0;
+        }
+
+        .controls {
+            position: absolute;
+            bottom: 30px;
+            right: 30px;
+            background: rgba(0, 0, 0, 0.5);
+            padding: 20px;
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 0 5px 25px rgba(0,0,0,0.5);
+            z-index: 20;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .slider-group {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .slider-group label {
+            color: white;
+            width: 140px;
+            font-size: 1rem;
+        }
+
+        input[type="range"] {
+            -webkit-appearance: none;
+            width: 200px;
+            height: 8px;
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 5px;
+            outline: none;
+            transition: all 0.2s;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 24px;
+            height: 24px;
+            background: white;
+            border-radius: 50%;
+            cursor: pointer;
+            box-shadow: 0 0 15px var(--glow), 0 0 5px var(--glow);
+        }
+        
+        input[type="range"]::-moz-range-thumb {
+            width: 24px;
+            height: 24px;
+            background: white;
+            border-radius: 50%;
+            cursor: pointer;
+            border: none;
+            box-shadow: 0 0 15px var(--glow), 0 0 5px var(--glow);
+        }
+
+        button {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: background 0.3s;
+        }
+
+        button:hover {
+            background: rgba(255, 255, 255, 0.4);
+        }
+
+        #vector-triangle text {
+            font-size: 12px;
+            text-shadow: 0 0 3px black;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="scene-container">
+        
+        <div id="boat">
+            <img src="https://media.gettyimages.com/id/926718948/photo/family-in-rowing-boat-top-view.jpg?s=1024x1024&w=gi&k=20&c=6OLnW9mqOxKPRHsac9oLD2xjbTHItwlP-OLbkyDpXxk=" alt="Dadi in a boat" style="width:100%;">
+        </div>
+        
+        <div class="vector-overlay">
+            <div class="arrow" id="v_boat"></div>
+            <div class="arrow" id="v_water"></div>
+            <div class="arrow" id="v_rel"></div>
+            <span class="arrow-label" id="label-boat">v<sub>boat</sub></span>
+            <span class="arrow-label" id="label-water">v<sub>water</sub></span>
+            <span class="arrow-label" id="label-rel">v<sub>rel</sub></span>
+        </div>
+
+        <svg id="trajectory">
+            <path id="trajectory-path" d="M0 0 L 0 0" />
+        </svg>
+
+        <img id="compass" src="https://upload.wikimedia.org/wikipedia/commons/6/61/Compass_rose_transparent.png" alt="Compass Rose">
+
+        <p id="equation">v<sub>rel</sub> = v<sub>boat</sub> + v<sub>water</sub></p>
+
+        <svg id="vector-triangle" style="position:absolute; bottom:50px; left:20px; width:200px; height:200px; background:rgba(0,0,0,0.5); border-radius:10px; overflow:visible;">
+            <defs>
+                <marker id="arrow" viewBox="0 0 10 10" refX="1" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+                    <path d="M 0 0 L 10 5 L 0 10 z" fill="currentColor"/>
+                </marker>
+            </defs>
+            <g id="vectors"></g>
+        </svg>
+
+    </div>
+
+    <div class="controls">
+        <div class="slider-group">
+            <label for="boat-speed">🚣 Boat Speed</label>
+            <input type="range" id="boat-speed" min="5" max="100" value="50">
+        </div>
+        <div class="slider-group">
+            <label for="boat-angle">🧭 Boat Direction (deg)</label>
+            <input type="range" id="boat-angle" min="0" max="360" value="0">
+        </div>
+        <div class="slider-group">
+            <label for="water-current">🌊 Water Speed</label>
+            <input type="range" id="water-current" min="0" max="100" value="50">
+        </div>
+        <div class="slider-group">
+            <label for="water-angle">🧭 Water Direction (deg)</label>
+            <input type="range" id="water-angle" min="0" max="360" value="90">
+        </div>
+        <div class="slider-group">
+            <label>Resultant Speed: <span id="rel-speed">0</span></label>
+        </div>
+        <div class="slider-group">
+            <label>Resultant Dir (from N): <span id="rel-dir">0</span>°</label>
+        </div>
+        <div class="slider-group">
+            <button id="play">Play</button>
+            <button id="stop">Stop</button>
+            <button id="reset">Reset</button>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const boatElement = document.getElementById('boat');
+            const vectorOverlay = document.querySelector('.vector-overlay');
+            const vBoat = document.getElementById('v_boat');
+            const vWater = document.getElementById('v_water');
+            const vRel = document.getElementById('v_rel');
+            const labelBoat = document.getElementById('label-boat');
+            const labelWater = document.getElementById('label-water');
+            const labelRel = document.getElementById('label-rel');
+            const trajectoryPath = document.getElementById('trajectory-path');
+            const vectorsGroup = document.getElementById('vectors');
+            const container = document.querySelector('.scene-container');
+            const relSpeedSpan = document.getElementById('rel-speed');
+            const relDirSpan = document.getElementById('rel-dir');
+
+            const boatSpeedSlider = document.getElementById('boat-speed');
+            const boatAngleSlider = document.getElementById('boat-angle');
+            const waterCurrentSlider = document.getElementById('water-current');
+            const waterAngleSlider = document.getElementById('water-angle');
+            const playBtn = document.getElementById('play');
+            const stopBtn = document.getElementById('stop');
+            const resetBtn = document.getElementById('reset');
+
+            let boatPos = { x: window.innerWidth / 2, y: window.innerHeight / 2 };
+            let bgX = 0, bgY = 0;
+            let vBoatMag = 0;
+            let vWaterMag = 0;
+            let boatAngle = 0;
+            let waterAngle = 90;
+            const animationScale = 2.0;
+            const speedFactor = 0.05;
+            let isPaused = true; // Start paused
+
+            function degToRad(deg) {
+                return deg * (Math.PI / 180);
+            }
+
+            function updateVectors() {
+                vBoatMag = parseFloat(boatSpeedSlider.value);
+                boatAngle = parseFloat(boatAngleSlider.value);
+                vWaterMag = parseFloat(waterCurrentSlider.value);
+                waterAngle = parseFloat(waterAngleSlider.value);
+
+                // Boat vector
+                const boatVecLength = vBoatMag * animationScale;
+                const boatCssDeg = boatAngle - 90;
+                vBoat.style.width = `${boatVecLength}px`;
+                vBoat.style.transform = `rotate(${boatCssDeg}deg)`;
+
+                // Water vector
+                const waterVecLength = vWaterMag * animationScale;
+                const waterCssDeg = waterAngle - 90;
+                vWater.style.width = `${waterVecLength}px`;
+                vWater.style.transform = `rotate(${waterCssDeg}deg)`;
+
+                // Resultant
+                const vBoatX = vBoatMag * Math.sin(degToRad(boatAngle));
+                const vBoatY = vBoatMag * Math.cos(degToRad(boatAngle));
+                const vWaterX = vWaterMag * Math.sin(degToRad(waterAngle));
+                const vWaterY = vWaterMag * Math.cos(degToRad(waterAngle));
+                const vRelX = vBoatX + vWaterX;
+                const vRelY = vBoatY + vWaterY;
+                const relMag = Math.sqrt(vRelX**2 + vRelY**2);
+                const relAngleRad = Math.atan2(vRelY, vRelX);
+                const relAngleDeg = relAngleRad * (180 / Math.PI);
+                const relVecLength = relMag * animationScale;
+                vRel.style.width = `${relVecLength}px`;
+                vRel.style.transform = `rotate(${-relAngleDeg}deg)`;
+
+                // Update labels positions (midpoint)
+                const boatThetaRad = degToRad(boatCssDeg);
+                labelBoat.style.left = `${(boatVecLength / 2) * Math.cos(boatThetaRad)}px`;
+                labelBoat.style.top = `${(boatVecLength / 2) * Math.sin(boatThetaRad)}px`;
+                labelBoat.style.transform = 'translate(-50%, -50%)';
+
+                const waterThetaRad = degToRad(waterCssDeg);
+                labelWater.style.left = `${(waterVecLength / 2) * Math.cos(waterThetaRad)}px`;
+                labelWater.style.top = `${(waterVecLength / 2) * Math.sin(waterThetaRad)}px`;
+                labelWater.style.transform = 'translate(-50%, -50%)';
+
+                const relThetaRad = degToRad(-relAngleDeg);
+                labelRel.style.left = `${(relVecLength / 2) * Math.cos(relThetaRad)}px`;
+                labelRel.style.top = `${(relVecLength / 2) * Math.sin(relThetaRad)}px`;
+                labelRel.style.transform = 'translate(-50%, -50%)';
+
+                // Update boat rotation
+                boatElement.style.transform = `translate(-50%, -50%) rotate(${boatCssDeg}deg)`;
+
+                // Update resultant displays
+                relSpeedSpan.textContent = relMag.toFixed(1);
+                const relDirFromNorth = (90 - relAngleDeg + 360) % 360;
+                relDirSpan.textContent = relDirFromNorth.toFixed(1);
+
+                // Update vector triangle
+                const triangleScale = 1.5;
+                const originX = 100;
+                const originY = 100;
+                const waterEndX = originX + vWaterX * triangleScale;
+                const waterEndY = originY - vWaterY * triangleScale;
+                const relEndX = originX + vRelX * triangleScale;
+                const relEndY = originY - vRelY * triangleScale;
+                const boatMidX = (waterEndX + relEndX) / 2 + 5;
+                const boatMidY = (waterEndY + relEndY) / 2 - 5;
+                const waterMidX = (originX + waterEndX) / 2 + 5;
+                const waterMidY = (originY + waterEndY) / 2 - 5;
+                const relMidX = (originX + relEndX) / 2 + 5;
+                const relMidY = (originY + relEndY) / 2 - 5;
+
+                vectorsGroup.innerHTML = `
+                    <line style="color:var(--blue);" stroke="currentColor" stroke-width="3" marker-end="url(#arrow)" x1="${originX}" y1="${originY}" x2="${waterEndX}" y2="${waterEndY}" />
+                    <line style="color:var(--green);" stroke="currentColor" stroke-width="3" marker-end="url(#arrow)" x1="${waterEndX}" y1="${waterEndY}" x2="${relEndX}" y2="${relEndY}" />
+                    <line style="color:var(--red);" stroke="currentColor" stroke-width="3" marker-end="url(#arrow)" x1="${originX}" y1="${originY}" x2="${relEndX}" y2="${relEndY}" />
+                    <text x="${waterMidX}" y="${waterMidY}" fill="var(--blue)">v_water</text>
+                    <text x="${boatMidX}" y="${boatMidY}" fill="var(--green)">v_boat</text>
+                    <text x="${relMidX}" y="${relMidY}" fill="var(--red)">v_rel</text>
+                `;
+
+                return { vBoatX, vBoatY, vWaterX, vWaterY, vRelX, vRelY, relAngleRad, relMag };
+            }
+
+            function updateTrajectory(vectors) {
+                const { relAngleRad, relMag } = vectors;
+                const startX = boatPos.x;
+                const startY = boatPos.y;
+                const relMagExtend = 300; // Extended for visibility
+                const endX = startX + relMagExtend * Math.cos(relAngleRad);
+                const endY = startY - relMagExtend * Math.sin(relAngleRad);
+                trajectoryPath.setAttribute('d', `M ${startX} ${startY} L ${endX} ${endY}`);
+            }
+
+            function animate() {
+                const vectors = updateVectors(); // Ensure latest vectors
+                if (!isPaused) {
+                    const { vBoatX, vBoatY, vWaterX, vWaterY, vRelX, vRelY } = vectors;
+
+                    // Update boat position
+                    const dx = vRelX * speedFactor;
+                    const dy = -vRelY * speedFactor;
+                    boatPos.x += dx;
+                    boatPos.y += dy;
+
+                    // Background flow simulation
+                    bgX -= vWaterX * speedFactor;
+                    bgY -= (-vWaterY * speedFactor);
+                    container.style.backgroundPosition = `${bgX}px ${bgY}px`;
+
+                    // Boundary reset
+                    if (boatPos.y < -200 || boatPos.y > window.innerHeight + 200 || boatPos.x < -200 || boatPos.x > window.innerWidth + 200) {
+                        boatPos.x = window.innerWidth / 2;
+                        boatPos.y = window.innerHeight / 2;
+                    }
+
+                    boatElement.style.left = `${boatPos.x}px`;
+                    boatElement.style.top = `${boatPos.y}px`;
+                    vectorOverlay.style.left = `${boatPos.x}px`;
+                    vectorOverlay.style.top = `${boatPos.y}px`;
+                }
+
+                updateTrajectory(vectors);
+                requestAnimationFrame(animate);
+            }
+
+            // Event Listeners
+            boatSpeedSlider.addEventListener('input', updateVectors);
+            boatAngleSlider.addEventListener('input', updateVectors);
+            waterCurrentSlider.addEventListener('input', updateVectors);
+            waterAngleSlider.addEventListener('input', updateVectors);
+
+            playBtn.addEventListener('click', () => { isPaused = false; });
+            stopBtn.addEventListener('click', () => { isPaused = true; });
+            resetBtn.addEventListener('click', () => {
+                boatPos.x = window.innerWidth / 2;
+                boatPos.y = window.innerHeight / 2;
+            });
+
+            // Initial setup
+            updateVectors();
+            animate();
+        });
+    </script>
+</body>
+</html>
