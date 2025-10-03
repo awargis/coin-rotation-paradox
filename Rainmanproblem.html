@@ -1,0 +1,2055 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rain Man Problem - Hyper-Realistic Simulation</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background: #0a0a1a;
+            color: #e0e0ff;
+            overflow: hidden;
+            height: 100vh;
+        }
+        
+        #container {
+            position: relative;
+            width: 100%;
+            height: 100vh;
+        }
+        
+        #canvas-container {
+            width: 100%;
+            height: 100%;
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 1;
+        }
+        
+        #ui-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 2;
+            pointer-events: none;
+        }
+        
+        #controls {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(10, 15, 30, 0.85);
+            border-radius: 15px;
+            padding: 20px;
+            width: 320px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(100, 150, 255, 0.4);
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+            pointer-events: auto;
+            transition: transform 0.3s ease;
+        }
+        
+        #controls.hidden {
+            transform: translateX(-100%);
+        }
+        
+        .control-group {
+            margin-bottom: 18px;
+        }
+        
+        .control-group:last-child {
+            margin-bottom: 0;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-size: 14px;
+            color: #a0c0ff;
+            font-weight: 500;
+        }
+        
+        input[type="range"] {
+            width: 100%;
+            height: 6px;
+            background: rgba(100, 150, 255, 0.2);
+            border-radius: 5px;
+            outline: none;
+            -webkit-appearance: none;
+        }
+        
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #4a9fff;
+            cursor: pointer;
+            box-shadow: 0 0 10px rgba(74, 159, 255, 0.7);
+        }
+        
+        .button-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 5px;
+        }
+        
+        button {
+            flex: 1;
+            padding: 10px 15px;
+            background: rgba(60, 120, 255, 0.3);
+            border: 1px solid rgba(100, 150, 255, 0.5);
+            border-radius: 8px;
+            color: #c0d5ff;
+            cursor: pointer;
+            transition: all 0.3s;
+            pointer-events: auto;
+            font-size: 14px;
+            font-weight: 500;
+        }
+        
+        button:hover {
+            background: rgba(80, 140, 255, 0.5);
+            transform: translateY(-2px);
+        }
+        
+        button.active {
+            background: rgba(100, 180, 255, 0.7);
+            box-shadow: 0 0 15px rgba(100, 180, 255, 0.5);
+        }
+        
+        #vector-display {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(10, 15, 30, 0.85);
+            border-radius: 15px;
+            padding: 20px;
+            width: 320px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(100, 150, 255, 0.4);
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+        }
+        
+        .vector {
+            margin-bottom: 18px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid rgba(100, 150, 255, 0.3);
+        }
+        
+        .vector:last-child {
+            margin-bottom: 0;
+            border-bottom: none;
+        }
+        
+        .vector-label {
+            font-weight: bold;
+            color: #4a9fff;
+            margin-bottom: 8px;
+            font-size: 16px;
+            display: flex;
+            align-items: center;
+        }
+        
+        .vector-label::before {
+            content: "";
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+        
+        .vector-rain::before {
+            background: #4a9fff;
+            box-shadow: 0 0 8px #4a9fff;
+        }
+        
+        .vector-man::before {
+            background: #ff4a4a;
+            box-shadow: 0 0 8px #ff4a4a;
+        }
+        
+        .vector-apparent::before {
+            background: #4aff4a;
+            box-shadow: 0 0 8px #4aff4a;
+        }
+        
+        .vector-tilt::before {
+            background: #ffaa00;
+            box-shadow: 0 0 8px #ffaa00;
+        }
+        
+        .vector-value {
+            font-size: 14px;
+            color: #c0d5ff;
+            margin-bottom: 5px;
+        }
+        
+        .formula {
+            margin-top: 10px;
+            font-style: italic;
+            color: #a0c0ff;
+            font-size: 14px;
+            background: rgba(20, 30, 60, 0.5);
+            padding: 8px 12px;
+            border-radius: 6px;
+            border-left: 3px solid #4a9fff;
+        }
+        
+        #title {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            font-size: 28px;
+            font-weight: bold;
+            color: #4a9fff;
+            text-shadow: 0 0 15px rgba(74, 159, 255, 0.7);
+            background: rgba(10, 15, 30, 0.7);
+            padding: 10px 20px;
+            border-radius: 10px;
+            backdrop-filter: blur(5px);
+            border: 1px solid rgba(100, 150, 255, 0.3);
+        }
+        
+        #instructions {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(10, 15, 30, 0.85);
+            border-radius: 15px;
+            padding: 20px;
+            width: 320px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(100, 150, 255, 0.4);
+            font-size: 14px;
+            line-height: 1.5;
+        }
+        
+        #instructions h3 {
+            margin-bottom: 12px;
+            color: #4a9fff;
+            font-size: 18px;
+        }
+        
+        #vector-canvas {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 350px;
+            height: 250px;
+            z-index: 3;
+            background: rgba(10, 15, 30, 0.9);
+            border-radius: 15px;
+            border: 1px solid rgba(100, 150, 255, 0.4);
+            box-shadow: 0 0 30px rgba(0, 0, 0, 0.7);
+            display: none;
+        }
+        
+        .step-indicator {
+            position: absolute;
+            top: 90px;
+            left: 20px;
+            background: rgba(10, 15, 30, 0.85);
+            border-radius: 10px;
+            padding: 12px 18px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(100, 150, 255, 0.4);
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+        }
+        
+        .step {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background: rgba(100, 150, 255, 0.3);
+            text-align: center;
+            line-height: 24px;
+            margin-right: 8px;
+            font-weight: bold;
+            transition: all 0.3s;
+        }
+        
+        .step.active {
+            background: #4a9fff;
+            box-shadow: 0 0 10px rgba(74, 159, 255, 0.7);
+        }
+        
+        .step-divider {
+            margin: 0 10px;
+            color: #4a9fff;
+        }
+        
+        .value-display {
+            display: inline-block;
+            background: rgba(20, 30, 60, 0.7);
+            padding: 3px 8px;
+            border-radius: 4px;
+            margin-left: 5px;
+            font-family: 'Courier New', monospace;
+        }
+        
+        .slider-value {
+            float: right;
+            font-weight: bold;
+            color: #4a9fff;
+        }
+        
+        .control-help {
+            font-size: 12px;
+            color: #8090c0;
+            margin-top: 5px;
+            font-style: italic;
+        }
+        
+        #camera-controls {
+            position: absolute;
+            top: 150px;
+            left: 20px;
+            background: rgba(10, 15, 30, 0.85);
+            border-radius: 10px;
+            padding: 15px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(100, 150, 255, 0.4);
+            pointer-events: auto;
+        }
+        
+        #camera-controls button {
+            margin: 5px;
+            width: 40px;
+            height: 40px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+        }
+        
+        #time-display {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(10, 15, 30, 0.7);
+            padding: 8px 15px;
+            border-radius: 20px;
+            backdrop-filter: blur(5px);
+            border: 1px solid rgba(100, 150, 255, 0.3);
+            font-size: 14px;
+            color: #a0c0ff;
+        }
+        
+        #audio-control {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(10, 15, 30, 0.85);
+            border-radius: 10px;
+            padding: 10px 15px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(100, 150, 255, 0.4);
+            pointer-events: auto;
+            color: #a0c0ff;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            transition: all 0.3s ease;
+        }
+        
+        #audio-control.hidden {
+            opacity: 0.3;
+            transform: scale(0.9);
+        }
+        
+        #audio-control button {
+            margin-left: 10px;
+            padding: 5px 10px;
+        }
+        
+        #toggle-controls {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(10, 15, 30, 0.85);
+            border-radius: 10px;
+            padding: 10px 15px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(100, 150, 255, 0.4);
+            pointer-events: auto;
+            color: #a0c0ff;
+            font-size: 14px;
+            z-index: 3;
+            transition: all 0.3s;
+        }
+        
+        #toggle-controls:hover {
+            background: rgba(20, 40, 80, 0.85);
+        }
+        
+        #toggle-controls.hidden {
+            left: 0;
+            border-radius: 0 10px 10px 0;
+        }
+        
+        #toggle-controls.hidden::before {
+            content: "◀";
+            margin-right: 5px;
+        }
+        
+        #toggle-controls:not(.hidden)::before {
+            content: "▶";
+            margin-right: 5px;
+        }
+        
+        .rain-drop {
+            position: absolute;
+            width: 2px;
+            height: 15px;
+            background: linear-gradient(to bottom, rgba(200, 220, 255, 0.8), rgba(100, 150, 255, 0.4));
+            border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%;
+            pointer-events: none;
+            z-index: 1;
+        }
+        
+        .splash {
+            position: absolute;
+            width: 10px;
+            height: 5px;
+            background: rgba(180, 200, 255, 0.7);
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: 1;
+        }
+    </style>
+</head>
+<body>
+    <div id="container">
+        <div id="canvas-container"></div>
+        
+        <div id="ui-overlay">
+            <div id="title">Rain Man Problem: Vector Physics Simulation</div>
+            
+            <div class="step-indicator">
+                <span class="step active">1</span> Rain Only 
+                <span class="step-divider">→</span>
+                <span class="step">2</span> Man Walking 
+                <span class="step-divider">→</span>
+                <span class="step">3</span> Apparent Rain
+            </div>
+            
+            <div id="time-display">Time: <span id="time-value">0.0</span>s</div>
+            
+            <div id="vector-display">
+                <div class="vector">
+                    <div class="vector-label vector-rain">Rain Velocity (vᵣ)</div>
+                    <div class="vector-value">Magnitude: <span class="value-display" id="rain-mag">5.0 m/s</span></div>
+                    <div class="vector-value">Direction: Vertical Downward</div>
+                </div>
+                
+                <div class="vector">
+                    <div class="vector-label vector-man">Man's Velocity (vₘ)</div>
+                    <div class="vector-value">Magnitude: <span class="value-display" id="man-mag">0.0 m/s</span></div>
+                    <div class="vector-value">Direction: Horizontal</div>
+                </div>
+                
+                <div class="vector">
+                    <div class="vector-label vector-apparent">Apparent Rain (vᵣₑₗ)</div>
+                    <div class="vector-value">Magnitude: <span class="value-display" id="apparent-mag">5.0 m/s</span></div>
+                    <div class="vector-value">Direction: <span id="apparent-dir">Vertical</span></div>
+                    <div class="formula">vᵣₑₗ = vᵣ - vₘ</div>
+                </div>
+                
+                <div class="vector">
+                    <div class="vector-label vector-tilt">Umbrella Tilt (θ)</div>
+                    <div class="vector-value">Angle: <span class="value-display" id="tilt-angle">0°</span></div>
+                    <div class="formula">tan(θ) = vₘ / vᵣ</div>
+                </div>
+            </div>
+            
+            <div id="camera-controls">
+                <button id="cam-front" title="Front View">⭍</button>
+                <button id="cam-side" title="Side View">⭌</button>
+                <button id="cam-top" title="Top View">⭎</button>
+                <button id="cam-free" title="Free Camera">✥</button>
+            </div>
+            
+            <div id="audio-control">
+                Sound: 
+                <button id="sound-toggle">ON</button>
+            </div>
+            
+            <div id="controls">
+                <div class="control-group">
+                    <label for="rain-speed">Rain Speed (vᵣ): <span class="slider-value" id="rain-value">5.0</span> m/s</label>
+                    <input type="range" id="rain-speed" min="1" max="10" step="0.1" value="5">
+                    <div class="control-help">Adjust the vertical velocity of raindrops</div>
+                </div>
+                
+                <div class="control-group">
+                    <label for="man-speed">Man's Speed (vₘ): <span class="slider-value" id="man-value">0.0</span> m/s</label>
+                    <input type="range" id="man-speed" min="0" max="5" step="0.1" value="0">
+                    <div class="control-help">Control how fast the man walks</div>
+                </div>
+                
+                <div class="control-group">
+                    <label for="wind-speed">Wind Speed: <span class="slider-value" id="wind-value">0.0</span> m/s</label>
+                    <input type="range" id="wind-speed" min="0" max="3" step="0.1" value="0">
+                    <div class="control-help">Add horizontal wind component to rain</div>
+                </div>
+                
+                <div class="control-group">
+                    <label for="rain-intensity">Rain Intensity: <span class="slider-value" id="intensity-value">Medium</span></label>
+                    <input type="range" id="rain-intensity" min="1" max="3" step="1" value="2">
+                    <div class="control-help">Light, Medium, or Heavy rain</div>
+                </div>
+                
+                <div class="button-group">
+                    <button id="walk-toggle">Start Walking</button>
+                    <button id="slow-motion">Slow Motion</button>
+                </div>
+                
+                <div class="button-group">
+                    <button id="vector-triangle">Show Vector Diagram</button>
+                    <button id="reset">Reset Simulation</button>
+                </div>
+            </div>
+            
+            <div id="instructions">
+                <h3>Physics Simulation</h3>
+                <p>Observe how the apparent rain direction changes as the man walks. The umbrella tilts to align with the apparent rain vector vᵣₑₗ = vᵣ - vₘ.</p>
+                <p style="margin-top: 10px;">Use camera controls to view from different angles. Adjust parameters to explore the physics.</p>
+            </div>
+            
+            <canvas id="vector-canvas"></canvas>
+        </div>
+        
+        <button id="toggle-controls">Hide Controls</button>
+    </div>
+
+    <script>
+        // Main simulation variables
+        let scene, camera, renderer, controls;
+        let man, umbrella, rainParticles, ground, puddles = [], trees = [], grassBlades = [];
+        let manVelocity = 0;
+        let rainVelocity = 5;
+        let windVelocity = 0;
+        let isWalking = false;
+        let isSlowMotion = false;
+        let step = 1; // 1: Rain only, 2: Man walking, 3: Apparent rain
+        let startTime = Date.now();
+        let cameraMode = 'free'; // 'free', 'front', 'side', 'top'
+        let rainIntensity = 2; // 1: Light, 2: Medium, 3: Heavy
+        let splashParticles = [];
+        let soundEnabled = true;
+        let rainSound, windSound, walkingSound;
+        let audioContext;
+        let rainGain, windGain, walkingGain;
+        let rainOscillator, windOscillator;
+        let cssRaindrops = [];
+        let cssSplashes = [];
+        
+        // Initialize the scene
+        function init() {
+            // Create scene
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x0a0a2a);
+            scene.fog = new THREE.FogExp2(0x0a0a2a, 0.015);
+            
+            // Create camera
+            camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.set(5, 8, 12);
+            
+            // Create renderer
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+            renderer.toneMapping = THREE.ACESFilmicToneMapping;
+            renderer.toneMappingExposure = 0.8;
+            document.getElementById('canvas-container').appendChild(renderer.domElement);
+            
+            // Add orbit controls
+            controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.05;
+            controls.minDistance = 5;
+            controls.maxDistance = 50;
+            controls.maxPolarAngle = Math.PI / 2 - 0.1;
+            
+            // Add lighting
+            const ambientLight = new THREE.AmbientLight(0x404060, 0.4);
+            scene.add(ambientLight);
+            
+            const directionalLight = new THREE.DirectionalLight(0xa0c0ff, 0.9);
+            directionalLight.position.set(10, 20, 5);
+            directionalLight.castShadow = true;
+            directionalLight.shadow.mapSize.width = 2048;
+            directionalLight.shadow.mapSize.height = 2048;
+            directionalLight.shadow.camera.near = 0.5;
+            directionalLight.shadow.camera.far = 50;
+            directionalLight.shadow.camera.left = -20;
+            directionalLight.shadow.camera.right = 20;
+            directionalLight.shadow.camera.top = 20;
+            directionalLight.shadow.camera.bottom = -20;
+            scene.add(directionalLight);
+            
+            // Add street lights
+            const streetLight1 = new THREE.PointLight(0xffaa55, 0.8, 20);
+            streetLight1.position.set(-15, 8, 0);
+            streetLight1.castShadow = true;
+            scene.add(streetLight1);
+            
+            const streetLight2 = new THREE.PointLight(0xffaa55, 0.8, 20);
+            streetLight2.position.set(15, 8, 0);
+            streetLight2.castShadow = true;
+            scene.add(streetLight2);
+            
+            // Create city environment
+            createCityEnvironment();
+            
+            // Create man and umbrella
+            createMan();
+            
+            // Create rain
+            createRain();
+            
+            // Create puddles
+            createPuddles();
+            
+            // Create trees
+            createTrees();
+            
+            // Create grass
+            createGrass();
+            
+            // Initialize audio
+            initAudio();
+            
+            // Add event listeners
+            setupEventListeners();
+            
+            // Start animation loop
+            animate();
+            
+            // Handle window resize
+            window.addEventListener('resize', onWindowResize);
+            
+            // Create CSS raindrops for more realistic effect
+            createCSSRaindrops();
+        }
+        
+        // Initialize audio system
+        function initAudio() {
+            try {
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                
+                // Create gain nodes for controlling volume
+                rainGain = audioContext.createGain();
+                windGain = audioContext.createGain();
+                walkingGain = audioContext.createGain();
+                
+                // Connect gain nodes to destination
+                rainGain.connect(audioContext.destination);
+                windGain.connect(audioContext.destination);
+                walkingGain.connect(audioContext.destination);
+                
+                // Set initial volumes
+                rainGain.gain.value = 0.3;
+                windGain.gain.value = 0;
+                walkingGain.gain.value = 0;
+                
+                // Create rain sound (brown noise)
+                rainOscillator = audioContext.createOscillator();
+                const rainFilter = audioContext.createBiquadFilter();
+                rainFilter.type = 'lowpass';
+                rainFilter.frequency.value = 500;
+                
+                rainOscillator.connect(rainFilter);
+                rainFilter.connect(rainGain);
+                
+                // Brown noise generation
+                const bufferSize = 2 * audioContext.sampleRate;
+                const noiseBuffer = audioContext.createBuffer(1, bufferSize, audioContext.sampleRate);
+                const output = noiseBuffer.getChannelData(0);
+                
+                let lastOut = 0;
+                for (let i = 0; i < bufferSize; i++) {
+                    const white = Math.random() * 2 - 1;
+                    lastOut = (lastOut + (0.02 * white)) / 1.02;
+                    output[i] = lastOut * 3.5;
+                }
+                
+                const brownNoise = audioContext.createBufferSource();
+                brownNoise.buffer = noiseBuffer;
+                brownNoise.loop = true;
+                brownNoise.connect(rainFilter);
+                
+                // Start the sounds
+                rainOscillator.start();
+                brownNoise.start();
+                
+                // Create wind sound
+                windOscillator = audioContext.createOscillator();
+                const windFilter = audioContext.createBiquadFilter();
+                windFilter.type = 'highpass';
+                windFilter.frequency.value = 200;
+                
+                windOscillator.connect(windFilter);
+                windFilter.connect(windGain);
+                windOscillator.frequency.value = 100;
+                windOscillator.type = 'sawtooth';
+                windOscillator.start();
+                
+                // Create walking sound (footsteps)
+                // This would be more complex in a real implementation
+                
+                updateAudio();
+            } catch (e) {
+                console.error("Audio initialization failed:", e);
+            }
+        }
+        
+        // Update audio based on simulation state
+        function updateAudio() {
+            if (!audioContext) return;
+            
+            // Update rain sound based on intensity
+            rainGain.gain.value = soundEnabled ? (rainIntensity * 0.1) : 0;
+            
+            // Update wind sound based on wind velocity
+            windGain.gain.value = soundEnabled ? (windVelocity * 0.1) : 0;
+            if (windOscillator) {
+                windOscillator.frequency.value = 80 + (windVelocity * 10);
+            }
+            
+            // Update walking sound
+            walkingGain.gain.value = soundEnabled && isWalking ? 0.2 : 0;
+        }
+        
+        // Create CSS raindrops for more realistic visual effect
+        function createCSSRaindrops() {
+            const container = document.getElementById('container');
+            const dropCount = rainIntensity === 1 ? 50 : (rainIntensity === 2 ? 100 : 200);
+            
+            for (let i = 0; i < dropCount; i++) {
+                const drop = document.createElement('div');
+                drop.className = 'rain-drop';
+                
+                // Random position
+                const left = Math.random() * 100;
+                const top = -Math.random() * 100;
+                
+                // Random animation delay and duration
+                const delay = Math.random() * 5;
+                const duration = 1 + Math.random() * 2;
+                
+                drop.style.left = `${left}%`;
+                drop.style.top = `${top}%`;
+                drop.style.animation = `fall ${duration}s linear ${delay}s infinite`;
+                
+                container.appendChild(drop);
+                cssRaindrops.push(drop);
+            }
+            
+            // Add CSS animation
+            const style = document.createElement('style');
+            style.textContent = `
+                @keyframes fall {
+                    to {
+                        transform: translateY(100vh);
+                    }
+                }
+                
+                @keyframes splash {
+                    0% {
+                        transform: scale(0);
+                        opacity: 0.7;
+                    }
+                    50% {
+                        transform: scale(1);
+                        opacity: 0.5;
+                    }
+                    100% {
+                        transform: scale(0);
+                        opacity: 0;
+                    }
+                }
+            `;
+            document.head.appendChild(style);
+        }
+        
+        // Update CSS raindrops based on simulation parameters
+        function updateCSSRaindrops() {
+            // Update number of drops based on intensity
+            const targetCount = rainIntensity === 1 ? 50 : (rainIntensity === 2 ? 100 : 200);
+            
+            if (cssRaindrops.length < targetCount) {
+                // Add more drops
+                const container = document.getElementById('container');
+                const toAdd = targetCount - cssRaindrops.length;
+                
+                for (let i = 0; i < toAdd; i++) {
+                    const drop = document.createElement('div');
+                    drop.className = 'rain-drop';
+                    
+                    const left = Math.random() * 100;
+                    const top = -Math.random() * 100;
+                    const delay = Math.random() * 5;
+                    const duration = 1 + Math.random() * 2;
+                    
+                    drop.style.left = `${left}%`;
+                    drop.style.top = `${top}%`;
+                    drop.style.animation = `fall ${duration}s linear ${delay}s infinite`;
+                    
+                    container.appendChild(drop);
+                    cssRaindrops.push(drop);
+                }
+            } else if (cssRaindrops.length > targetCount) {
+                // Remove excess drops
+                const toRemove = cssRaindrops.length - targetCount;
+                for (let i = 0; i < toRemove; i++) {
+                    const drop = cssRaindrops.pop();
+                    if (drop && drop.parentNode) {
+                        drop.parentNode.removeChild(drop);
+                    }
+                }
+            }
+            
+            // Update animation speed based on rain velocity
+            const speedFactor = rainVelocity / 5;
+            cssRaindrops.forEach(drop => {
+                const animation = drop.style.animation;
+                const match = animation.match(/fall (\d+\.?\d*)s/);
+                if (match) {
+                    const originalDuration = parseFloat(match[1]);
+                    const newDuration = originalDuration / speedFactor;
+                    drop.style.animation = animation.replace(/fall \d+\.?\d*s/, `fall ${newDuration}s`);
+                }
+            });
+        }
+        
+        // Create splash effects using CSS
+        function createCSSSplash(x, y) {
+            const container = document.getElementById('container');
+            const splash = document.createElement('div');
+            splash.className = 'splash';
+            
+            splash.style.left = `${x}%`;
+            splash.style.top = `${y}%`;
+            splash.style.animation = `splash 0.5s ease-out forwards`;
+            
+            container.appendChild(splash);
+            cssSplashes.push(splash);
+            
+            // Remove splash after animation completes
+            setTimeout(() => {
+                if (splash.parentNode) {
+                    splash.parentNode.removeChild(splash);
+                }
+                const index = cssSplashes.indexOf(splash);
+                if (index > -1) {
+                    cssSplashes.splice(index, 1);
+                }
+            }, 500);
+        }
+        
+        // Create the city environment
+        function createCityEnvironment() {
+            // Create ground with more detail
+            const groundGeometry = new THREE.PlaneGeometry(100, 100, 20, 20);
+            const groundMaterial = new THREE.MeshStandardMaterial({ 
+                color: 0x202030,
+                roughness: 0.9,
+                metalness: 0.1
+            });
+            ground = new THREE.Mesh(groundGeometry, groundMaterial);
+            ground.rotation.x = -Math.PI / 2;
+            ground.receiveShadow = true;
+            
+            // Add displacement for more realistic ground
+            const vertices = groundGeometry.attributes.position;
+            for (let i = 0; i < vertices.count; i++) {
+                const x = vertices.getX(i);
+                const z = vertices.getZ(i);
+                // Add subtle unevenness to the ground
+                const displacement = (Math.sin(x * 0.1) * Math.cos(z * 0.1)) * 0.05;
+                vertices.setY(i, displacement);
+            }
+            vertices.needsUpdate = true;
+            groundGeometry.computeVertexNormals();
+            
+            scene.add(ground);
+            
+            // Add road
+            const roadGeometry = new THREE.PlaneGeometry(20, 100);
+            const roadMaterial = new THREE.MeshStandardMaterial({ 
+                color: 0x333344,
+                roughness: 0.7,
+                metalness: 0.2
+            });
+            const road = new THREE.Mesh(roadGeometry, roadMaterial);
+            road.rotation.x = -Math.PI / 2;
+            road.position.y = 0.01;
+            road.receiveShadow = true;
+            scene.add(road);
+            
+            // Add road markings with reflective material
+            for (let i = -50; i < 50; i += 10) {
+                const markingGeometry = new THREE.PlaneGeometry(1, 0.2);
+                const markingMaterial = new THREE.MeshStandardMaterial({ 
+                    color: 0xffffaa,
+                    emissive: 0x333300,
+                    emissiveIntensity: 0.2
+                });
+                const marking = new THREE.Mesh(markingGeometry, markingMaterial);
+                marking.rotation.x = -Math.PI / 2;
+                marking.position.set(0, 0.02, i);
+                scene.add(marking);
+            }
+            
+            // Add sidewalk with texture-like appearance
+            const sidewalkGeometry = new THREE.PlaneGeometry(5, 100, 10, 10);
+            const sidewalkMaterial = new THREE.MeshStandardMaterial({ 
+                color: 0x555566,
+                roughness: 0.8
+            });
+            const sidewalk1 = new THREE.Mesh(sidewalkGeometry, sidewalkMaterial);
+            sidewalk1.rotation.x = -Math.PI / 2;
+            sidewalk1.position.set(-12.5, 0.01, 0);
+            sidewalk1.receiveShadow = true;
+            scene.add(sidewalk1);
+            
+            const sidewalk2 = new THREE.Mesh(sidewalkGeometry, sidewalkMaterial);
+            sidewalk2.rotation.x = -Math.PI / 2;
+            sidewalk2.position.set(12.5, 0.01, 0);
+            sidewalk2.receiveShadow = true;
+            scene.add(sidewalk2);
+            
+            // Add curb
+            const curbGeometry = new THREE.BoxGeometry(0.3, 0.15, 100);
+            const curbMaterial = new THREE.MeshStandardMaterial({ color: 0x666677 });
+            const curb1 = new THREE.Mesh(curbGeometry, curbMaterial);
+            curb1.position.set(-10, 0.075, 0);
+            curb1.castShadow = true;
+            scene.add(curb1);
+            
+            const curb2 = new THREE.Mesh(curbGeometry, curbMaterial);
+            curb2.position.set(10, 0.075, 0);
+            curb2.castShadow = true;
+            scene.add(curb2);
+            
+            // Add buildings in the background with more detail
+            for (let i = -40; i <= 40; i += 20) {
+                if (i === 0) continue; // Skip center where man will be
+                
+                const buildingHeight = 15 + Math.random() * 15;
+                const buildingWidth = 8 + Math.random() * 4;
+                const buildingDepth = 8 + Math.random() * 4;
+                
+                const buildingGeometry = new THREE.BoxGeometry(buildingWidth, buildingHeight, buildingDepth);
+                const buildingMaterial = new THREE.MeshStandardMaterial({ 
+                    color: 0x1a1a2a,
+                    roughness: 0.7,
+                    metalness: 0.3
+                });
+                const building = new THREE.Mesh(buildingGeometry, buildingMaterial);
+                building.position.set(i, buildingHeight/2, -30);
+                building.castShadow = true;
+                building.receiveShadow = true;
+                scene.add(building);
+                
+                // Add detailed windows
+                for (let j = 2; j < buildingHeight - 1; j += 3) {
+                    for (let k = -Math.floor(buildingWidth/2) + 1; k < buildingWidth/2; k += 2.5) {
+                        const windowGeometry = new THREE.PlaneGeometry(1.8, 1.8);
+                        const windowMaterial = new THREE.MeshStandardMaterial({ 
+                            color: Math.random() > 0.7 ? 0xffaa00 : 0x0066ff,
+                            emissive: Math.random() > 0.7 ? 0x333300 : 0x001133,
+                            emissiveIntensity: 0.3
+                        });
+                        const window = new THREE.Mesh(windowGeometry, windowMaterial);
+                        window.position.set(i + k, j, -30 - buildingDepth/2 - 0.01);
+                        scene.add(window);
+                    }
+                }
+                
+                // Add some buildings on the other side
+                if (Math.random() > 0.3) {
+                    const building2 = new THREE.Mesh(buildingGeometry, buildingMaterial);
+                    building2.position.set(i, buildingHeight/2, 30);
+                    building2.castShadow = true;
+                    building2.receiveShadow = true;
+                    scene.add(building2);
+                    
+                    // Add windows to the other side
+                    for (let j = 2; j < buildingHeight - 1; j += 3) {
+                        for (let k = -Math.floor(buildingWidth/2) + 1; k < buildingWidth/2; k += 2.5) {
+                            const windowGeometry = new THREE.PlaneGeometry(1.8, 1.8);
+                            const windowMaterial = new THREE.MeshStandardMaterial({ 
+                                color: Math.random() > 0.7 ? 0xffaa00 : 0x0066ff,
+                                emissive: Math.random() > 0.7 ? 0x333300 : 0x001133,
+                                emissiveIntensity: 0.3
+                            });
+                            const window = new THREE.Mesh(windowGeometry, windowMaterial);
+                            window.position.set(i + k, j, 30 + buildingDepth/2 + 0.01);
+                            window.rotation.y = Math.PI;
+                            scene.add(window);
+                        }
+                    }
+                }
+            }
+        }
+        
+        // Create trees
+        function createTrees() {
+            // Create several trees along the sidewalk
+            const treePositions = [
+                { x: -14, z: -20 },
+                { x: -14, z: 0 },
+                { x: -14, z: 20 },
+                { x: 14, z: -25 },
+                { x: 14, z: -5 },
+                { x: 14, z: 15 }
+            ];
+            
+            treePositions.forEach(pos => {
+                const treeGroup = new THREE.Group();
+                
+                // Tree trunk
+                const trunkHeight = 3 + Math.random() * 2;
+                const trunkGeometry = new THREE.CylinderGeometry(0.3, 0.4, trunkHeight, 8);
+                const trunkMaterial = new THREE.MeshStandardMaterial({ 
+                    color: 0x5d4037,
+                    roughness: 0.9
+                });
+                const trunk = new THREE.Mesh(trunkGeometry, trunkMaterial);
+                trunk.position.y = trunkHeight / 2;
+                trunk.castShadow = true;
+                treeGroup.add(trunk);
+                
+                // Tree foliage (leaves)
+                const foliageRadius = 2 + Math.random();
+                const foliageGeometry = new THREE.SphereGeometry(foliageRadius, 8, 6);
+                const foliageMaterial = new THREE.MeshStandardMaterial({ 
+                    color: 0x2e7d32,
+                    roughness: 0.8
+                });
+                const foliage = new THREE.Mesh(foliageGeometry, foliageMaterial);
+                foliage.position.y = trunkHeight + foliageRadius * 0.7;
+                foliage.castShadow = true;
+                treeGroup.add(foliage);
+                
+                // Position the tree
+                treeGroup.position.set(pos.x, 0, pos.z);
+                scene.add(treeGroup);
+                trees.push(treeGroup);
+            });
+        }
+        
+        // Create grass
+        function createGrass() {
+            // Create grass field on the sides of the road
+            const grassGeometry = new THREE.PlaneGeometry(15, 100, 20, 20);
+            const grassMaterial = new THREE.MeshStandardMaterial({ 
+                color: 0x33691e,
+                roughness: 0.9,
+                metalness: 0.1
+            });
+            
+            const grass1 = new THREE.Mesh(grassGeometry, grassMaterial);
+            grass1.rotation.x = -Math.PI / 2;
+            grass1.position.set(-20, 0.005, 0);
+            grass1.receiveShadow = true;
+            scene.add(grass1);
+            
+            const grass2 = new THREE.Mesh(grassGeometry, grassMaterial);
+            grass2.rotation.x = -Math.PI / 2;
+            grass2.position.set(20, 0.005, 0);
+            grass2.receiveShadow = true;
+            scene.add(grass2);
+            
+            // Add individual grass blades for more realism
+            for (let i = 0; i < 200; i++) {
+                const bladeWidth = 0.05 + Math.random() * 0.1;
+                const bladeHeight = 0.2 + Math.random() * 0.3;
+                const bladeGeometry = new THREE.PlaneGeometry(bladeWidth, bladeHeight);
+                const bladeMaterial = new THREE.MeshStandardMaterial({ 
+                    color: 0x4caf50,
+                    side: THREE.DoubleSide,
+                    transparent: true,
+                    alphaTest: 0.5
+                });
+                
+                const blade = new THREE.Mesh(bladeGeometry, bladeMaterial);
+                
+                // Position on the grass areas
+                const side = Math.random() > 0.5 ? 1 : -1;
+                blade.position.set(
+                    (side * 20) + (Math.random() - 0.5) * 10,
+                    bladeHeight / 2,
+                    (Math.random() - 0.5) * 80
+                );
+                
+                blade.rotation.x = -Math.PI / 2;
+                blade.rotation.z = (Math.random() - 0.5) * 0.5;
+                
+                scene.add(blade);
+                grassBlades.push(blade);
+            }
+        }
+        
+        // Create the man and umbrella with more detail
+        function createMan() {
+            const manGroup = new THREE.Group();
+            
+            // Body with more realistic proportions
+            const bodyGeometry = new THREE.CylinderGeometry(0.4, 0.5, 1.8, 8);
+            const bodyMaterial = new THREE.MeshStandardMaterial({ 
+                color: 0x3366cc,
+                roughness: 0.8
+            });
+            const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
+            body.position.y = 0.9;
+            body.castShadow = true;
+            manGroup.add(body);
+            
+            // Head with more detail
+            const headGeometry = new THREE.SphereGeometry(0.5, 16, 16);
+            const headMaterial = new THREE.MeshStandardMaterial({ 
+                color: 0xffccaa,
+                roughness: 0.7
+            });
+            const head = new THREE.Mesh(headGeometry, headMaterial);
+            head.position.y = 2.0;
+            head.castShadow = true;
+            manGroup.add(head);
+            
+            // Legs with more realistic shape
+            const legGeometry = new THREE.CylinderGeometry(0.15, 0.2, 1.5, 8);
+            const legMaterial = new THREE.MeshStandardMaterial({ color: 0x2244aa });
+            
+            const leftLeg = new THREE.Mesh(legGeometry, legMaterial);
+            leftLeg.position.set(-0.15, 0.75, 0);
+            leftLeg.castShadow = true;
+            manGroup.add(leftLeg);
+            
+            const rightLeg = new THREE.Mesh(legGeometry, legMaterial);
+            rightLeg.position.set(0.15, 0.75, 0);
+            rightLeg.castShadow = true;
+            manGroup.add(rightLeg);
+            
+            // Arms with more realistic shape
+            const armGeometry = new THREE.CylinderGeometry(0.12, 0.15, 1.2, 8);
+            const armMaterial = new THREE.MeshStandardMaterial({ color: 0x3366cc });
+            
+            const leftArm = new THREE.Mesh(armGeometry, armMaterial);
+            leftArm.position.set(-0.7, 1.7, 0);
+            leftArm.rotation.z = Math.PI / 6;
+            leftArm.castShadow = true;
+            manGroup.add(leftArm);
+            
+            const rightArm = new THREE.Mesh(armGeometry, armMaterial);
+            rightArm.position.set(0.7, 1.7, 0);
+            rightArm.rotation.z = -Math.PI / 6;
+            rightArm.castShadow = true;
+            manGroup.add(rightArm);
+            
+            // Create detailed umbrella
+            const umbrellaGroup = new THREE.Group();
+            
+            // Umbrella canopy with more realistic shape
+            const canopyGeometry = new THREE.ConeGeometry(2.2, 0.6, 16);
+            const canopyMaterial = new THREE.MeshStandardMaterial({ 
+                color: 0xcc3333,
+                roughness: 0.6,
+                metalness: 0.2
+            });
+            const canopy = new THREE.Mesh(canopyGeometry, canopyMaterial);
+            canopy.rotation.x = Math.PI;
+            canopy.position.y = 0.3;
+            canopy.castShadow = true;
+            umbrellaGroup.add(canopy);
+            
+            // Umbrella ribs
+            const ribGeometry = new THREE.CylinderGeometry(0.02, 0.02, 2.2, 8);
+            const ribMaterial = new THREE.MeshStandardMaterial({ color: 0x333333 });
+            
+            for (let i = 0; i < 8; i++) {
+                const angle = (i / 8) * Math.PI * 2;
+                const rib = new THREE.Mesh(ribGeometry, ribMaterial);
+                rib.position.set(Math.sin(angle) * 1.1, 0.15, Math.cos(angle) * 1.1);
+                rib.rotation.z = -Math.PI / 2;
+                rib.rotation.y = angle;
+                umbrellaGroup.add(rib);
+            }
+            
+            // Umbrella handle
+            const handleGeometry = new THREE.CylinderGeometry(0.05, 0.05, 3, 8);
+            const handleMaterial = new THREE.MeshStandardMaterial({ color: 0x333333 });
+            const handle = new THREE.Mesh(handleGeometry, handleMaterial);
+            handle.position.y = -1.5;
+            umbrellaGroup.add(handle);
+            
+            // Position umbrella in man's hand
+            umbrellaGroup.position.set(0.7, 2.0, 0);
+            umbrellaGroup.rotation.z = -Math.PI / 6;
+            
+            manGroup.add(umbrellaGroup);
+            umbrella = umbrellaGroup;
+            
+            // Position man in the scene
+            manGroup.position.set(0, 0, 0);
+            scene.add(manGroup);
+            man = manGroup;
+        }
+        
+        // Create rain particle system with enhanced realism
+        function createRain() {
+            const rainCount = rainIntensity === 1 ? 1500 : (rainIntensity === 2 ? 3000 : 5000);
+            const rainGeometry = new THREE.BufferGeometry();
+            
+            const positions = new Float32Array(rainCount * 3);
+            const velocities = new Float32Array(rainCount * 3);
+            const sizes = new Float32Array(rainCount);
+            const times = new Float32Array(rainCount);
+            
+            for (let i = 0; i < rainCount; i++) {
+                const i3 = i * 3;
+                
+                // Random positions in a large area
+                positions[i3] = (Math.random() - 0.5) * 100;
+                positions[i3 + 1] = Math.random() * 40 + 10;
+                positions[i3 + 2] = (Math.random() - 0.5) * 100;
+                
+                // Random velocities (mostly downward with wind effect)
+                velocities[i3] = (Math.random() - 0.5) * 0.5 - windVelocity;
+                velocities[i3 + 1] = -rainVelocity - Math.random() * 2;
+                velocities[i3 + 2] = (Math.random() - 0.5) * 0.5;
+                
+                // Random sizes for variety
+                sizes[i] = 0.5 + Math.random() * 1.5;
+                
+                // Random start times for variety
+                times[i] = Math.random() * 100;
+            }
+            
+            rainGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+            rainGeometry.setAttribute('velocity', new THREE.BufferAttribute(velocities, 3));
+            rainGeometry.setAttribute('size', new THREE.BufferAttribute(sizes, 1));
+            rainGeometry.setAttribute('time', new THREE.BufferAttribute(times, 1));
+            
+            const rainMaterial = new THREE.ShaderMaterial({
+                uniforms: {
+                    globalTime: { value: 0 },
+                    rainSpeed: { value: rainVelocity },
+                    windSpeed: { value: windVelocity }
+                },
+                vertexShader: `
+                    attribute vec3 velocity;
+                    attribute float size;
+                    attribute float time;
+                    uniform float globalTime;
+                    uniform float rainSpeed;
+                    uniform float windSpeed;
+                    
+                    varying float vAlpha;
+                    
+                    void main() {
+                        float t = mod(globalTime + time, 100.0);
+                        vec3 newPosition = position;
+                        newPosition += velocity * t;
+                        
+                        // Add wind effect
+                        newPosition.x += windSpeed * t * 2.0;
+                        
+                        // Reset particles that fall below ground
+                        if (newPosition.y < 0.0) {
+                            newPosition.y = 40.0;
+                            newPosition.x = (fract(sin(t + position.x) * 43758.5453) - 0.5) * 100.0;
+                            newPosition.z = (fract(cos(t + position.z) * 43758.5453) - 0.5) * 100.0;
+                        }
+                        
+                        // Calculate alpha based on position (fade near top and bottom)
+                        vAlpha = 1.0 - smoothstep(30.0, 40.0, newPosition.y) - smoothstep(0.0, 5.0, newPosition.y);
+                        
+                        gl_Position = projectionMatrix * modelViewMatrix * vec4(newPosition, 1.0);
+                        gl_PointSize = size * (20.0 / - (modelViewMatrix * vec4(newPosition, 1.0)).z);
+                    }
+                `,
+                fragmentShader: `
+                    varying float vAlpha;
+                    
+                    void main() {
+                        // Create a raindrop shape with motion blur
+                        vec2 coord = gl_PointCoord - vec2(0.5);
+                        float dist = length(coord);
+                        
+                        // Elongate the drop vertically
+                        coord.y *= 1.5;
+                        dist = length(coord);
+                        
+                        if (dist > 0.3) {
+                            discard;
+                        }
+                        
+                        // Add gradient from top to bottom
+                        float alpha = 1.0 - smoothstep(0.2, 0.3, dist);
+                        alpha *= 1.0 - gl_PointCoord.y; // Darker at bottom
+                        
+                        gl_FragColor = vec4(0.7, 0.8, 1.0, alpha * vAlpha * 0.8);
+                    }
+                `,
+                transparent: true,
+                blending: THREE.AdditiveBlending,
+                depthWrite: false
+            });
+            
+            rainParticles = new THREE.Points(rainGeometry, rainMaterial);
+            scene.add(rainParticles);
+        }
+        
+        // Create puddles with ripples
+        function createPuddles() {
+            for (let i = 0; i < 8; i++) {
+                const puddleRadius = 1 + Math.random() * 2;
+                const puddleGeometry = new THREE.CircleGeometry(puddleRadius, 32);
+                const puddleMaterial = new THREE.MeshStandardMaterial({ 
+                    color: 0x1a2a4a,
+                    transparent: true,
+                    opacity: 0.6,
+                    roughness: 0.1,
+                    metalness: 0.9
+                });
+                const puddle = new THREE.Mesh(puddleGeometry, puddleMaterial);
+                puddle.rotation.x = -Math.PI / 2;
+                puddle.position.set(
+                    -15 + Math.random() * 30,
+                    0.02,
+                    -40 + Math.random() * 80
+                );
+                puddle.userData = {
+                    originalY: 0.02,
+                    rippleTime: Math.random() * 10,
+                    rippleSpeed: 0.5 + Math.random() * 1.0
+                };
+                scene.add(puddle);
+                puddles.push(puddle);
+            }
+        }
+        
+        // Update rain based on current parameters
+        function updateRain() {
+            if (rainParticles && rainParticles.material) {
+                rainParticles.material.uniforms.rainSpeed.value = rainVelocity;
+                rainParticles.material.uniforms.windSpeed.value = windVelocity;
+                
+                // Update rain velocities based on man's movement and wind
+                const positions = rainParticles.geometry.attributes.position.array;
+                const velocities = rainParticles.geometry.attributes.velocity.array;
+                
+                for (let i = 0; i < velocities.length; i += 3) {
+                    // Adjust horizontal velocity based on man's movement (apparent wind) and wind speed
+                    if (isWalking) {
+                        velocities[i] = (Math.random() - 0.5) * 0.5 - manVelocity * 0.1 - windVelocity;
+                    } else {
+                        velocities[i] = (Math.random() - 0.5) * 0.5 - windVelocity;
+                    }
+                    
+                    // Update downward velocity based on rain speed setting
+                    velocities[i + 1] = -rainVelocity - Math.random() * 2;
+                }
+                
+                rainParticles.geometry.attributes.velocity.needsUpdate = true;
+            }
+        }
+        
+        // Update umbrella tilt based on velocities
+        function updateUmbrella() {
+            if (!umbrella) return;
+            
+            // Calculate tilt angle based on velocities
+            let tiltAngle = 0;
+            if (rainVelocity > 0) {
+                // Include wind effect in the tilt calculation
+                const horizontalVelocity = manVelocity + windVelocity;
+                tiltAngle = Math.atan(horizontalVelocity / rainVelocity);
+            }
+            
+            // Limit the tilt angle
+            tiltAngle = Math.min(tiltAngle, Math.PI / 3);
+            
+            // Apply tilt to umbrella
+            umbrella.rotation.z = -Math.PI / 6 - tiltAngle;
+            
+            // Update UI display
+            document.getElementById('tilt-angle').textContent = `${(tiltAngle * 180 / Math.PI).toFixed(1)}°`;
+            
+            // Update apparent rain direction
+            const horizontalComponent = manVelocity + windVelocity;
+            const apparentMag = Math.sqrt(rainVelocity * rainVelocity + horizontalComponent * horizontalComponent);
+            document.getElementById('apparent-mag').textContent = `${apparentMag.toFixed(1)} m/s`;
+            
+            if (horizontalComponent > 0) {
+                const apparentAngle = Math.atan(horizontalComponent / rainVelocity);
+                document.getElementById('apparent-dir').textContent = `${(apparentAngle * 180 / Math.PI).toFixed(1)}° from vertical`;
+            } else {
+                document.getElementById('apparent-dir').textContent = 'Vertical';
+            }
+        }
+        
+        // Update puddle ripples
+        function updatePuddles(time) {
+            puddles.forEach(puddle => {
+                puddle.userData.rippleTime += puddle.userData.rippleSpeed * 0.02;
+                const ripple = Math.sin(puddle.userData.rippleTime) * 0.005;
+                puddle.position.y = puddle.userData.originalY + ripple;
+                
+                // Randomly create new ripples
+                if (Math.random() < 0.01) {
+                    puddle.userData.rippleTime = 0;
+                }
+            });
+        }
+        
+        // Create splash effects
+        function createSplash(x, y, z) {
+            const splashCount = 5 + Math.floor(Math.random() * 5);
+            const splashGroup = new THREE.Group();
+            
+            for (let i = 0; i < splashCount; i++) {
+                const splashGeometry = new THREE.SphereGeometry(0.05, 4, 4);
+                const splashMaterial = new THREE.MeshBasicMaterial({
+                    color: 0x88aaff,
+                    transparent: true,
+                    opacity: 0.7
+                });
+                
+                const splash = new THREE.Mesh(splashGeometry, splashMaterial);
+                
+                // Random direction and speed
+                const angle = Math.random() * Math.PI * 2;
+                const speed = 0.5 + Math.random() * 0.5;
+                
+                splash.userData = {
+                    velocity: new THREE.Vector3(
+                        Math.cos(angle) * speed,
+                        1 + Math.random(),
+                        Math.sin(angle) * speed
+                    ),
+                    life: 0,
+                    maxLife: 0.5 + Math.random() * 0.5
+                };
+                
+                splash.position.set(x, y, z);
+                splashGroup.add(splash);
+            }
+            
+            scene.add(splashGroup);
+            splashParticles.push(splashGroup);
+            
+            return splashGroup;
+        }
+        
+        // Update splash particles
+        function updateSplashes(deltaTime) {
+            for (let i = splashParticles.length - 1; i >= 0; i--) {
+                const splashGroup = splashParticles[i];
+                let allDead = true;
+                
+                for (let j = 0; j < splashGroup.children.length; j++) {
+                    const splash = splashGroup.children[j];
+                    splash.userData.life += deltaTime;
+                    
+                    if (splash.userData.life < splash.userData.maxLife) {
+                        allDead = false;
+                        
+                        // Apply velocity
+                        splash.position.x += splash.userData.velocity.x * deltaTime;
+                        splash.position.y += splash.userData.velocity.y * deltaTime;
+                        splash.position.z += splash.userData.velocity.z * deltaTime;
+                        
+                        // Apply gravity
+                        splash.userData.velocity.y -= 5 * deltaTime;
+                        
+                        // Fade out
+                        const lifeRatio = splash.userData.life / splash.userData.maxLife;
+                        splash.material.opacity = 0.7 * (1 - lifeRatio);
+                        splash.scale.setScalar(1 + lifeRatio);
+                    } else {
+                        splashGroup.remove(splash);
+                        j--;
+                    }
+                }
+                
+                if (allDead || splashGroup.children.length === 0) {
+                    scene.remove(splashGroup);
+                    splashParticles.splice(i, 1);
+                }
+            }
+        }
+        
+        // Simulate rain hitting surfaces
+        function simulateRainImpacts(time, deltaTime) {
+            if (!rainParticles) return;
+            
+            const positions = rainParticles.geometry.attributes.position.array;
+            const velocities = rainParticles.geometry.attributes.velocity.array;
+            
+            for (let i = 0; i < positions.length; i += 3) {
+                // Check if raindrop is near the ground
+                if (positions[i + 1] < 0.5 && velocities[i + 1] < 0) {
+                    // Small chance to create a splash
+                    if (Math.random() < 0.01) {
+                        createSplash(
+                            positions[i],
+                            0.1,
+                            positions[i + 2]
+                        );
+                        
+                        // Create CSS splash effect
+                        const screenPos = worldToScreen(
+                            positions[i],
+                            0.1,
+                            positions[i + 2]
+                        );
+                        if (screenPos) {
+                            createCSSSplash(screenPos.x, screenPos.y);
+                        }
+                    }
+                    
+                    // Reset the raindrop
+                    positions[i + 1] = 40.0;
+                    positions[i] = (Math.random() - 0.5) * 100;
+                    positions[i + 2] = (Math.random() - 0.5) * 100;
+                }
+                
+                // Check if raindrop hits the umbrella
+                if (umbrella && man) {
+                    const umbrellaPos = new THREE.Vector3();
+                    umbrella.getWorldPosition(umbrellaPos);
+                    
+                    const raindropPos = new THREE.Vector3(
+                        positions[i],
+                        positions[i + 1],
+                        positions[i + 2]
+                    );
+                    
+                    const distance = raindropPos.distanceTo(umbrellaPos);
+                    
+                    if (distance < 2.5 && velocities[i + 1] < 0) {
+                        // Small chance to create a splash on umbrella
+                        if (Math.random() < 0.05) {
+                            createSplash(
+                                positions[i],
+                                positions[i + 1],
+                                positions[i + 2]
+                            );
+                            
+                            // Create CSS splash effect
+                            const screenPos = worldToScreen(
+                                positions[i],
+                                positions[i + 1],
+                                positions[i + 2]
+                            );
+                            if (screenPos) {
+                                createCSSSplash(screenPos.x, screenPos.y);
+                            }
+                        }
+                        
+                        // Reset the raindrop
+                        positions[i + 1] = 40.0;
+                        positions[i] = (Math.random() - 0.5) * 100;
+                        positions[i + 2] = (Math.random() - 0.5) * 100;
+                    }
+                }
+            }
+            
+            rainParticles.geometry.attributes.position.needsUpdate = true;
+        }
+        
+        // Convert world coordinates to screen coordinates
+        function worldToScreen(x, y, z) {
+            const vector = new THREE.Vector3(x, y, z);
+            vector.project(camera);
+            
+            return {
+                x: (vector.x * 0.5 + 0.5) * window.innerWidth,
+                y: (-vector.y * 0.5 + 0.5) * window.innerHeight
+            };
+        }
+        
+        // Set up event listeners for UI controls
+        function setupEventListeners() {
+            // Rain speed slider
+            const rainSlider = document.getElementById('rain-speed');
+            const rainValue = document.getElementById('rain-value');
+            
+            rainSlider.addEventListener('input', function() {
+                rainVelocity = parseFloat(this.value);
+                rainValue.textContent = rainVelocity.toFixed(1);
+                document.getElementById('rain-mag').textContent = `${rainVelocity.toFixed(1)} m/s`;
+                updateRain();
+                updateUmbrella();
+                updateAudio();
+            });
+            
+            // Man's speed slider
+            const manSlider = document.getElementById('man-speed');
+            const manValue = document.getElementById('man-value');
+            
+            manSlider.addEventListener('input', function() {
+                manVelocity = parseFloat(this.value);
+                manValue.textContent = manVelocity.toFixed(1);
+                document.getElementById('man-mag').textContent = `${manVelocity.toFixed(1)} m/s`;
+                updateUmbrella();
+                updateRain();
+                updateAudio();
+            });
+            
+            // Wind speed slider
+            const windSlider = document.getElementById('wind-speed');
+            const windValue = document.getElementById('wind-value');
+            
+            windSlider.addEventListener('input', function() {
+                windVelocity = parseFloat(this.value);
+                windValue.textContent = windVelocity.toFixed(1);
+                updateRain();
+                updateUmbrella();
+                updateAudio();
+            });
+            
+            // Rain intensity slider
+            const intensitySlider = document.getElementById('rain-intensity');
+            const intensityValue = document.getElementById('intensity-value');
+            const intensityLabels = ['Light', 'Medium', 'Heavy'];
+            
+            intensitySlider.addEventListener('input', function() {
+                rainIntensity = parseInt(this.value);
+                intensityValue.textContent = intensityLabels[rainIntensity - 1];
+                
+                // Remove old rain
+                if (rainParticles) {
+                    scene.remove(rainParticles);
+                }
+                
+                // Create new rain with updated intensity
+                createRain();
+                
+                // Update CSS raindrops
+                updateCSSRaindrops();
+                
+                // Update audio
+                updateAudio();
+            });
+            
+            // Walk toggle button
+            const walkToggle = document.getElementById('walk-toggle');
+            walkToggle.addEventListener('click', function() {
+                isWalking = !isWalking;
+                this.textContent = isWalking ? 'Stop Walking' : 'Start Walking';
+                this.classList.toggle('active', isWalking);
+                
+                // Update step indicator
+                if (isWalking) {
+                    step = 2;
+                    updateStepIndicator();
+                } else {
+                    step = 1;
+                    updateStepIndicator();
+                }
+                
+                // Update audio
+                updateAudio();
+            });
+            
+            // Slow motion button
+            const slowMotion = document.getElementById('slow-motion');
+            slowMotion.addEventListener('click', function() {
+                isSlowMotion = !isSlowMotion;
+                this.classList.toggle('active', isSlowMotion);
+                this.textContent = isSlowMotion ? 'Normal Speed' : 'Slow Motion';
+            });
+            
+            // Vector triangle button
+            const vectorTriangle = document.getElementById('vector-triangle');
+            const vectorCanvas = document.getElementById('vector-canvas');
+            
+            vectorTriangle.addEventListener('click', function() {
+                if (vectorCanvas.style.display === 'block') {
+                    vectorCanvas.style.display = 'none';
+                    this.textContent = 'Show Vector Diagram';
+                } else {
+                    vectorCanvas.style.display = 'block';
+                    this.textContent = 'Hide Vector Diagram';
+                    drawVectorTriangle();
+                }
+            });
+            
+            // Sound toggle button
+            const soundToggle = document.getElementById('sound-toggle');
+            soundToggle.addEventListener('click', function() {
+                soundEnabled = !soundEnabled;
+                this.textContent = soundEnabled ? 'ON' : 'OFF';
+                this.classList.toggle('active', soundEnabled);
+                updateAudio();
+            });
+            
+            // Reset button
+            const resetButton = document.getElementById('reset');
+            resetButton.addEventListener('click', function() {
+                // Reset sliders
+                rainSlider.value = 5;
+                rainVelocity = 5;
+                rainValue.textContent = '5.0';
+                document.getElementById('rain-mag').textContent = '5.0 m/s';
+                
+                manSlider.value = 0;
+                manVelocity = 0;
+                manValue.textContent = '0.0';
+                document.getElementById('man-mag').textContent = '0.0 m/s';
+                
+                windSlider.value = 0;
+                windVelocity = 0;
+                windValue.textContent = '0.0';
+                
+                intensitySlider.value = 2;
+                rainIntensity = 2;
+                intensityValue.textContent = 'Medium';
+                
+                // Reset walking state
+                isWalking = false;
+                walkToggle.textContent = 'Start Walking';
+                walkToggle.classList.remove('active');
+                
+                // Reset slow motion
+                isSlowMotion = false;
+                slowMotion.textContent = 'Slow Motion';
+                slowMotion.classList.remove('active');
+                
+                // Reset step indicator
+                step = 1;
+                updateStepIndicator();
+                
+                // Reset umbrella
+                updateUmbrella();
+                
+                // Reset man position
+                if (man) {
+                    man.position.x = 0;
+                }
+                
+                // Remove old rain and create new
+                if (rainParticles) {
+                    scene.remove(rainParticles);
+                }
+                createRain();
+                
+                // Update CSS raindrops
+                updateCSSRaindrops();
+                
+                // Clear splashes
+                splashParticles.forEach(splash => {
+                    scene.remove(splash);
+                });
+                splashParticles = [];
+                
+                // Hide vector triangle
+                vectorCanvas.style.display = 'none';
+                vectorTriangle.textContent = 'Show Vector Diagram';
+                
+                // Reset camera
+                cameraMode = 'free';
+                controls.reset();
+                
+                // Reset time
+                startTime = Date.now();
+                
+                // Update audio
+                updateAudio();
+            });
+            
+            // Camera controls
+            document.getElementById('cam-front').addEventListener('click', function() {
+                cameraMode = 'front';
+                camera.position.set(0, 5, 15);
+                camera.lookAt(0, 0, 0);
+            });
+            
+            document.getElementById('cam-side').addEventListener('click', function() {
+                cameraMode = 'side';
+                camera.position.set(15, 5, 0);
+                camera.lookAt(0, 0, 0);
+            });
+            
+            document.getElementById('cam-top').addEventListener('click', function() {
+                cameraMode = 'top';
+                camera.position.set(0, 20, 0);
+                camera.lookAt(0, 0, 0);
+            });
+            
+            document.getElementById('cam-free').addEventListener('click', function() {
+                cameraMode = 'free';
+                controls.reset();
+            });
+            
+            // Toggle controls button
+            const toggleControls = document.getElementById('toggle-controls');
+            const controlsPanel = document.getElementById('controls');
+            const audioControl = document.getElementById('audio-control');
+            
+            toggleControls.addEventListener('click', function() {
+                controlsPanel.classList.toggle('hidden');
+                audioControl.classList.toggle('hidden');
+                this.classList.toggle('hidden');
+                this.textContent = this.classList.contains('hidden') ? 'Show Controls' : 'Hide Controls';
+            });
+        }
+        
+        // Update step indicator
+        function updateStepIndicator() {
+            const steps = document.querySelectorAll('.step-indicator .step');
+            steps.forEach((stepEl, index) => {
+                if (index + 1 === step) {
+                    stepEl.classList.add('active');
+                } else {
+                    stepEl.classList.remove('active');
+                }
+            });
+        }
+        
+        // Draw vector triangle on canvas
+        function drawVectorTriangle() {
+            const canvas = document.getElementById('vector-canvas');
+            const ctx = canvas.getContext('2d');
+            
+            // Set canvas size
+            canvas.width = 350;
+            canvas.height = 250;
+            
+            // Clear canvas
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // Draw coordinate system
+            ctx.strokeStyle = 'rgba(100, 150, 255, 0.5)';
+            ctx.lineWidth = 1;
+            
+            // Vertical axis
+            ctx.beginPath();
+            ctx.moveTo(175, 30);
+            ctx.lineTo(175, 220);
+            ctx.stroke();
+            
+            // Horizontal axis
+            ctx.beginPath();
+            ctx.moveTo(50, 125);
+            ctx.lineTo(300, 125);
+            ctx.stroke();
+            
+            // Draw vectors
+            const scale = 15;
+            const rainVecY = rainVelocity * scale;
+            const manVecX = manVelocity * scale;
+            const windVecX = windVelocity * scale;
+            const totalHorizontal = manVecX + windVecX;
+            
+            // Rain vector (vᵣ) - vertical downward
+            ctx.strokeStyle = '#4a9fff';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.moveTo(175, 125);
+            ctx.lineTo(175, 125 + rainVecY);
+            ctx.stroke();
+            
+            // Man vector (vₘ) - horizontal
+            ctx.strokeStyle = '#ff4a4a';
+            ctx.beginPath();
+            ctx.moveTo(175, 125);
+            ctx.lineTo(175 + manVecX, 125);
+            ctx.stroke();
+            
+            // Wind vector - horizontal (dashed)
+            if (windVelocity > 0) {
+                ctx.setLineDash([5, 5]);
+                ctx.strokeStyle = '#ffaa00';
+                ctx.beginPath();
+                ctx.moveTo(175 + manVecX, 125);
+                ctx.lineTo(175 + totalHorizontal, 125);
+                ctx.stroke();
+                ctx.setLineDash([]);
+            }
+            
+            // Apparent rain vector (vᵣₑₗ) - diagonal
+            ctx.strokeStyle = '#4aff4a';
+            ctx.beginPath();
+            ctx.moveTo(175 + totalHorizontal, 125 + rainVecY);
+            ctx.lineTo(175, 125);
+            ctx.stroke();
+            
+            // Add arrowheads
+            drawArrowhead(ctx, 175, 125 + rainVecY, Math.PI/2, 8, '#4a9fff');
+            drawArrowhead(ctx, 175 + manVecX, 125, 0, 8, '#ff4a4a');
+            
+            if (windVelocity > 0) {
+                drawArrowhead(ctx, 175 + totalHorizontal, 125, 0, 8, '#ffaa00');
+            }
+            
+            drawArrowhead(ctx, 175, 125, Math.atan2(rainVecY, totalHorizontal) + Math.PI, 8, '#4aff4a');
+            
+            // Add labels
+            ctx.fillStyle = '#4a9fff';
+            ctx.font = 'bold 14px Arial';
+            ctx.fillText('vᵣ', 185, 125 + rainVecY/2);
+            
+            ctx.fillStyle = '#ff4a4a';
+            ctx.fillText('vₘ', 175 + manVecX/2, 115);
+            
+            if (windVelocity > 0) {
+                ctx.fillStyle = '#ffaa00';
+                ctx.fillText('wind', 175 + manVecX + windVecX/2, 115);
+            }
+            
+            ctx.fillStyle = '#4aff4a';
+            ctx.fillText('vᵣₑₗ', 165, 125 + rainVecY/2);
+            
+            // Add angle indicator
+            if (totalHorizontal > 0 && rainVelocity > 0) {
+                const angle = Math.atan(totalHorizontal / rainVelocity);
+                ctx.strokeStyle = 'rgba(255, 255, 255, 0.7)';
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+                ctx.arc(175, 125, 20, -Math.PI/2, -Math.PI/2 + angle, false);
+                ctx.stroke();
+                
+                ctx.fillStyle = 'white';
+                ctx.fillText('θ', 190, 110);
+            }
+            
+            // Add title
+            ctx.fillStyle = '#4a9fff';
+            ctx.font = 'bold 16px Arial';
+            ctx.fillText('Vector Diagram: vᵣₑₗ = vᵣ - vₘ', 90, 25);
+        }
+        
+        // Helper function to draw arrowheads
+        function drawArrowhead(ctx, x, y, angle, size, color) {
+            ctx.save();
+            ctx.fillStyle = color;
+            ctx.translate(x, y);
+            ctx.rotate(angle);
+            ctx.beginPath();
+            ctx.moveTo(0, 0);
+            ctx.lineTo(-size, -size/2);
+            ctx.lineTo(-size, size/2);
+            ctx.closePath();
+            ctx.fill();
+            ctx.restore();
+        }
+        
+        // Animation loop
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            // Calculate delta time
+            const time = performance.now() * 0.001;
+            const deltaTime = isSlowMotion ? 0.01 : 0.016; // Approximate frame time
+            
+            // Update time for shaders and animations
+            if (rainParticles && rainParticles.material) {
+                rainParticles.material.uniforms.globalTime.value = time * (isSlowMotion ? 0.3 : 1);
+            }
+            
+            // Update controls
+            controls.update();
+            
+            // Update man position if walking
+            if (isWalking && man) {
+                man.position.x += manVelocity * 0.01 * (isSlowMotion ? 0.3 : 1);
+                
+                // Reset position if man goes too far
+                if (man.position.x > 20) {
+                    man.position.x = -20;
+                }
+                
+                // Add walking animation to legs
+                const leftLeg = man.children[3];
+                const rightLeg = man.children[4];
+                
+                if (leftLeg && rightLeg) {
+                    leftLeg.rotation.x = Math.sin(time * 5) * 0.5;
+                    rightLeg.rotation.x = Math.sin(time * 5 + Math.PI) * 0.5;
+                }
+                
+                // Add subtle body sway
+                man.rotation.z = Math.sin(time * 2.5) * 0.02;
+            }
+            
+            // Update camera position based on mode
+            if (cameraMode !== 'free' && man) {
+                switch (cameraMode) {
+                    case 'front':
+                        camera.position.set(man.position.x, 5, 15);
+                        camera.lookAt(man.position.x, 0, 0);
+                        break;
+                    case 'side':
+                        camera.position.set(man.position.x + 15, 5, 0);
+                        camera.lookAt(man.position.x, 0, 0);
+                        break;
+                    case 'top':
+                        camera.position.set(man.position.x, 20, 0);
+                        camera.lookAt(man.position.x, 0, 0);
+                        break;
+                }
+            }
+            
+            // Update puddle ripples
+            updatePuddles(time);
+            
+            // Update splash particles
+            updateSplashes(deltaTime);
+            
+            // Simulate rain impacts
+            simulateRainImpacts(time, deltaTime);
+            
+            // Update time display
+            const elapsedTime = (Date.now() - startTime) / 1000;
+            document.getElementById('time-value').textContent = elapsedTime.toFixed(1);
+            
+            // Render the scene
+            renderer.render(scene, camera);
+            
+            // Update vector triangle if visible
+            if (document.getElementById('vector-canvas').style.display === 'block') {
+                drawVectorTriangle();
+            }
+        }
+        
+        // Handle window resize
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+        
+        // Initialize the simulation when the page loads
+        window.addEventListener('load', init);
+    </script>
+</body>
+</html>
