@@ -1,0 +1,1112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Scalars vs Vectors: Infinite Road Simulation</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Arial', sans-serif;
+            overflow: hidden;
+            background-color: #000;
+            color: #fff;
+        }
+        
+        #canvas-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+        
+        #ui-container {
+            position: fixed;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 10;
+        }
+        
+        .hud-panel {
+            position: absolute;
+            background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(10px);
+            border-radius: 10px;
+            padding: 15px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        #speedometer {
+            top: 20px;
+            left: 20px;
+            width: 180px;
+            height: 180px;
+        }
+        
+        #odometer {
+            top: 220px;
+            left: 20px;
+            width: 180px;
+            height: 60px;
+            font-size: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        #controls {
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 80%;
+            max-width: 600px;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            pointer-events: all;
+        }
+        
+        .slider-container {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .slider-container label {
+            width: 100px;
+            font-size: 14px;
+        }
+        
+        input[type="range"] {
+            flex: 1;
+            height: 5px;
+            -webkit-appearance: none;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 5px;
+            outline: none;
+        }
+        
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #4286f4;
+            cursor: pointer;
+        }
+        
+        .button-row {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+        }
+        
+        button {
+            padding: 10px 15px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            color: white;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-weight: bold;
+        }
+        
+        button:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+        
+        button.active {
+            background: rgba(66, 134, 244, 0.3);
+            border-color: #4286f4;
+        }
+        
+        #mode-toggle {
+            top: 20px;
+            right: 20px;
+            pointer-events: all;
+            display: flex;
+            gap: 10px;
+            padding: 10px;
+        }
+        
+        #data-panel {
+            top: 80px;
+            right: 20px;
+            width: 300px;
+            min-height: 200px;
+            pointer-events: none;
+        }
+        
+        .value-display {
+            margin-bottom: 10px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .value-title {
+            font-size: 16px;
+            font-weight: bold;
+            margin-bottom: 5px;
+            color: #4286f4;
+        }
+        
+        .value-content {
+            font-size: 14px;
+            display: flex;
+            justify-content: space-between;
+        }
+        
+        .scalar-value {
+            color: #42f48f;
+        }
+        
+        .vector-value {
+            color: #f44242;
+        }
+        
+        #loading-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #000;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+        }
+        
+        .progress-bar {
+            width: 300px;
+            height: 5px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 5px;
+            margin-top: 20px;
+            overflow: hidden;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            width: 0%;
+            background: #4286f4;
+            transition: width 0.3s;
+        }
+        
+        #intro-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 50;
+            text-align: center;
+            padding: 20px;
+        }
+        
+        #intro-overlay h1 {
+            font-size: 36px;
+            margin-bottom: 20px;
+            color: #fff;
+            text-shadow: 0 0 10px rgba(66, 134, 244, 0.5);
+        }
+        
+        #intro-overlay p {
+            font-size: 18px;
+            max-width: 600px;
+            margin-bottom: 30px;
+            line-height: 1.5;
+        }
+        
+        #start-button {
+            padding: 15px 40px;
+            font-size: 18px;
+            background: rgba(66, 134, 244, 0.3);
+            border: 2px solid #4286f4;
+        }
+        
+        canvas {
+            display: block;
+        }
+        
+        #mini-map {
+            position: fixed;
+            bottom: 200px;
+            right: 20px;
+            width: 150px;
+            height: 150px;
+            background: rgba(0, 0, 0, 0.6);
+            border-radius: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            z-index: 10;
+        }
+    </style>
+</head>
+<body>
+    <div id="canvas-container"></div>
+    
+    <div id="ui-container">
+        <div class="hud-panel" id="speedometer">
+            <svg viewBox="0 0 100 100" width="150" height="150">
+                <circle cx="50" cy="50" r="45" fill="none" stroke="#333" stroke-width="3" />
+                <circle cx="50" cy="50" r="40" fill="none" stroke="#4286f4" stroke-width="3" 
+                        stroke-dasharray="251.2" stroke-dashoffset="125.6" transform="rotate(-90 50 50)" />
+                <text x="50" y="30" text-anchor="middle" fill="#fff" font-size="8">km/h</text>
+                <text x="50" y="55" text-anchor="middle" fill="#fff" font-size="12" id="speed-value">0</text>
+                <path id="needle" d="M50 50 L50 20" stroke="#f44242" stroke-width="1" stroke-linecap="round" 
+                      transform="rotate(0 50 50)" />
+                <circle cx="50" cy="50" r="3" fill="#f44242" />
+            </svg>
+        </div>
+        
+        <div class="hud-panel" id="odometer">
+            <span id="odometer-value">0000000</span>
+        </div>
+        
+        <div class="hud-panel" id="mode-toggle">
+            <button id="scalar-mode" class="active">Scalar Mode</button>
+            <button id="vector-mode">Vector Mode</button>
+        </div>
+        
+        <div class="hud-panel" id="data-panel">
+            <h3>Physics Data</h3>
+            <div class="value-display">
+                <div class="value-title">Speed (Scalar)</div>
+                <div class="value-content">
+                    <span class="scalar-value" id="speed-display">0 km/h</span>
+                    <span>|v| = √(vx² + vz²)</span>
+                </div>
+            </div>
+            <div class="value-display">
+                <div class="value-title">Velocity (Vector)</div>
+                <div class="value-content">
+                    <span class="vector-value" id="velocity-display">x: 0, z: 0</span>
+                    <span>v = (vx, vz)</span>
+                </div>
+            </div>
+            <div class="value-display">
+                <div class="value-title">Distance (Scalar)</div>
+                <div class="value-content">
+                    <span class="scalar-value" id="distance-display">0 m</span>
+                    <span>s = ∫|v|dt</span>
+                </div>
+            </div>
+            <div class="value-display">
+                <div class="value-title">Force (Vector)</div>
+                <div class="value-content">
+                    <span class="vector-value" id="force-display">x: 0, z: 0</span>
+                    <span>F = m·a</span>
+                </div>
+            </div>
+        </div>
+        
+        <div class="hud-panel" id="controls">
+            <div class="slider-container">
+                <label for="speed-slider">Speed:</label>
+                <input type="range" id="speed-slider" min="0" max="100" value="0">
+                <span id="speed-value-display">0 km/h</span>
+            </div>
+            <div class="slider-container">
+                <label for="steering-slider">Steering:</label>
+                <input type="range" id="steering-slider" min="-30" max="30" value="0">
+                <span id="steering-value-display">0°</span>
+            </div>
+            <div class="button-row">
+                <button id="reset-btn">Reset</button>
+                <button id="constant-speed-btn">Constant Speed</button>
+                <button id="accelerate-btn">Accelerate</button>
+                <button id="turn-btn">Turn</button>
+                <button id="free-roam-btn">Free Roam</button>
+            </div>
+        </div>
+        
+        <div id="mini-map"></div>
+    </div>
+    
+    <div id="loading-screen">
+        <h2>Loading Infinite Road Simulation</h2>
+        <div class="progress-bar">
+            <div class="progress-fill" id="progress-fill"></div>
+        </div>
+    </div>
+    
+    <div id="intro-overlay">
+        <h1>Scalars vs Vectors: Infinite Road</h1>
+        <p>This enhanced simulation features an infinite road system that dynamically generates as you drive. Explore the difference between scalar and vector quantities with complete freedom of movement.</p>
+        <p>Use the Free Roam mode to drive anywhere, or try the predefined scenarios to learn about physics concepts.</p>
+        <button id="start-button">Start Experience</button>
+    </div>
+
+    <!-- Include Three.js and related libraries -->
+    <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/build/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/examples/js/controls/OrbitControls.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/examples/js/loaders/GLTFLoader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/examples/js/loaders/EXRLoader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/examples/js/loaders/RGBELoader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/examples/js/postprocessing/EffectComposer.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/examples/js/postprocessing/RenderPass.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/examples/js/postprocessing/ShaderPass.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/examples/js/postprocessing/UnrealBloomPass.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/examples/js/shaders/FilmShader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/examples/js/shaders/LuminosityShader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.11.4/dist/gsap.min.js"></script>
+
+    <script>
+        // Main application
+        document.addEventListener('DOMContentLoaded', () => {
+            // Show intro overlay initially
+            document.getElementById('intro-overlay').style.display = 'flex';
+            document.getElementById('loading-screen').style.display = 'none';
+            
+            // Start button event
+            document.getElementById('start-button').addEventListener('click', () => {
+                document.getElementById('intro-overlay').style.display = 'none';
+                document.getElementById('loading-screen').style.display = 'flex';
+                init();
+            });
+            
+            // Mode toggle buttons
+            document.getElementById('scalar-mode').addEventListener('click', () => {
+                setMode('scalar');
+                document.getElementById('scalar-mode').classList.add('active');
+                document.getElementById('vector-mode').classList.remove('active');
+            });
+            
+            document.getElementById('vector-mode').addEventListener('click', () => {
+                setMode('vector');
+                document.getElementById('vector-mode').classList.add('active');
+                document.getElementById('scalar-mode').classList.remove('active');
+            });
+            
+            // Reset button
+            document.getElementById('reset-btn').addEventListener('click', resetSimulation);
+            
+            // Scenario buttons
+            document.getElementById('constant-speed-btn').addEventListener('click', () => {
+                setConstantSpeedScenario();
+            });
+            
+            document.getElementById('accelerate-btn').addEventListener('click', () => {
+                setAccelerationScenario();
+            });
+            
+            document.getElementById('turn-btn').addEventListener('click', () => {
+                setTurningScenario();
+            });
+            
+            document.getElementById('free-roam-btn').addEventListener('click', () => {
+                setFreeRoamScenario();
+            });
+            
+            // Slider events
+            const speedSlider = document.getElementById('speed-slider');
+            const steeringSlider = document.getElementById('steering-slider');
+            
+            speedSlider.addEventListener('input', () => {
+                const speed = parseInt(speedSlider.value);
+                document.getElementById('speed-value-display').textContent = `${speed} km/h`;
+                if (app) app.setSpeed(speed);
+            });
+            
+            steeringSlider.addEventListener('input', () => {
+                const steering = parseInt(steeringSlider.value);
+                document.getElementById('steering-value-display').textContent = `${steering}°`;
+                if (app) app.setSteering(steering);
+            });
+        });
+
+        // Global variables
+        let app = null;
+
+        // Initialize the application
+        function init() {
+            app = new PhysicsVisualization();
+            app.init().then(() => {
+                // Hide loading screen when everything is loaded
+                document.getElementById('loading-screen').style.display = 'none';
+                app.animate();
+            });
+        }
+
+        // Set visualization mode
+        function setMode(mode) {
+            if (app) app.setVisualizationMode(mode);
+        }
+
+        // Reset simulation
+        function resetSimulation() {
+            if (app) app.reset();
+            
+            // Reset sliders
+            document.getElementById('speed-slider').value = 0;
+            document.getElementById('steering-slider').value = 0;
+            document.getElementById('speed-value-display').textContent = '0 km/h';
+            document.getElementById('steering-value-display').textContent = '0°';
+        }
+
+        // Scenario presets
+        function setConstantSpeedScenario() {
+            if (app) {
+                app.setSpeed(60);
+                app.setSteering(0);
+                document.getElementById('speed-slider').value = 60;
+                document.getElementById('steering-slider').value = 0;
+                document.getElementById('speed-value-display').textContent = '60 km/h';
+                document.getElementById('steering-value-display').textContent = '0°';
+            }
+        }
+
+        function setAccelerationScenario() {
+            if (app) {
+                app.setSpeed(30);
+                app.setSteering(0);
+                document.getElementById('speed-slider').value = 30;
+                document.getElementById('steering-slider').value = 0;
+                document.getElementById('speed-value-display').textContent = '30 km/h';
+                document.getElementById('steering-value-display').textContent = '0°';
+                
+                // Simulate acceleration after a short delay
+                setTimeout(() => {
+                    app.setSpeed(80);
+                    document.getElementById('speed-slider').value = 80;
+                    document.getElementById('speed-value-display').textContent = '80 km/h';
+                }, 2000);
+            }
+        }
+
+        function setTurningScenario() {
+            if (app) {
+                app.setSpeed(50);
+                app.setSteering(0);
+                document.getElementById('speed-slider').value = 50;
+                document.getElementById('steering-slider').value = 0;
+                document.getElementById('speed-value-display').textContent = '50 km/h';
+                document.getElementById('steering-value-display').textContent = '0°';
+                
+                // Simulate turning after a short delay
+                setTimeout(() => {
+                    app.setSteering(25);
+                    document.getElementById('steering-slider').value = 25;
+                    document.getElementById('steering-value-display').textContent = '25°';
+                }, 2000);
+            }
+        }
+
+        function setFreeRoamScenario() {
+            if (app) {
+                app.setSpeed(40);
+                app.setSteering(0);
+                document.getElementById('speed-slider').value = 40;
+                document.getElementById('steering-slider').value = 0;
+                document.getElementById('speed-value-display').textContent = '40 km/h';
+                document.getElementById('steering-value-display').textContent = '0°';
+            }
+        }
+
+        // Main application class
+        class PhysicsVisualization {
+            constructor() {
+                // Physics properties
+                this.position = { x: 0, y: 0, z: 0 };
+                this.velocity = { x: 0, y: 0, z: 0 };
+                this.acceleration = { x: 0, y: 0, z: 0 };
+                this.angle = 0; // Car angle in degrees
+                this.mass = 1000; // kg
+                
+                // Visualization mode
+                this.visualizationMode = 'scalar'; // 'scalar' or 'vector'
+                
+                // Road system
+                this.roadTiles = [];
+                this.roadTileSize = 20;
+                this.visibleTiles = 9; // 3x3 grid of tiles
+                this.groundTiles = [];
+                
+                // DOM elements
+                this.speedValueElement = document.getElementById('speed-value');
+                this.odometerElement = document.getElementById('odometer-value');
+                this.speedDisplayElement = document.getElementById('speed-display');
+                this.velocityDisplayElement = document.getElementById('velocity-display');
+                this.distanceDisplayElement = document.getElementById('distance-display');
+                this.forceDisplayElement = document.getElementById('force-display');
+                
+                // Three.js objects
+                this.scene = null;
+                this.camera = null;
+                this.renderer = null;
+                this.composer = null;
+                this.car = null;
+                this.velocityArrow = null;
+                this.forceArrow = null;
+                
+                // Time tracking
+                this.clock = new THREE.Clock();
+                this.lastTime = 0;
+                this.distanceTraveled = 0;
+                
+                // Camera settings
+                this.cameraMode = 'follow'; // 'follow', 'orbit', or 'closeup'
+                this.controls = null;
+                
+                // Mini map
+                this.miniMapCamera = null;
+                this.miniMapRenderer = null;
+            }
+
+            async init() {
+                // Initialize Three.js
+                this.initScene();
+                this.initRenderer();
+                this.initCamera();
+                this.initLights();
+                await this.loadModels();
+                this.initRoadSystem();
+                this.initPostProcessing();
+                this.initEventListeners();
+                this.initMiniMap();
+                
+                // Create arrows for vectors
+                this.createVectorArrows();
+                
+                // Initial update
+                this.updateHUD();
+            }
+
+            initScene() {
+                this.scene = new THREE.Scene();
+                
+                // Add fog for atmospheric effect
+                this.scene.fog = new THREE.Fog(0x111118, 50, 300);
+                
+                // Set background color
+                this.scene.background = new THREE.Color(0x111118);
+            }
+
+            initRenderer() {
+                this.renderer = new THREE.WebGLRenderer({
+                    antialias: true,
+                    alpha: true
+                });
+                
+                this.renderer.setSize(window.innerWidth, window.innerHeight);
+                this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
+                this.renderer.outputEncoding = THREE.sRGBEncoding;
+                this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
+                this.renderer.toneMappingExposure = 1.0;
+                
+                document.getElementById('canvas-container').appendChild(this.renderer.domElement);
+            }
+
+            initCamera() {
+                // Create camera
+                this.camera = new THREE.PerspectiveCamera(
+                    60, // FOV
+                    window.innerWidth / window.innerHeight, // Aspect ratio
+                    0.1, // Near plane
+                    1000 // Far plane
+                );
+                
+                // Position camera behind the car
+                this.camera.position.set(0, 5, -10);
+                this.camera.lookAt(0, 0, 0);
+                
+                // Initialize orbit controls for debugging
+                this.controls = new THREE.OrbitControls(this.camera, this.renderer.domElement);
+                this.controls.enabled = false; // Disabled by default (we use follow camera)
+            }
+
+            initLights() {
+                // Ambient light
+                const ambientLight = new THREE.AmbientLight(0x404040, 0.5);
+                this.scene.add(ambientLight);
+                
+                // Directional light (sun)
+                const sunLight = new THREE.DirectionalLight(0xffebad, 0.8);
+                sunLight.position.set(50, 50, 50);
+                sunLight.castShadow = true;
+                sunLight.shadow.mapSize.width = 1024;
+                sunLight.shadow.mapSize.height = 1024;
+                this.scene.add(sunLight);
+                
+                // Headlights
+                const headlight1 = new THREE.PointLight(0xffffff, 1, 20);
+                headlight1.position.set(0.5, 0.5, 1);
+                
+                const headlight2 = new THREE.PointLight(0xffffff, 1, 20);
+                headlight2.position.set(-0.5, 0.5, 1);
+                
+                // We'll add these to the car when it's loaded
+                this.headlights = [headlight1, headlight2];
+            }
+
+            async loadModels() {
+                // In a real implementation, we would load the car model from a GLTF file
+                // For this example, we'll create a simple car model using primitives
+                
+                // Create a simple car
+                const carBody = new THREE.Mesh(
+                    new THREE.BoxGeometry(2, 0.8, 4),
+                    new THREE.MeshPhongMaterial({ color: 0xff0000 })
+                );
+                carBody.position.y = 0.4;
+                
+                const carTop = new THREE.Mesh(
+                    new THREE.BoxGeometry(1.5, 0.6, 2),
+                    new THREE.MeshPhongMaterial({ color: 0xcc0000 })
+                );
+                carTop.position.y = 1.1;
+                carTop.position.z = -0.3;
+                
+                const wheelGeometry = new THREE.CylinderGeometry(0.4, 0.4, 0.3, 16);
+                wheelGeometry.rotateZ(Math.PI / 2);
+                
+                const wheelMaterial = new THREE.MeshPhongMaterial({ color: 0x333333 });
+                
+                const wheel1 = new THREE.Mesh(wheelGeometry, wheelMaterial);
+                wheel1.position.set(0.8, 0.4, 1.2);
+                
+                const wheel2 = new THREE.Mesh(wheelGeometry, wheelMaterial);
+                wheel2.position.set(-0.8, 0.4, 1.2);
+                
+                const wheel3 = new THREE.Mesh(wheelGeometry, wheelMaterial);
+                wheel3.position.set(0.8, 0.4, -1.2);
+                
+                const wheel4 = new THREE.Mesh(wheelGeometry, wheelMaterial);
+                wheel4.position.set(-0.8, 0.4, -1.2);
+                
+                this.car = new THREE.Group();
+                this.car.add(carBody);
+                this.car.add(carTop);
+                this.car.add(wheel1);
+                this.car.add(wheel2);
+                this.car.add(wheel3);
+                this.car.add(wheel4);
+                
+                // Add headlights to the car
+                this.headlights[0].position.set(0.5, 0.5, 2);
+                this.headlights[1].position.set(-0.5, 0.5, 2);
+                this.car.add(this.headlights[0]);
+                this.car.add(this.headlights[1]);
+                
+                this.scene.add(this.car);
+                
+                // Update progress bar (simulate loading)
+                const progressFill = document.getElementById('progress-fill');
+                for (let i = 0; i <= 100; i++) {
+                    await new Promise(resolve => setTimeout(resolve, 20));
+                    progressFill.style.width = `${i}%`;
+                }
+            }
+
+            initRoadSystem() {
+                // Create initial road tiles
+                this.createGround();
+                this.createInitialRoadTiles();
+            }
+
+            createGround() {
+                // Create a large ground plane
+                const groundGeometry = new THREE.PlaneGeometry(1000, 1000, 20, 20);
+                groundGeometry.rotateX(-Math.PI / 2);
+                
+                // Create a simple ground material
+                const groundMaterial = new THREE.MeshPhongMaterial({
+                    color: 0x3a3a3a,
+                    shininess: 10
+                });
+                
+                const ground = new THREE.Mesh(groundGeometry, groundMaterial);
+                ground.position.y = -0.1;
+                this.scene.add(ground);
+            }
+
+            createInitialRoadTiles() {
+                // Create initial 3x3 grid of road tiles around the car
+                for (let x = -1; x <= 1; x++) {
+                    for (let z = -1; z <= 1; z++) {
+                        this.createRoadTile(x * this.roadTileSize, z * this.roadTileSize);
+                    }
+                }
+            }
+
+            createRoadTile(x, z) {
+                const roadGeometry = new THREE.PlaneGeometry(this.roadTileSize, this.roadTileSize, 10, 10);
+                roadGeometry.rotateX(-Math.PI / 2);
+                
+                // Create a simple road material
+                const roadMaterial = new THREE.MeshPhongMaterial({
+                    color: 0x333333,
+                    shininess: 10
+                });
+                
+                const road = new THREE.Mesh(roadGeometry, roadMaterial);
+                road.position.set(x, 0.01, z);
+                
+                // Add road markings
+                const markingGeometry = new THREE.PlaneGeometry(0.5, 2);
+                markingGeometry.rotateX(-Math.PI / 2);
+                
+                const markingMaterial = new THREE.MeshBasicMaterial({
+                    color: 0xffffff
+                });
+                
+                // Add center line
+                for (let i = -this.roadTileSize/2; i < this.roadTileSize/2; i += 5) {
+                    const marking = new THREE.Mesh(markingGeometry, markingMaterial);
+                    marking.position.set(0, 0.02, i);
+                    road.add(marking);
+                }
+                
+                // Add lane markings
+                for (let i = -this.roadTileSize/2; i < this.roadTileSize/2; i += 10) {
+                    const leftMarking = new THREE.Mesh(markingGeometry, markingMaterial);
+                    leftMarking.position.set(-3, 0.02, i);
+                    road.add(leftMarking);
+                    
+                    const rightMarking = new THREE.Mesh(markingGeometry, markingMaterial);
+                    rightMarking.position.set(3, 0.02, i);
+                    road.add(rightMarking);
+                }
+                
+                this.scene.add(road);
+                this.roadTiles.push({ mesh: road, x, z });
+            }
+
+            updateRoadSystem() {
+                // Calculate which tile the car is on
+                const currentTileX = Math.round(this.position.x / this.roadTileSize);
+                const currentTileZ = Math.round(this.position.z / this.roadTileSize);
+                
+                // Check if we need to create new tiles
+                for (let x = currentTileX - 1; x <= currentTileX + 1; x++) {
+                    for (let z = currentTileZ - 1; z <= currentTileZ + 1; z++) {
+                        const tileExists = this.roadTiles.some(tile => 
+                            tile.x === x * this.roadTileSize && tile.z === z * this.roadTileSize
+                        );
+                        
+                        if (!tileExists) {
+                            this.createRoadTile(x * this.roadTileSize, z * this.roadTileSize);
+                        }
+                    }
+                }
+                
+                // Remove tiles that are too far away (to save memory)
+                const maxTileDistance = 2;
+                for (let i = this.roadTiles.length - 1; i >= 0; i--) {
+                    const tile = this.roadTiles[i];
+                    const tileDistanceX = Math.abs(tile.x / this.roadTileSize - currentTileX);
+                    const tileDistanceZ = Math.abs(tile.z / this.roadTileSize - currentTileZ);
+                    
+                    if (tileDistanceX > maxTileDistance || tileDistanceZ > maxTileDistance) {
+                        this.scene.remove(tile.mesh);
+                        this.roadTiles.splice(i, 1);
+                    }
+                }
+            }
+
+            initPostProcessing() {
+                // In a real implementation, we would set up post-processing effects here
+                // For this example, we'll keep it simple for performance
+            }
+
+            initMiniMap() {
+                // Create a mini map camera
+                this.miniMapCamera = new THREE.OrthographicCamera(-50, 50, 50, -50, 1, 100);
+                this.miniMapCamera.position.set(0, 50, 0);
+                this.miniMapCamera.lookAt(0, 0, 0);
+                
+                // Create a mini map renderer
+                this.miniMapRenderer = new THREE.WebGLRenderer({ alpha: true });
+                this.miniMapRenderer.setSize(150, 150);
+                this.miniMapRenderer.domElement.style.position = 'absolute';
+                this.miniMapRenderer.domElement.style.width = '150px';
+                this.miniMapRenderer.domElement.style.height = '150px';
+                document.getElementById('mini-map').appendChild(this.miniMapRenderer.domElement);
+            }
+
+            initEventListeners() {
+                window.addEventListener('resize', () => this.onWindowResize());
+                
+                // Keyboard controls
+                window.addEventListener('keydown', (e) => {
+                    switch(e.key) {
+                        case 'ArrowUp':
+                            this.setSpeed(Math.min(100, this.getSpeed() + 5));
+                            break;
+                        case 'ArrowDown':
+                            this.setSpeed(Math.max(0, this.getSpeed() - 5));
+                            break;
+                        case 'ArrowLeft':
+                            this.setSteering(Math.max(-30, this.getSteering() - 5));
+                            break;
+                        case 'ArrowRight':
+                            this.setSteering(Math.min(30, this.getSteering() + 5));
+                            break;
+                    }
+                });
+            }
+
+            onWindowResize() {
+                this.camera.aspect = window.innerWidth / window.innerHeight;
+                this.camera.updateProjectionMatrix();
+                this.renderer.setSize(window.innerWidth, window.innerHeight);
+            }
+
+            createVectorArrows() {
+                // Create velocity arrow
+                const velocityArrowGeometry = new THREE.ConeGeometry(0.2, 0.5, 8);
+                velocityArrowGeometry.translate(0, 0.5, 0);
+                
+                const velocityArrowMaterial = new THREE.MeshBasicMaterial({
+                    color: 0x4286f4
+                });
+                
+                this.velocityArrow = new THREE.Mesh(velocityArrowGeometry, velocityArrowMaterial);
+                this.velocityArrow.visible = false;
+                this.scene.add(this.velocityArrow);
+                
+                // Create force arrow
+                const forceArrowGeometry = new THREE.ConeGeometry(0.2, 0.5, 8);
+                forceArrowGeometry.translate(0, 0.5, 0);
+                
+                const forceArrowMaterial = new THREE.MeshBasicMaterial({
+                    color: 0xf44242
+                });
+                
+                this.forceArrow = new THREE.Mesh(forceArrowGeometry, forceArrowMaterial);
+                this.forceArrow.visible = false;
+                this.scene.add(this.forceArrow);
+            }
+
+            animate() {
+                requestAnimationFrame(() => this.animate());
+                
+                const deltaTime = this.clock.getDelta();
+                this.updatePhysics(deltaTime);
+                this.updateRoadSystem();
+                this.updateCamera();
+                this.updateHUD();
+                this.updateMiniMap();
+                
+                this.renderer.render(this.scene, this.camera);
+                this.miniMapRenderer.render(this.scene, this.miniMapCamera);
+            }
+
+            updatePhysics(deltaTime) {
+                // Convert speed from km/h to m/s
+                const targetSpeed = this.getSpeed() * (1000 / 3600);
+                
+                // Gradually adjust velocity toward target speed
+                const currentSpeed = Math.sqrt(this.velocity.x ** 2 + this.velocity.z ** 2);
+                const speedDiff = targetSpeed - currentSpeed;
+                
+                if (Math.abs(speedDiff) > 0.01) {
+                    // Apply acceleration in the direction the car is facing
+                    const accelerationMagnitude = speedDiff > 0 ? 2 : 4; // Accelerate slower, brake faster
+                    const angleRad = this.angle * Math.PI / 180;
+                    
+                    this.acceleration.x = Math.sin(angleRad) * accelerationMagnitude;
+                    this.acceleration.z = Math.cos(angleRad) * accelerationMagnitude;
+                    
+                    // Update velocity
+                    this.velocity.x += this.acceleration.x * deltaTime;
+                    this.velocity.z += this.acceleration.z * deltaTime;
+                } else {
+                    this.acceleration.x = 0;
+                    this.acceleration.z = 0;
+                    
+                    // Maintain exact target speed in current direction
+                    const angleRad = this.angle * Math.PI / 180;
+                    this.velocity.x = Math.sin(angleRad) * targetSpeed;
+                    this.velocity.z = Math.cos(angleRad) * targetSpeed;
+                }
+                
+                // Apply steering
+                const steeringAngle = this.getSteering();
+                if (steeringAngle !== 0 && currentSpeed > 0.1) {
+                    // Change car angle based on steering and speed
+                    const turnRate = steeringAngle * deltaTime * (currentSpeed / 10);
+                    this.angle += turnRate;
+                }
+                
+                // Update position
+                this.position.x += this.velocity.x * deltaTime;
+                this.position.z += this.velocity.z * deltaTime;
+                
+                // Update distance traveled (scalar)
+                this.distanceTraveled += currentSpeed * deltaTime;
+                
+                // Update car position and rotation
+                this.car.position.set(this.position.x, 0, this.position.z);
+                this.car.rotation.y = -this.angle * Math.PI / 180;
+                
+                // Update vector arrows
+                this.updateVectorArrows();
+            }
+
+            updateVectorArrows() {
+                if (this.visualizationMode === 'vector') {
+                    // Show arrows
+                    this.velocityArrow.visible = true;
+                    this.forceArrow.visible = true;
+                    
+                    // Position arrows above the car
+                    this.velocityArrow.position.set(this.position.x, 2, this.position.z);
+                    this.forceArrow.position.set(this.position.x, 1.5, this.position.z);
+                    
+                    // Orient velocity arrow in the direction of velocity
+                    const velocityAngle = Math.atan2(this.velocity.x, this.velocity.z);
+                    this.velocityArrow.rotation.y = velocityAngle;
+                    
+                    // Scale velocity arrow based on speed
+                    const speed = Math.sqrt(this.velocity.x ** 2 + this.velocity.z ** 2);
+                    const arrowScale = 1 + speed * 2;
+                    this.velocityArrow.scale.set(1, arrowScale, 1);
+                    
+                    // Orient force arrow in the direction of acceleration
+                    if (this.acceleration.x !== 0 || this.acceleration.z !== 0) {
+                        const forceAngle = Math.atan2(this.acceleration.x, this.acceleration.z);
+                        this.forceArrow.rotation.y = forceAngle;
+                        
+                        // Scale force arrow based on acceleration magnitude
+                        const forceMagnitude = Math.sqrt(this.acceleration.x ** 2 + this.acceleration.z ** 2);
+                        const forceScale = 1 + forceMagnitude * 2;
+                        this.forceArrow.scale.set(1, forceScale, 1);
+                    } else {
+                        // Hide force arrow when there's no acceleration
+                        this.forceArrow.visible = false;
+                    }
+                } else {
+                    // Hide arrows in scalar mode
+                    this.velocityArrow.visible = false;
+                    this.forceArrow.visible = false;
+                }
+            }
+
+            updateCamera() {
+                if (this.cameraMode === 'follow') {
+                    // Camera follows behind the car
+                    const angleRad = this.angle * Math.PI / 180;
+                    const cameraDistance = 10;
+                    const cameraHeight = 5;
+                    
+                    const targetX = this.position.x - Math.sin(angleRad) * cameraDistance;
+                    const targetZ = this.position.z - Math.cos(angleRad) * cameraDistance;
+                    const targetY = cameraHeight;
+                    
+                    // Smooth camera movement
+                    this.camera.position.x += (targetX - this.camera.position.x) * 0.1;
+                    this.camera.position.y += (targetY - this.camera.position.y) * 0.1;
+                    this.camera.position.z += (targetZ - this.camera.position.z) * 0.1;
+                    
+                    // Look at the car
+                    this.camera.lookAt(this.position.x, 1, this.position.z);
+                }
+            }
+
+            updateMiniMap() {
+                // Update mini map camera position
+                this.miniMapCamera.position.set(this.position.x, 50, this.position.z);
+                this.miniMapCamera.lookAt(this.position.x, 0, this.position.z);
+            }
+
+            updateHUD() {
+                // Update speedometer
+                const speed = this.getSpeed();
+                this.speedValueElement.textContent = Math.round(speed);
+                
+                // Rotate needle (0 km/h = -135°, 220 km/h = 135°)
+                const needleRotation = (speed / 220) * 270 - 135;
+                document.getElementById('needle').setAttribute('transform', `rotate(${needleRotation} 50 50)`);
+                
+                // Update odometer (format with leading zeros)
+                this.odometerElement.textContent = Math.floor(this.distanceTraveled).toString().padStart(7, '0');
+                
+                // Update data panel
+                const speedMs = Math.sqrt(this.velocity.x ** 2 + this.velocity.z ** 2);
+                this.speedDisplayElement.textContent = `${Math.round(speed)} km/h (${speedMs.toFixed(1)} m/s)`;
+                
+                this.velocityDisplayElement.textContent = `x: ${this.velocity.x.toFixed(1)}, z: ${this.velocity.z.toFixed(1)}`;
+                this.distanceDisplayElement.textContent = `${this.distanceTraveled.toFixed(1)} m`;
+                
+                const forceMagnitude = Math.sqrt(this.acceleration.x ** 2 + this.acceleration.z ** 2) * this.mass;
+                this.forceDisplayElement.textContent = `x: ${(this.acceleration.x * this.mass).toFixed(1)}, z: ${(this.acceleration.z * this.mass).toFixed(1)} (${forceMagnitude.toFixed(1)} N)`;
+            }
+
+            setVisualizationMode(mode) {
+                this.visualizationMode = mode;
+                this.updateVectorArrows();
+            }
+
+            setSpeed(speed) {
+                // Speed in km/h
+                this.targetSpeed = speed;
+                
+                // Update slider
+                document.getElementById('speed-slider').value = speed;
+                document.getElementById('speed-value-display').textContent = `${speed} km/h`;
+            }
+
+            getSpeed() {
+                return this.targetSpeed || 0;
+            }
+
+            setSteering(angle) {
+                this.steeringAngle = angle;
+                
+                // Update slider
+                document.getElementById('steering-slider').value = angle;
+                document.getElementById('steering-value-display').textContent = `${angle}°`;
+            }
+
+            getSteering() {
+                return this.steeringAngle || 0;
+            }
+
+            reset() {
+                this.position = { x: 0, y: 0, z: 0 };
+                this.velocity = { x: 0, y: 0, z: 0 };
+                this.acceleration = { x: 0, y: 0, z: 0 };
+                this.angle = 0;
+                this.distanceTraveled = 0;
+                this.targetSpeed = 0;
+                this.steeringAngle = 0;
+                
+                this.car.position.set(0, 0, 0);
+                this.car.rotation.y = 0;
+                
+                // Reset road system
+                this.resetRoadSystem();
+                
+                this.updateHUD();
+            }
+
+            resetRoadSystem() {
+                // Remove all existing road tiles
+                for (const tile of this.roadTiles) {
+                    this.scene.remove(tile.mesh);
+                }
+                this.roadTiles = [];
+                
+                // Create new initial road tiles
+                this.createInitialRoadTiles();
+            }
+        }
+    </script>
+</body>
+</html>
