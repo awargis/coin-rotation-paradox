@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Vector Components - Right-Handed Coordinate System</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.min.js"></script>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(to bottom, #1a1a2e, #16213e);
+            color: white;
+        }
+        #container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+        }
+        #canvas-container {
+            width: 100%;
+            height: 100%;
+        }
+        #info-panel {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 20px;
+            border-radius: 10px;
+            max-width: 400px;
+            backdrop-filter: blur(5px);
+            box-shadow: 0 0 20px rgba(0, 150, 255, 0.3);
+        }
+        #controls {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 10px;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 15px;
+            border-radius: 10px;
+            backdrop-filter: blur(5px);
+        }
+        button {
+            background: #0066cc;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s;
+        }
+        button:hover {
+            background: #0099ff;
+            transform: translateY(-2px);
+        }
+        h1 {
+            margin-top: 0;
+            color: #00a8ff;
+        }
+        .vector-equation {
+            font-size: 1.5em;
+            margin: 20px 0;
+            padding: 10px;
+            background: rgba(0, 50, 100, 0.3);
+            border-radius: 5px;
+            text-align: center;
+        }
+        .component {
+            color: #ff9f43;
+            font-weight: bold;
+        }
+        .i-component { color: #3498db; } /* Blue for i */
+        .j-component { color: #e74c3c; } /* Red for j */
+        .k-component { color: #2ecc71; } /* Green for k */
+        .axis-label {
+            font-weight: bold;
+            font-size: 1.2em;
+        }
+        #x-label { color: #3498db; }
+        #y-label { color: #e74c3c; }
+        #z-label { color: #2ecc71; }
+    </style>
+</head>
+<body>
+    <div id="container">
+        <div id="canvas-container"></div>
+        <div id="info-panel">
+            <h1>3D Vector Components</h1>
+            <p>In 3D space, any vector can be expressed in terms of its components along the x, y, and z axes.</p>
+            <div class="vector-equation">
+                <span class="vector">v</span> = 
+                <span class="i-component">x</span><span class="component">i</span> + 
+                <span class="j-component">y</span><span class="component">j</span> + 
+                <span class="k-component">z</span><span class="component">k</span>
+            </div>
+            <p>Where:</p>
+            <ul>
+                <li><span id="x-label" class="axis-label">x</span> is the component along the x-axis (<span class="i-component">i</span> direction)</li>
+                <li><span id="y-label" class="axis-label">y</span> is the component along the y-axis (<span class="j-component">j</span> direction)</li>
+                <li><span id="z-label" class="axis-label">z</span> is the component along the z-axis (<span class="k-component">k</span> direction)</li>
+            </ul>
+            <p>The perpendicular from the point to the XY-plane helps visualize the z-component.</p>
+            <p><strong>Right-Handed System:</strong> Point your right hand's index finger along X (blue), middle finger along Y (red), and thumb will point along Z (green).</p>
+        </div>
+        <div id="controls">
+            <button id="reset-btn">Reset Animation</button>
+            <button id="play-btn">Play Animation</button>
+            <button id="pause-btn">Pause Animation</button>
+        </div>
+    </div>
+
+    <script>
+        // Initialize Three.js scene
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setClearColor(0x000011, 1);
+        document.getElementById('canvas-container').appendChild(renderer.domElement);
+        
+        // Add orbit controls
+        const controls = new THREE.OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.05;
+        
+        // Position camera
+        camera.position.set(8, 8, 8);
+        controls.update();
+        
+        // Add lighting
+        const ambientLight = new THREE.AmbientLight(0x404040, 0.6);
+        scene.add(ambientLight);
+        
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+        directionalLight.position.set(10, 20, 15);
+        scene.add(directionalLight);
+        
+        // Create coordinate system with correct right-handed colors
+        function createCoordinateSystem() {
+            // Remove default axes helper and create custom axes with correct colors
+            const axesSize = 10;
+            
+            // X-axis (blue)
+            const xAxisGeometry = new THREE.BufferGeometry().setFromPoints([
+                new THREE.Vector3(0, 0, 0),
+                new THREE.Vector3(axesSize, 0, 0)
+            ]);
+            const xAxisMaterial = new THREE.LineBasicMaterial({ color: 0x3498db, linewidth: 2 });
+            const xAxis = new THREE.Line(xAxisGeometry, xAxisMaterial);
+            scene.add(xAxis);
+            
+            // Y-axis (red)
+            const yAxisGeometry = new THREE.BufferGeometry().setFromPoints([
+                new THREE.Vector3(0, 0, 0),
+                new THREE.Vector3(0, axesSize, 0)
+            ]);
+            const yAxisMaterial = new THREE.LineBasicMaterial({ color: 0xe74c3c, linewidth: 2 });
+            const yAxis = new THREE.Line(yAxisGeometry, yAxisMaterial);
+            scene.add(yAxis);
+            
+            // Z-axis (green)
+            const zAxisGeometry = new THREE.BufferGeometry().setFromPoints([
+                new THREE.Vector3(0, 0, 0),
+                new THREE.Vector3(0, 0, axesSize)
+            ]);
+            const zAxisMaterial = new THREE.LineBasicMaterial({ color: 0x2ecc71, linewidth: 2 });
+            const zAxis = new THREE.Line(zAxisGeometry, zAxisMaterial);
+            scene.add(zAxis);
+            
+            // Create grid in XY plane
+            const gridHelper = new THREE.GridHelper(20, 20, 0x444444, 0x222222);
+            gridHelper.rotation.x = Math.PI / 2; // Rotate to XY plane
+            scene.add(gridHelper);
+            
+            // Add axis labels
+            const labelDistance = 5.5;
+            
+            // X-axis label (blue)
+            const xLabel = createTextSprite("X", 0x3498db);
+            xLabel.position.set(labelDistance, 0, 0);
+            scene.add(xLabel);
+            
+            // Y-axis label (red)
+            const yLabel = createTextSprite("Y", 0xe74c3c);
+            yLabel.position.set(0, labelDistance, 0);
+            scene.add(yLabel);
+            
+            // Z-axis label (green)
+            const zLabel = createTextSprite("Z", 0x2ecc71);
+            zLabel.position.set(0, 0, labelDistance);
+            scene.add(zLabel);
+            
+            // Add unit vector indicators
+            const unitVectorLength = 1.5;
+            
+            // i vector (blue)
+            const iVectorGeometry = new THREE.BufferGeometry().setFromPoints([
+                new THREE.Vector3(0, 0, 0),
+                new THREE.Vector3(unitVectorLength, 0, 0)
+            ]);
+            const iVectorMaterial = new THREE.LineBasicMaterial({ color: 0x3498db, linewidth: 3 });
+            const iVector = new THREE.Line(iVectorGeometry, iVectorMaterial);
+            scene.add(iVector);
+            
+            // j vector (red)
+            const jVectorGeometry = new THREE.BufferGeometry().setFromPoints([
+                new THREE.Vector3(0, 0, 0),
+                new THREE.Vector3(0, unitVectorLength, 0)
+            ]);
+            const jVectorMaterial = new THREE.LineBasicMaterial({ color: 0xe74c3c, linewidth: 3 });
+            const jVector = new THREE.Line(jVectorGeometry, jVectorMaterial);
+            scene.add(jVector);
+            
+            // k vector (green)
+            const kVectorGeometry = new THREE.BufferGeometry().setFromPoints([
+                new THREE.Vector3(0, 0, 0),
+                new THREE.Vector3(0, 0, unitVectorLength)
+            ]);
+            const kVectorMaterial = new THREE.LineBasicMaterial({ color: 0x2ecc71, linewidth: 3 });
+            const kVector = new THREE.Line(kVectorGeometry, kVectorMaterial);
+            scene.add(kVector);
+            
+            // Add unit vector labels
+            const unitLabelDistance = 1.8;
+            
+            const iLabel = createTextSprite("i", 0x3498db);
+            iLabel.position.set(unitLabelDistance, 0, 0);
+            scene.add(iLabel);
+            
+            const jLabel = createTextSprite("j", 0xe74c3c);
+            jLabel.position.set(0, unitLabelDistance, 0);
+            scene.add(jLabel);
+            
+            const kLabel = createTextSprite("k", 0x2ecc71);
+            kLabel.position.set(0, 0, unitLabelDistance);
+            scene.add(kLabel);
+        }
+        
+        // Helper function to create text sprites
+        function createTextSprite(text, color) {
+            const canvas = document.createElement('canvas');
+            const context = canvas.getContext('2d');
+            canvas.width = 256;
+            canvas.height = 256;
+            
+            context.fillStyle = 'rgba(0, 0, 0, 0)';
+            context.fillRect(0, 0, canvas.width, canvas.height);
+            
+            context.font = 'Bold 120px Arial';
+            context.fillStyle = `rgb(${(color >> 16) & 255}, ${(color >> 8) & 255}, ${color & 255})`;
+            context.textAlign = 'center';
+            context.textBaseline = 'middle';
+            context.fillText(text, canvas.width / 2, canvas.height / 2);
+            
+            const texture = new THREE.CanvasTexture(canvas);
+            const material = new THREE.SpriteMaterial({ map: texture });
+            const sprite = new THREE.Sprite(material);
+            sprite.scale.set(1, 1, 1);
+            
+            return sprite;
+        }
+        
+        // Animation state
+        let animationState = {
+            point: null,
+            vector: null,
+            xComponent: null,
+            yComponent: null,
+            zComponent: null,
+            perpendicular: null,
+            animationTime: 0,
+            isPlaying: false,
+            isComplete: false
+        };
+        
+        // Create vector and components
+        function createVectorAnimation() {
+            // Clear previous animation
+            if (animationState.point) scene.remove(animationState.point);
+            if (animationState.vector) scene.remove(animationState.vector);
+            if (animationState.xComponent) scene.remove(animationState.xComponent);
+            if (animationState.yComponent) scene.remove(animationState.yComponent);
+            if (animationState.zComponent) scene.remove(animationState.zComponent);
+            if (animationState.perpendicular) scene.remove(animationState.perpendicular);
+            
+            // Reset animation state
+            animationState.animationTime = 0;
+            animationState.isComplete = false;
+            
+            // Define vector coordinates (example: (3, 4, 5))
+            const vectorEnd = new THREE.Vector3(3, 4, 5);
+            
+            // Create point at vector end
+            const pointGeometry = new THREE.SphereGeometry(0.2, 32, 32);
+            const pointMaterial = new THREE.MeshBasicMaterial({ color: 0xffff00 });
+            animationState.point = new THREE.Mesh(pointGeometry, pointMaterial);
+            animationState.point.position.copy(vectorEnd);
+            animationState.point.visible = false;
+            scene.add(animationState.point);
+            
+            // Create vector line (will be animated)
+            const vectorGeometry = new THREE.BufferGeometry();
+            const vectorMaterial = new THREE.LineBasicMaterial({ 
+                color: 0xffff00, 
+                linewidth: 3 
+            });
+            animationState.vector = new THREE.Line(vectorGeometry, vectorMaterial);
+            scene.add(animationState.vector);
+            
+            // Create component lines (initially invisible)
+            // X component (blue)
+            const xGeometry = new THREE.BufferGeometry();
+            const xMaterial = new THREE.LineBasicMaterial({ 
+                color: 0x3498db, 
+                linewidth: 2
+            });
+            animationState.xComponent = new THREE.Line(xGeometry, xMaterial);
+            scene.add(animationState.xComponent);
+            
+            // Y component (red)
+            const yGeometry = new THREE.BufferGeometry();
+            const yMaterial = new THREE.LineBasicMaterial({ 
+                color: 0xe74c3c, 
+                linewidth: 2
+            });
+            animationState.yComponent = new THREE.Line(yGeometry, yMaterial);
+            scene.add(animationState.yComponent);
+            
+            // Z component (green)
+            const zGeometry = new THREE.BufferGeometry();
+            const zMaterial = new THREE.LineBasicMaterial({ 
+                color: 0x2ecc71, 
+                linewidth: 2
+            });
+            animationState.zComponent = new THREE.Line(zGeometry, zMaterial);
+            scene.add(animationState.zComponent);
+            
+            // Create perpendicular line to XY plane
+            const perpendicularGeometry = new THREE.BufferGeometry();
+            const perpendicularMaterial = new THREE.LineBasicMaterial({ 
+                color: 0xffffff, 
+                linewidth: 2,
+                dashed: true
+            });
+            animationState.perpendicular = new THREE.Line(perpendicularGeometry, perpendicularMaterial);
+            scene.add(animationState.perpendicular);
+        }
+        
+        // Update animation
+        function updateAnimation(deltaTime) {
+            if (!animationState.isPlaying || animationState.isComplete) return;
+            
+            animationState.animationTime += deltaTime;
+            const progress = Math.min(animationState.animationTime / 5, 1); // 5 second animation
+            
+            // Vector coordinates
+            const vectorEnd = new THREE.Vector3(3, 4, 5);
+            
+            // Animate point appearance
+            if (progress > 0.1) {
+                animationState.point.visible = true;
+            }
+            
+            // Animate vector drawing
+            if (progress <= 0.3) {
+                const vectorProgress = progress / 0.3;
+                const currentEnd = new THREE.Vector3().copy(vectorEnd).multiplyScalar(vectorProgress);
+                const vectorPoints = [new THREE.Vector3(0, 0, 0), currentEnd];
+                animationState.vector.geometry.setFromPoints(vectorPoints);
+            } else {
+                // Keep the full vector visible
+                const vectorPoints = [new THREE.Vector3(0, 0, 0), vectorEnd];
+                animationState.vector.geometry.setFromPoints(vectorPoints);
+            }
+            
+            // Animate perpendicular line (appears after vector is drawn)
+            if (progress > 0.3 && progress <= 0.6) {
+                const perpendicularProgress = (progress - 0.3) / 0.3;
+                const perpendicularEnd = new THREE.Vector3(
+                    vectorEnd.x, 
+                    vectorEnd.y, 
+                    vectorEnd.z * (1 - perpendicularProgress)
+                );
+                const perpendicularPoints = [vectorEnd, perpendicularEnd];
+                animationState.perpendicular.geometry.setFromPoints(perpendicularPoints);
+            } else if (progress > 0.6) {
+                // Keep the full perpendicular visible
+                const perpendicularPoints = [vectorEnd, new THREE.Vector3(vectorEnd.x, vectorEnd.y, 0)];
+                animationState.perpendicular.geometry.setFromPoints(perpendicularPoints);
+            }
+            
+            // Animate component lines (appear after perpendicular)
+            if (progress > 0.6) {
+                const componentProgress = (progress - 0.6) / 0.4;
+                
+                // X component (blue)
+                const xPoints = [
+                    new THREE.Vector3(0, 0, 0),
+                    new THREE.Vector3(vectorEnd.x * componentProgress, 0, 0)
+                ];
+                animationState.xComponent.geometry.setFromPoints(xPoints);
+                
+                // Y component (red)
+                const yPoints = [
+                    new THREE.Vector3(vectorEnd.x, 0, 0),
+                    new THREE.Vector3(vectorEnd.x, vectorEnd.y * componentProgress, 0)
+                ];
+                animationState.yComponent.geometry.setFromPoints(yPoints);
+                
+                // Z component (green)
+                const zPoints = [
+                    new THREE.Vector3(vectorEnd.x, vectorEnd.y, 0),
+                    new THREE.Vector3(
+                        vectorEnd.x, 
+                        vectorEnd.y, 
+                        vectorEnd.z * componentProgress
+                    )
+                ];
+                animationState.zComponent.geometry.setFromPoints(zPoints);
+            }
+            
+            // Mark animation as complete
+            if (progress >= 1) {
+                animationState.isComplete = true;
+            }
+        }
+        
+        // Animation loop
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            const deltaTime = 0.016; // Approximate time per frame at 60fps
+            updateAnimation(deltaTime);
+            
+            controls.update();
+            renderer.render(scene, camera);
+        }
+        
+        // Event listeners for controls
+        document.getElementById('reset-btn').addEventListener('click', function() {
+            createVectorAnimation();
+            animationState.isPlaying = false;
+        });
+        
+        document.getElementById('play-btn').addEventListener('click', function() {
+            animationState.isPlaying = true;
+        });
+        
+        document.getElementById('pause-btn').addEventListener('click', function() {
+            animationState.isPlaying = false;
+        });
+        
+        // Initialize the visualization
+        createCoordinateSystem();
+        createVectorAnimation();
+        animate();
+        
+        // Handle window resize
+        window.addEventListener('resize', function() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+    </script>
+</body>
+</html>
