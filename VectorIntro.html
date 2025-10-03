@@ -1,0 +1,1065 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Vector Physics in Space - JEE Education</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            overflow: hidden; 
+            background: linear-gradient(to bottom, #000011, #000033);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            color: #fff;
+        }
+        #container { 
+            position: relative; 
+            width: 100vw; 
+            height: 100vh; 
+        }
+        #canvas-container { 
+            position: absolute; 
+            top: 0; 
+            left: 0; 
+            width: 100%; 
+            height: 100%; 
+        }
+        #overlay { 
+            position: absolute; 
+            top: 50%; 
+            left: 50%; 
+            transform: translate(-50%, -50%); 
+            color: white; 
+            text-align: center; 
+            z-index: 10; 
+            width: 80%; 
+            max-width: 800px; 
+            pointer-events: none; 
+            background: rgba(0, 0, 30, 0.7);
+            padding: 2rem;
+            border-radius: 15px;
+            backdrop-filter: blur(5px);
+            border: 1px solid rgba(100, 150, 255, 0.3);
+        }
+        #title { 
+            font-size: 2.5rem; 
+            margin-bottom: 1rem; 
+            text-shadow: 0 0 10px rgba(100, 150, 255, 0.7);
+            opacity: 0; 
+            animation: fadeIn 3s ease-out 1s forwards; 
+            color: #aaccff;
+        }
+        #subtitle { 
+            font-size: 1.2rem; 
+            opacity: 0; 
+            animation: fadeIn 3s ease-out 2s forwards; 
+            margin-bottom: 1.5rem;
+            color: #ccddff;
+        }
+        #vector-info {
+            font-size: 1rem;
+            opacity: 0;
+            animation: fadeIn 3s ease-out 3s forwards;
+            text-align: left;
+            margin-top: 1rem;
+            background: rgba(0, 20, 40, 0.5);
+            padding: 1rem;
+            border-radius: 8px;
+            border-left: 3px solid #4a90e2;
+        }
+        @keyframes fadeIn { 
+            from { opacity: 0; transform: translateY(20px); } 
+            to { opacity: 1; transform: translateY(0); } 
+        }
+        #loading { 
+            position: absolute; 
+            top: 50%; 
+            left: 50%; 
+            transform: translate(-50%,-50%); 
+            color: white; 
+            font-size: 1.5rem; 
+            z-index: 100; 
+            background: rgba(0, 0, 30, 0.8);
+            padding: 1rem 2rem;
+            border-radius: 10px;
+            border: 1px solid rgba(100, 150, 255, 0.5);
+        }
+        .hidden { display: none; }
+        
+        /* Control Panel */
+        #controls {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            z-index: 20;
+            background: rgba(0, 10, 30, 0.7);
+            padding: 15px;
+            border-radius: 10px;
+            backdrop-filter: blur(5px);
+            border: 1px solid rgba(100, 150, 255, 0.3);
+            max-width: 300px;
+        }
+        
+        #controls h3 {
+            margin-bottom: 10px;
+            color: #aaccff;
+            font-size: 1.1rem;
+        }
+        
+        .control-group {
+            margin-bottom: 10px;
+        }
+        
+        .control-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-size: 0.9rem;
+            color: #ccddff;
+        }
+        
+        .btn {
+            background: linear-gradient(to bottom, #2a5c8f, #1a3c6f);
+            border: none;
+            color: white;
+            padding: 8px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-right: 5px;
+            margin-bottom: 5px;
+            font-size: 0.9rem;
+            transition: all 0.3s;
+        }
+        
+        .btn:hover {
+            background: linear-gradient(to bottom, #3a6c9f, #2a4c7f);
+            transform: translateY(-2px);
+        }
+        
+        .btn.active {
+            background: linear-gradient(to bottom, #4a8cbf, #3a6c9f);
+            box-shadow: 0 0 10px rgba(100, 150, 255, 0.5);
+        }
+        
+        /* Vector Display */
+        #vector-display {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            z-index: 20;
+            background: rgba(0, 10, 30, 0.7);
+            padding: 15px;
+            border-radius: 10px;
+            backdrop-filter: blur(5px);
+            border: 1px solid rgba(100, 150, 255, 0.3);
+            width: 250px;
+            pointer-events: none;
+        }
+        
+        #vector-display h3 {
+            color: #aaccff;
+            margin-bottom: 10px;
+            font-size: 1.1rem;
+        }
+        
+        .vector-component {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 5px;
+            font-size: 0.9rem;
+        }
+        
+        .vector-component .label {
+            color: #ccddff;
+        }
+        
+        .vector-component .value {
+            color: #ffffff;
+            font-family: 'Courier New', monospace;
+        }
+        
+        /* Stars background */
+        .stars {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+        }
+        
+        .star {
+            position: absolute;
+            background: white;
+            border-radius: 50%;
+        }
+    </style>
+</head>
+<body>
+    <div id="container">
+        <div class="stars" id="stars"></div>
+        <div id="canvas-container"></div>
+        <div id="overlay">
+            <h1 id="title">Vectors: The Language of Motion in Our Universe</h1>
+            <p id="subtitle">Observing position, velocity, and acceleration vectors of celestial and man-made objects</p>
+            <div id="vector-info">
+                <p><strong>Vectors in Physics:</strong> Vectors have both magnitude and direction. In this simulation, we visualize:</p>
+                <ul>
+                    <li><strong style="color: #ff4444">Position vectors</strong> (red): From Earth's center to objects</li>
+                    <li><strong style="color: #44ff44">Velocity vectors</strong> (green): Direction and speed of motion</li>
+                    <li><strong style="color: #4444ff">Acceleration vectors</strong> (blue): Change in velocity due to forces</li>
+                </ul>
+            </div>
+        </div>
+        
+        <div id="vector-display">
+            <h3>Vector Analysis</h3>
+            <div class="vector-component">
+                <span class="label">Selected Object:</span>
+                <span class="value" id="selected-object">Earth</span>
+            </div>
+            <div class="vector-component">
+                <span class="label">Position Vector:</span>
+                <span class="value" id="position-vector">(0, 0, 0)</span>
+            </div>
+            <div class="vector-component">
+                <span class="label">Velocity Vector:</span>
+                <span class="value" id="velocity-vector">(0, 0, 0)</span>
+            </div>
+            <div class="vector-component">
+                <span class="label">Acceleration Vector:</span>
+                <span class="value" id="acceleration-vector">(0, 0, 0)</span>
+            </div>
+            <div class="vector-component">
+                <span class="label">Vector Magnitude:</span>
+                <span class="value" id="vector-magnitude">0 m/s</span>
+            </div>
+        </div>
+        
+        <div id="controls">
+            <h3>Simulation Controls</h3>
+            <div class="control-group">
+                <label>View Mode:</label>
+                <button class="btn active" id="btn-earth-view">Earth View</button>
+                <button class="btn" id="btn-satellite-view">Satellite View</button>
+                <button class="btn" id="btn-moon-view">Moon View</button>
+            </div>
+            <div class="control-group">
+                <label>Vector Display:</label>
+                <button class="btn active" id="btn-show-position">Position</button>
+                <button class="btn active" id="btn-show-velocity">Velocity</button>
+                <button class="btn active" id="btn-show-acceleration">Acceleration</button>
+            </div>
+            <div class="control-group">
+                <label>Trails:</label>
+                <button class="btn" id="btn-toggle-trails">Show Trails</button>
+                <button class="btn" id="btn-clear-trails">Clear Trails</button>
+            </div>
+            <div class="control-group">
+                <label>Time Scale:</label>
+                <input type="range" id="time-scale" min="0.1" max="10" step="0.1" value="1">
+                <span id="time-scale-value">1x</span>
+            </div>
+        </div>
+        
+        <div id="loading">Loading Universe Simulation...</div>
+    </div>
+
+    <!-- Three.js and examples (r128) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.min.js"></script>
+    <script>
+        // Create starfield background
+        function createStarfield() {
+            const starsContainer = document.getElementById('stars');
+            const starCount = 500;
+            
+            for (let i = 0; i < starCount; i++) {
+                const star = document.createElement('div');
+                star.className = 'star';
+                
+                // Random position
+                const x = Math.random() * 100;
+                const y = Math.random() * 100;
+                
+                // Random size and brightness
+                const size = Math.random() * 2 + 0.5;
+                const opacity = Math.random() * 0.8 + 0.2;
+                
+                star.style.left = `${x}%`;
+                star.style.top = `${y}%`;
+                star.style.width = `${size}px`;
+                star.style.height = `${size}px`;
+                star.style.opacity = opacity;
+                
+                // Twinkling effect
+                const twinkleDuration = Math.random() * 5 + 3;
+                star.style.animation = `twinkle ${twinkleDuration}s infinite alternate`;
+                
+                starsContainer.appendChild(star);
+            }
+            
+            // Add CSS for twinkling animation
+            const style = document.createElement('style');
+            style.textContent = `
+                @keyframes twinkle {
+                    0% { opacity: 0.2; }
+                    100% { opacity: 1; }
+                }
+            `;
+            document.head.appendChild(style);
+        }
+        
+        // Main Three.js application
+        class EarthVectorAnimation {
+            constructor() {
+                this.container = document.getElementById('canvas-container');
+                this.loadingElement = document.getElementById('loading');
+                this.scene = null;
+                this.camera = null;
+                this.renderer = null;
+                this.controls = null;
+                this.earth = null;
+                this.moon = null;
+                this.objects = [];
+                this.vectorHelpers = [];
+                this.trails = [];
+                this.clock = new THREE.Clock();
+                this.timeScale = 1;
+                this.showTrails = false;
+                this.selectedObject = null;
+                
+                // Vector visibility
+                this.showPositionVectors = true;
+                this.showVelocityVectors = true;
+                this.showAccelerationVectors = true;
+                
+                // Camera modes
+                this.cameraMode = 'earth'; // 'earth', 'satellite', 'moon'
+                this.cameraAnimation = {
+                    isAnimating: false,
+                    target: null,
+                    startPosition: null,
+                    startTime: 0,
+                    duration: 3
+                };
+
+                this.init();
+            }
+
+            init() {
+                // Create starfield
+                createStarfield();
+                
+                // Create scene
+                this.scene = new THREE.Scene();
+                this.scene.background = new THREE.Color(0x000011);
+
+                // Create camera
+                this.camera = new THREE.PerspectiveCamera(
+                    45,
+                    window.innerWidth / window.innerHeight,
+                    0.1,
+                    1000
+                );
+                this.camera.position.set(0, 0, 25);
+
+                // Create renderer with antialiasing
+                this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
+                this.renderer.setSize(window.innerWidth, window.innerHeight);
+                this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+                this.renderer.shadowMap.enabled = true;
+                this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+                this.container.appendChild(this.renderer.domElement);
+
+                // Add orbit controls
+                this.controls = new THREE.OrbitControls(this.camera, this.renderer.domElement);
+                this.controls.enabled = true;
+                this.controls.enableDamping = true;
+                this.controls.dampingFactor = 0.05;
+                this.controls.minDistance = 8;
+                this.controls.maxDistance = 100;
+
+                // Add lighting
+                this.setupLighting();
+
+                // Create celestial bodies
+                this.createEarth();
+                this.createMoon();
+                this.createCoordinateAxes();
+                this.createOrbitalObjects();
+
+                // Set up event listeners for controls
+                this.setupEventListeners();
+
+                // Set Earth as initially selected object
+                this.selectObject(this.earth, "Earth");
+
+                // Handle window resize
+                window.addEventListener('resize', () => this.onWindowResize());
+
+                // Start animation
+                this.animate();
+
+                // Hide loading screen after a short delay
+                setTimeout(() => {
+                    if (this.loadingElement) this.loadingElement.classList.add('hidden');
+                    // Hide overlay after 8 seconds
+                    setTimeout(() => {
+                        document.getElementById('overlay').style.opacity = 0;
+                        setTimeout(() => {
+                            document.getElementById('overlay').style.display = 'none';
+                        }, 1000);
+                    }, 8000);
+                }, 3000);
+            }
+
+            setupLighting() {
+                // Ambient light for general illumination
+                const ambientLight = new THREE.AmbientLight(0x333333);
+                this.scene.add(ambientLight);
+
+                // Directional light (sun)
+                const directionalLight = new THREE.DirectionalLight(0xffffff, 1.5);
+                directionalLight.position.set(50, 30, 50);
+                directionalLight.castShadow = true;
+                directionalLight.shadow.mapSize.width = 2048;
+                directionalLight.shadow.mapSize.height = 2048;
+                directionalLight.shadow.camera.near = 0.5;
+                directionalLight.shadow.camera.far = 500;
+                directionalLight.shadow.camera.left = -50;
+                directionalLight.shadow.camera.right = 50;
+                directionalLight.shadow.camera.top = 50;
+                directionalLight.shadow.camera.bottom = -50;
+                this.scene.add(directionalLight);
+
+                // Point light inside Earth for atmosphere effect
+                const pointLight = new THREE.PointLight(0x4488ff, 0.3, 100);
+                pointLight.position.set(0, 0, 0);
+                this.scene.add(pointLight);
+            }
+
+            createEarth() {
+                // Create Earth geometry
+                const geometry = new THREE.SphereGeometry(5, 64, 64);
+
+                // Create Earth material with realistic texture
+                const textureLoader = new THREE.TextureLoader();
+
+                // Using high-quality Earth textures
+                let earthTexture, earthBumpMap, earthSpecularMap;
+                try {
+                    earthTexture = textureLoader.load('https://raw.githubusercontent.com/mrdoob/three.js/dev/examples/textures/planets/earth_atmos_2048.jpg');
+                    earthBumpMap = textureLoader.load('https://raw.githubusercontent.com/mrdoob/three.js/dev/examples/textures/planets/earth_normal_2048.jpg');
+                    earthSpecularMap = textureLoader.load('https://raw.githubusercontent.com/mrdoob/three.js/dev/examples/textures/planets/earth_specular_2048.jpg');
+                } catch (err) {
+                    console.error('Texture load failed:', err);
+                }
+
+                const material = new THREE.MeshPhongMaterial({
+                    map: earthTexture || null,
+                    bumpMap: earthBumpMap || null,
+                    bumpScale: 0.05,
+                    specularMap: earthSpecularMap || null,
+                    specular: new THREE.Color(0x333333),
+                    shininess: 10
+                });
+
+                // Create Earth mesh
+                this.earth = new THREE.Mesh(geometry, material);
+                this.earth.rotation.y = -0.3;
+                this.earth.castShadow = true;
+                this.earth.receiveShadow = true;
+                this.earth.name = "Earth";
+                this.scene.add(this.earth);
+
+                // Add realistic atmosphere effect
+                const atmosphereGeometry = new THREE.SphereGeometry(5.15, 64, 64);
+                const atmosphereMaterial = new THREE.ShaderMaterial({
+                    uniforms: {
+                        glowColor: { value: new THREE.Color(0x00aaff) },
+                        viewVector: { value: this.camera.position }
+                    },
+                    vertexShader: `
+                        uniform vec3 viewVector;
+                        varying float intensity;
+                        void main() {
+                            vec3 vNormal = normalize(normalMatrix * normal);
+                            vec3 vNormel = normalize(normalMatrix * viewVector);
+                            intensity = pow(0.6 - dot(vNormal, vNormel), 2.0);
+                            gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+                        }
+                    `,
+                    fragmentShader: `
+                        uniform vec3 glowColor;
+                        varying float intensity;
+                        void main() {
+                            vec3 glow = glowColor * intensity;
+                            gl_FragColor = vec4(glow, 1.0);
+                        }
+                    `,
+                    side: THREE.BackSide,
+                    blending: THREE.AdditiveBlending,
+                    transparent: true
+                });
+                
+                const atmosphere = new THREE.Mesh(atmosphereGeometry, atmosphereMaterial);
+                atmosphere.scale.set(1.1, 1.1, 1.1);
+                this.scene.add(atmosphere);
+            }
+
+            createMoon() {
+                // Create Moon geometry
+                const geometry = new THREE.SphereGeometry(1.3, 32, 32);
+                
+                // Moon material
+                const textureLoader = new THREE.TextureLoader();
+                let moonTexture, moonBumpMap;
+                try {
+                    moonTexture = textureLoader.load('https://raw.githubusercontent.com/mrdoob/three.js/dev/examples/textures/planets/moon_1024.jpg');
+                    moonBumpMap = textureLoader.load('https://raw.githubusercontent.com/mrdoob/three.js/dev/examples/textures/planets/moon_bump.jpg');
+                } catch (err) {
+                    console.error('Moon texture load failed:', err);
+                }
+                
+                const material = new THREE.MeshPhongMaterial({
+                    map: moonTexture || null,
+                    bumpMap: moonBumpMap || null,
+                    bumpScale: 0.05,
+                    shininess: 5
+                });
+                
+                // Create Moon mesh
+                this.moon = new THREE.Mesh(geometry, material);
+                this.moon.position.set(15, 0, 0);
+                this.moon.castShadow = true;
+                this.moon.receiveShadow = true;
+                this.moon.name = "Moon";
+                this.scene.add(this.moon);
+                
+                // Add Moon to objects for animation
+                this.objects.push({
+                    mesh: this.moon,
+                    type: "moon",
+                    orbitalRadius: 15,
+                    orbitalSpeed: 0.002,
+                    angle: 0,
+                    velocity: new THREE.Vector3(0, 0.03, 0),
+                    acceleration: new THREE.Vector3(-0.0005, 0, 0)
+                });
+            }
+
+            createCoordinateAxes() {
+                // Add AxesHelper
+                const axesHelper = new THREE.AxesHelper(10);
+                this.scene.add(axesHelper);
+
+                // Custom axis lines with labels
+                const axisLength = 12;
+                const axisMaterialX = new THREE.LineBasicMaterial({ color: 0xff4444, transparent: true, opacity: 0.8 });
+                const axisMaterialY = new THREE.LineBasicMaterial({ color: 0x44ff44, transparent: true, opacity: 0.8 });
+                const axisMaterialZ = new THREE.LineBasicMaterial({ color: 0x4444ff, transparent: true, opacity: 0.8 });
+
+                const pointsX = [ new THREE.Vector3(0,0,0), new THREE.Vector3(axisLength,0,0) ];
+                const geometryX = new THREE.BufferGeometry().setFromPoints(pointsX);
+                const lineX = new THREE.Line(geometryX, axisMaterialX);
+                this.scene.add(lineX);
+
+                const pointsY = [ new THREE.Vector3(0,0,0), new THREE.Vector3(0,axisLength,0) ];
+                const geometryY = new THREE.BufferGeometry().setFromPoints(pointsY);
+                const lineY = new THREE.Line(geometryY, axisMaterialY);
+                this.scene.add(lineY);
+
+                const pointsZ = [ new THREE.Vector3(0,0,0), new THREE.Vector3(0,0,axisLength) ];
+                const geometryZ = new THREE.BufferGeometry().setFromPoints(pointsZ);
+                const lineZ = new THREE.Line(geometryZ, axisMaterialZ);
+                this.scene.add(lineZ);
+            }
+
+            createOrbitalObjects() {
+                // Create International Space Station (ISS)
+                this.createISS(6.5, 0, 0.02, 0.01);
+                
+                // Create geostationary satellite
+                this.createSatellite(7.2, Math.PI/4, 0.015, -0.01);
+                
+                // Create polar orbit satellite
+                this.createSatellite(6.8, Math.PI/2, 0, 0.02, 0, 0.01);
+                
+                // Create airplanes
+                this.createAirplane(5.3, 0.2, 0.05, 0.02);
+                this.createAirplane(5.4, -0.3, 0.04, -0.03);
+            }
+
+            createISS(radius, angle, vx, vy) {
+                // Create ISS-like structure
+                const issGroup = new THREE.Group();
+                
+                // Main body
+                const bodyGeometry = new THREE.BoxGeometry(0.8, 0.2, 0.4);
+                const bodyMaterial = new THREE.MeshPhongMaterial({ color: 0xcccccc });
+                const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
+                issGroup.add(body);
+                
+                // Solar panels
+                const panelGeometry = new THREE.BoxGeometry(2.5, 0.02, 0.8);
+                const panelMaterial = new THREE.MeshPhongMaterial({ color: 0x2266aa });
+                const panel1 = new THREE.Mesh(panelGeometry, panelMaterial);
+                panel1.position.set(0, 0.15, 0);
+                issGroup.add(panel1);
+                
+                const panel2 = new THREE.Mesh(panelGeometry, panelMaterial);
+                panel2.position.set(0, -0.15, 0);
+                issGroup.add(panel2);
+                
+                // Position ISS
+                const x = radius * Math.cos(angle);
+                const z = radius * Math.sin(angle);
+                issGroup.position.set(x, 0, z);
+                
+                // Orient ISS to face direction of movement
+                const direction = new THREE.Vector3(-z, 0, x).normalize();
+                issGroup.lookAt(direction.x + x, 0, direction.z + z);
+                
+                this.scene.add(issGroup);
+                
+                // Store object data for animation
+                this.objects.push({
+                    mesh: issGroup,
+                    type: "iss",
+                    orbitalRadius: radius,
+                    orbitalSpeed: 0.01,
+                    angle: angle,
+                    velocity: new THREE.Vector3(vx, vy, 0),
+                    acceleration: new THREE.Vector3(-vx/1000, -vy/1000, 0)
+                });
+            }
+
+            createSatellite(radius, angle, vx, vy, vz = 0) {
+                // Create satellite geometry
+                const geometry = new THREE.BoxGeometry(0.3, 0.1, 0.5);
+                const material = new THREE.MeshPhongMaterial({ color: 0xaaaaaa, shininess: 100 });
+                const satellite = new THREE.Mesh(geometry, material);
+
+                // Position satellite
+                const x = radius * Math.cos(angle);
+                const z = radius * Math.sin(angle);
+                satellite.position.set(x, 0, z);
+
+                // Add solar panels
+                const panelGeometry = new THREE.BoxGeometry(0.8, 0.02, 0.3);
+                const panelMaterial = new THREE.MeshPhongMaterial({ color: 0x2266aa });
+                const panel1 = new THREE.Mesh(panelGeometry, panelMaterial);
+                panel1.position.set(0, 0.1, 0);
+                satellite.add(panel1);
+
+                const panel2 = new THREE.Mesh(panelGeometry, panelMaterial);
+                panel2.position.set(0, -0.1, 0);
+                satellite.add(panel2);
+
+                this.scene.add(satellite);
+
+                // Store object data for animation
+                this.objects.push({
+                    mesh: satellite,
+                    type: "satellite",
+                    orbitalRadius: radius,
+                    orbitalSpeed: 0.008,
+                    angle: angle,
+                    velocity: new THREE.Vector3(vx, vy, vz),
+                    acceleration: new THREE.Vector3(-vx/800, -vy/800, -vz/800)
+                });
+            }
+
+            createAirplane(radius, angle, vx, vy) {
+                // Create simple airplane geometry
+                const bodyGeometry = new THREE.CylinderGeometry(0.05, 0.05, 0.4, 8);
+                const wingGeometry = new THREE.BoxGeometry(0.6, 0.02, 0.1);
+                const tailGeometry = new THREE.BoxGeometry(0.1, 0.2, 0.02);
+
+                const bodyMaterial = new THREE.MeshPhongMaterial({ color: 0xffffff });
+                const wingMaterial = new THREE.MeshPhongMaterial({ color: 0xcccccc });
+
+                const airplane = new THREE.Group();
+
+                const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
+                body.rotation.z = Math.PI / 2;
+                airplane.add(body);
+
+                const wing = new THREE.Mesh(wingGeometry, wingMaterial);
+                wing.position.set(0, 0, 0);
+                airplane.add(wing);
+
+                const tail = new THREE.Mesh(tailGeometry, wingMaterial);
+                tail.position.set(-0.15, 0, 0);
+                airplane.add(tail);
+
+                // Position airplane
+                const x = radius * Math.cos(angle);
+                const z = radius * Math.sin(angle);
+                airplane.position.set(x, 0.5, z);
+
+                // Orient airplane
+                const direction = new THREE.Vector3(-z, 0, x).normalize();
+                airplane.lookAt(direction.x + x, 0.5, direction.z + z);
+
+                this.scene.add(airplane);
+
+                // Store object data for animation
+                this.objects.push({
+                    mesh: airplane,
+                    type: "airplane",
+                    orbitalRadius: radius,
+                    orbitalSpeed: 0.02,
+                    angle: angle,
+                    velocity: new THREE.Vector3(vx, 0, vy),
+                    acceleration: new THREE.Vector3(-vx/500, 0, -vy/500)
+                });
+            }
+
+            createVectorHelper(object, vector, color, scale = 1) {
+                const direction = vector.clone().normalize();
+                const length = vector.length() * scale;
+                
+                const arrowHelper = new THREE.ArrowHelper(
+                    direction,
+                    new THREE.Vector3(0, 0, 0),
+                    length,
+                    color,
+                    0.2 * length,
+                    0.1 * length
+                );
+                
+                object.add(arrowHelper);
+                return arrowHelper;
+            }
+
+            updateVectors() {
+                // Clear existing vector helpers
+                this.vectorHelpers.forEach(helper => {
+                    if (helper.parent) helper.parent.remove(helper);
+                });
+                this.vectorHelpers = [];
+                
+                // Update vectors for all objects based on visibility settings
+                this.objects.forEach(obj => {
+                    if (this.showPositionVectors) {
+                        const posVector = obj.mesh.position.clone();
+                        const posHelper = this.createVectorHelper(obj.mesh, posVector, 0xff4444, 0.3);
+                        this.vectorHelpers.push(posHelper);
+                    }
+                    
+                    if (this.showVelocityVectors) {
+                        const velHelper = this.createVectorHelper(obj.mesh, obj.velocity, 0x44ff44, 10);
+                        this.vectorHelpers.push(velHelper);
+                    }
+                    
+                    if (this.showAccelerationVectors) {
+                        const accHelper = this.createVectorHelper(obj.mesh, obj.acceleration, 0x4444ff, 500);
+                        this.vectorHelpers.push(accHelper);
+                    }
+                });
+                
+                // Also show Earth's rotation vector if selected
+                if (this.selectedObject === this.earth && this.showVelocityVectors) {
+                    const rotationVector = new THREE.Vector3(0, 0.5, 0);
+                    const rotHelper = this.createVectorHelper(this.earth, rotationVector, 0x44ff44, 2);
+                    this.vectorHelpers.push(rotHelper);
+                }
+            }
+
+            animateObjects() {
+                // Animate Earth rotation
+                if (this.earth) {
+                    this.earth.rotation.y += 0.001 * this.timeScale;
+                }
+                
+                // Animate orbital objects
+                this.objects.forEach(obj => {
+                    // Update angle for orbital motion
+                    obj.angle += obj.orbitalSpeed * this.timeScale;
+                    
+                    // Update position based on orbital parameters
+                    if (obj.type === "moon") {
+                        // Moon orbits Earth
+                        obj.mesh.position.x = obj.orbitalRadius * Math.cos(obj.angle);
+                        obj.mesh.position.z = obj.orbitalRadius * Math.sin(obj.angle);
+                    } else {
+                        // Other objects in simpler orbits
+                        obj.mesh.position.x = obj.orbitalRadius * Math.cos(obj.angle);
+                        obj.mesh.position.z = obj.orbitalRadius * Math.sin(obj.angle);
+                    }
+                    
+                    // Add trails if enabled
+                    if (this.showTrails) {
+                        const trailGeometry = new THREE.SphereGeometry(0.05, 4, 4);
+                        const trailMaterial = new THREE.MeshBasicMaterial({ 
+                            color: obj.type === "iss" ? 0xffffff : 
+                                  obj.type === "satellite" ? 0xaaaaaa : 
+                                  obj.type === "airplane" ? 0xffff00 : 0x888888 
+                        });
+                        const trail = new THREE.Mesh(trailGeometry, trailMaterial);
+                        trail.position.copy(obj.mesh.position);
+                        this.scene.add(trail);
+                        this.trails.push(trail);
+                        
+                        // Fade out trails over time
+                        setTimeout(() => {
+                            if (trail.parent) {
+                                trail.parent.remove(trail);
+                                this.trails = this.trails.filter(t => t !== trail);
+                            }
+                        }, 5000);
+                    }
+                });
+            }
+
+            setupEventListeners() {
+                // View mode buttons
+                document.getElementById('btn-earth-view').addEventListener('click', () => {
+                    this.setCameraMode('earth');
+                    this.updateButtonStates('earth');
+                });
+                
+                document.getElementById('btn-satellite-view').addEventListener('click', () => {
+                    this.setCameraMode('satellite');
+                    this.updateButtonStates('satellite');
+                });
+                
+                document.getElementById('btn-moon-view').addEventListener('click', () => {
+                    this.setCameraMode('moon');
+                    this.updateButtonStates('moon');
+                });
+                
+                // Vector display buttons
+                document.getElementById('btn-show-position').addEventListener('click', (e) => {
+                    this.showPositionVectors = !this.showPositionVectors;
+                    e.target.classList.toggle('active');
+                    this.updateVectors();
+                });
+                
+                document.getElementById('btn-show-velocity').addEventListener('click', (e) => {
+                    this.showVelocityVectors = !this.showVelocityVectors;
+                    e.target.classList.toggle('active');
+                    this.updateVectors();
+                });
+                
+                document.getElementById('btn-show-acceleration').addEventListener('click', (e) => {
+                    this.showAccelerationVectors = !this.showAccelerationVectors;
+                    e.target.classList.toggle('active');
+                    this.updateVectors();
+                });
+                
+                // Trail buttons
+                document.getElementById('btn-toggle-trails').addEventListener('click', (e) => {
+                    this.showTrails = !this.showTrails;
+                    e.target.textContent = this.showTrails ? 'Hide Trails' : 'Show Trails';
+                });
+                
+                document.getElementById('btn-clear-trails').addEventListener('click', () => {
+                    this.trails.forEach(trail => {
+                        if (trail.parent) trail.parent.remove(trail);
+                    });
+                    this.trails = [];
+                });
+                
+                // Time scale slider
+                const timeScaleSlider = document.getElementById('time-scale');
+                const timeScaleValue = document.getElementById('time-scale-value');
+                
+                timeScaleSlider.addEventListener('input', (e) => {
+                    this.timeScale = parseFloat(e.target.value);
+                    timeScaleValue.textContent = this.timeScale.toFixed(1) + 'x';
+                });
+                
+                // Object selection on click
+                this.renderer.domElement.addEventListener('click', (event) => {
+                    const mouse = new THREE.Vector2();
+                    mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+                    mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+                    
+                    const raycaster = new THREE.Raycaster();
+                    raycaster.setFromCamera(mouse, this.camera);
+                    
+                    const intersects = raycaster.intersectObjects(this.scene.children);
+                    
+                    if (intersects.length > 0) {
+                        let object = intersects[0].object;
+                        
+                        // If we clicked on a vector helper, find the parent object
+                        while (object.parent && object !== this.scene) {
+                            if (this.objects.some(obj => obj.mesh === object) || object === this.earth || object === this.moon) {
+                                break;
+                            }
+                            object = object.parent;
+                        }
+                        
+                        // Select the object
+                        if (object === this.earth) {
+                            this.selectObject(this.earth, "Earth");
+                        } else if (object === this.moon) {
+                            this.selectObject(this.moon, "Moon");
+                        } else {
+                            const objData = this.objects.find(obj => obj.mesh === object);
+                            if (objData) {
+                                this.selectObject(objData.mesh, this.getObjectName(objData.type));
+                            }
+                        }
+                    }
+                });
+            }
+            
+            setCameraMode(mode) {
+                this.cameraMode = mode;
+                this.cameraAnimation.isAnimating = true;
+                this.cameraAnimation.startTime = this.clock.getElapsedTime();
+                this.cameraAnimation.startPosition = this.camera.position.clone();
+                
+                switch(mode) {
+                    case 'earth':
+                        this.cameraAnimation.target = new THREE.Vector3(0, 5, 20);
+                        this.cameraAnimation.lookAt = new THREE.Vector3(0, 0, 0);
+                        break;
+                    case 'satellite':
+                        if (this.objects.length > 0) {
+                            const satellite = this.objects[0].mesh;
+                            this.cameraAnimation.target = satellite.position.clone().add(new THREE.Vector3(0, 3, 5));
+                            this.cameraAnimation.lookAt = satellite.position;
+                        }
+                        break;
+                    case 'moon':
+                        this.cameraAnimation.target = this.moon.position.clone().add(new THREE.Vector3(0, 5, 10));
+                        this.cameraAnimation.lookAt = this.moon.position;
+                        break;
+                }
+            }
+            
+            updateButtonStates(activeMode) {
+                // Update view mode buttons
+                document.getElementById('btn-earth-view').classList.toggle('active', activeMode === 'earth');
+                document.getElementById('btn-satellite-view').classList.toggle('active', activeMode === 'satellite');
+                document.getElementById('btn-moon-view').classList.toggle('active', activeMode === 'moon');
+            }
+            
+            selectObject(object, name) {
+                this.selectedObject = object;
+                document.getElementById('selected-object').textContent = name;
+                
+                // Update vector display
+                this.updateVectorDisplay();
+            }
+            
+            updateVectorDisplay() {
+                if (!this.selectedObject) return;
+                
+                let position, velocity, acceleration;
+                
+                if (this.selectedObject === this.earth) {
+                    position = new THREE.Vector3(0, 0, 0);
+                    velocity = new THREE.Vector3(0, 0.5, 0); // Earth's rotation
+                    acceleration = new THREE.Vector3(0, 0, 0);
+                } else if (this.selectedObject === this.moon) {
+                    position = this.moon.position.clone();
+                    const obj = this.objects.find(o => o.mesh === this.moon);
+                    velocity = obj ? obj.velocity.clone() : new THREE.Vector3(0, 0, 0);
+                    acceleration = obj ? obj.acceleration.clone() : new THREE.Vector3(0, 0, 0);
+                } else {
+                    const obj = this.objects.find(o => o.mesh === this.selectedObject);
+                    if (obj) {
+                        position = obj.mesh.position.clone();
+                        velocity = obj.velocity.clone();
+                        acceleration = obj.acceleration.clone();
+                    } else {
+                        position = new THREE.Vector3(0, 0, 0);
+                        velocity = new THREE.Vector3(0, 0, 0);
+                        acceleration = new THREE.Vector3(0, 0, 0);
+                    }
+                }
+                
+                // Update display
+                document.getElementById('position-vector').textContent = 
+                    `(${position.x.toFixed(2)}, ${position.y.toFixed(2)}, ${position.z.toFixed(2)})`;
+                
+                document.getElementById('velocity-vector').textContent = 
+                    `(${velocity.x.toFixed(2)}, ${velocity.y.toFixed(2)}, ${velocity.z.toFixed(2)})`;
+                
+                document.getElementById('acceleration-vector').textContent = 
+                    `(${acceleration.x.toFixed(3)}, ${acceleration.y.toFixed(3)}, ${acceleration.z.toFixed(3)})`;
+                
+                document.getElementById('vector-magnitude').textContent = 
+                    `${velocity.length().toFixed(2)} m/s`;
+            }
+            
+            getObjectName(type) {
+                switch(type) {
+                    case "iss": return "International Space Station";
+                    case "satellite": return "Satellite";
+                    case "airplane": return "Airplane";
+                    case "moon": return "Moon";
+                    default: return "Unknown Object";
+                }
+            }
+
+            animateCamera() {
+                if (!this.cameraAnimation.isAnimating) return;
+                
+                const time = this.clock.getElapsedTime() - this.cameraAnimation.startTime;
+                const progress = Math.min(time / this.cameraAnimation.duration, 1);
+                
+                // Smooth interpolation
+                const easeProgress = progress < 0.5 ? 
+                    2 * progress * progress : 
+                    -1 + (4 - 2 * progress) * progress;
+                
+                // Interpolate camera position
+                this.camera.position.lerpVectors(
+                    this.cameraAnimation.startPosition, 
+                    this.cameraAnimation.target, 
+                    easeProgress
+                );
+                
+                // Look at the target
+                this.camera.lookAt(this.cameraAnimation.lookAt);
+                
+                // Stop animation when complete
+                if (progress >= 1) {
+                    this.cameraAnimation.isAnimating = false;
+                }
+            }
+
+            onWindowResize() {
+                this.camera.aspect = window.innerWidth / window.innerHeight;
+                this.camera.updateProjectionMatrix();
+                this.renderer.setSize(window.innerWidth, window.innerHeight);
+            }
+
+            animate() {
+                requestAnimationFrame(() => this.animate());
+
+                this.animateObjects();
+                this.animateCamera();
+                this.updateVectorDisplay();
+
+                if (this.controls && !this.cameraAnimation.isAnimating) {
+                    this.controls.update();
+                }
+
+                this.renderer.render(this.scene, this.camera);
+            }
+        }
+
+        // Initialize the animation when the page loads
+        window.addEventListener('DOMContentLoaded', () => {
+            try {
+                new EarthVectorAnimation();
+            } catch (err) {
+                console.error('Failed to initialize EarthVectorAnimation:', err);
+                const loading = document.getElementById('loading');
+                if (loading) {
+                    loading.textContent = 'Failed to load animation — check console.';
+                }
+            }
+        });
+    </script>
+</body>
+</html>
