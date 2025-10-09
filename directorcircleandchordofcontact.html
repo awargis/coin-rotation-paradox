@@ -3,32 +3,82 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Chord of Contact — Satellite Coverage (Interactive)</title>
+  <title>Chord of Contact — Satellite Coverage (Cinematic)</title>
   <style>
-    html,body{height:100%;margin:0;background:#000;overflow:hidden;font-family:Inter,system-ui,Arial}
+    html,body{height:100%;margin:0;background:#000;overflow:hidden;font-family:Inter,system-ui,Arial,sans-serif}
     #container{position:fixed;inset:0}
-    .overlay{position:absolute;left:16px;top:16px;color:#bfefff;z-index:10}
+    canvas{display:block;cursor:default}
+    .ui-panel{position:absolute;right:16px;top:16px;display:flex;flex-direction:column;gap:8px;z-index:10;align-items:flex-end;}
+    .ui-button{background:rgba(30,60,90,0.7);color:#bfefff;border:1px solid #4a8fc9;border-radius:4px;padding:8px 12px;cursor:pointer;transition:all 0.2s;font-size:12px;font-weight:500;backdrop-filter:blur(5px);}
+    .ui-button:hover{background:rgba(50,100,150,0.9);transform:translateY(-1px)}
+    .camera-controls{display:flex;gap:4px}
+    .camera-btn{background:rgba(30,60,90,0.7);color:#bfefff;border:1px solid #4a8fc9;border-radius:4px;padding:6px 10px;cursor:pointer;transition:all 0.2s;font-size:11px;backdrop-filter:blur(5px);}
+    .camera-btn:hover{background:rgba(50,100,150,0.9)}
+    .tour-modal{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(10,20,35,0.95);border:2px solid #4a8fc9;border-radius:12px;padding:24px;color:#bfefff;z-index:100;display:none;max-width:400px;text-align:center;backdrop-filter:blur(10px);}
+    .tour-modal h2{margin-top:0;color:#4a8fc9}
+    .tour-modal p{line-height:1.5;margin-bottom:20px;font-size:14px;}
+    .tour-modal button{background:#4a8fc9;color:white;border:none;border-radius:6px;padding:10px 20px;cursor:pointer;font-size:14px;font-weight:600;transition:all 0.2s}
+    .tour-modal button:hover{background:#5a9fd9;transform:translateY(-2px)}
+    .loading-screen{position:absolute;inset:0;background:#000;display:flex;flex-direction:column;justify-content:center;align-items:center;z-index:1000;color:#bfefff;transition:opacity 0.5s ease-out;}
+    .loading-bar{width:300px;height:4px;background:rgba(79,159,239,0.3);border-radius:2px;margin-top:20px;overflow:hidden}
+    .loading-progress{height:100%;background:#4f9fef;width:0%;transition:width 0.3s}
+    .overlay{position:absolute;left:16px;top:16px;color:#bfefff;z-index:10;text-shadow:0 0 5px #000;}
     .credit{position:absolute;right:12px;bottom:12px;color:#8fbfd8;font-size:12px;z-index:10}
-    .readout{position:absolute;left:16px;bottom:16px;color:#cfefff;font-size:13px;z-index:10;background:rgba(0,0,0,0.25);padding:8px;border-radius:6px}
-    canvas{display:block}
+    .readout{position:absolute;left:16px;bottom:16px;color:#cfefff;font-size:13px;z-index:10;background:rgba(0,0,0,0.35);padding:8px 12px;border-radius:6px;backdrop-filter:blur(5px);border:1px solid rgba(128,128,128,0.2);}
   </style>
+
+  <script type="x-shader/x-vertex" id="vertexShader">
+    varying vec3 vNormal;
+    void main() {
+      vNormal = normalize(normalMatrix * normal);
+      gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+    }
+  </script>
+  <script type="x-shader/x-fragment" id="fragmentShader">
+    varying vec3 vNormal;
+    uniform vec3 glowColor;
+    uniform float p;
+    void main() {
+      float intensity = pow(0.7 - dot(vNormal, vec3(0.0, 0.0, 1.0)), p);
+      gl_FragColor = vec4(glowColor, 1.0) * intensity;
+    }
+  </script>
 </head>
 <body>
   <div id="container"></div>
-  <div class="overlay">Chord of Contact — Satellite Coverage Demo</div>
-  <div class="credit">Interactive — drag the orange point or use GUI</div>
-  <div class="readout" id="readout">P: (0, 0) &nbsp; r: 0 &nbsp; a: 3.0</div>
 
-  <!-- load GSAP first (global) -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+  <div class="loading-screen" id="loadingScreen">
+    <h2>Loading Satellite Visualization</h2>
+    <div class="loading-bar"><div class="loading-progress" id="loadingProgress"></div></div>
+  </div>
 
-  <!-- importmap for three and addons -->
+  <div class="tour-modal" id="tourModal">
+    <h2>Welcome!</h2>
+    <p>This is an interactive visualization of satellite coverage. Drag the satellite to see how its view of the Earth changes. Use the UI to explore different camera angles or take a guided tour.</p>
+    <button id="startExperienceBtn">Start Exploring</button>
+  </div>
+
+  <div class="ui-panel">
+    <button class="ui-button" id="tourButton">Restart Tour</button>
+    <button class="ui-button" id="resetButton">Reset View</button>
+    <div class="camera-controls">
+      <button class="camera-btn" id="topViewBtn">Top</button>
+      <button class="camera-btn" id="sideViewBtn">Side</button>
+    </div>
+  </div>
+  
+  <div class="overlay">Chord of Contact — Satellite Coverage</div>
+  <div class="credit">Drag satellite to reposition | Spacebar: Toggle autoplay</div>
+  <div class="readout" id="readout">Calculating...</div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/howler/2.2.4/howler.min.js"></script>
+
   <script type="importmap">
   {
     "imports": {
-      "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
-      "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/",
-      "lil-gui": "https://unpkg.com/lil-gui@0.19.1/dist/lil-gui.esm.js"
+      "three": "https://unpkg.com/three@0.163.0/build/three.module.js",
+      "three/addons/": "https://unpkg.com/three@0.163.0/examples/jsm/"
     }
   }
   </script>
@@ -39,193 +89,304 @@
   import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
   import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
   import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
-  import GUI from 'lil-gui';
 
-  // --- renderer & scene ---
+  // --- Core State & Parameters ---
+  let satellite;
+  let autoRotateP = false;
+  const params = { a: 3.0, r: 4.8, theta: 0.2, speed: 0.5 };
+  const EARTH_RADIUS = 1.5;
+
+  // --- Audio Setup ---
+  const sounds = {
+    ambient: new Howl({ src: ['https://assets.codepen.io/1468070/space-ambient.mp3'], loop: true, volume: 0.2 }),
+    whoosh: new Howl({ src: ['https://assets.codepen.io/1468070/whoosh.mp3'], volume: 0.4 }),
+    ping: new Howl({ src: ['https://assets.codepen.io/1468070/ping.mp3'], volume: 0.5 }),
+    click: new Howl({ src: ['https://assets.codepen.io/1468070/click.mp3'], volume: 0.3 })
+  };
+
+  // --- Loading Manager ---
+  // FIX: Use a proper loading manager to track all assets automatically.
+  const loadingManager = new THREE.LoadingManager();
+  const loadingScreen = document.getElementById('loadingScreen');
+  const loadingProgress = document.getElementById('loadingProgress');
+
+  loadingManager.onProgress = (url, itemsLoaded, itemsTotal) => {
+    loadingProgress.style.width = `${(itemsLoaded / itemsTotal) * 100}%`;
+  };
+
+  loadingManager.onLoad = () => {
+    gsap.to(loadingScreen, { opacity: 0, duration: 0.5, onComplete: () => {
+      loadingScreen.style.display = 'none';
+      document.getElementById('tourModal').style.display = 'block';
+    }});
+    sounds.ambient.play();
+  };
+
+  // --- Renderer & Scene ---
   const container = document.getElementById('container');
-  const renderer = new THREE.WebGLRenderer({ antialias:true });
+  const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
   renderer.setPixelRatio(window.devicePixelRatio);
   renderer.setSize(window.innerWidth, window.innerHeight);
-  // Some environments use outputEncoding instead of outputColorSpace
-  if ('outputColorSpace' in renderer) renderer.outputColorSpace = THREE.SRGBColorSpace;
-  else renderer.outputEncoding = THREE.sRGBEncoding;
+  renderer.outputColorSpace = THREE.SRGBColorSpace;
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   container.appendChild(renderer.domElement);
 
   const scene = new THREE.Scene();
-  const camera = new THREE.PerspectiveCamera(50, window.innerWidth/window.innerHeight, 0.1, 1000);
-  camera.position.set(0,6,14);
+  const camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 1000);
+  camera.position.set(0, 8, 16);
 
   const controls = new OrbitControls(camera, renderer.domElement);
-  controls.enableDamping = true; controls.dampingFactor = 0.08;
+  controls.enableDamping = true;
+  controls.dampingFactor = 0.05;
 
-  // --- lighting ---
-  scene.add(new THREE.HemisphereLight(0xddeeff, 0x101020, 0.6));
-  const sun = new THREE.DirectionalLight(0xffffff, 1.4); sun.position.set(10,10,6); scene.add(sun);
+  // --- Lighting ---
+  scene.add(new THREE.AmbientLight(0x6688cc, 0.3));
+  const sun = new THREE.DirectionalLight(0xffffff, 2.5);
+  sun.position.set(10, 10, 6);
+  sun.castShadow = true;
+  sun.shadow.mapSize.width = 2048;
+  sun.shadow.mapSize.height = 2048;
+  scene.add(sun);
 
-  // --- postprocessing ---
+  // --- Postprocessing ---
   const composer = new EffectComposer(renderer);
   composer.addPass(new RenderPass(scene, camera));
-  const bloom = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 1.0, 0.4, 0.8);
-  bloom.threshold = 0.05; bloom.strength = 1.0; bloom.radius = 0.6; composer.addPass(bloom);
+  const bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 1.0, 0.4, 0.8);
+  bloomPass.threshold = 0.1;
+  bloomPass.strength = 1.2;
+  bloomPass.radius = 0.6;
+  composer.addPass(bloomPass);
 
-  // --- textures (online) ---
-  const loader = new THREE.TextureLoader();
-  const earthDay = loader.load('https://threejs.org/examples/textures/land_ocean_ice_cloud_2048.jpg');
-  const earthNight = loader.load('https://threejs.org/examples/textures/earthlights1k.jpg');
-  const cloudTex = loader.load('https://threejs.org/examples/textures/earthcloudmaptrans.jpg');
-  const starTex = loader.load('https://threejs.org/examples/textures/galaxy_starfield.png');
-
-  // background starfield
-  const bg = new THREE.Mesh(new THREE.SphereGeometry(400,64,64), new THREE.MeshBasicMaterial({ map: starTex, side: THREE.BackSide }));
-  scene.add(bg);
-
-  // --- Earth ---
+  // --- Assets ---
+  const textureLoader = new THREE.TextureLoader(loadingManager);
+  scene.background = textureLoader.load('https://threejs.org/examples/textures/galaxy_starfield.png');
+  
   const earthGroup = new THREE.Group();
-  const earth = new THREE.Mesh(new THREE.SphereGeometry(1.5,64,64), new THREE.MeshPhongMaterial({ map: earthDay, emissiveMap: earthNight, emissive: 0x111111, emissiveIntensity:0.6 }));
-  const clouds = new THREE.Mesh(new THREE.SphereGeometry(1.52,64,64), new THREE.MeshPhongMaterial({ map: cloudTex, transparent:true, opacity:0.8, depthWrite:false }));
-  earthGroup.add(earth, clouds); scene.add(earthGroup);
+  scene.add(earthGroup);
 
-  // --- geometry parameters ---
-  let a = 3.0; // inner coverage radius
-  let r = 4.8; // distance of P
-  let theta = 0.2; // angle of P
+  const earth = new THREE.Mesh(
+    new THREE.SphereGeometry(EARTH_RADIUS, 64, 64),
+    new THREE.MeshStandardMaterial({
+      map: textureLoader.load('https://threejs.org/examples/textures/land_ocean_ice_cloud_2048.jpg'),
+      normalMap: textureLoader.load('https://threejs.org/examples/textures/earth_normal_2048.jpg'),
+      roughnessMap: textureLoader.load('https://threejs.org/examples/textures/earth_specular_2048.jpg'),
+      metalness: 0.1, roughness: 0.8
+    })
+  );
+  earth.receiveShadow = true;
+  earth.castShadow = true;
+  earthGroup.add(earth);
 
-  // rings
-  function makeRing(rInner, rOuter, color, opacity=0.5){
-    const ring = new THREE.Mesh(new THREE.RingGeometry(rInner, rOuter, 256), new THREE.MeshBasicMaterial({ color, side:THREE.DoubleSide, transparent:true, opacity }));
-    ring.rotation.x = Math.PI/2; return ring;
+  const clouds = new THREE.Mesh(
+    new THREE.SphereGeometry(EARTH_RADIUS + 0.02, 64, 64),
+    new THREE.MeshPhongMaterial({
+      map: textureLoader.load('https://threejs.org/examples/textures/earthcloudmaptrans.jpg'),
+      transparent: true, opacity: 0.4, depthWrite: false
+    })
+  );
+  earthGroup.add(clouds);
+
+  const atmosphere = new THREE.Mesh(
+    new THREE.SphereGeometry(EARTH_RADIUS + 0.15, 64, 64),
+    new THREE.ShaderMaterial({
+      vertexShader: document.getElementById('vertexShader').textContent,
+      fragmentShader: document.getElementById('fragmentShader').textContent,
+      uniforms: { glowColor: { value: new THREE.Color(0x87ceeb) }, p: { value: 4.0 } },
+      blending: THREE.AdditiveBlending, side: THREE.BackSide, transparent: true
+    })
+  );
+  earthGroup.add(atmosphere);
+
+  // --- Satellite Model ---
+  satellite = createSatelliteModel();
+  satellite.castShadow = true;
+  scene.add(satellite);
+  
+  function createSatelliteModel() {
+    const group = new THREE.Group();
+    const bodyMat = new THREE.MeshStandardMaterial({ color: 0xbbbbcc, metalness: 0.9, roughness: 0.3 });
+    const panelMat = new THREE.MeshStandardMaterial({ color: 0x2244aa, emissive: 0x112266, metalness: 0.5, roughness: 0.4 });
+    
+    const body = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.1, 0.2), bodyMat);
+    group.add(body);
+    
+    const leftPanel = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.01, 0.15), panelMat);
+    leftPanel.position.x = -0.27;
+    group.add(leftPanel);
+    
+    const rightPanel = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.01, 0.15), panelMat);
+    rightPanel.position.x = 0.27;
+    group.add(rightPanel);
+    return group;
   }
-  const innerRing = makeRing(a-0.02, a, 0x00ffff, 0.45); scene.add(innerRing);
-  const directorRing = makeRing(Math.SQRT2*a-0.02, Math.SQRT2*a, 0xff66ff, 0.0); directorRing.position.y = 0.04; scene.add(directorRing);
+  
+  // --- Lines, Rings, and Markers ---
+  const innerRing = new THREE.Mesh(new THREE.RingGeometry(params.a - 0.02, params.a, 128), new THREE.MeshBasicMaterial({ color: 0x00ffff, side: THREE.DoubleSide, transparent: true, opacity: 0.35 }));
+  innerRing.rotation.x = Math.PI / 2;
+  scene.add(innerRing);
+  
+  const lineMat = new THREE.LineBasicMaterial({ color: 0xff9a33, linewidth: 2, transparent: true, opacity: 0.9 });
+  const chordMat = new THREE.LineBasicMaterial({ color: 0x00ffff, linewidth: 3, transparent: true, opacity: 0.9 });
+  const beamA = new THREE.Line(new THREE.BufferGeometry(), lineMat);
+  const beamB = new THREE.Line(new THREE.BufferGeometry(), lineMat.clone());
+  const chord = new THREE.Line(new THREE.BufferGeometry(), chordMat);
+  scene.add(beamA, beamB, chord);
 
-  // P marker (draggable)
-  const Pgeo = new THREE.SphereGeometry(0.09, 16,16);
-  const Pmat = new THREE.MeshStandardMaterial({ color: 0xff8a00, emissive:0x442200, emissiveIntensity:0.6 });
-  const Pmarker = new THREE.Mesh(Pgeo, Pmat); scene.add(Pmarker);
+  // --- Core Logic & Update Functions ---
+  function updateSceneFromParams() {
+    const px = params.r * Math.cos(params.theta);
+    const pz = params.r * Math.sin(params.theta);
+    satellite.position.set(px, 0.05, pz);
+    satellite.lookAt(earth.position);
+    
+    // FIX: Update ring geometry efficiently
+    const oldRingGeo = innerRing.geometry;
+    innerRing.geometry = new THREE.RingGeometry(params.a - 0.02, params.a, 128);
+    oldRingGeo.dispose();
 
-  // satellite marker for visualization (same as P)
-  const satGeo = new THREE.SphereGeometry(0.06,12,12);
-  const satMat = new THREE.MeshStandardMaterial({ color:0xffeeaa, emissive:0x223322 });
-  const satMarker = new THREE.Mesh(satGeo, satMat); scene.add(satMarker);
+    const d = Math.hypot(px, pz);
+    if (d <= params.a + 1e-6) {
+      beamA.visible = beamB.visible = chord.visible = false;
+      updateReadout(false);
+      return;
+    }
+    beamA.visible = beamB.visible = chord.visible = true;
 
-  // tangent beams
-  const beamMat = new THREE.LineBasicMaterial({ color:0xff9a33, linewidth:3, transparent:true, opacity:0.95 });
-  const beamA = new THREE.Line(new THREE.BufferGeometry(), beamMat);
-  const beamB = new THREE.Line(new THREE.BufferGeometry(), beamMat.clone());
-  scene.add(beamA, beamB);
-
-  // chord
-  const chordMat = new THREE.LineBasicMaterial({ color:0x00ffff, linewidth:4, transparent:true, opacity:0.95 });
-  const chord = new THREE.Line(new THREE.BufferGeometry(), chordMat); scene.add(chord);
-
-  // tangency contact markers
-  const Tgeo = new THREE.SphereGeometry(0.06,12,12);
-  const Tmat = new THREE.MeshBasicMaterial({ color:0x00ffcc });
-  const T1 = new THREE.Mesh(Tgeo, Tmat); const T2 = new THREE.Mesh(Tgeo, Tmat.clone()); scene.add(T1, T2);
-
-  // intersection (midpoint) marker — FIX: define interMesh so code doesn't throw
-  const interGeo = new THREE.SphereGeometry(0.06, 12, 12);
-  const interMat = new THREE.MeshBasicMaterial({ color: 0x66ff66, transparent:true, opacity:0 });
-  const interMesh = new THREE.Mesh(interGeo, interMat); interMesh.visible = false; scene.add(interMesh);
-
-  // right-angle marker (simple L-shaped lines)
-  const angleMat = new THREE.LineBasicMaterial({ color:0xffffff, linewidth:2, transparent:true, opacity:0 });
-  const angleL = new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(), new THREE.Vector3(), new THREE.Vector3()]), angleMat); scene.add(angleL);
-
-  // labels (sprites)
-  function makeLabel(text){ const c = document.createElement('canvas'); c.width=512; c.height=128; const ctx=c.getContext('2d'); ctx.fillStyle='rgba(255,255,255,0.95)'; ctx.font='32px Arial'; ctx.textAlign='center'; ctx.fillText(text,256,80); const tex=new THREE.CanvasTexture(c); const sp=new THREE.Sprite(new THREE.SpriteMaterial({ map:tex, transparent:true, opacity:0 })); sp.scale.set(2.4,0.6,1); scene.add(sp); return sp; }
-  const lblChord = makeLabel('Chord of Contact — Coverage Limit'); const lblTangent = makeLabel('Tangent Points');
-
-  // readout
-  const readout = document.getElementById('readout');
-  function updateReadout(){ readout.innerHTML = `P: (${(r*Math.cos(theta)).toFixed(2)}, ${(r*Math.sin(theta)).toFixed(2)}) &nbsp; r: ${r.toFixed(2)} &nbsp; a: ${a.toFixed(2)}`; }
-
-  // compute tangents from P to circle of radius a
-  function computeTangents(px, pz, a){
-    const P = new THREE.Vector2(px, pz); const d = P.length(); if(d <= a+1e-6) return null;
     const thetaP = Math.atan2(pz, px);
-    const alpha = Math.acos(a / d);
-    const t1 = thetaP + alpha; const t2 = thetaP - alpha;
-    const T1x = a*Math.cos(t1); const T1z = a*Math.sin(t1);
-    const T2x = a*Math.cos(t2); const T2z = a*Math.sin(t2);
-    return { T1: new THREE.Vector3(T1x, 0.01, T1z), T2: new THREE.Vector3(T2x, 0.01, T2z), t1, t2, alpha, thetaP };
+    const alpha = Math.acos(params.a / d);
+    const T1 = new THREE.Vector3(params.a * Math.cos(thetaP + alpha), 0.01, params.a * Math.sin(thetaP + alpha));
+    const T2 = new THREE.Vector3(params.a * Math.cos(thetaP - alpha), 0.01, params.a * Math.sin(thetaP - alpha));
+
+    beamA.geometry.setFromPoints([satellite.position, T1]);
+    beamB.geometry.setFromPoints([satellite.position, T2]);
+    chord.geometry.setFromPoints([T1, T2]);
+    updateReadout(true);
   }
 
-  // update visuals given r & theta
-  function updateSceneFromParams(){
-    const px = r*Math.cos(theta); const pz = r*Math.sin(theta);
-    Pmarker.position.set(px, 0.02, pz);
-    satMarker.position.set(px, 0.02, pz);
-    // director ring update
-    directorRing.geometry.dispose(); directorRing.geometry = new THREE.RingGeometry(Math.SQRT2*a-0.02, Math.SQRT2*a, 256);
-    innerRing.geometry.dispose(); innerRing.geometry = new THREE.RingGeometry(a-0.02, a, 256);
-
-    const res = computeTangents(px, pz, a);
-    if(!res){ beamA.geometry.setFromPoints([new THREE.Vector3(), new THREE.Vector3()]); beamB.geometry.setFromPoints([new THREE.Vector3(), new THREE.Vector3()]); chord.geometry.setFromPoints([]); T1.visible=false; T2.visible=false; angleL.material.opacity = 0; lblChord.material.opacity = 0; lblTangent.material.opacity = 0; interMesh.visible = false; interMesh.material.opacity = 0; updateReadout(); return; }
-
-    // beams from P to T1 and T2 (extend slightly beyond tangency for cinematic look)
-    const ext = 8;
-    const dir1 = res.T1.clone().sub(Pmarker.position).normalize(); const dir2 = res.T2.clone().sub(Pmarker.position).normalize();
-    const A1 = Pmarker.position.clone().add(dir1.clone().multiplyScalar(ext)); const A2 = Pmarker.position.clone().add(dir2.clone().multiplyScalar(ext));
-    beamA.geometry.setFromPoints([Pmarker.position.clone(), res.T1.clone()]); beamB.geometry.setFromPoints([Pmarker.position.clone(), res.T2.clone()]);
-
-    chord.geometry.setFromPoints([res.T1.clone(), res.T2.clone()]);
-    T1.position.copy(res.T1); T2.position.copy(res.T2); T1.visible=true; T2.visible=true;
-
-    // right-angle L-shape at T1 showing radius->tangent perpendicularity
-    const O = new THREE.Vector3(0,0,0);
-    const rVec = res.T1.clone().sub(O).normalize(); // radius direction at T1
-    const tanDir = new THREE.Vector3(-rVec.z,0,rVec.x).normalize(); // tangent direction (rotate by 90deg)
-    const pA = res.T1.clone().add(rVec.clone().multiplyScalar(0.06));
-    const pB = pA.clone().add(tanDir.clone().multiplyScalar(0.06));
-    angleL.geometry.setFromPoints([res.T1.clone(), pA, pB]); angleL.material.opacity = 1.0;
-
-    // labels
-    lblChord.position.copy(res.T1.clone().add(res.T2).multiplyScalar(0.5).add(new THREE.Vector3(0,0.6,0))); lblChord.material.opacity = 1.0;
-    lblTangent.position.copy(res.T1.clone().add(new THREE.Vector3(0,0.6,0))); lblTangent.material.opacity = 1.0;
-
-    // intersection (midpoint) highlight
-    interMesh.position.copy(res.T1.clone().add(res.T2).multiplyScalar(0.5)); interMesh.visible = true; interMesh.material.opacity = 1.0;
-
-    updateReadout();
+  function updateReadout(isValid) {
+    const readout = document.getElementById('readout');
+    if (!isValid) {
+      readout.innerHTML = `Altitude: N/A | Coverage: N/A`;
+      return;
+    }
+    const altitude = ((params.r - EARTH_RADIUS) * 6371).toFixed(0);
+    const coverageAngle = Math.acos(params.a / params.r);
+    const coveragePercent = (1 - Math.cos(coverageAngle)) / 2 * 100;
+    readout.innerHTML = `Altitude: ${altitude} km | Coverage: ${coveragePercent.toFixed(1)}%`;
   }
 
-  // initial update
-  updateSceneFromParams();
+  // --- UI & Interactivity ---
+  const raycaster = new THREE.Raycaster();
+  const pointer = new THREE.Vector2();
+  let isDragging = false;
+  const dragPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
 
-  // GUI
-  const gui = new GUI({ width: 320 });
-  const params = { a: a, r: r, theta: theta, auto: false, showDirector: true, showLabels:true, autoplay:false, speed:0.8 };
-  gui.add(params,'a',1.5,5,0.05).name('Coverage radius a').onChange(v=>{ a=v; updateSceneFromParams(); });
-  gui.add(params,'r', a+0.2, 12, 0.05).name('Distance r').onChange(v=>{ r=v; updateSceneFromParams(); });
-  gui.add(params,'theta',0,Math.PI*2,0.01).name('Angle θ').onChange(v=>{ theta=v; updateSceneFromParams(); });
-  gui.add(params,'autoplay').name('Auto traverse P').onChange(v=>{ autoRotateP = v; });
-  gui.add(params,'speed',0.1,2,0.05).name('Traverse speed').onChange(v=>{});
-  gui.add(params,'showDirector').name('Show Director Ring').onChange(v=>{ directorRing.visible = v; });
-  gui.add(params,'showLabels').name('Show Labels').onChange(v=>{ lblChord.material.opacity = v?1:0; lblTangent.material.opacity = v?1:0; });
+  function startTour() {
+    sounds.whoosh.play();
+    controls.enabled = false;
+    const tl = gsap.timeline({ onComplete: () => { controls.enabled = true; sounds.ping.play(); }});
+    tl.to(camera.position, { x: 0, y: 8, z: 16, duration: 2, ease: "power2.inOut" })
+      .to(controls.target, { x: 0, y: 0, z: 0, duration: 2, ease: "power2.inOut" }, "<")
+      .to(params, { r: 5, duration: 3, ease: "power2.inOut", onUpdate: updateSceneFromParams }, ">-1");
+  }
 
-  // drag controls for P on XZ plane
-  const ray = new THREE.Raycaster(); const pointer = new THREE.Vector2(); let dragging=false;
-  renderer.domElement.addEventListener('pointerdown', (e)=>{ pointer.x = (e.clientX/window.innerWidth)*2-1; pointer.y = -(e.clientY/window.innerHeight)*2+1; ray.setFromCamera(pointer, camera); const plane = new THREE.Plane(new THREE.Vector3(0,1,0), 0); const intersect = new THREE.Vector3(); if(ray.ray.intersectPlane(plane, intersect)){ const dist = Math.hypot(intersect.x, intersect.z); if(Math.abs(dist - r) < 1.6){ dragging=true; controls.enabled=false; } } });
-  window.addEventListener('pointermove', (e)=>{ if(!dragging) return; pointer.x = (e.clientX/window.innerWidth)*2-1; pointer.y = -(e.clientY/window.innerHeight)*2+1; ray.setFromCamera(pointer, camera); const plane = new THREE.Plane(new THREE.Vector3(0,1,0), 0); const intersect = new THREE.Vector3(); if(ray.ray.intersectPlane(plane, intersect)){ theta = Math.atan2(intersect.z, intersect.x); r = Math.max(a+0.05, Math.hypot(intersect.x, intersect.z)); params.r = r; params.theta = theta; updateSceneFromParams(); gsap.to(params, { duration: 0.0 }); } });
-  window.addEventListener('pointerup', ()=>{ dragging=false; controls.enabled=true; });
+  document.getElementById('startExperienceBtn').addEventListener('click', () => {
+    sounds.click.play();
+    document.getElementById('tourModal').style.display = 'none';
+    startTour();
+  });
+  document.getElementById('tourButton').addEventListener('click', () => { sounds.click.play(); startTour(); });
+  document.getElementById('resetButton').addEventListener('click', () => {
+    sounds.click.play();
+    gsap.to(camera.position, { x: 0, y: 8, z: 16, duration: 1, ease: "power2.out" });
+    gsap.to(controls.target, { x: 0, y: 0, z: 0, duration: 1, ease: "power2.out" });
+  });
+  document.getElementById('topViewBtn').addEventListener('click', () => {
+    sounds.click.play();
+    gsap.to(camera.position, { x: 0, y: 15, z: 0.1, duration: 1, ease: "power2.out" });
+    gsap.to(controls.target, { x: 0, y: 0, z: 0, duration: 1, ease: "power2.out" });
+  });
+  document.getElementById('sideViewBtn').addEventListener('click', () => {
+    sounds.click.play();
+    gsap.to(camera.position, { x: 15, y: 2, z: 0, duration: 1, ease: "power2.out" });
+    gsap.to(controls.target, { x: 0, y: 0, z: 0, duration: 1, ease: "power2.out" });
+  });
 
-  // animation loop
+  renderer.domElement.addEventListener('pointerdown', (e) => {
+    pointer.set((e.clientX / window.innerWidth) * 2 - 1, -(e.clientY / window.innerHeight) * 2 + 1);
+    raycaster.setFromCamera(pointer, camera);
+    const intersect = new THREE.Vector3();
+    if (raycaster.ray.intersectPlane(dragPlane, intersect)) {
+      if (intersect.distanceTo(satellite.position) < 0.8) {
+        isDragging = true;
+        controls.enabled = false;
+        document.body.style.cursor = 'grabbing';
+        gsap.to(satellite.scale, { x: 1.2, y: 1.2, z: 1.2, duration: 0.3 });
+        sounds.whoosh.play();
+      }
+    }
+  });
+
+  window.addEventListener('pointermove', (e) => {
+    if (!isDragging) return;
+    pointer.set((e.clientX / window.innerWidth) * 2 - 1, -(e.clientY / window.innerHeight) * 2 + 1);
+    raycaster.setFromCamera(pointer, camera);
+    const intersect = new THREE.Vector3();
+    if (raycaster.ray.intersectPlane(dragPlane, intersect)) {
+      params.theta = Math.atan2(intersect.z, intersect.x);
+      params.r = Math.max(params.a + 0.1, intersect.length());
+      updateSceneFromParams();
+    }
+  });
+
+  window.addEventListener('pointerup', () => {
+    if (isDragging) {
+      isDragging = false;
+      controls.enabled = true;
+      document.body.style.cursor = 'default';
+      gsap.to(satellite.scale, { x: 1, y: 1, z: 1, duration: 0.3, ease: "elastic.out(1, 0.5)" });
+    }
+  });
+
+  window.addEventListener('resize', () => {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    composer.setSize(window.innerWidth, window.innerHeight);
+  });
+  
+  window.addEventListener('keydown', e => {
+    if (e.key === ' ') {
+      e.preventDefault();
+      autoRotateP = !autoRotateP;
+      sounds.click.play();
+    }
+  });
+  
+  // --- Animation Loop ---
   const clock = new THREE.Clock();
-  function animate(){ requestAnimationFrame(animate); const dt = clock.getDelta(); if(params.autoplay){ theta += dt * params.speed; updateSceneFromParams(); }
-    earth.rotation.y += 0.0006 * (0.5 + params.speed*0.2);
-    clouds.rotation.y += 0.0009 * (0.5 + params.speed*0.2);
-    // soft lerp for director opacity
-    const targetDir = params.showDirector?0.8:0.0; directorRing.material.opacity += (targetDir - directorRing.material.opacity)*0.06;
-    // render
-    composer.render(); }
+  function animate() {
+    requestAnimationFrame(animate);
+    const dt = clock.getDelta();
+    
+    if (autoRotateP && !isDragging) {
+      params.theta += dt * params.speed;
+      updateSceneFromParams();
+    }
+    
+    earth.rotation.y += 0.0008;
+    clouds.rotation.y += 0.0012;
+    if (!isDragging) {
+        satellite.position.y = 0.05 + Math.sin(clock.getElapsedTime() * 1.5) * 0.02;
+    }
+
+    controls.update();
+    composer.render();
+  }
+  
+  updateSceneFromParams();
   animate();
-
-  // resize
-  window.addEventListener('resize', ()=>{ camera.aspect = window.innerWidth/window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); composer.setSize(window.innerWidth, window.innerHeight); });
-
-  // keyboard
-  window.addEventListener('keydown', e=>{ if(e.key === ' ') params.autoplay = !params.autoplay; });
 
   </script>
 </body>
