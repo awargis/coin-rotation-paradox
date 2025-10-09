@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Chord of Contact — Satellite Coverage (Interactive)</title>
+  <style>
+    html,body{height:100%;margin:0;background:#000;overflow:hidden;font-family:Inter,system-ui,Arial}
+    #container{position:fixed;inset:0}
+    .overlay{position:absolute;left:16px;top:16px;color:#bfefff;z-index:10}
+    .credit{position:absolute;right:12px;bottom:12px;color:#8fbfd8;font-size:12px;z-index:10}
+    .readout{position:absolute;left:16px;bottom:16px;color:#cfefff;font-size:13px;z-index:10;background:rgba(0,0,0,0.25);padding:8px;border-radius:6px}
+    canvas{display:block}
+  </style>
+</head>
+<body>
+  <div id="container"></div>
+  <div class="overlay">Chord of Contact — Satellite Coverage Demo</div>
+  <div class="credit">Interactive — drag the orange point or use GUI</div>
+  <div class="readout" id="readout">P: (0, 0) &nbsp; r: 0 &nbsp; a: 3.0</div>
+
+  <!-- load GSAP first (global) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+
+  <!-- importmap for three and addons -->
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+      "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/",
+      "lil-gui": "https://unpkg.com/lil-gui@0.19.1/dist/lil-gui.esm.js"
+    }
+  }
+  </script>
+
+  <script type="module">
+  import * as THREE from 'three';
+  import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+  import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+  import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+  import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+  import GUI from 'lil-gui';
+
+  // --- renderer & scene ---
+  const container = document.getElementById('container');
+  const renderer = new THREE.WebGLRenderer({ antialias:true });
+  renderer.setPixelRatio(window.devicePixelRatio);
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  // Some environments use outputEncoding instead of outputColorSpace
+  if ('outputColorSpace' in renderer) renderer.outputColorSpace = THREE.SRGBColorSpace;
+  else renderer.outputEncoding = THREE.sRGBEncoding;
+  container.appendChild(renderer.domElement);
+
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(50, window.innerWidth/window.innerHeight, 0.1, 1000);
+  camera.position.set(0,6,14);
+
+  const controls = new OrbitControls(camera, renderer.domElement);
+  controls.enableDamping = true; controls.dampingFactor = 0.08;
+
+  // --- lighting ---
+  scene.add(new THREE.HemisphereLight(0xddeeff, 0x101020, 0.6));
+  const sun = new THREE.DirectionalLight(0xffffff, 1.4); sun.position.set(10,10,6); scene.add(sun);
+
+  // --- postprocessing ---
+  const composer = new EffectComposer(renderer);
+  composer.addPass(new RenderPass(scene, camera));
+  const bloom = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 1.0, 0.4, 0.8);
+  bloom.threshold = 0.05; bloom.strength = 1.0; bloom.radius = 0.6; composer.addPass(bloom);
+
+  // --- textures (online) ---
+  const loader = new THREE.TextureLoader();
+  const earthDay = loader.load('https://threejs.org/examples/textures/land_ocean_ice_cloud_2048.jpg');
+  const earthNight = loader.load('https://threejs.org/examples/textures/earthlights1k.jpg');
+  const cloudTex = loader.load('https://threejs.org/examples/textures/earthcloudmaptrans.jpg');
+  const starTex = loader.load('https://threejs.org/examples/textures/galaxy_starfield.png');
+
+  // background starfield
+  const bg = new THREE.Mesh(new THREE.SphereGeometry(400,64,64), new THREE.MeshBasicMaterial({ map: starTex, side: THREE.BackSide }));
+  scene.add(bg);
+
+  // --- Earth ---
+  const earthGroup = new THREE.Group();
+  const earth = new THREE.Mesh(new THREE.SphereGeometry(1.5,64,64), new THREE.MeshPhongMaterial({ map: earthDay, emissiveMap: earthNight, emissive: 0x111111, emissiveIntensity:0.6 }));
+  const clouds = new THREE.Mesh(new THREE.SphereGeometry(1.52,64,64), new THREE.MeshPhongMaterial({ map: cloudTex, transparent:true, opacity:0.8, depthWrite:false }));
+  earthGroup.add(earth, clouds); scene.add(earthGroup);
+
+  // --- geometry parameters ---
+  let a = 3.0; // inner coverage radius
+  let r = 4.8; // distance of P
+  let theta = 0.2; // angle of P
+
+  // rings
+  function makeRing(rInner, rOuter, color, opacity=0.5){
+    const ring = new THREE.Mesh(new THREE.RingGeometry(rInner, rOuter, 256), new THREE.MeshBasicMaterial({ color, side:THREE.DoubleSide, transparent:true, opacity }));
+    ring.rotation.x = Math.PI/2; return ring;
+  }
+  const innerRing = makeRing(a-0.02, a, 0x00ffff, 0.45); scene.add(innerRing);
+  const directorRing = makeRing(Math.SQRT2*a-0.02, Math.SQRT2*a, 0xff66ff, 0.0); directorRing.position.y = 0.04; scene.add(directorRing);
+
+  // P marker (draggable)
+  const Pgeo = new THREE.SphereGeometry(0.09, 16,16);
+  const Pmat = new THREE.MeshStandardMaterial({ color: 0xff8a00, emissive:0x442200, emissiveIntensity:0.6 });
+  const Pmarker = new THREE.Mesh(Pgeo, Pmat); scene.add(Pmarker);
+
+  // satellite marker for visualization (same as P)
+  const satGeo = new THREE.SphereGeometry(0.06,12,12);
+  const satMat = new THREE.MeshStandardMaterial({ color:0xffeeaa, emissive:0x223322 });
+  const satMarker = new THREE.Mesh(satGeo, satMat); scene.add(satMarker);
+
+  // tangent beams
+  const beamMat = new THREE.LineBasicMaterial({ color:0xff9a33, linewidth:3, transparent:true, opacity:0.95 });
+  const beamA = new THREE.Line(new THREE.BufferGeometry(), beamMat);
+  const beamB = new THREE.Line(new THREE.BufferGeometry(), beamMat.clone());
+  scene.add(beamA, beamB);
+
+  // chord
+  const chordMat = new THREE.LineBasicMaterial({ color:0x00ffff, linewidth:4, transparent:true, opacity:0.95 });
+  const chord = new THREE.Line(new THREE.BufferGeometry(), chordMat); scene.add(chord);
+
+  // tangency contact markers
+  const Tgeo = new THREE.SphereGeometry(0.06,12,12);
+  const Tmat = new THREE.MeshBasicMaterial({ color:0x00ffcc });
+  const T1 = new THREE.Mesh(Tgeo, Tmat); const T2 = new THREE.Mesh(Tgeo, Tmat.clone()); scene.add(T1, T2);
+
+  // intersection (midpoint) marker — FIX: define interMesh so code doesn't throw
+  const interGeo = new THREE.SphereGeometry(0.06, 12, 12);
+  const interMat = new THREE.MeshBasicMaterial({ color: 0x66ff66, transparent:true, opacity:0 });
+  const interMesh = new THREE.Mesh(interGeo, interMat); interMesh.visible = false; scene.add(interMesh);
+
+  // right-angle marker (simple L-shaped lines)
+  const angleMat = new THREE.LineBasicMaterial({ color:0xffffff, linewidth:2, transparent:true, opacity:0 });
+  const angleL = new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(), new THREE.Vector3(), new THREE.Vector3()]), angleMat); scene.add(angleL);
+
+  // labels (sprites)
+  function makeLabel(text){ const c = document.createElement('canvas'); c.width=512; c.height=128; const ctx=c.getContext('2d'); ctx.fillStyle='rgba(255,255,255,0.95)'; ctx.font='32px Arial'; ctx.textAlign='center'; ctx.fillText(text,256,80); const tex=new THREE.CanvasTexture(c); const sp=new THREE.Sprite(new THREE.SpriteMaterial({ map:tex, transparent:true, opacity:0 })); sp.scale.set(2.4,0.6,1); scene.add(sp); return sp; }
+  const lblChord = makeLabel('Chord of Contact — Coverage Limit'); const lblTangent = makeLabel('Tangent Points');
+
+  // readout
+  const readout = document.getElementById('readout');
+  function updateReadout(){ readout.innerHTML = `P: (${(r*Math.cos(theta)).toFixed(2)}, ${(r*Math.sin(theta)).toFixed(2)}) &nbsp; r: ${r.toFixed(2)} &nbsp; a: ${a.toFixed(2)}`; }
+
+  // compute tangents from P to circle of radius a
+  function computeTangents(px, pz, a){
+    const P = new THREE.Vector2(px, pz); const d = P.length(); if(d <= a+1e-6) return null;
+    const thetaP = Math.atan2(pz, px);
+    const alpha = Math.acos(a / d);
+    const t1 = thetaP + alpha; const t2 = thetaP - alpha;
+    const T1x = a*Math.cos(t1); const T1z = a*Math.sin(t1);
+    const T2x = a*Math.cos(t2); const T2z = a*Math.sin(t2);
+    return { T1: new THREE.Vector3(T1x, 0.01, T1z), T2: new THREE.Vector3(T2x, 0.01, T2z), t1, t2, alpha, thetaP };
+  }
+
+  // update visuals given r & theta
+  function updateSceneFromParams(){
+    const px = r*Math.cos(theta); const pz = r*Math.sin(theta);
+    Pmarker.position.set(px, 0.02, pz);
+    satMarker.position.set(px, 0.02, pz);
+    // director ring update
+    directorRing.geometry.dispose(); directorRing.geometry = new THREE.RingGeometry(Math.SQRT2*a-0.02, Math.SQRT2*a, 256);
+    innerRing.geometry.dispose(); innerRing.geometry = new THREE.RingGeometry(a-0.02, a, 256);
+
+    const res = computeTangents(px, pz, a);
+    if(!res){ beamA.geometry.setFromPoints([new THREE.Vector3(), new THREE.Vector3()]); beamB.geometry.setFromPoints([new THREE.Vector3(), new THREE.Vector3()]); chord.geometry.setFromPoints([]); T1.visible=false; T2.visible=false; angleL.material.opacity = 0; lblChord.material.opacity = 0; lblTangent.material.opacity = 0; interMesh.visible = false; interMesh.material.opacity = 0; updateReadout(); return; }
+
+    // beams from P to T1 and T2 (extend slightly beyond tangency for cinematic look)
+    const ext = 8;
+    const dir1 = res.T1.clone().sub(Pmarker.position).normalize(); const dir2 = res.T2.clone().sub(Pmarker.position).normalize();
+    const A1 = Pmarker.position.clone().add(dir1.clone().multiplyScalar(ext)); const A2 = Pmarker.position.clone().add(dir2.clone().multiplyScalar(ext));
+    beamA.geometry.setFromPoints([Pmarker.position.clone(), res.T1.clone()]); beamB.geometry.setFromPoints([Pmarker.position.clone(), res.T2.clone()]);
+
+    chord.geometry.setFromPoints([res.T1.clone(), res.T2.clone()]);
+    T1.position.copy(res.T1); T2.position.copy(res.T2); T1.visible=true; T2.visible=true;
+
+    // right-angle L-shape at T1 showing radius->tangent perpendicularity
+    const O = new THREE.Vector3(0,0,0);
+    const rVec = res.T1.clone().sub(O).normalize(); // radius direction at T1
+    const tanDir = new THREE.Vector3(-rVec.z,0,rVec.x).normalize(); // tangent direction (rotate by 90deg)
+    const pA = res.T1.clone().add(rVec.clone().multiplyScalar(0.06));
+    const pB = pA.clone().add(tanDir.clone().multiplyScalar(0.06));
+    angleL.geometry.setFromPoints([res.T1.clone(), pA, pB]); angleL.material.opacity = 1.0;
+
+    // labels
+    lblChord.position.copy(res.T1.clone().add(res.T2).multiplyScalar(0.5).add(new THREE.Vector3(0,0.6,0))); lblChord.material.opacity = 1.0;
+    lblTangent.position.copy(res.T1.clone().add(new THREE.Vector3(0,0.6,0))); lblTangent.material.opacity = 1.0;
+
+    // intersection (midpoint) highlight
+    interMesh.position.copy(res.T1.clone().add(res.T2).multiplyScalar(0.5)); interMesh.visible = true; interMesh.material.opacity = 1.0;
+
+    updateReadout();
+  }
+
+  // initial update
+  updateSceneFromParams();
+
+  // GUI
+  const gui = new GUI({ width: 320 });
+  const params = { a: a, r: r, theta: theta, auto: false, showDirector: true, showLabels:true, autoplay:false, speed:0.8 };
+  gui.add(params,'a',1.5,5,0.05).name('Coverage radius a').onChange(v=>{ a=v; updateSceneFromParams(); });
+  gui.add(params,'r', a+0.2, 12, 0.05).name('Distance r').onChange(v=>{ r=v; updateSceneFromParams(); });
+  gui.add(params,'theta',0,Math.PI*2,0.01).name('Angle θ').onChange(v=>{ theta=v; updateSceneFromParams(); });
+  gui.add(params,'autoplay').name('Auto traverse P').onChange(v=>{ autoRotateP = v; });
+  gui.add(params,'speed',0.1,2,0.05).name('Traverse speed').onChange(v=>{});
+  gui.add(params,'showDirector').name('Show Director Ring').onChange(v=>{ directorRing.visible = v; });
+  gui.add(params,'showLabels').name('Show Labels').onChange(v=>{ lblChord.material.opacity = v?1:0; lblTangent.material.opacity = v?1:0; });
+
+  // drag controls for P on XZ plane
+  const ray = new THREE.Raycaster(); const pointer = new THREE.Vector2(); let dragging=false;
+  renderer.domElement.addEventListener('pointerdown', (e)=>{ pointer.x = (e.clientX/window.innerWidth)*2-1; pointer.y = -(e.clientY/window.innerHeight)*2+1; ray.setFromCamera(pointer, camera); const plane = new THREE.Plane(new THREE.Vector3(0,1,0), 0); const intersect = new THREE.Vector3(); if(ray.ray.intersectPlane(plane, intersect)){ const dist = Math.hypot(intersect.x, intersect.z); if(Math.abs(dist - r) < 1.6){ dragging=true; controls.enabled=false; } } });
+  window.addEventListener('pointermove', (e)=>{ if(!dragging) return; pointer.x = (e.clientX/window.innerWidth)*2-1; pointer.y = -(e.clientY/window.innerHeight)*2+1; ray.setFromCamera(pointer, camera); const plane = new THREE.Plane(new THREE.Vector3(0,1,0), 0); const intersect = new THREE.Vector3(); if(ray.ray.intersectPlane(plane, intersect)){ theta = Math.atan2(intersect.z, intersect.x); r = Math.max(a+0.05, Math.hypot(intersect.x, intersect.z)); params.r = r; params.theta = theta; updateSceneFromParams(); gsap.to(params, { duration: 0.0 }); } });
+  window.addEventListener('pointerup', ()=>{ dragging=false; controls.enabled=true; });
+
+  // animation loop
+  const clock = new THREE.Clock();
+  function animate(){ requestAnimationFrame(animate); const dt = clock.getDelta(); if(params.autoplay){ theta += dt * params.speed; updateSceneFromParams(); }
+    earth.rotation.y += 0.0006 * (0.5 + params.speed*0.2);
+    clouds.rotation.y += 0.0009 * (0.5 + params.speed*0.2);
+    // soft lerp for director opacity
+    const targetDir = params.showDirector?0.8:0.0; directorRing.material.opacity += (targetDir - directorRing.material.opacity)*0.06;
+    // render
+    composer.render(); }
+  animate();
+
+  // resize
+  window.addEventListener('resize', ()=>{ camera.aspect = window.innerWidth/window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); composer.setSize(window.innerWidth, window.innerHeight); });
+
+  // keyboard
+  window.addEventListener('keydown', e=>{ if(e.key === ' ') params.autoplay = !params.autoplay; });
+
+  </script>
+</body>
+</html>
