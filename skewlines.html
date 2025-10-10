@@ -1,0 +1,1216 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Skew Lines: The Shortest Distance | 3D Cinematic Experience</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            overflow: hidden;
+            background: radial-gradient(ellipse at center, #0a0a2a 0%, #000000 100%);
+            color: white;
+        }
+        
+        #container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+        }
+        
+        #canvas-container {
+            width: 100%;
+            height: 100%;
+        }
+        
+        #ui-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 10;
+        }
+        
+        .title {
+            position: absolute;
+            top: 20px;
+            left: 0;
+            width: 100%;
+            text-align: center;
+            font-size: 3rem;
+            font-weight: 300;
+            text-shadow: 0 0 20px rgba(0, 200, 255, 0.8);
+            letter-spacing: 4px;
+            background: linear-gradient(to right, #4fc3f7, #00ffaa);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            animation: titleGlow 3s ease-in-out infinite alternate;
+        }
+        
+        @keyframes titleGlow {
+            0% { text-shadow: 0 0 20px rgba(0, 200, 255, 0.8); }
+            100% { text-shadow: 0 0 30px rgba(0, 255, 200, 0.9), 0 0 40px rgba(0, 200, 255, 0.6); }
+        }
+        
+        .subtitle {
+            position: absolute;
+            top: 90px;
+            left: 0;
+            width: 100%;
+            text-align: center;
+            font-size: 1.3rem;
+            opacity: 0.9;
+            letter-spacing: 1px;
+        }
+        
+        .control-panel {
+            position: absolute;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 20, 40, 0.8);
+            padding: 20px 30px;
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(100, 200, 255, 0.4);
+            box-shadow: 0 0 30px rgba(0, 100, 255, 0.3);
+            pointer-events: all;
+            display: flex;
+            gap: 20px;
+            z-index: 100;
+        }
+        
+        .control-btn {
+            background: linear-gradient(to bottom, rgba(0, 120, 255, 0.8), rgba(0, 80, 200, 0.9));
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 1rem;
+            font-weight: 500;
+            letter-spacing: 1px;
+            box-shadow: 0 4px 10px rgba(0, 100, 255, 0.3);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .control-btn:before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+            transition: 0.5s;
+        }
+        
+        .control-btn:hover:before {
+            left: 100%;
+        }
+        
+        .control-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 7px 15px rgba(0, 120, 255, 0.5);
+            background: linear-gradient(to bottom, rgba(0, 140, 255, 0.9), rgba(0, 100, 220, 1));
+        }
+        
+        .step-indicator {
+            position: absolute;
+            top: 140px;
+            left: 0;
+            width: 100%;
+            text-align: center;
+            font-size: 1.3rem;
+            opacity: 0.9;
+            background: rgba(0, 0, 0, 0.5);
+            padding: 10px;
+            backdrop-filter: blur(5px);
+            border-bottom: 1px solid rgba(100, 200, 255, 0.3);
+        }
+        
+        .explanation-panel {
+            position: absolute;
+            top: 50%;
+            right: 40px;
+            transform: translateY(-50%);
+            width: 350px;
+            background: rgba(0, 20, 40, 0.85);
+            padding: 25px;
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(100, 200, 255, 0.4);
+            box-shadow: 0 0 30px rgba(0, 100, 255, 0.3);
+            opacity: 0;
+            transition: opacity 0.5s, transform 0.5s;
+            pointer-events: all;
+        }
+        
+        .explanation-panel.active {
+            opacity: 1;
+            transform: translateY(-50%) scale(1);
+        }
+        
+        .explanation-title {
+            font-size: 1.5rem;
+            margin-bottom: 15px;
+            background: linear-gradient(to right, #4fc3f7, #00ffaa);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-shadow: 0 0 10px rgba(0, 200, 255, 0.5);
+        }
+        
+        .explanation-text {
+            line-height: 1.6;
+            margin-bottom: 15px;
+        }
+        
+        .formula {
+            background: rgba(0, 40, 80, 0.6);
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+            font-family: 'Courier New', monospace;
+            text-align: center;
+            border: 1px solid rgba(100, 200, 255, 0.3);
+            box-shadow: 0 0 15px rgba(0, 100, 255, 0.2);
+        }
+        
+        .distance-display {
+            position: absolute;
+            top: 180px;
+            left: 0;
+            width: 100%;
+            text-align: center;
+            font-size: 1.4rem;
+            color: #00ffaa;
+            text-shadow: 0 0 10px rgba(0, 255, 170, 0.7);
+            font-weight: 500;
+        }
+        
+        .hud-element {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(0, 20, 40, 0.7);
+            padding: 10px 15px;
+            border-radius: 8px;
+            backdrop-filter: blur(5px);
+            border: 1px solid rgba(100, 200, 255, 0.3);
+            font-size: 0.9rem;
+        }
+        
+        .loading-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #000;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+        
+        .loading-bar-container {
+            width: 300px;
+            height: 4px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 2px;
+            margin-top: 20px;
+            overflow: hidden;
+        }
+        
+        .loading-bar {
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(to right, #4fc3f7, #00ffaa);
+            border-radius: 2px;
+            transition: width 0.3s;
+        }
+        
+        .particles-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 1;
+        }
+        
+        .highlight {
+            color: #00ffaa;
+            font-weight: bold;
+        }
+        
+        .cinematic-bars {
+            position: absolute;
+            left: 0;
+            width: 100%;
+            height: 80px;
+            background: #000;
+            z-index: 5;
+            opacity: 0.7;
+        }
+        
+        .top-bar {
+            top: 0;
+        }
+        
+        .bottom-bar {
+            bottom: 0;
+        }
+    </style>
+</head>
+<body>
+    <div id="container">
+        <div class="loading-screen" id="loading-screen">
+            <div class="title">SKEW LINES</div>
+            <div class="subtitle">Loading cinematic experience...</div>
+            <div class="loading-bar-container">
+                <div class="loading-bar" id="loading-bar"></div>
+            </div>
+        </div>
+        
+        <div id="canvas-container"></div>
+        <div class="particles-container" id="particles-container"></div>
+        
+        <div class="cinematic-bars top-bar"></div>
+        <div class="cinematic-bars bottom-bar"></div>
+        
+        <div id="ui-overlay">
+            <div class="title">SKEW LINES</div>
+            <div class="subtitle">The Shortest Distance in 3D Space</div>
+            
+            <div class="step-indicator">Step 1: Introducing Skew Lines</div>
+            
+            <div class="distance-display" id="distance-display"></div>
+            
+            <div class="hud-element" id="hud-info">
+                <div>Drag to rotate • Scroll to zoom</div>
+            </div>
+            
+            <div class="explanation-panel" id="explanation">
+                <div class="explanation-title">What are Skew Lines?</div>
+                <div class="explanation-text">
+                    Skew lines are lines in 3D space that are <span class="highlight">neither parallel nor intersecting</span>.
+                    They exist in different planes and never meet, no matter how far they extend.
+                </div>
+                <div class="formula">
+                    Lines: L₁ and L₂ are skew if:<br>
+                    L₁ ∦ L₂ and L₁ ∩ L₂ = ∅
+                </div>
+            </div>
+            
+            <div class="control-panel">
+                <button class="control-btn" id="prev-btn">◀ Previous</button>
+                <button class="control-btn" id="play-btn">▶ Play Experience</button>
+                <button class="control-btn" id="next-btn">Next ▶</button>
+                <button class="control-btn" id="reset-btn">Reset</button>
+                <button class="control-btn" id="interactive-btn">Interactive Mode</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Main Three.js scene setup
+        let scene, camera, renderer, controls;
+        let line1, line2, connector, points = [];
+        let line1Tube, line2Tube, connectorTube;
+        let animationId;
+        let currentStep = 0;
+        const totalSteps = 6;
+        
+        // Enhanced line parameters for better visualization
+        const line1Points = [
+            new THREE.Vector3(-6, -3, 3),
+            new THREE.Vector3(6, 3, -3)
+        ];
+        
+        const line2Points = [
+            new THREE.Vector3(-4, 4, -4),
+            new THREE.Vector3(4, -2, 4)
+        ];
+        
+        // Interactive mode variables
+        let interactiveMode = false;
+        let line1Interactive, line2Interactive;
+        let isDragging = false;
+        let draggedPoint = null;
+        
+        // Particle system variables
+        let particleSystem;
+        
+        // Initialize the scene
+        function init() {
+            // Show loading screen
+            showLoadingScreen();
+            
+            // Create scene with fog for depth
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x050520);
+            scene.fog = new THREE.Fog(0x050520, 15, 30);
+            
+            // Create camera
+            camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.set(12, 12, 12);
+            
+            // Create renderer with enhanced settings
+            renderer = new THREE.WebGLRenderer({ 
+                antialias: true,
+                alpha: true
+            });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(window.devicePixelRatio);
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+            document.getElementById('canvas-container').appendChild(renderer.domElement);
+            
+            // Add orbit controls
+            controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.05;
+            controls.rotateSpeed = 0.5;
+            
+            // Add enhanced lighting
+            const ambientLight = new THREE.AmbientLight(0x404040, 0.4);
+            scene.add(ambientLight);
+            
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
+            directionalLight.position.set(10, 10, 5);
+            directionalLight.castShadow = true;
+            directionalLight.shadow.mapSize.width = 2048;
+            directionalLight.shadow.mapSize.height = 2048;
+            scene.add(directionalLight);
+            
+            const pointLight1 = new THREE.PointLight(0x4fc3f7, 1, 20);
+            pointLight1.position.set(5, 5, 5);
+            scene.add(pointLight1);
+            
+            const pointLight2 = new THREE.PointLight(0xff9800, 1, 20);
+            pointLight2.position.set(-5, -5, -5);
+            scene.add(pointLight2);
+            
+            // Add coordinate system with enhanced visuals
+            const gridHelper = new THREE.GridHelper(30, 30, 0x444477, 0x222244);
+            gridHelper.position.y = -5;
+            scene.add(gridHelper);
+            
+            const axesHelper = new THREE.AxesHelper(8);
+            scene.add(axesHelper);
+            
+            // Create particle system for background
+            createParticleSystem();
+            
+            // Create the enhanced lines
+            createEnhancedLines();
+            
+            // Create the connector (shortest distance)
+            createEnhancedConnector();
+            
+            // Add event listeners
+            setupEventListeners();
+            
+            // Start animation
+            animate();
+            
+            // Hide loading screen after a short delay
+            setTimeout(hideLoadingScreen, 2000);
+            
+            // Show initial explanation
+            updateExplanation();
+        }
+        
+        // Create particle system for starfield background
+        function createParticleSystem() {
+            const particleCount = 2000;
+            const particles = new THREE.BufferGeometry();
+            const positions = new Float32Array(particleCount * 3);
+            const colors = new Float32Array(particleCount * 3);
+            
+            for (let i = 0; i < particleCount * 3; i += 3) {
+                // Random positions in a sphere
+                const radius = 40;
+                const theta = Math.random() * Math.PI * 2;
+                const phi = Math.acos((Math.random() * 2) - 1);
+                
+                positions[i] = radius * Math.sin(phi) * Math.cos(theta);
+                positions[i+1] = radius * Math.sin(phi) * Math.sin(theta);
+                positions[i+2] = radius * Math.cos(phi);
+                
+                // Random colors with blue/white tint
+                colors[i] = Math.random() * 0.5 + 0.5; // R
+                colors[i+1] = Math.random() * 0.5 + 0.5; // G
+                colors[i+2] = Math.random() * 0.8 + 0.2; // B
+            }
+            
+            particles.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+            particles.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+            
+            const particleMaterial = new THREE.PointsMaterial({
+                size: 0.1,
+                vertexColors: true,
+                transparent: true,
+                opacity: 0.8
+            });
+            
+            particleSystem = new THREE.Points(particles, particleMaterial);
+            scene.add(particleSystem);
+        }
+        
+        // Create enhanced 3D lines with tube geometry
+        function createEnhancedLines() {
+            // Remove old lines if they exist
+            if (line1) scene.remove(line1);
+            if (line2) scene.remove(line2);
+            if (line1Tube) scene.remove(line1Tube);
+            if (line2Tube) scene.remove(line2Tube);
+            
+            // Create tube geometries for 3D lines
+            const tubeGeometry1 = new THREE.TubeGeometry(
+                new THREE.CatmullRomCurve3(line1Points),
+                64, // tubularSegments
+                0.3, // radius
+                8, // radialSegments
+                false // closed
+            );
+            
+            const tubeGeometry2 = new THREE.TubeGeometry(
+                new THREE.CatmullRomCurve3(line2Points),
+                64,
+                0.3,
+                8,
+                false
+            );
+            
+            // Create glowing materials
+            const material1 = new THREE.MeshPhongMaterial({
+                color: 0x4fc3f7,
+                emissive: 0x0044aa,
+                shininess: 100,
+                transparent: true,
+                opacity: 0.9
+            });
+            
+            const material2 = new THREE.MeshPhongMaterial({
+                color: 0xff9800,
+                emissive: 0xaa4400,
+                shininess: 100,
+                transparent: true,
+                opacity: 0.9
+            });
+            
+            // Create tube meshes
+            line1Tube = new THREE.Mesh(tubeGeometry1, material1);
+            line2Tube = new THREE.Mesh(tubeGeometry2, material2);
+            
+            // Add subtle glow effect with additional larger tubes
+            const glowMaterial1 = new THREE.MeshBasicMaterial({
+                color: 0x4fc3f7,
+                transparent: true,
+                opacity: 0.2,
+                side: THREE.BackSide
+            });
+            
+            const glowMaterial2 = new THREE.MeshBasicMaterial({
+                color: 0xff9800,
+                transparent: true,
+                opacity: 0.2,
+                side: THREE.BackSide
+            });
+            
+            const glowGeometry1 = new THREE.TubeGeometry(
+                new THREE.CatmullRomCurve3(line1Points),
+                64,
+                0.6,
+                8,
+                false
+            );
+            
+            const glowGeometry2 = new THREE.TubeGeometry(
+                new THREE.CatmullRomCurve3(line2Points),
+                64,
+                0.6,
+                8,
+                false
+            );
+            
+            const line1Glow = new THREE.Mesh(glowGeometry1, glowMaterial1);
+            const line2Glow = new THREE.Mesh(glowGeometry2, glowMaterial2);
+            
+            scene.add(line1Tube);
+            scene.add(line2Tube);
+            scene.add(line1Glow);
+            scene.add(line2Glow);
+            
+            // Also create regular lines for certain visualizations
+            const line1Geometry = new THREE.BufferGeometry().setFromPoints(line1Points);
+            const line1Material = new THREE.LineBasicMaterial({ 
+                color: 0x4fc3f7, 
+                linewidth: 4 
+            });
+            line1 = new THREE.Line(line1Geometry, line1Material);
+            
+            const line2Geometry = new THREE.BufferGeometry().setFromPoints(line2Points);
+            const line2Material = new THREE.LineBasicMaterial({ 
+                color: 0xff9800, 
+                linewidth: 4 
+            });
+            line2 = new THREE.Line(line2Geometry, line2Material);
+            
+            scene.add(line1);
+            scene.add(line2);
+            
+            // Add direction arrows with enhanced style
+            addDirectionArrows();
+            
+            // Create interactive points for dragging
+            createInteractivePoints();
+        }
+        
+        // Add enhanced direction arrows to lines
+        function addDirectionArrows() {
+            const arrowLength = 3;
+            const arrowHeadLength = 0.8;
+            const arrowHeadWidth = 0.5;
+            
+            const arrow1 = new THREE.ArrowHelper(
+                new THREE.Vector3(1, 0.5, -0.5).normalize(),
+                line1Points[0],
+                arrowLength,
+                0x4fc3f7,
+                arrowHeadLength,
+                arrowHeadWidth
+            );
+            
+            const arrow2 = new THREE.ArrowHelper(
+                new THREE.Vector3(0.8, -0.6, 0.8).normalize(),
+                line2Points[0],
+                arrowLength,
+                0xff9800,
+                arrowHeadLength,
+                arrowHeadWidth
+            );
+            
+            scene.add(arrow1);
+            scene.add(arrow2);
+        }
+        
+        // Create interactive points for dragging in interactive mode
+        function createInteractivePoints() {
+            // Clear previous points
+            if (line1Interactive) scene.remove(line1Interactive);
+            if (line2Interactive) scene.remove(line2Interactive);
+            
+            // Create spheres for line endpoints
+            const sphereGeometry = new THREE.SphereGeometry(0.5, 32, 32);
+            const material1 = new THREE.MeshPhongMaterial({ 
+                color: 0x4fc3f7,
+                emissive: 0x0044aa,
+                shininess: 100
+            });
+            const material2 = new THREE.MeshPhongMaterial({ 
+                color: 0xff9800,
+                emissive: 0xaa4400,
+                shininess: 100
+            });
+            
+            // Line 1 points
+            const sphere1a = new THREE.Mesh(sphereGeometry, material1);
+            sphere1a.position.copy(line1Points[0]);
+            sphere1a.userData = { line: 1, point: 0 };
+            
+            const sphere1b = new THREE.Mesh(sphereGeometry, material1);
+            sphere1b.position.copy(line1Points[1]);
+            sphere1b.userData = { line: 1, point: 1 };
+            
+            // Line 2 points
+            const sphere2a = new THREE.Mesh(sphereGeometry, material2);
+            sphere2a.position.copy(line2Points[0]);
+            sphere2a.userData = { line: 2, point: 0 };
+            
+            const sphere2b = new THREE.Mesh(sphereGeometry, material2);
+            sphere2b.position.copy(line2Points[1]);
+            sphere2b.userData = { line: 2, point: 1 };
+            
+            // Group them
+            line1Interactive = new THREE.Group();
+            line1Interactive.add(sphere1a);
+            line1Interactive.add(sphere1b);
+            
+            line2Interactive = new THREE.Group();
+            line2Interactive.add(sphere2a);
+            line2Interactive.add(sphere2b);
+            
+            scene.add(line1Interactive);
+            scene.add(line2Interactive);
+            
+            // Initially hide them
+            line1Interactive.visible = false;
+            line2Interactive.visible = false;
+        }
+        
+        // Create enhanced connector with tube geometry
+        function createEnhancedConnector() {
+            // Remove old connector if exists
+            if (connector) scene.remove(connector);
+            if (connectorTube) scene.remove(connectorTube);
+            
+            const connectorGeometry = new THREE.BufferGeometry();
+            const connectorMaterial = new THREE.LineBasicMaterial({ 
+                color: 0x00ff00, 
+                linewidth: 6 
+            });
+            connector = new THREE.Line(connectorGeometry, connectorMaterial);
+            
+            // Create tube geometry for connector
+            const points = [new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, 0, 0)];
+            const tubeGeometry = new THREE.TubeGeometry(
+                new THREE.CatmullRomCurve3(points),
+                12,
+                0.15,
+                8,
+                false
+            );
+            
+            const tubeMaterial = new THREE.MeshPhongMaterial({
+                color: 0x00ff00,
+                emissive: 0x00aa00,
+                shininess: 100,
+                transparent: true,
+                opacity: 0.9
+            });
+            
+            connectorTube = new THREE.Mesh(tubeGeometry, tubeMaterial);
+            
+            scene.add(connector);
+            scene.add(connectorTube);
+        }
+        
+        // Calculate the shortest distance between two skew lines
+        function calculateShortestDistance() {
+            // Direction vectors of the lines
+            const d1 = new THREE.Vector3().subVectors(line1Points[1], line1Points[0]).normalize();
+            const d2 = new THREE.Vector3().subVectors(line2Points[1], line2Points[0]).normalize();
+            
+            // Vector connecting a point on line1 to a point on line2
+            const w0 = new THREE.Vector3().subVectors(line1Points[0], line2Points[0]);
+            
+            // Calculate parameters for closest points
+            const a = d1.dot(d1);
+            const b = d1.dot(d2);
+            const c = d2.dot(d2);
+            const d = d1.dot(w0);
+            const e = d2.dot(w0);
+            
+            const denominator = a * c - b * b;
+            
+            // If lines are parallel, denominator would be 0
+            if (Math.abs(denominator) < 1e-10) {
+                return null;
+            }
+            
+            const t = (b * e - c * d) / denominator;
+            const s = (a * e - b * d) / denominator;
+            
+            // Calculate the closest points
+            const closestPoint1 = new THREE.Vector3().addVectors(
+                line1Points[0], 
+                new THREE.Vector3().copy(d1).multiplyScalar(t)
+            );
+            
+            const closestPoint2 = new THREE.Vector3().addVectors(
+                line2Points[0], 
+                new THREE.Vector3().copy(d2).multiplyScalar(s)
+            );
+            
+            return {
+                point1: closestPoint1,
+                point2: closestPoint2,
+                distance: closestPoint1.distanceTo(closestPoint2)
+            };
+        }
+        
+        // Update the connector visualization
+        function updateConnector() {
+            const result = calculateShortestDistance();
+            if (result) {
+                const points = [result.point1, result.point2];
+                connector.geometry.setFromPoints(points);
+                
+                // Update tube geometry for connector
+                const tubeCurve = new THREE.CatmullRomCurve3(points);
+                connectorTube.geometry = new THREE.TubeGeometry(tubeCurve, 12, 0.15, 8, false);
+                
+                // Add spheres at connection points if we're at the right step
+                if (currentStep >= 4) {
+                    addConnectionPoints(result.point1, result.point2);
+                }
+                
+                // Update distance display
+                document.getElementById('distance-display').textContent = 
+                    `Shortest Distance: ${result.distance.toFixed(2)} units`;
+                
+                return result.distance;
+            }
+            return 0;
+        }
+        
+        // Add visual points at the connection locations
+        function addConnectionPoints(point1, point2) {
+            // Clear previous points
+            points.forEach(point => scene.remove(point));
+            points = [];
+            
+            // Create point 1 with enhanced appearance
+            const geometry1 = new THREE.SphereGeometry(0.3, 32, 32);
+            const material1 = new THREE.MeshPhongMaterial({ 
+                color: 0x4fc3f7,
+                emissive: 0x0044aa,
+                shininess: 100
+            });
+            const sphere1 = new THREE.Mesh(geometry1, material1);
+            sphere1.position.copy(point1);
+            scene.add(sphere1);
+            points.push(sphere1);
+            
+            // Create point 2 with enhanced appearance
+            const geometry2 = new THREE.SphereGeometry(0.3, 32, 32);
+            const material2 = new THREE.MeshPhongMaterial({ 
+                color: 0xff9800,
+                emissive: 0xaa4400,
+                shininess: 100
+            });
+            const sphere2 = new THREE.Mesh(geometry2, material2);
+            sphere2.position.copy(point2);
+            scene.add(sphere2);
+            points.push(sphere2);
+            
+            // Add glowing effects
+            const glowGeometry1 = new THREE.SphereGeometry(0.5, 32, 32);
+            const glowMaterial1 = new THREE.MeshBasicMaterial({
+                color: 0x4fc3f7,
+                transparent: true,
+                opacity: 0.3,
+                side: THREE.BackSide
+            });
+            const glowSphere1 = new THREE.Mesh(glowGeometry1, glowMaterial1);
+            glowSphere1.position.copy(point1);
+            scene.add(glowSphere1);
+            points.push(glowSphere1);
+            
+            const glowGeometry2 = new THREE.SphereGeometry(0.5, 32, 32);
+            const glowMaterial2 = new THREE.MeshBasicMaterial({
+                color: 0xff9800,
+                transparent: true,
+                opacity: 0.3,
+                side: THREE.BackSide
+            });
+            const glowSphere2 = new THREE.Mesh(glowGeometry2, glowMaterial2);
+            glowSphere2.position.copy(point2);
+            scene.add(glowSphere2);
+            points.push(glowSphere2);
+        }
+        
+        // Animation loop
+        function animate() {
+            animationId = requestAnimationFrame(animate);
+            
+            // Update controls
+            controls.update();
+            
+            // Rotate particle system slowly for starfield effect
+            if (particleSystem) {
+                particleSystem.rotation.y += 0.0005;
+            }
+            
+            // Perform step-specific animations
+            performStepAnimation();
+            
+            // Render the scene
+            renderer.render(scene, camera);
+        }
+        
+        // Perform animations based on current step
+        function performStepAnimation() {
+            switch(currentStep) {
+                case 0:
+                    // Initial view - just show lines
+                    connector.visible = false;
+                    connectorTube.visible = false;
+                    document.getElementById('distance-display').textContent = '';
+                    break;
+                case 1:
+                    // Show lines are not parallel
+                    connector.visible = false;
+                    connectorTube.visible = false;
+                    document.getElementById('distance-display').textContent = '';
+                    break;
+                case 2:
+                    // Show lines don't intersect
+                    connector.visible = false;
+                    connectorTube.visible = false;
+                    document.getElementById('distance-display').textContent = '';
+                    break;
+                case 3:
+                    // Show multiple connection attempts
+                    showMultipleConnections();
+                    break;
+                case 4:
+                    // Show the shortest connection
+                    connector.visible = true;
+                    connectorTube.visible = true;
+                    updateConnector();
+                    break;
+                case 5:
+                    // Show why it's the shortest (perpendicular to both)
+                    connector.visible = true;
+                    connectorTube.visible = true;
+                    updateConnector();
+                    showPerpendicularity();
+                    break;
+            }
+        }
+        
+        // Show multiple connection attempts between the lines
+        function showMultipleConnections() {
+            if (!connector.visible) {
+                connector.visible = true;
+                connectorTube.visible = true;
+                
+                // Show a non-optimal connection
+                const tempPoint1 = new THREE.Vector3(
+                    line1Points[0].x + 4,
+                    line1Points[0].y + 2,
+                    line1Points[0].z - 1.5
+                );
+                
+                const tempPoint2 = new THREE.Vector3(
+                    line2Points[0].x + 2.5,
+                    line2Points[0].y - 1.5,
+                    line2Points[0].z + 2
+                );
+                
+                const tempPoints = [tempPoint1, tempPoint2];
+                connector.geometry.setFromPoints(tempPoints);
+                
+                // Update tube geometry
+                const tubeCurve = new THREE.CatmullRomCurve3(tempPoints);
+                connectorTube.geometry = new THREE.TubeGeometry(tubeCurve, 12, 0.15, 8, false);
+                connectorTube.material.color.set(0xff0000);
+                connectorTube.material.emissive.set(0xaa0000);
+                
+                // Show distance
+                const tempDistance = tempPoint1.distanceTo(tempPoint2);
+                document.getElementById('distance-display').textContent = 
+                    `Current Distance: ${tempDistance.toFixed(2)} units (not shortest)`;
+            }
+        }
+        
+        // Show that the shortest distance is perpendicular to both lines
+        function showPerpendicularity() {
+            connectorTube.material.color.set(0x00ff00);
+            connectorTube.material.emissive.set(0x00aa00);
+            
+            const result = calculateShortestDistance();
+            if (result) {
+                // Calculate direction vectors
+                const d1 = new THREE.Vector3().subVectors(line1Points[1], line1Points[0]).normalize();
+                const d2 = new THREE.Vector3().subVectors(line2Points[1], line2Points[0]).normalize();
+                const connectorDir = new THREE.Vector3().subVectors(result.point2, result.point1).normalize();
+                
+                // The dot product should be close to 0 if perpendicular
+                const dot1 = Math.abs(d1.dot(connectorDir));
+                const dot2 = Math.abs(d2.dot(connectorDir));
+                
+                // Visual feedback for perpendicularity
+                document.getElementById('distance-display').textContent = 
+                    `Shortest Distance: ${result.distance.toFixed(2)} units | ` +
+                    `Perpendicular to both lines (dot products: ${dot1.toFixed(3)}, ${dot2.toFixed(3)})`;
+            }
+        }
+        
+        // Update the explanation panel based on current step
+        function updateExplanation() {
+            const explanationPanel = document.getElementById('explanation');
+            const explanationTitle = explanationPanel.querySelector('.explanation-title');
+            const explanationText = explanationPanel.querySelector('.explanation-text');
+            const formula = explanationPanel.querySelector('.formula');
+            
+            explanationPanel.classList.add('active');
+            
+            switch(currentStep) {
+                case 0:
+                    explanationTitle.textContent = "What are Skew Lines?";
+                    explanationText.innerHTML = "Skew lines are lines in 3D space that are <span class='highlight'>neither parallel nor intersecting</span>. They exist in different planes and never meet, no matter how far they extend.";
+                    formula.innerHTML = "Lines: L₁ and L₂ are skew if:<br>L₁ ∦ L₂ and L₁ ∩ L₂ = ∅";
+                    break;
+                case 1:
+                    explanationTitle.textContent = "Not Parallel";
+                    explanationText.innerHTML = "These lines have <span class='highlight'>different directions</span>. If they were parallel, they would always maintain the same distance between them, or be coincident.";
+                    formula.innerHTML = "Direction vectors are not proportional:<br>d₁ ≠ k·d₂ for any k";
+                    break;
+                case 2:
+                    explanationTitle.textContent = "Not Intersecting";
+                    explanationText.innerHTML = "Despite not being parallel, these lines <span class='highlight'>don't intersect</span>. They pass by each other in 3D space without ever meeting.";
+                    formula.innerHTML = "No common point exists between L₁ and L₂";
+                    break;
+                case 3:
+                    explanationTitle.textContent = "Finding the Shortest Path";
+                    explanationText.innerHTML = "We can connect any point on the first line to any point on the second line. But which connection gives us the <span class='highlight'>shortest distance</span>? Let's explore different possibilities.";
+                    formula.innerHTML = "We need to minimize: d(P, Q) where P ∈ L₁, Q ∈ L₂";
+                    break;
+                case 4:
+                    explanationTitle.textContent = "The Shortest Connection";
+                    explanationText.innerHTML = "The shortest distance between skew lines is along a line that is <span class='highlight'>perpendicular to both lines</span>. This unique line segment connects the two lines at their closest points.";
+                    formula.innerHTML = "Shortest distance = |(P₂ - P₁) · (d₁ × d₂)| / |d₁ × d₂|";
+                    break;
+                case 5:
+                    explanationTitle.textContent = "Why It's the Shortest";
+                    explanationText.innerHTML = "This path is the shortest because any other connecting line would form the <span class='highlight'>hypotenuse of a right triangle</span>, which is always longer than the perpendicular side. The perpendicular is the true shortest path.";
+                    formula.innerHTML = "For any other points P' and Q':<br>d(P', Q') > d(P, Q)";
+                    break;
+            }
+            
+            // Update step indicator
+            document.querySelector('.step-indicator').textContent = `Step ${currentStep + 1} of ${totalSteps}: ${explanationTitle.textContent}`;
+        }
+        
+        // Toggle interactive mode
+        function toggleInteractiveMode() {
+            interactiveMode = !interactiveMode;
+            
+            if (interactiveMode) {
+                // Show interactive points
+                line1Interactive.visible = true;
+                line2Interactive.visible = true;
+                
+                // Update button text
+                document.getElementById('interactive-btn').textContent = 'Exit Interactive';
+                
+                // Show explanation for interactive mode
+                const explanationPanel = document.getElementById('explanation');
+                const explanationTitle = explanationPanel.querySelector('.explanation-title');
+                const explanationText = explanationPanel.querySelector('.explanation-text');
+                const formula = explanationPanel.querySelector('.formula');
+                
+                explanationTitle.textContent = "Interactive Mode";
+                explanationText.innerHTML = "Drag the endpoints of the lines to see how the shortest distance changes. Notice how the <span class='highlight'>perpendicular connector</span> always finds the closest points.";
+                formula.innerHTML = "Drag the colored spheres to modify the lines";
+                
+                document.querySelector('.step-indicator').textContent = "Interactive Mode: Drag points to modify lines";
+            } else {
+                // Hide interactive points
+                line1Interactive.visible = false;
+                line2Interactive.visible = false;
+                
+                // Update button text
+                document.getElementById('interactive-btn').textContent = 'Interactive Mode';
+                
+                // Restore previous explanation
+                updateExplanation();
+            }
+        }
+        
+        // Handle mouse events for interactive mode
+        function onMouseDown(event) {
+            if (!interactiveMode) return;
+            
+            // Calculate mouse position in normalized device coordinates
+            const mouse = new THREE.Vector2();
+            mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+            mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+            
+            // Create raycaster
+            const raycaster = new THREE.Raycaster();
+            raycaster.setFromCamera(mouse, camera);
+            
+            // Check for intersections with interactive points
+            const intersects = raycaster.intersectObjects([
+                ...line1Interactive.children,
+                ...line2Interactive.children
+            ]);
+            
+            if (intersects.length > 0) {
+                isDragging = true;
+                draggedPoint = intersects[0].object;
+                document.body.style.cursor = 'grabbing';
+            }
+        }
+        
+        function onMouseMove(event) {
+            if (!interactiveMode || !isDragging || !draggedPoint) return;
+            
+            // Calculate mouse position in normalized device coordinates
+            const mouse = new THREE.Vector2();
+            mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+            mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+            
+            // Create raycaster
+            const raycaster = new THREE.Raycaster();
+            raycaster.setFromCamera(mouse, camera);
+            
+            // Create a plane perpendicular to camera at the current point's depth
+            const plane = new THREE.Plane();
+            const normal = new THREE.Vector3();
+            camera.getWorldDirection(normal);
+            plane.setFromNormalAndCoplanarPoint(normal, draggedPoint.position);
+            
+            // Find intersection point with the plane
+            const intersection = new THREE.Vector3();
+            raycaster.ray.intersectPlane(plane, intersection);
+            
+            // Update the dragged point position
+            draggedPoint.position.copy(intersection);
+            
+            // Update the corresponding line endpoint
+            const lineIndex = draggedPoint.userData.line;
+            const pointIndex = draggedPoint.userData.point;
+            
+            if (lineIndex === 1) {
+                line1Points[pointIndex].copy(intersection);
+            } else {
+                line2Points[pointIndex].copy(intersection);
+            }
+            
+            // Update the line geometry
+            createEnhancedLines();
+            
+            // Update the connector
+            updateConnector();
+        }
+        
+        function onMouseUp() {
+            isDragging = false;
+            draggedPoint = null;
+            document.body.style.cursor = 'default';
+        }
+        
+        // Show loading screen with progress bar
+        function showLoadingScreen() {
+            const loadingScreen = document.getElementById('loading-screen');
+            const loadingBar = document.getElementById('loading-bar');
+            
+            loadingScreen.style.display = 'flex';
+            
+            // Simulate loading progress
+            let progress = 0;
+            const interval = setInterval(() => {
+                progress += Math.random() * 10;
+                if (progress >= 100) {
+                    progress = 100;
+                    clearInterval(interval);
+                }
+                loadingBar.style.width = `${progress}%`;
+            }, 200);
+        }
+        
+        // Hide loading screen
+        function hideLoadingScreen() {
+            const loadingScreen = document.getElementById('loading-screen');
+            loadingScreen.style.opacity = '0';
+            setTimeout(() => {
+                loadingScreen.style.display = 'none';
+            }, 500);
+        }
+        
+        // Set up event listeners for UI controls
+        function setupEventListeners() {
+            document.getElementById('prev-btn').addEventListener('click', previousStep);
+            document.getElementById('next-btn').addEventListener('click', nextStep);
+            document.getElementById('play-btn').addEventListener('click', playAnimation);
+            document.getElementById('reset-btn').addEventListener('click', resetAnimation);
+            document.getElementById('interactive-btn').addEventListener('click', toggleInteractiveMode);
+            
+            // Mouse events for interactive mode
+            renderer.domElement.addEventListener('mousedown', onMouseDown);
+            renderer.domElement.addEventListener('mousemove', onMouseMove);
+            renderer.domElement.addEventListener('mouseup', onMouseUp);
+            
+            // Handle window resize
+            window.addEventListener('resize', onWindowResize);
+        }
+        
+        // Go to the previous step
+        function previousStep() {
+            if (currentStep > 0) {
+                currentStep--;
+                updateExplanation();
+            }
+        }
+        
+        // Go to the next step
+        function nextStep() {
+            if (currentStep < totalSteps - 1) {
+                currentStep++;
+                updateExplanation();
+            }
+        }
+        
+        // Play the full animation sequence
+        function playAnimation() {
+            // Reset to first step
+            currentStep = 0;
+            updateExplanation();
+            
+            // Animate through all steps
+            const playInterval = setInterval(() => {
+                if (currentStep < totalSteps - 1) {
+                    currentStep++;
+                    updateExplanation();
+                } else {
+                    clearInterval(playInterval);
+                }
+            }, 5000); // 5 seconds per step for cinematic feel
+        }
+        
+        // Reset the animation
+        function resetAnimation() {
+            currentStep = 0;
+            updateExplanation();
+            
+            // Reset line positions
+            line1Points[0].set(-6, -3, 3);
+            line1Points[1].set(6, 3, -3);
+            line2Points[0].set(-4, 4, -4);
+            line2Points[1].set(4, -2, 4);
+            
+            // Update geometries
+            createEnhancedLines();
+            
+            // Update interactive points
+            createInteractivePoints();
+            
+            // Reset camera position
+            camera.position.set(12, 12, 12);
+            controls.reset();
+        }
+        
+        // Handle window resize
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+        
+        // Initialize the application when the page loads
+        window.addEventListener('load', init);
+    </script>
+</body>
+</html>
