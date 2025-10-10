@@ -1,0 +1,878 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Angle Between Two Planes - 3D Visualization</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #0c0c2e 0%, #1a1a3e 100%);
+            color: white;
+            overflow: hidden;
+            height: 100vh;
+        }
+        
+        #container {
+            display: flex;
+            height: 100vh;
+        }
+        
+        #canvas-container {
+            flex: 1;
+            position: relative;
+        }
+        
+        #ui-panel {
+            width: 350px;
+            padding: 20px;
+            background: rgba(10, 15, 35, 0.85);
+            backdrop-filter: blur(10px);
+            border-left: 1px solid rgba(255, 255, 255, 0.1);
+            overflow-y: auto;
+            box-shadow: -5px 0 15px rgba(0, 0, 0, 0.5);
+        }
+        
+        h1 {
+            font-size: 24px;
+            margin-bottom: 10px;
+            background: linear-gradient(90deg, #4facfe 0%, #00f2fe 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-align: center;
+        }
+        
+        .subtitle {
+            text-align: center;
+            color: #a0a0e0;
+            margin-bottom: 25px;
+            font-size: 14px;
+        }
+        
+        .section {
+            margin-bottom: 25px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .section-title {
+            font-size: 18px;
+            margin-bottom: 15px;
+            color: #4facfe;
+            display: flex;
+            align-items: center;
+        }
+        
+        .section-title i {
+            margin-right: 10px;
+            font-size: 20px;
+        }
+        
+        .concept-explanation {
+            background: rgba(30, 40, 80, 0.5);
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border-left: 4px solid #4facfe;
+        }
+        
+        .formula-box {
+            background: rgba(20, 25, 60, 0.7);
+            padding: 15px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            text-align: center;
+            margin: 15px 0;
+            border: 1px solid rgba(100, 150, 255, 0.3);
+        }
+        
+        .controls {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        
+        button {
+            flex: 1;
+            min-width: 120px;
+            padding: 10px 15px;
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            border: none;
+            border-radius: 5px;
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+        }
+        
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 8px rgba(0, 0, 0, 0.3);
+        }
+        
+        button:active {
+            transform: translateY(1px);
+        }
+        
+        button.secondary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        
+        .progress-container {
+            margin: 20px 0;
+        }
+        
+        .progress-bar {
+            height: 6px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 3px;
+            overflow: hidden;
+        }
+        
+        .progress {
+            height: 100%;
+            background: linear-gradient(90deg, #4facfe 0%, #00f2fe 100%);
+            width: 0%;
+            transition: width 0.5s ease;
+        }
+        
+        .stage-indicator {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 5px;
+            font-size: 12px;
+            color: #a0a0e0;
+        }
+        
+        .stage {
+            text-align: center;
+            flex: 1;
+        }
+        
+        .stage.active {
+            color: #4facfe;
+            font-weight: bold;
+        }
+        
+        .info-box {
+            background: rgba(30, 40, 80, 0.5);
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 20px;
+            border-left: 4px solid #00f2fe;
+        }
+        
+        .legend {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin-top: 15px;
+        }
+        
+        .legend-item {
+            display: flex;
+            align-items: center;
+        }
+        
+        .color-box {
+            width: 20px;
+            height: 20px;
+            border-radius: 3px;
+            margin-right: 10px;
+        }
+        
+        .plane1-color { background: #3399ff; }
+        .plane2-color { background: #ffcc00; }
+        .normal1-color { background: #00ffff; }
+        .normal2-color { background: #ffa500; }
+        .intersection-color { background: #ffffff; }
+        .angle-color { background: #ffff00; }
+        
+        #angle-value {
+            font-size: 24px;
+            font-weight: bold;
+            text-align: center;
+            margin: 15px 0;
+            color: #00f2fe;
+        }
+        
+        .calculation-steps {
+            margin-top: 15px;
+            font-size: 14px;
+        }
+        
+        .step {
+            margin-bottom: 10px;
+            padding-left: 15px;
+            border-left: 2px solid rgba(79, 172, 254, 0.5);
+        }
+        
+        #loading {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #0c0c2e;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            transition: opacity 0.5s ease;
+        }
+        
+        .loader {
+            width: 50px;
+            height: 50px;
+            border: 5px solid rgba(79, 172, 254, 0.3);
+            border-top: 5px solid #4facfe;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 20px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div id="loading">
+        <div class="loader"></div>
+        <p>Loading 3D Visualization...</p>
+    </div>
+    
+    <div id="container">
+        <div id="canvas-container"></div>
+        
+        <div id="ui-panel">
+            <h1>Angle Between Two Planes</h1>
+            <p class="subtitle">3D Geometric Visualization</p>
+            
+            <div class="section">
+                <div class="section-title">
+                    <i>📚</i> Concept Explanation
+                </div>
+                <div class="concept-explanation">
+                    <p>The angle between two planes is defined as the angle between their normal vectors. This visualization demonstrates how to calculate this angle in 3D space.</p>
+                </div>
+            </div>
+            
+            <div class="section">
+                <div class="section-title">
+                    <i>🎮</i> Animation Controls
+                </div>
+                <div class="controls">
+                    <button id="playPause">Pause</button>
+                    <button id="restart" class="secondary">Restart</button>
+                    <button id="prevStage" class="secondary">Previous</button>
+                    <button id="nextStage" class="secondary">Next</button>
+                </div>
+                
+                <div class="progress-container">
+                    <div class="progress-bar">
+                        <div class="progress" id="animationProgress"></div>
+                    </div>
+                    <div class="stage-indicator">
+                        <div class="stage active" id="stage1">Planes</div>
+                        <div class="stage" id="stage2">Intersection</div>
+                        <div class="stage" id="stage3">Normals</div>
+                        <div class="stage" id="stage4">Angle</div>
+                        <div class="stage" id="stage5">Formula</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="section">
+                <div class="section-title">
+                    <i>🧮</i> Mathematical Formula
+                </div>
+                <div class="formula-box">
+                    cos(θ) = (n₁ · n₂) / (|n₁| |n₂|)
+                </div>
+                <div id="angle-value">θ = 0.00°</div>
+                
+                <div class="calculation-steps">
+                    <div class="step">1. Find normal vectors n₁ and n₂ for each plane</div>
+                    <div class="step">2. Calculate the dot product: n₁ · n₂</div>
+                    <div class="step">3. Calculate magnitudes: |n₁| and |n₂|</div>
+                    <div class="step">4. Apply formula: θ = acos((n₁ · n₂) / (|n₁| |n₂|))</div>
+                </div>
+            </div>
+            
+            <div class="section">
+                <div class="section-title">
+                    <i>🎨</i> Visual Legend
+                </div>
+                <div class="legend">
+                    <div class="legend-item">
+                        <div class="color-box plane1-color"></div>
+                        <span>Plane 1</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="color-box plane2-color"></div>
+                        <span>Plane 2</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="color-box normal1-color"></div>
+                        <span>Normal Vector 1</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="color-box normal2-color"></div>
+                        <span>Normal Vector 2</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="color-box intersection-color"></div>
+                        <span>Intersection Line</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="color-box angle-color"></div>
+                        <span>Angle Arc</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="info-box">
+                <p><strong>Tip:</strong> Use your mouse to rotate, zoom, and pan the 3D view for better understanding.</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Main variables
+        let scene, camera, renderer, controls;
+        let plane1, plane2, normal1, normal2, intersectionLine, angleArc;
+        let animationId;
+        let animationPlaying = true;
+        let animationTime = 0;
+        let currentStage = 0;
+        
+        // Plane equations and normals
+        let plane1Normal = new THREE.Vector3(0, 1, 0);
+        let plane2Normal = new THREE.Vector3(0, 0, 1);
+        let intersectionDirection = new THREE.Vector3();
+        
+        // Initialize the scene
+        function init() {
+            // Create scene with a space-like background
+            scene = new THREE.Scene();
+            
+            // Create camera with a wider field of view for more cinematic feel
+            camera = new THREE.PerspectiveCamera(50, (window.innerWidth - 350) / window.innerHeight, 0.1, 1000);
+            camera.position.set(8, 5, 8);
+            
+            // Create renderer with enhanced settings
+            renderer = new THREE.WebGLRenderer({ 
+                antialias: true,
+                alpha: true
+            });
+            renderer.setSize(window.innerWidth - 350, window.innerHeight);
+            renderer.setPixelRatio(window.devicePixelRatio);
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+            document.getElementById('canvas-container').appendChild(renderer.domElement);
+            
+            // Add orbit controls with smooth damping
+            controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.05;
+            controls.screenSpacePanning = false;
+            controls.minDistance = 5;
+            controls.maxDistance = 20;
+            controls.maxPolarAngle = Math.PI;
+            
+            // Create coordinate system with enhanced visuals
+            createCoordinateSystem();
+            
+            // Add stars in the background for cosmic effect
+            addStars();
+            
+            // Create the visualization elements
+            createPlanes();
+            createNormals();
+            createIntersectionLine();
+            createAngleArc();
+            
+            // Add enhanced lighting
+            addLighting();
+            
+            // Handle window resize
+            window.addEventListener('resize', onWindowResize);
+            
+            // Add event listeners for controls
+            document.getElementById('playPause').addEventListener('click', toggleAnimation);
+            document.getElementById('restart').addEventListener('click', restartAnimation);
+            document.getElementById('prevStage').addEventListener('click', prevStage);
+            document.getElementById('nextStage').addEventListener('click', nextStage);
+            
+            // Hide loading screen
+            setTimeout(() => {
+                document.getElementById('loading').style.opacity = 0;
+                setTimeout(() => {
+                    document.getElementById('loading').style.display = 'none';
+                }, 500);
+            }, 1500);
+            
+            // Start animation
+            animate();
+        }
+        
+        // Create enhanced coordinate system
+        function createCoordinateSystem() {
+            const axisLength = 6;
+            const axisRadius = 0.03;
+            
+            // X-axis (red)
+            const xAxisGeometry = new THREE.CylinderGeometry(axisRadius, axisRadius, axisLength, 8);
+            const xAxisMaterial = new THREE.MeshPhongMaterial({ color: 0xff3333 });
+            const xAxis = new THREE.Mesh(xAxisGeometry, xAxisMaterial);
+            xAxis.rotation.z = Math.PI / 2;
+            xAxis.position.x = axisLength / 2;
+            scene.add(xAxis);
+            
+            // Y-axis (green)
+            const yAxisGeometry = new THREE.CylinderGeometry(axisRadius, axisRadius, axisLength, 8);
+            const yAxisMaterial = new THREE.MeshPhongMaterial({ color: 0x33ff33 });
+            const yAxis = new THREE.Mesh(yAxisGeometry, yAxisMaterial);
+            yAxis.position.y = axisLength / 2;
+            scene.add(yAxis);
+            
+            // Z-axis (blue)
+            const zAxisGeometry = new THREE.CylinderGeometry(axisRadius, axisRadius, axisLength, 8);
+            const zAxisMaterial = new THREE.MeshPhongMaterial({ color: 0x3377ff });
+            const zAxis = new THREE.Mesh(zAxisGeometry, zAxisMaterial);
+            zAxis.rotation.x = Math.PI / 2;
+            zAxis.position.z = axisLength / 2;
+            scene.add(zAxis);
+            
+            // Axis labels
+            createAxisLabel('X', new THREE.Vector3(axisLength + 0.5, 0, 0), 0xff3333);
+            createAxisLabel('Y', new THREE.Vector3(0, axisLength + 0.5, 0), 0x33ff33);
+            createAxisLabel('Z', new THREE.Vector3(0, 0, axisLength + 0.5), 0x3377ff);
+        }
+        
+        // Create axis labels
+        function createAxisLabel(text, position, color) {
+            const canvas = document.createElement('canvas');
+            const context = canvas.getContext('2d');
+            canvas.width = 64;
+            canvas.height = 64;
+            
+            context.fillStyle = 'rgba(0, 0, 0, 0)';
+            context.fillRect(0, 0, canvas.width, canvas.height);
+            
+            context.font = 'Bold 48px Arial';
+            context.textAlign = 'center';
+            context.textBaseline = 'middle';
+            context.fillStyle = `rgb(${color.r * 255}, ${color.g * 255}, ${color.b * 255})`;
+            context.fillText(text, canvas.width / 2, canvas.height / 2);
+            
+            const texture = new THREE.CanvasTexture(canvas);
+            const material = new THREE.SpriteMaterial({ map: texture });
+            const sprite = new THREE.Sprite(material);
+            sprite.position.copy(position);
+            sprite.scale.set(1, 1, 1);
+            scene.add(sprite);
+        }
+        
+        // Add stars to the background for cosmic effect
+        function addStars() {
+            const starGeometry = new THREE.BufferGeometry();
+            const starCount = 2000;
+            const positions = new Float32Array(starCount * 3);
+            const colors = new Float32Array(starCount * 3);
+            const sizes = new Float32Array(starCount);
+            
+            for (let i = 0; i < starCount * 3; i += 3) {
+                // Random positions in a sphere
+                const radius = 50 + Math.random() * 100;
+                const theta = Math.random() * Math.PI * 2;
+                const phi = Math.acos(2 * Math.random() - 1);
+                
+                positions[i] = radius * Math.sin(phi) * Math.cos(theta);
+                positions[i + 1] = radius * Math.sin(phi) * Math.sin(theta);
+                positions[i + 2] = radius * Math.cos(phi);
+                
+                // Random colors (mostly white with some blue)
+                const color = new THREE.Color();
+                color.setHSL(0.6, 0.2, 0.7 + Math.random() * 0.3);
+                colors[i] = color.r;
+                colors[i + 1] = color.g;
+                colors[i + 2] = color.b;
+                
+                // Random sizes
+                sizes[i / 3] = Math.random() * 2;
+            }
+            
+            starGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+            starGeometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+            starGeometry.setAttribute('size', new THREE.BufferAttribute(sizes, 1));
+            
+            const starMaterial = new THREE.PointsMaterial({
+                size: 1,
+                vertexColors: true,
+                transparent: true,
+                opacity: 0.8,
+                sizeAttenuation: true
+            });
+            
+            const stars = new THREE.Points(starGeometry, starMaterial);
+            scene.add(stars);
+        }
+        
+        // Create the two planes with enhanced visuals
+        function createPlanes() {
+            // Plane 1 (blue)
+            const planeGeometry1 = new THREE.PlaneGeometry(6, 6);
+            const planeMaterial1 = new THREE.MeshPhongMaterial({
+                color: 0x3399ff,
+                transparent: true,
+                opacity: 0.4,
+                side: THREE.DoubleSide,
+                shininess: 100
+            });
+            plane1 = new THREE.Mesh(planeGeometry1, planeMaterial1);
+            plane1.rotation.x = Math.PI / 4;
+            plane1.rotation.y = Math.PI / 6;
+            scene.add(plane1);
+            
+            // Add glowing edge effect to plane 1
+            const edges1 = new THREE.EdgesGeometry(planeGeometry1);
+            const line1 = new THREE.LineSegments(
+                edges1, 
+                new THREE.LineBasicMaterial({ 
+                    color: 0x66ccff, 
+                    linewidth: 2 
+                })
+            );
+            plane1.add(line1);
+            
+            // Plane 2 (gold)
+            const planeGeometry2 = new THREE.PlaneGeometry(6, 6);
+            const planeMaterial2 = new THREE.MeshPhongMaterial({
+                color: 0xffcc00,
+                transparent: true,
+                opacity: 0.4,
+                side: THREE.DoubleSide,
+                shininess: 100
+            });
+            plane2 = new THREE.Mesh(planeGeometry2, planeMaterial2);
+            plane2.rotation.x = -Math.PI / 4;
+            plane2.rotation.y = Math.PI / 4;
+            scene.add(plane2);
+            
+            // Add glowing edge effect to plane 2
+            const edges2 = new THREE.EdgesGeometry(planeGeometry2);
+            const line2 = new THREE.LineSegments(
+                edges2, 
+                new THREE.LineBasicMaterial({ 
+                    color: 0xffdd55, 
+                    linewidth: 2 
+                })
+            );
+            plane2.add(line2);
+            
+            // Calculate actual normals from plane rotations
+            plane1Normal = new THREE.Vector3(0, 1, 0);
+            plane1Normal.applyQuaternion(plane1.quaternion);
+            
+            plane2Normal = new THREE.Vector3(0, 1, 0);
+            plane2Normal.applyQuaternion(plane2.quaternion);
+            
+            // Calculate intersection direction
+            intersectionDirection.crossVectors(plane1Normal, plane2Normal).normalize();
+        }
+        
+        // Create normal vectors with enhanced visuals
+        function createNormals() {
+            // Normal for plane 1 (cyan)
+            const normalGeometry1 = new THREE.ConeGeometry(0.1, 0.5, 16);
+            const normalMaterial1 = new THREE.MeshPhongMaterial({ 
+                color: 0x00ffff,
+                shininess: 100
+            });
+            const cone1 = new THREE.Mesh(normalGeometry1, normalMaterial1);
+            cone1.rotation.x = Math.PI / 2;
+            cone1.position.y = 0.25;
+            
+            const lineGeometry1 = new THREE.CylinderGeometry(0.05, 0.05, 2, 8);
+            const line1 = new THREE.Mesh(lineGeometry1, normalMaterial1);
+            line1.position.y = 1;
+            
+            normal1 = new THREE.Group();
+            normal1.add(cone1);
+            normal1.add(line1);
+            normal1.position.set(0, 0, 0);
+            
+            // Position the normal perpendicular to plane 1
+            const normal1Direction = new THREE.Vector3(0, 1, 0);
+            normal1Direction.applyQuaternion(plane1.quaternion);
+            normal1.lookAt(normal1Direction);
+            normal1.visible = false;
+            
+            scene.add(normal1);
+            
+            // Add point light at the tip of normal 1
+            const pointLight1 = new THREE.PointLight(0x00ffff, 0.5, 3);
+            pointLight1.position.set(0, 2, 0);
+            normal1.add(pointLight1);
+            
+            // Normal for plane 2 (orange)
+            const normalGeometry2 = new THREE.ConeGeometry(0.1, 0.5, 16);
+            const normalMaterial2 = new THREE.MeshPhongMaterial({ 
+                color: 0xffa500,
+                shininess: 100
+            });
+            const cone2 = new THREE.Mesh(normalGeometry2, normalMaterial2);
+            cone2.rotation.x = Math.PI / 2;
+            cone2.position.y = 0.25;
+            
+            const lineGeometry2 = new THREE.CylinderGeometry(0.05, 0.05, 2, 8);
+            const line2 = new THREE.Mesh(lineGeometry2, normalMaterial2);
+            line2.position.y = 1;
+            
+            normal2 = new THREE.Group();
+            normal2.add(cone2);
+            normal2.add(line2);
+            normal2.position.set(0, 0, 0);
+            
+            // Position the normal perpendicular to plane 2
+            const normal2Direction = new THREE.Vector3(0, 1, 0);
+            normal2Direction.applyQuaternion(plane2.quaternion);
+            normal2.lookAt(normal2Direction);
+            normal2.visible = false;
+            
+            scene.add(normal2);
+            
+            // Add point light at the tip of normal 2
+            const pointLight2 = new THREE.PointLight(0xffa500, 0.5, 3);
+            pointLight2.position.set(0, 2, 0);
+            normal2.add(pointLight2);
+        }
+        
+        // Create the intersection line between the planes
+        function createIntersectionLine() {
+            const lineGeometry = new THREE.BufferGeometry();
+            const lineMaterial = new THREE.LineBasicMaterial({ 
+                color: 0xffffff,
+                linewidth: 3
+            });
+            
+            // Calculate intersection points based on actual plane normals
+            const points = [];
+            for (let i = -3; i <= 3; i += 0.5) {
+                // Create points along the intersection direction
+                const point = new THREE.Vector3();
+                point.copy(intersectionDirection);
+                point.multiplyScalar(i);
+                points.push(point);
+            }
+            
+            lineGeometry.setFromPoints(points);
+            intersectionLine = new THREE.Line(lineGeometry, lineMaterial);
+            intersectionLine.visible = false;
+            scene.add(intersectionLine);
+        }
+        
+        // Create the arc showing the angle between normals
+        function createAngleArc() {
+            const arcRadius = 1.5;
+            const arcPoints = [];
+            const arcSegments = 32;
+            
+            for (let i = 0; i <= arcSegments; i++) {
+                const theta = (i / arcSegments) * Math.PI / 2;
+                arcPoints.push(new THREE.Vector3(
+                    Math.cos(theta) * arcRadius,
+                    Math.sin(theta) * arcRadius,
+                    0
+                ));
+            }
+            
+            const arcGeometry = new THREE.BufferGeometry().setFromPoints(arcPoints);
+            const arcMaterial = new THREE.LineBasicMaterial({ 
+                color: 0xffff00,
+                linewidth: 3
+            });
+            
+            angleArc = new THREE.Line(arcGeometry, arcMaterial);
+            angleArc.visible = false;
+            scene.add(angleArc);
+        }
+        
+        // Add enhanced lighting to the scene
+        function addLighting() {
+            // Ambient light
+            const ambientLight = new THREE.AmbientLight(0x333333);
+            scene.add(ambientLight);
+            
+            // Directional light
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
+            directionalLight.position.set(5, 10, 7);
+            directionalLight.castShadow = true;
+            directionalLight.shadow.mapSize.width = 2048;
+            directionalLight.shadow.mapSize.height = 2048;
+            scene.add(directionalLight);
+            
+            // Hemisphere light for more natural illumination
+            const hemisphereLight = new THREE.HemisphereLight(0x4477ff, 0x224433, 0.3);
+            scene.add(hemisphereLight);
+        }
+        
+        // Animation function
+        function animate() {
+            if (animationPlaying) {
+                animationTime += 0.01;
+                
+                // Update animation progress
+                const progress = Math.min(animationTime / 8, 1);
+                document.getElementById('animationProgress').style.width = `${progress * 100}%`;
+                
+                // Update stages
+                updateStages();
+                
+                // Animate camera for cinematic effect
+                animateCamera();
+                
+                // Sequence of animations
+                if (animationTime > 1 && animationTime < 2) {
+                    // Show planes with fade-in effect
+                    plane1.material.opacity = Math.min(0.4, (animationTime - 1) * 0.4);
+                    plane2.material.opacity = Math.min(0.4, (animationTime - 1) * 0.4);
+                }
+                
+                if (animationTime > 2 && animationTime < 3) {
+                    // Show intersection line
+                    intersectionLine.visible = true;
+                    currentStage = 1;
+                }
+                
+                if (animationTime > 3 && animationTime < 4) {
+                    // Show normals
+                    normal1.visible = true;
+                    normal2.visible = true;
+                    currentStage = 2;
+                }
+                
+                if (animationTime > 4 && animationTime < 6) {
+                    // Show angle arc
+                    angleArc.visible = true;
+                    
+                    // Position the arc between the normals
+                    const normal1Dir = new THREE.Vector3(0, 1, 0);
+                    normal1Dir.applyQuaternion(plane1.quaternion);
+                    
+                    const normal2Dir = new THREE.Vector3(0, 1, 0);
+                    normal2Dir.applyQuaternion(plane2.quaternion);
+                    
+                    // Calculate angle between normals
+                    const angle = normal1Dir.angleTo(normal2Dir);
+                    
+                    // Update angle display
+                    document.getElementById('angle-value').textContent = `θ = ${(angle * 180 / Math.PI).toFixed(2)}°`;
+                    
+                    // Position and orient the arc
+                    angleArc.position.set(0, 0, 0);
+                    angleArc.lookAt(normal1Dir);
+                    angleArc.rotation.z = angle;
+                    
+                    currentStage = 3;
+                }
+                
+                if (animationTime > 6) {
+                    // Fade planes and focus on normals and arc
+                    plane1.material.opacity = Math.max(0.1, 0.4 - (animationTime - 6) * 0.1);
+                    plane2.material.opacity = Math.max(0.1, 0.4 - (animationTime - 6) * 0.1);
+                    
+                    currentStage = 4;
+                }
+            }
+            
+            controls.update();
+            renderer.render(scene, camera);
+            animationId = requestAnimationFrame(animate);
+        }
+        
+        // Update stage indicators
+        function updateStages() {
+            const stages = document.querySelectorAll('.stage');
+            stages.forEach((stage, index) => {
+                if (index === currentStage) {
+                    stage.classList.add('active');
+                } else {
+                    stage.classList.remove('active');
+                }
+            });
+        }
+        
+        // Animate camera for cinematic effect
+        function animateCamera() {
+            if (animationTime < 5) {
+                // Initial cinematic camera movement
+                const time = animationTime * 0.5;
+                camera.position.x = 8 + Math.sin(time) * 2;
+                camera.position.z = 8 + Math.cos(time) * 2;
+                camera.lookAt(0, 0, 0);
+            } else if (animationTime < 8) {
+                // Zoom in on normals and arc
+                const zoomFactor = 1 - (animationTime - 5) * 0.1;
+                camera.position.multiplyScalar(zoomFactor);
+            }
+        }
+        
+        // Handle window resize
+        function onWindowResize() {
+            camera.aspect = (window.innerWidth - 350) / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth - 350, window.innerHeight);
+        }
+        
+        // Toggle animation play/pause
+        function toggleAnimation() {
+            animationPlaying = !animationPlaying;
+            document.getElementById('playPause').textContent = animationPlaying ? 'Pause' : 'Play';
+        }
+        
+        // Restart animation
+        function restartAnimation() {
+            animationTime = 0;
+            plane1.material.opacity = 0;
+            plane2.material.opacity = 0;
+            normal1.visible = false;
+            normal2.visible = false;
+            intersectionLine.visible = false;
+            angleArc.visible = false;
+            document.getElementById('angle-value').textContent = 'θ = 0.00°';
+            currentStage = 0;
+            
+            camera.position.set(8, 5, 8);
+            camera.lookAt(0, 0, 0);
+        }
+        
+        // Go to previous stage
+        function prevStage() {
+            animationTime = Math.max(0, animationTime - 1.5);
+        }
+        
+        // Go to next stage
+        function nextStage() {
+            animationTime = Math.min(8, animationTime + 1.5);
+        }
+        
+        // Start the application
+        init();
+    </script>
+</body>
+</html>
