@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JEE 3D Geometry: The Cube</title>
+    <!-- Load Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Load Three.js and OrbitControls -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <style>
+        /* Custom CSS for the scene container */
+        #scene-container {
+            width: 100%;
+            height: 70vh; /* Responsive height */
+            min-height: 400px;
+            background-color: #0d1117;
+            border: 2px solid #3b82f6; /* Blue border */
+            border-radius: 1rem;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.7); /* Deeper shadow */
+            margin: 0 auto;
+            position: relative;
+        }
+        canvas {
+            display: block;
+        }
+        .control-button {
+            transition: all 0.2s;
+        }
+        .control-button:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+        }
+        .control-button:active {
+            transform: translateY(1px);
+            box-shadow: none;
+        }
+    </style>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        'background': '#0d1117',
+                        'primary': '#3b82f6',
+                        'accent': '#06b6d4',
+                        'vertex-origin': '#f97316', /* Orange */
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-background text-gray-100 font-sans p-4 sm:p-8">
+
+    <div class="max-w-4xl mx-auto">
+        <header class="text-center mb-6">
+            <h1 class="text-4xl sm:text-5xl font-extrabold text-primary mb-2">3D Cube Visualization</h1>
+            <p class="text-xl text-accent">Interactive Tool for JEE Coordinate Geometry</p>
+            <p class="text-sm mt-2 text-gray-400">Drag to rotate. Use controls to highlight key features.</p>
+        </header>
+
+        <!-- Controls Panel -->
+        <div class="flex flex-wrap justify-center gap-4 p-4 bg-gray-900 rounded-lg shadow-xl mb-6 border border-gray-700">
+            <button id="toggle-animation" class="control-button bg-primary hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg shadow-md flex items-center">
+                <span class="mr-2">🔄</span> Toggle Auto-Rotation
+            </button>
+            <button id="toggle-coordinates" class="control-button bg-accent hover:bg-cyan-600 text-white font-bold py-2 px-4 rounded-lg shadow-md flex items-center">
+                <span class="mr-2">🏷️</span> Toggle Coordinates
+            </button>
+            <button id="reset-view" class="control-button bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-lg shadow-md flex items-center">
+                <span class="mr-2">🏠</span> Reset View
+            </button>
+        </div>
+
+        <!-- 3D Scene Container -->
+        <div id="scene-container"></div>
+
+        <!-- Explanation Card -->
+        <div class="mt-8 p-6 bg-gray-800 rounded-xl shadow-lg border border-gray-700">
+            <h2 class="text-2xl font-bold text-primary mb-3">Concept Breakdown</h2>
+            <p class="text-gray-300 mb-4">
+                The cube visualized has a side length $L=5$. Its vertices are defined in a coordinate system where the origin is not $(0, 0, 0)$, but the cube is offset (translated) in space.
+                All 8 vertices are uniquely defined by combining the starting point $(1, 0, -1)$ with the three dimension vectors:
+            </p>
+            <ul class="list-disc pl-5 text-gray-300 space-y-1">
+                <li><strong class="text-vertex-origin">X-axis change:</strong> $1 \rightarrow -4$ (a displacement of $-5$)</li>
+                <li><strong class="text-vertex-origin">Y-axis change:</strong> $0 \rightarrow -5$ (a displacement of $-5$)</li>
+                <li><strong class="text-vertex-origin">Z-axis change:</strong> $-1 \rightarrow 4$ (a displacement of $+5$)</li>
+            </ul>
+            <p class="mt-4 text-gray-300">
+                Understanding these displacements is key for vector and scalar triple product problems. The vectors forming the edges of the cube are $\vec{a} = (-5, 0, 0)$, $\vec{b} = (0, -5, 0)$, and $\vec{c} = (0, 0, 5)$.
+            </p>
+        </div>
+    </div>
+
+    <script type="module">
+        // Global variables for Three.js
+        let scene, camera, renderer, controls, cubeGroup, coordinateLabels = [];
+        const container = document.getElementById('scene-container');
+        let isRotating = true;
+        let coordsVisible = true;
+        
+        // Initial camera position for reset
+        const initialCameraPosition = new THREE.Vector3(12, 12, 12);
+        const lookAtTarget = new THREE.Vector3(-1.5, -2.5, 1.5); // Center of the cube
+
+        // --- Configuration based on the user's image ---
+
+        // The 8 vertices of the cube (Side length L=5)
+        // Starting point: (1, 0, -1)
+        const vertices = [
+            new THREE.Vector3( 1,  0, -1 ),  // V1 (1, 0, -1) - The "origin" point
+            new THREE.Vector3( -4, 0, -1 ),  // V2 (-4, 0, -1)
+            new THREE.Vector3( -4, -5, -1 ), // V3 (-4, -5, -1)
+            new THREE.Vector3( 1, -5, -1 ),  // V4 (1, -5, -1)
+            new THREE.Vector3( 1, 0, 4 ),    // V5 (1, 0, 4)
+            new THREE.Vector3( -4, 0, 4 ),   // V6 (-4, 0, 4)
+            new THREE.Vector3( -4, -5, 4 ),  // V7 (-4, -5, 4)
+            new THREE.Vector3( 1, -5, 4 )    // V8 (1, -5, 4)
+        ];
+        
+        const vertexCoordinates = [
+            "(1, 0, -1)", "(-4, 0, -1)", "(-4, -5, -1)", "(1, -5, -1)",
+            "(1, 0, 4)", "(-4, 0, 4)", "(-4, -5, 4)", "(1, -5, 4)"
+        ];
+
+        // Lines to connect the vertices (12 edges of a cube)
+        const edges = [
+            // Base Z = -1
+            [0, 1], [1, 2], [2, 3], [3, 0],
+            // Top Z = 4
+            [4, 5], [5, 6], [6, 7], [7, 4],
+            // Vertical connections
+            [0, 4], [1, 5], [2, 6], [3, 7]
+        ];
+
+        // --- Three.js Initialization ---
+        function init() {
+            // 1. Scene Setup
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x0d1117);
+
+            // 2. Camera Setup
+            const aspect = container.clientWidth / container.clientHeight;
+            camera = new THREE.PerspectiveCamera(75, aspect, 0.1, 1000);
+            camera.position.copy(initialCameraPosition);
+            camera.lookAt(lookAtTarget);
+
+            // 3. Renderer Setup
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(container.clientWidth, container.clientHeight);
+            renderer.setPixelRatio(window.devicePixelRatio);
+            container.appendChild(renderer.domElement);
+
+            // 4. Lighting - Enhanced for better visuals
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.7); // Stronger ambient light
+            scene.add(ambientLight);
+            
+            const directionalLight1 = new THREE.DirectionalLight(0xffffff, 0.7);
+            directionalLight1.position.set(20, 10, 20);
+            scene.add(directionalLight1);
+
+            const directionalLight2 = new THREE.DirectionalLight(0x3b82f6, 0.3); // Accent blue light
+            directionalLight2.position.set(-20, -10, -20);
+            scene.add(directionalLight2);
+
+
+            // 5. Controls
+            controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true; // smooth rotation
+            controls.dampingFactor = 0.05;
+            controls.target.copy(lookAtTarget); // Set rotation center to cube center
+            controls.update();
+
+            // 6. Create Helpers
+            const axesHelper = new THREE.AxesHelper(15);
+            scene.add(axesHelper);
+
+            const gridHelper = new THREE.GridHelper(20, 20, 0x444444, 0x222222);
+            scene.add(gridHelper);
+
+            // 7. Create the Cube
+            cubeGroup = new THREE.Group();
+            createCube(cubeGroup);
+            scene.add(cubeGroup);
+
+            // 8. Handle Window Resize
+            window.addEventListener('resize', onWindowResize, false);
+            
+            // 9. Setup UI Events
+            setupUIEvents();
+        }
+
+        function onWindowResize() {
+            camera.aspect = container.clientWidth / container.clientHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(container.clientWidth, container.clientHeight);
+        }
+        
+        // Function to create a text label sprite (always faces the camera)
+        function createTextSprite(message, color = '#ffffff') {
+            const canvas = document.createElement('canvas');
+            const context = canvas.getContext('2d');
+            
+            const padding = 10;
+            const fontSize = 48;
+            context.font = `Bold ${fontSize}px Inter, Arial`;
+            const metrics = context.measureText(message);
+            const textWidth = metrics.width;
+
+            canvas.width = textWidth + padding * 2;
+            canvas.height = fontSize + padding * 2;
+
+            // Redraw with correct dimensions and clear previous content
+            context.clearRect(0, 0, canvas.width, canvas.height);
+            context.font = `Bold ${fontSize}px Inter, Arial`;
+            
+            // Background for contrast
+            context.fillStyle = "rgba(13, 17, 23, 0.8)"; 
+            context.fillRect(0, 0, canvas.width, canvas.height);
+            context.strokeStyle = "#3b82f6";
+            context.lineWidth = 4;
+            context.strokeRect(0, 0, canvas.width, canvas.height);
+
+            // Text
+            context.fillStyle = color;
+            context.fillText(message, padding, fontSize + padding);
+
+            const texture = new THREE.CanvasTexture(canvas);
+            texture.minFilter = THREE.LinearFilter;
+            texture.needsUpdate = true;
+
+            const spriteMaterial = new THREE.SpriteMaterial({ 
+                map: texture, 
+                transparent: true,
+                depthTest: false // Ensures label is always visible
+            });
+            const sprite = new THREE.Sprite(spriteMaterial);
+
+            // Scale the sprite based on the text size to maintain aspect ratio
+            const scaleFactor = 0.01; 
+            sprite.scale.set(canvas.width * scaleFactor, canvas.height * scaleFactor, 1);
+            
+            return sprite;
+        }
+
+        // --- Cube Geometry Creation ---
+        function createCube(group) {
+            // 1. Draw Edges (Wireframe) - Thicker, glowing lines
+            const lineMaterial = new THREE.LineBasicMaterial({
+                color: 0x06b6d4, // Cyan/Accent color
+                linewidth: 5 // Note: linewidth may not work across all browsers
+            });
+
+            const lineSegments = [];
+            edges.forEach(pair => {
+                lineSegments.push(vertices[pair[0]], vertices[pair[1]]);
+            });
+
+            const linesGeometry = new THREE.BufferGeometry().setFromPoints(lineSegments);
+            const line = new THREE.LineSegments(linesGeometry, lineMaterial);
+            group.add(line);
+
+
+            // 2. Draw Vertices (Points) - Spheres with glow
+            vertices.forEach((v, index) => {
+                const isOriginVertex = index === 0; // Check if it's the V1(1, 0, -1) point
+                const pointGeometry = new THREE.SphereGeometry(0.3, 32, 32);
+                const pointMaterial = new THREE.MeshPhongMaterial({
+                    color: isOriginVertex ? 0xf97316 : 0xffffff, // Orange for the start point, White for others
+                    shininess: 100,
+                    specular: isOriginVertex ? 0xf97316 : 0xffffff
+                });
+                const point = new THREE.Mesh(pointGeometry, pointMaterial);
+                point.position.copy(v);
+                group.add(point);
+                
+                // 3. Create Coordinate Labels
+                const label = createTextSprite(vertexCoordinates[index], isOriginVertex ? '#f97316' : '#ffffff');
+                // Offset position slightly so the label doesn't overlap the sphere
+                label.position.copy(v).add(new THREE.Vector3(0.5, 0.5, 0)); 
+                label.visible = coordsVisible; // Initial state
+                
+                group.add(label);
+                coordinateLabels.push(label);
+            });
+        }
+        
+        // --- UI Event Handlers ---
+        function setupUIEvents() {
+            document.getElementById('toggle-animation').addEventListener('click', () => {
+                isRotating = !isRotating;
+                const button = document.getElementById('toggle-animation');
+                button.classList.toggle('bg-primary', isRotating);
+                button.classList.toggle('bg-red-600', !isRotating);
+                button.innerHTML = isRotating ? '<span class="mr-2">🔄</span> Stop Auto-Rotation' : '<span class="mr-2">▶️</span> Start Auto-Rotation';
+            });
+
+            document.getElementById('toggle-coordinates').addEventListener('click', () => {
+                coordsVisible = !coordsVisible;
+                coordinateLabels.forEach(label => {
+                    label.visible = coordsVisible;
+                });
+            });
+            
+            document.getElementById('reset-view').addEventListener('click', () => {
+                // Reset camera and controls
+                camera.position.copy(initialCameraPosition);
+                controls.target.copy(lookAtTarget);
+                controls.update();
+                isRotating = false; // Stop rotation on reset
+                document.getElementById('toggle-animation').classList.remove('bg-primary');
+                document.getElementById('toggle-animation').classList.add('bg-red-600');
+                document.getElementById('toggle-animation').innerHTML = '<span class="mr-2">▶️</span> Start Auto-Rotation';
+            });
+            
+            // Set initial button text
+            document.getElementById('toggle-animation').innerHTML = '<span class="mr-2">🔄</span> Stop Auto-Rotation';
+        }
+
+        // --- Animation Loop ---
+        function animate() {
+            requestAnimationFrame(animate);
+
+            // Update controls for smooth rotation
+            if (controls) {
+                controls.update();
+            }
+
+            // Optional: slow, gentle auto-rotation
+            if (isRotating && cubeGroup) {
+               cubeGroup.rotation.y += 0.005;
+            }
+
+            renderer.render(scene, camera);
+        }
+
+        // Start the application after the window loads
+        window.onload = function() {
+            init();
+            animate();
+        };
+
+    </script>
+</body>
+</html>
