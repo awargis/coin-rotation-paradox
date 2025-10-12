@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fermat’s Principle: Reflection on a Mirror</title>
+    <style>
+        html, body { margin: 0; padding: 0; background: #101217; color: #fff; font-family: Arial, sans-serif; }
+        #main { max-width: 700px; margin: 30px auto; background: #181d24; box-shadow: 0 5px 22px #2227; border-radius: 13px; padding: 24px 18px 12px 20px; }
+        h2 { color: #f2ff90; text-shadow: 0 0 10px #f2ff90; }
+        #canvas { display: block; margin: 0 auto; background: #19191d; border-radius: 11px; box-shadow: 0 0 19px #001c; touch-action: none; }
+        #desc { margin: 6px 0 14px 6px; color: #ddd; }
+        .hint { color: #ffb; font-size: 14px; }
+        #labelA, #labelB { position: absolute; color: #99dcfe; text-shadow: 0 0 10px #000b, 0 0 8px #bff; font-size: 16px; font-weight: bold; }
+        #labelA { left: 82px; top: 82px; }
+        #labelB { right: 48px; bottom: 38px; }
+        .instruct { margin-top: 9px; color: #9ef399; padding: 4px 0 0 2px; }
+        .hinglish { color: #ffd199; font-weight: bold; margin-left: 4px; }
+        #mirrorLabel { position: absolute; left: 245px; color: #ffec2b; font-size: 16px; font-weight: bold; text-shadow: 0 2px 16px #222b, 0 0 8px #ffb; }
+        #controls { margin: 10px 0; }
+        #info { position: absolute; top: 50px; left: 20px; background: rgba(24, 29, 36, 0.9); padding: 15px; border-radius: 10px; display: none; box-shadow: 0 0 15px rgba(0, 0, 0, 0.5); color: #ffd199; }
+        #infoBtn { background: #f2ff90; color: #181d24; border: none; padding: 8px 16px; border-radius: 5px; cursor: pointer; }
+        #infoBtn:hover { background: #ffd199; }
+        @media (max-width: 750px) { #main { margin: 7px 1px; } #canvas { width: 98vw !important; height: 67vw !important; } }
+    </style>
+</head>
+<body>
+<div id="main">
+    <h2>Fermat’s Principle — Mirror Reflection (Least Time)</h2>
+    <div id="desc">
+        Drag points <b>A</b> and <b>B</b> or adjust the mirror height to see how light chooses the reflection point that minimizes travel time.
+        <div class="instruct">
+            Fermat’s Principle (Reflection): <i>Light reflects such that the total path is shortest, where the angle of incidence equals the angle of reflection.</i>
+        </div>
+        <div class="hinglish">
+            Roshni sidhe-run mein nahi jaati, woh mirror par aisi jagah se takraati hai ke use sabse kam samay lage. Yahi hai Fermat ka principle reflection ke liye!
+        </div>
+    </div>
+    <div id="controls">
+        <label>Mirror Height: <input type="range" id="mirrorY" min="100" max="350" value="320"></label>
+        <button id="infoBtn">Toggle Info</button>
+    </div>
+    <div style="position: relative;">
+        <canvas id="canvas" width="640" height="400"></canvas>
+        <div id="labelA">A</div>
+        <div id="labelB">B</div>
+        <div id="mirrorLabel">Mirror</div>
+    </div>
+    <div id="info">
+        Roshni hamesha apna safar aise tay karti hai ki use sabse kam samay lage—bhale hi rasta sidha na ho! For reflection, light chooses the path where the angle of incidence equals the angle of reflection.
+    </div>
+    <span class="hint">Tip: Drag points A and B or adjust the mirror height. Light reflects from the mirror so the total path is shortest (angle in = angle out).</span>
+</div>
+<script>
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+const w = canvas.width, h = canvas.height;
+let mirrorY = 320;
+let A = { x: 120, y: 120 };
+let B = { x: 540, y: 110 };
+let dragging = null, dragOffset = { x: 0, y: 0 };
+let frame = 0;
+
+const infoDiv = document.getElementById('info');
+const infoBtn = document.getElementById('infoBtn');
+infoBtn.addEventListener('click', () => {
+    infoDiv.style.display = infoDiv.style.display === 'none' ? 'block' : 'none';
+});
+
+document.getElementById('mirrorY').addEventListener('input', (e) => {
+    mirrorY = parseInt(e.target.value);
+    A.y = Math.min(A.y, mirrorY - 40);
+    B.y = Math.min(B.y, mirrorY - 40);
+    draw();
+});
+
+function dist(x1, y1, x2, y2) { return Math.hypot(x1 - x2, y1 - y2); }
+
+function drawPt(x, y, c, rad = 10) {
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(x, y, rad, 0, 2 * Math.PI);
+    ctx.shadowBlur = 12;
+    ctx.shadowColor = c;
+    ctx.fillStyle = c + 'ee';
+    ctx.fill();
+    ctx.lineWidth = 2.7;
+    ctx.strokeStyle = '#222';
+    ctx.stroke();
+    ctx.restore();
+}
+
+function draw() {
+    ctx.clearRect(0, 0, w, h);
+
+    // Background with enhanced gradient
+    let gTop = ctx.createLinearGradient(0, 0, 0, mirrorY - 14);
+    gTop.addColorStop(0, '#0b0c10');
+    gTop.addColorStop(1, '#1b2d45');
+    ctx.fillStyle = gTop;
+    ctx.fillRect(0, 0, w, h);
+
+    // Mirror with glossy texture and animated shine
+    ctx.save();
+    ctx.shadowBlur = 22;
+    ctx.shadowColor = '#fffcb080';
+    let mirrorGradient = ctx.createLinearGradient(0, mirrorY - 7, 0, mirrorY + 5);
+    mirrorGradient.addColorStop(0, '#2c2c00');
+    mirrorGradient.addColorStop(0.5, '#ffffff96');
+    mirrorGradient.addColorStop(1, '#2c2c00');
+    ctx.fillStyle = mirrorGradient;
+    ctx.fillRect(0, mirrorY - 7, w, 12);
+    ctx.restore();
+
+    // Mirror shine animation
+    ctx.save();
+    ctx.globalAlpha = 0.45;
+    ctx.strokeStyle = '#ffffff96';
+    ctx.lineWidth = 2;
+    for (let i = 0; i < w; i += 20) {
+        ctx.beginPath();
+        ctx.moveTo(i, mirrorY + Math.sin(i / 20 + frame / 10) * 2);
+        ctx.lineTo(i + 10, mirrorY + Math.sin((i + 10) / 20 + frame / 10) * 2);
+        ctx.stroke();
+    }
+    ctx.restore();
+
+    // Draw trial rays
+    let fastest = { L: 1e9, x: 0, ix: -1 };
+    const nRays = 50;
+    const paths = [];
+
+    for (let i = 0; i <= nRays; i++) {
+        let mx = 30 + ((w - 60) * i / nRays);
+        let my = mirrorY;
+        let d1 = dist(A.x, A.y, mx, my);
+        let d2 = dist(mx, my, B.x, B.y);
+        let L = d1 + d2;
+        paths.push({ x: mx, t: L });
+        if (L < fastest.L) fastest = { L, x: mx, ix: i };
+
+        // Draw trial ray
+        ctx.lineWidth = (i % 6 === 0 ? 3.2 : 1.5);
+        ctx.globalAlpha = 0.27 + (i % 5 === 0 ? 0.09 : 0);
+        ctx.shadowBlur = 10;
+        ctx.shadowColor = '#16eefd';
+        ctx.beginPath();
+        ctx.moveTo(A.x, A.y);
+        ctx.lineTo(mx, my);
+        ctx.lineTo(B.x, B.y);
+        ctx.strokeStyle = '#16eefd';
+        ctx.stroke();
+    }
+    ctx.globalAlpha = 1.0;
+    ctx.shadowBlur = 0;
+
+    // Highlight fastest path with caustics
+    ctx.save();
+    ctx.lineWidth = 7;
+    ctx.shadowBlur = 32;
+    ctx.shadowColor = '#fdffa7';
+    ctx.beginPath();
+    ctx.moveTo(A.x, A.y);
+    ctx.lineTo(fastest.x, mirrorY);
+    ctx.lineTo(B.x, B.y);
+    ctx.strokeStyle = '#ffe149';
+    ctx.stroke();
+    ctx.restore();
+
+    // Caustic blue underlayer
+    ctx.save();
+    ctx.lineWidth = 3.1;
+    ctx.shadowBlur = 15;
+    ctx.shadowColor = '#09e9ff';
+    ctx.beginPath();
+    ctx.moveTo(A.x, A.y);
+    ctx.lineTo(fastest.x, mirrorY);
+    ctx.lineTo(B.x, B.y);
+    ctx.strokeStyle = '#26e4fc';
+    ctx.stroke();
+    ctx.restore();
+
+    // Caustics effect at reflection point
+    let causticGradient = ctx.createRadialGradient(fastest.x, mirrorY, 0, fastest.x, mirrorY, 50);
+    causticGradient.addColorStop(0, 'rgba(255, 255, 255, 0.5)');
+    causticGradient.addColorStop(1, 'rgba(255, 255, 255, 0)');
+    ctx.fillStyle = causticGradient;
+    ctx.fillRect(fastest.x - 50, mirrorY - 25, 100, 50);
+
+    // Sparkling effect along fastest path
+    const pathLength1 = dist(A.x, A.y, fastest.x, mirrorY);
+    const pathLength2 = dist(fastest.x, mirrorY, B.x, B.y);
+    const totalLength = pathLength1 + pathLength2;
+    for (let i = 0; i < 8; i++) {
+        const pos = (frame * 2 + i * 20) % totalLength;
+        let sparkleX, sparkleY;
+        if (pos < pathLength1) {
+            const ratio = pos / pathLength1;
+            sparkleX = A.x + ratio * (fastest.x - A.x);
+            sparkleY = A.y + ratio * (mirrorY - A.y);
+        } else {
+            const ratio = (pos - pathLength1) / pathLength2;
+            sparkleX = fastest.x + ratio * (B.x - fastest.x);
+            sparkleY = mirrorY + ratio * (B.y - mirrorY);
+        }
+        ctx.fillStyle = `rgba(255, 255, 255, ${Math.sin(frame / 5 + i) * 0.5 + 0.5})`;
+        ctx.beginPath();
+        ctx.arc(sparkleX, sparkleY, 3, 0, 2 * Math.PI);
+        ctx.fill();
+    }
+
+    // Draw virtual B (B')
+    let BprimeY = 2 * mirrorY - B.y;
+    ctx.save();
+    ctx.setLineDash([4, 7]);
+    ctx.lineWidth = 3;
+    ctx.globalAlpha = 0.23;
+    ctx.beginPath();
+    ctx.moveTo(A.x, A.y);
+    ctx.lineTo(B.x, BprimeY);
+    ctx.strokeStyle = '#faa';
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.globalAlpha = 1.0;
+    ctx.font = 'bold 15px Arial';
+    ctx.fillStyle = '#faa';
+    ctx.fillText("B'", B.x + 10, BprimeY - 7);
+    ctx.restore();
+
+    // Draw points
+    drawPt(A.x, A.y, '#9df8fa');
+    drawPt(B.x, B.y, '#fff79a');
+    drawPt(fastest.x, mirrorY, '#fdffa7');
+    drawPt(B.x, BprimeY, '#faa', 6);
+
+    // Timer labels for selected rays
+    ctx.font = 'bold 13px Arial';
+    ctx.fillStyle = '#fffc';
+    ctx.textAlign = 'left';
+    paths.forEach((p, i) => {
+        if (i % 10 === 0 || i === fastest.ix) {
+            ctx.globalAlpha = i === fastest.ix ? 1.0 : 0.43;
+            ctx.fillText(p.t.toFixed(1), p.x + 8, mirrorY - 7);
+        }
+    });
+    ctx.globalAlpha = 1.0;
+
+    // Update label positions
+    document.getElementById('labelA').style.left = (A.x - 13) + 'px';
+    document.getElementById('labelA').style.top = (A.y - 22) + 'px';
+    document.getElementById('labelB').style.left = (B.x + 10) + 'px';
+    document.getElementById('labelB').style.top = (B.y - 25) + 'px';
+    document.getElementById('mirrorLabel').style.top = (mirrorY + 6) + 'px';
+}
+
+// Mouse support: Drag A/B
+canvas.addEventListener('mousedown', e => {
+    let mx = e.offsetX, my = e.offsetY;
+    if (dist(mx, my, A.x, A.y) < 18) { dragging = 'A'; dragOffset.x = mx - A.x; dragOffset.y = my - A.y; }
+    else if (dist(mx, my, B.x, B.y) < 18) { dragging = 'B'; dragOffset.x = mx - B.x; dragOffset.y = my - B.y; }
+});
+
+canvas.addEventListener('mousemove', e => {
+    if (dragging) {
+        let mx = e.offsetX, my = e.offsetY;
+        if (dragging === 'A') {
+            A.x = Math.max(8, Math.min(w - 8, mx - dragOffset.x));
+            A.y = Math.max(18, Math.min(mirrorY - 40, my - dragOffset.y));
+        } else {
+            B.x = Math.max(8, Math.min(w - 8, mx - dragOffset.x));
+            B.y = Math.max(13, Math.min(mirrorY - 40, my - dragOffset.y));
+        }
+        draw();
+    }
+});
+
+canvas.addEventListener('mouseup', () => { dragging = null; });
+
+// --- Touch support: drag points A/B with finger ---
+canvas.addEventListener('touchstart', function(e) {
+    e.preventDefault();
+    const touches = e.touches[0];
+    const rect = canvas.getBoundingClientRect();
+    let mx = touches.clientX - rect.left;
+    let my = touches.clientY - rect.top;
+    if (dist(mx, my, A.x, A.y) < 18) {
+        dragging = 'A';
+        dragOffset.x = mx - A.x;
+        dragOffset.y = my - A.y;
+    } else if (dist(mx, my, B.x, B.y) < 18) {
+        dragging = 'B';
+        dragOffset.x = mx - B.x;
+        dragOffset.y = my - B.y;
+    }
+});
+canvas.addEventListener('touchmove', function(e) {
+    if (!dragging) return;
+    e.preventDefault();
+    const touches = e.touches[0];
+    const rect = canvas.getBoundingClientRect();
+    let mx = touches.clientX - rect.left;
+    let my = touches.clientY - rect.top;
+    if (dragging === 'A') {
+        A.x = Math.max(8, Math.min(w - 8, mx - dragOffset.x));
+        A.y = Math.max(18, Math.min(mirrorY - 40, my - dragOffset.y));
+    } else {
+        B.x = Math.max(8, Math.min(w - 8, mx - dragOffset.x));
+        B.y = Math.max(13, Math.min(mirrorY - 40, my - dragOffset.y));
+    }
+    draw();
+});
+canvas.addEventListener('touchend', function(e) {
+    dragging = null;
+});
+
+function animate() {
+    draw();
+    frame++;
+    requestAnimationFrame(animate);
+}
+
+animate();
+</script>
+</body>
+</html>
