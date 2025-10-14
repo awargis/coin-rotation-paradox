@@ -1,0 +1,590 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Radical Center = Orthocenter (Enhanced)</title>
+    
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css" integrity="sha384-n8MVd4RsNIU0KOVEMVIARBEGivffEocbuncZNidplAIge3iUI/KCDEcn5nsO9a5n" crossorigin="anonymous">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js" integrity="sha384-XjKyOOlGwcjNTAIQHIpgOno0Hl1YQqzUOEleOLALmuqehneUG+vnGyrMcGmgOXks" crossorigin="anonymous"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js" integrity="sha384-+VBxd3r6XgURycqtZ117nYw44OOcIax56Z4dCRWbxyPt0Koah1uHoK0o4+/RRE05" crossorigin="anonymous" onload="renderMathInElement(document.body);"></script>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&family=Roboto+Mono:wght@400&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --bg-color: #071027;
+            --triangle-color: #FFC857;
+            --circle-color: #4FD1C5;
+            --orthocenter-color: #FF6B6B;
+            --altitude-color: #ffffff;
+            --radical-axis-color: #ff8c00;
+            --text-color: #E0E0E0;
+            --panel-bg: rgba(20, 30, 60, 0.8);
+            --font-sans: 'Inter', sans-serif;
+            --font-mono: 'Roboto Mono', monospace;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html, body {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: var(--font-sans);
+        }
+        #app-container { display: flex; width: 100%; height: 100%; }
+        #canvas-container { flex: 0.7; height: 100%; position: relative; cursor: grab; }
+        #canvas-container.dragging { cursor: grabbing; }
+        #math-panel {
+            flex: 0.3;
+            background: var(--panel-bg);
+            backdrop-filter: blur(10px);
+            border-left: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 2rem;
+            overflow-y: auto;
+            transition: opacity 0.5s ease;
+        }
+        #math-panel h2 {
+            font-size: 1.5rem; color: var(--triangle-color);
+            border-bottom: 1px solid var(--triangle-color);
+            padding-bottom: 0.5rem; margin-bottom: 1.5rem;
+        }
+        .math-step {
+            margin-bottom: 1.5rem; opacity: 0;
+            transform: translateY(10px);
+            transition: opacity 0.5s ease, transform 0.5s ease;
+        }
+        .math-step.visible { opacity: 1; transform: translateY(0); }
+        .math-step h3 { font-size: 1rem; color: var(--circle-color); margin-bottom: 0.5rem; }
+        .katex-display { margin: 0.5em 0 !important; }
+        .numeric-values {
+            font-family: var(--font-mono); font-size: 0.85rem;
+            background: rgba(0,0,0,0.2); padding: 0.75rem;
+            border-radius: 4px; margin-top: 1rem; line-height: 1.7;
+            border-left: 3px solid var(--radical-axis-color);
+        }
+        .numeric-values code { color: var(--triangle-color); }
+        #controls {
+            position: absolute; top: 20px; right: 20px;
+            display: flex; flex-direction: column; gap: 10px;
+            background: var(--panel-bg); backdrop-filter: blur(10px);
+            padding: 15px; border-radius: 8px;
+            border: 1px solid rgba(255,255,255,0.1); z-index: 100;
+        }
+        .control-group { display: flex; gap: 8px; align-items: center; }
+        .control-group label { font-size: 0.8rem; white-space: nowrap; }
+        .control-group button, .toggle-button {
+            background: #2a3b68; border: 1px solid #4a5b88;
+            color: var(--text-color); padding: 6px 10px; border-radius: 4px;
+            cursor: pointer; font-family: var(--font-sans);
+            font-size: 0.8rem; transition: background 0.2s ease;
+        }
+        .control-group button:hover, .toggle-button:hover { background: #4a5b88; }
+        .toggle-button.active {
+            background: var(--circle-color); color: var(--bg-color); font-weight: bold;
+        }
+        input[type="range"] {
+            -webkit-appearance: none; width: 100%; height: 5px;
+            background: #4a5b88; border-radius: 5px; outline: none;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none; appearance: none;
+            width: 15px; height: 15px; background: var(--circle-color);
+            cursor: pointer; border-radius: 50%;
+        }
+        #title-overlay {
+            position: absolute; top: 50%; left: 50%;
+            transform: translate(-50%, -50%); color: white;
+            font-size: clamp(1.5rem, 4vw, 2.5rem);
+            text-align: center; opacity: 0; pointer-events: none;
+            text-shadow: 0 0 10px rgba(0,0,0,0.8);
+        }
+        .vertex-label {
+            position: absolute; color: white; font-size: 1.2rem;
+            font-weight: bold; pointer-events: none;
+            transform: translate(-50%, -50%);
+            text-shadow: 0 0 5px var(--bg-color);
+            transition: transform 0.2s ease-out; /* For smooth selection feedback */
+        }
+        .vertex-label.selected {
+            transform: translate(-50%, -50%) scale(1.5);
+            color: var(--triangle-color);
+        }
+        @media (max-width: 1024px) {
+            #app-container { flex-direction: column; }
+            #canvas-container { flex: 0.6; }
+            #math-panel { flex: 0.4; border-left: none; border-top: 1px solid rgba(255, 255, 255, 0.1); }
+        }
+    </style>
+</head>
+<body>
+    <div id="app-container">
+        <div id="canvas-container">
+            <div id="title-overlay">The Radical Center of Three Circles<br>is the Orthocenter of a Triangle</div>
+            <div id="label-A" class="vertex-label" data-vertex="A">A</div>
+            <div id="label-B" class="vertex-label" data-vertex="B">B</div>
+            <div id="label-C" class="vertex-label" data-vertex="C">C</div>
+            <div id="label-H" class="vertex-label" style="color: var(--orthocenter-color);">H</div>
+        </div>
+        <div id="math-panel">
+            <h2>Proof & Verification</h2>
+            <div id="step-1" class="math-step">
+                <h3>Step 1: The Setup</h3>
+                <div>We construct three circles, using each side of $\triangle ABC$ as a diameter.</div>
+                $$ \omega_a: \text{diameter } \overline{BC} \\ \omega_b: \text{diameter } \overline{CA} \\ \omega_c: \text{diameter } \overline{AB} $$
+            </div>
+            <div id="step-2" class="math-step">
+                <h3>Step 2: The Orthocenter</h3>
+                <div>The three altitudes (lines from a vertex perpendicular to the opposite side) intersect at a single point, $H$, the **orthocenter**. The feet of the altitudes are D, E, and F.</div>
+            </div>
+            <div id="step-3" class="math-step">
+                <h3>Step 3: The Radical Axis</h3>
+                <div>The **radical axis** of two circles is the set of points having equal power to both. We claim each altitude is a radical axis. For any point $P$ on the altitude from $A$:</div>
+                $$ \mathrm{Pow}(P, \omega_b) = \mathrm{Pow}(P, \omega_c) $$
+                <small>Key Insight: The feet of the altitudes E and F lie on the circle $\omega_a$ (with diameter BC) because $\angle BEC$ and $\angle BFC$ are right angles subtended by the diameter.</small>
+            </div>
+             <div id="step-4" class="math-step">
+                <h3>Step 4: Conclusion</h3>
+                <div>Since the three altitudes are the three radical axes, their common intersection point, $H$, must be the **radical center**.</div>
+                $$ \text{Radical Center} = \text{Orthocenter} $$
+            </div>
+            <div id="live-data" class="math-step">
+                 <h3>Live Verification</h3>
+                 <div class="numeric-values">
+                    <strong>Coordinates:</strong><br>
+                    <span id="coord-A">A: (0.00, 0.00)</span><br>
+                    <span id="coord-B">B: (0.00, 0.00)</span><br>
+                    <span id="coord-C">C: (0.00, 0.00)</span><br>
+                    <span id="coord-H">H: (0.00, 0.00)</span><br>
+                    <hr style="border-color: rgba(255,255,255,0.2); margin: 8px 0;">
+                    <strong>Power of Orthocenter H:</strong><br>
+                    <span id="power-a-val">Pow(H, $\omega_a$) = 0.00</span><br>
+                    <span id="power-b-val">Pow(H, $\omega_b$) = 0.00</span><br>
+                    <span id="power-c-val">Pow(H, $\omega_c$) = 0.00</span>
+                 </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="controls">
+        <div class="control-group">
+            <button id="play-btn" title="Play Animation">▶</button>
+            <button id="pause-btn" title="Pause Animation">❚❚</button>
+            <button id="restart-btn" title="Restart Animation">↺</button>
+        </div>
+        <div class="control-group">
+            <label>Speed:</label>
+            <input type="range" id="speed-slider" min="0.25" max="2" step="0.25" value="1" title="Animation Speed">
+        </div>
+        <div class="control-group">
+            <button id="toggle-drag" class="toggle-button active" title="Enable/Disable Vertex Dragging">Drag</button>
+            <button id="randomize-btn" title="New Random Triangle">Randomize</button>
+            <button id="snapshot-btn" title="Download PNG">Snapshot</button>
+        </div>
+         <div class="control-group"><label>Toggles:</label></div>
+         <div class="control-group">
+            <button class="toggle-button" data-target="circles">Circles</button>
+            <button class="toggle-button" data-target="altitudes">Altitudes</button>
+            <button class="toggle-button" data-target="radicalAxes">Axes</button>
+        </div>
+    </div>
+
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+            "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+        }
+    }
+    </script>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+        import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+        import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+        import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+        import { gsap } from "https://cdn.skypack.dev/gsap";
+
+        let scene, camera, renderer, controls, composer, timeline, starField;
+        const canvasContainer = document.getElementById('canvas-container');
+        
+        const geometryState = {
+            A: new THREE.Vector3(0, 2.2, 0), B: new THREE.Vector3(-1.6, 0, 0),
+            C: new THREE.Vector3(1.8, 0, 0), H: new THREE.Vector3(),
+            D: new THREE.Vector3(), E: new THREE.Vector3(), F: new THREE.Vector3()
+        };
+        
+        let triangle, verticesPoints, orthocenterPoint;
+        let circle_a, circle_b, circle_c;
+        let altitude_AD, altitude_BE, altitude_CF;
+        let rightAngleD, rightAngleE, rightAngleF;
+        
+        const materials = {
+            triangle: new THREE.LineBasicMaterial({ color: 0xFFC857, linewidth: 3 }),
+            vertices: new THREE.PointsMaterial({ color: 0xFFC857, size: 0.15, blending: THREE.AdditiveBlending, transparent: true }),
+            circle: new THREE.MeshBasicMaterial({ color: 0x4FD1C5, transparent: true, opacity: 0.15, side: THREE.DoubleSide }),
+            altitude: new THREE.LineDashedMaterial({ color: 0xffffff, dashSize: 0.1, gapSize: 0.05, transparent: true, opacity: 0.7 }),
+            orthocenter: new THREE.PointsMaterial({ color: 0xFF6B6B, size: 0.2, blending: THREE.AdditiveBlending, transparent: true }),
+            radicalAxis: new THREE.LineBasicMaterial({ color: 0xff8c00, transparent: true, opacity: 0, blending: THREE.AdditiveBlending }),
+            rightAngle: new THREE.LineBasicMaterial({ color: 0xffffff, opacity: 0.7, transparent: true })
+        };
+
+        const groups = { circles: new THREE.Group(), altitudes: new THREE.Group(), radicalAxes: new THREE.Group() };
+
+        let isDragging = false, selectedVertex = null, activeVertexKey = null;
+        const raycaster = new THREE.Raycaster(), pointer = new THREE.Vector2(), plane = new THREE.Plane(new THREE.Vector3(0, 0, 1), 0);
+        let dragMode = true;
+
+        function init() {
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x071027);
+
+            camera = new THREE.PerspectiveCamera(75, canvasContainer.clientWidth / canvasContainer.clientHeight, 0.1, 1000);
+            camera.position.set(0, 0, 5);
+
+            renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+            renderer.setSize(canvasContainer.clientWidth, canvasContainer.clientHeight);
+            renderer.setPixelRatio(window.devicePixelRatio);
+            canvasContainer.appendChild(renderer.domElement);
+
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.2); scene.add(ambientLight);
+            const keyLight = new THREE.DirectionalLight(0xffffff, 1.0); keyLight.position.set(-5, 5, 5); scene.add(keyLight);
+            const rimLight = new THREE.DirectionalLight(0x4FD1C5, 0.5); rimLight.position.set(5, -5, 2); scene.add(rimLight);
+            
+            const renderScene = new RenderPass(scene, camera);
+            const bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 1.5, 0.4, 0.85);
+            bloomPass.threshold = 0.1; bloomPass.strength = 0.7; bloomPass.radius = 0.5;
+            composer = new EffectComposer(renderer);
+            composer.addPass(renderScene); composer.addPass(bloomPass);
+
+            controls = new OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true; controls.enablePan = false;
+            controls.minDistance = 3; controls.maxDistance = 15;
+            
+            scene.add(groups.circles, groups.altitudes, groups.radicalAxes);
+            createStarfield();
+            createGeometry();
+            updateAllGeometry();
+            setupUI();
+            setupInteractivity();
+            createAnimationTimeline();
+            animate();
+        }
+
+        function createStarfield() {
+            const vertices = [];
+            for (let i = 0; i < 5000; i++) {
+                const x = THREE.MathUtils.randFloatSpread(200);
+                const y = THREE.MathUtils.randFloatSpread(200);
+                const z = THREE.MathUtils.randFloatSpread(200);
+                vertices.push(x, y, z);
+            }
+            const geometry = new THREE.BufferGeometry();
+            geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+            const material = new THREE.PointsMaterial({ color: 0x888888, size: 0.1, transparent: true, opacity: 0.5 });
+            starField = new THREE.Points(geometry, material);
+            scene.add(starField);
+        }
+        
+        function createGeometry() {
+            // Triangle
+            triangle = new THREE.Line(new THREE.BufferGeometry(), materials.triangle);
+            scene.add(triangle);
+
+            // Vertices
+            verticesPoints = new THREE.Points(new THREE.BufferGeometry(), materials.vertices);
+            scene.add(verticesPoints);
+
+            // Circles (as filled meshes)
+            circle_a = new THREE.Mesh(new THREE.CircleGeometry(1, 128), materials.circle.clone());
+            circle_b = new THREE.Mesh(new THREE.CircleGeometry(1, 128), materials.circle.clone());
+            circle_c = new THREE.Mesh(new THREE.CircleGeometry(1, 128), materials.circle.clone());
+            groups.circles.add(circle_a, circle_b, circle_c);
+
+            // Altitudes
+            altitude_AD = new THREE.Line(new THREE.BufferGeometry(), materials.altitude.clone());
+            altitude_BE = new THREE.Line(new THREE.BufferGeometry(), materials.altitude.clone());
+            altitude_CF = new THREE.Line(new THREE.BufferGeometry(), materials.altitude.clone());
+            
+            // Right angle markers
+            rightAngleD = createRightAngleMarker(); rightAngleE = createRightAngleMarker(); rightAngleF = createRightAngleMarker();
+            groups.altitudes.add(altitude_AD, altitude_BE, altitude_CF, rightAngleD, rightAngleE, rightAngleF);
+            
+            // Orthocenter
+            orthocenterPoint = new THREE.Points(new THREE.BufferGeometry(), materials.orthocenter);
+            orthocenterPoint.visible = false;
+            scene.add(orthocenterPoint);
+
+            // Radical Axes
+            groups.radicalAxes.add(
+                new THREE.Line(new THREE.BufferGeometry(), materials.radicalAxis.clone()),
+                new THREE.Line(new THREE.BufferGeometry(), materials.radicalAxis.clone()),
+                new THREE.Line(new THREE.BufferGeometry(), materials.radicalAxis.clone())
+            );
+        }
+        
+        function createRightAngleMarker() {
+            const shape = new THREE.Shape();
+            const size = 0.1;
+            shape.moveTo(0, size);
+            shape.lineTo(size, size);
+            shape.lineTo(size, 0);
+            const geom = new THREE.ShapeGeometry(shape);
+            const lineGeom = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0,size,0), new THREE.Vector3(size,size,0), new THREE.Vector3(size,0,0)]);
+            const marker = new THREE.Line(lineGeom, materials.rightAngle);
+            return marker;
+        }
+
+        function updateAllGeometry() {
+            const { A, B, C } = geometryState;
+            triangle.geometry.setFromPoints([A, B, C, A]);
+            verticesPoints.geometry.setFromPoints([A, B, C]);
+            
+            const center_a = new THREE.Vector3().addVectors(B, C).multiplyScalar(0.5); const radius_a = B.distanceTo(C) / 2;
+            const center_b = new THREE.Vector3().addVectors(C, A).multiplyScalar(0.5); const radius_b = C.distanceTo(A) / 2;
+            const center_c = new THREE.Vector3().addVectors(A, B).multiplyScalar(0.5); const radius_c = A.distanceTo(B) / 2;
+            
+            updateCircle(circle_a, center_a, radius_a); updateCircle(circle_b, center_b, radius_b); updateCircle(circle_c, center_c, radius_c);
+
+            const lineBC = new THREE.Line3(B, C); const lineCA = new THREE.Line3(C, A); const lineAB = new THREE.Line3(A, B);
+            lineBC.closestPointToPoint(A, true, geometryState.D); lineCA.closestPointToPoint(B, true, geometryState.E); lineAB.closestPointToPoint(C, true, geometryState.F);
+            const {D, E, F} = geometryState;
+
+            updateAltitude(altitude_AD, A, D); updateAltitude(altitude_BE, B, E); updateAltitude(altitude_CF, C, F);
+            updateRightAngleMarker(rightAngleD, D, C, B); updateRightAngleMarker(rightAngleE, E, A, C); updateRightAngleMarker(rightAngleF, F, B, A);
+
+            const H = getLineIntersection(A, D, B, E);
+            if (H) {
+                geometryState.H.copy(H);
+                orthocenterPoint.geometry.setFromPoints([H]);
+            }
+            updateLabels();
+            updateNumericPanel();
+        }
+
+        function updateCircle(circleObj, center, radius) { circleObj.position.copy(center); circleObj.scale.set(radius, radius, 1); }
+        
+        function updateAltitude(altObj, start, end) {
+            const dir = new THREE.Vector3().subVectors(end, start).normalize();
+            altObj.geometry.setFromPoints([start.clone().addScaledVector(dir, 10), start.clone().addScaledVector(dir, -10)]);
+            altObj.computeLineDistances();
+        }
+
+        function updateRightAngleMarker(marker, corner, p1, p2) {
+            marker.position.copy(corner);
+            const v1 = new THREE.Vector3().subVectors(p1, corner).normalize();
+            marker.rotation.z = Math.atan2(v1.y, v1.x);
+        }
+        
+        function getLineIntersection(p1, p2, p3, p4) {
+            const x1 = p1.x, y1 = p1.y, x2 = p2.x, y2 = p2.y, x3 = p3.x, y3 = p3.y, x4 = p4.x, y4 = p4.y;
+            const den = (x1 - x2) * (y3 - y4) - (y1 - y2) * (x3 - x4);
+            if (den === 0) return null;
+            const t = ((x1 - x3) * (y3 - y4) - (y1 - y3) * (x3 - x4)) / den;
+            return new THREE.Vector3(x1 + t * (x2 - x1), y1 + t * (y2 - y1), 0);
+        }
+        
+        function createAnimationTimeline() {
+            timeline = gsap.timeline({ paused: true });
+            const mathSteps = document.querySelectorAll('.math-step');
+            const reveal = (el) => { if (el) el.classList.add('visible'); };
+            
+            timeline.from(camera.position, { z: 12, duration: 4, ease: "power2.inOut" })
+                .to('#title-overlay', { opacity: 1, duration: 2 }, 0.5)
+                .to('#title-overlay', { opacity: 0, duration: 1.5 }, 2.5)
+                .addLabel("scene1")
+                .call(reveal, [mathSteps[0]], ">")
+                .from([circle_c.scale, circle_b.scale, circle_a.scale], { x: 0, y: 0, duration: 2, ease: "power2.out", stagger: 0.3 }, "scene1")
+                .addLabel("scene2")
+                .call(reveal, [mathSteps[1]], ">")
+                .call(() => { groups.altitudes.children.forEach(c => c.visible = true); orthocenterPoint.visible = true; })
+                .from(groups.altitudes.children.map(c=>c.material), { opacity: 0, duration: 1.5, stagger: 0.3 }, "scene2")
+                .from(orthocenterPoint.scale, { x: 0, y: 0, z: 0, duration: 1, ease: "elastic.out(1, 0.5)" }, "scene2+=1.5")
+                .addLabel("scene3")
+                .call(reveal, [mathSteps[2]], ">")
+                // ... more detailed animation for radical axis can be added here ...
+                .addLabel("scene4")
+                .call(reveal, [mathSteps[3]], ">")
+                .call(reveal, [mathSteps[4]], ">") // reveal live data panel
+                .to(groups.circles.children.map(c => c.material), { opacity: 0.05, duration: 1 }, "scene4")
+                .to(groups.altitudes.children.map(a => a.material), { opacity: 0.1, duration: 1}, "scene4")
+                .call(() => {
+                    const axes = groups.radicalAxes.children;
+                    axes[0].geometry.copy(altitude_AD.geometry); axes[1].geometry.copy(altitude_BE.geometry); axes[2].geometry.copy(altitude_CF.geometry);
+                }, null, "scene4+=1")
+                .to(groups.radicalAxes.children.map(ax => ax.material), { opacity: 1, duration: 1.5 }, "scene4+=1")
+                .to(orthocenterPoint.scale, { x: 1.5, y: 1.5, z: 1.5, duration: 1, ease: "elastic.out(1, 0.3)", yoyo: true, repeat: 1 }, "scene4+=2.5")
+                .call(() => { showAllElements(); });
+        }
+        
+        function showAllElements(state = true) {
+            document.querySelectorAll('.toggle-button[data-target]').forEach(btn => btn.classList.add('active'));
+            groups.circles.visible = state; groups.altitudes.visible = state; groups.radicalAxes.visible = false;
+            groups.circles.children.forEach(c => c.material.opacity = materials.circle.opacity);
+            groups.altitudes.children.forEach(a => a.material.opacity = materials.altitude.opacity);
+        }
+
+        function setupUI() {
+            document.getElementById('play-btn').onclick = () => timeline.play();
+            document.getElementById('pause-btn').onclick = () => timeline.pause();
+            document.getElementById('restart-btn').onclick = () => {
+                timeline.restart();
+                document.querySelectorAll('.math-step').forEach(s => s.classList.remove('visible'));
+            };
+            document.getElementById('speed-slider').oninput = (e) => timeline.timeScale(e.target.value);
+            document.getElementById('randomize-btn').onclick = () => {
+                randomizeTriangle();
+                timeline.seek(timeline.duration()).pause();
+                document.querySelectorAll('.math-step').forEach(s => s.classList.add('visible'));
+                showAllElements();
+            };
+            document.getElementById('toggle-drag').onclick = (e) => {
+                dragMode = !dragMode; e.target.classList.toggle('active', dragMode);
+                controls.enabled = !dragMode;
+                canvasContainer.style.cursor = dragMode ? 'grab' : 'default';
+            };
+            document.getElementById('snapshot-btn').onclick = () => {
+                const link = document.createElement('a');
+                link.download = 'radical_center_orthocenter.png';
+                link.href = renderer.domElement.toDataURL();
+                link.click();
+            };
+            document.querySelectorAll('.toggle-button[data-target]').forEach(btn => {
+                btn.onclick = (e) => {
+                    const target = e.target.dataset.target;
+                    if(target && groups[target]) {
+                        groups[target].visible = !groups[target].visible;
+                        e.target.classList.toggle('active', groups[target].visible);
+                    }
+                }
+            });
+        }
+        
+        function randomizeTriangle() {
+            geometryState.A.set((Math.random() - 0.5) * 2, 1.5 + Math.random() * 1.5, 0);
+            geometryState.B.set(-1 - Math.random() * 1.5, (Math.random() - 0.5) * 1.5, 0);
+            geometryState.C.set(1 + Math.random() * 1.5, (Math.random() - 0.5) * 1.5, 0);
+            updateAllGeometry();
+        }
+
+        function setupInteractivity() {
+            canvasContainer.addEventListener('pointerdown', onPointerDown);
+            canvasContainer.addEventListener('pointermove', onPointerMove);
+            window.addEventListener('pointerup', onPointerUp);
+            window.addEventListener('keydown', onKeyDown);
+        }
+        
+        function onPointerDown(event) {
+            if (!dragMode) return;
+            updatePointer(event);
+            raycaster.setFromCamera(pointer, camera);
+            const intersects = raycaster.intersectObject(verticesPoints);
+            if (intersects.length > 0) {
+                isDragging = true; controls.enabled = false;
+                selectedVertex = ['A', 'B', 'C'][intersects[0].index];
+                setActiveVertex(selectedVertex);
+                canvasContainer.classList.add('dragging');
+            }
+        }
+        function onPointerMove(event) {
+            if (isDragging && selectedVertex) {
+                updatePointer(event);
+                raycaster.setFromCamera(pointer, camera);
+                const intersectPoint = new THREE.Vector3();
+                raycaster.ray.intersectPlane(plane, intersectPoint);
+                geometryState[selectedVertex].copy(intersectPoint);
+                updateAllGeometry();
+            }
+        }
+        function onPointerUp() { isDragging = false; selectedVertex = null; if (dragMode) controls.enabled = false; canvasContainer.classList.remove('dragging'); }
+        function onKeyDown(event) {
+            if (!dragMode) return;
+            const step = 0.05;
+            if (event.key === 'Tab') {
+                event.preventDefault();
+                const vertices = ['A', 'B', 'C'];
+                const currentIndex = vertices.indexOf(activeVertexKey);
+                const nextIndex = (currentIndex + 1) % vertices.length;
+                setActiveVertex(vertices[nextIndex]);
+            }
+            if (activeVertexKey) {
+                switch(event.key) {
+                    case 'ArrowUp': geometryState[activeVertexKey].y += step; break;
+                    case 'ArrowDown': geometryState[activeVertexKey].y -= step; break;
+                    case 'ArrowLeft': geometryState[activeVertexKey].x -= step; break;
+                    case 'ArrowRight': geometryState[activeVertexKey].x += step; break;
+                }
+                updateAllGeometry();
+            }
+        }
+        function setActiveVertex(key) {
+            activeVertexKey = key;
+            document.querySelectorAll('.vertex-label').forEach(el => {
+                el.classList.toggle('selected', el.dataset.vertex === key);
+            });
+        }
+        function updatePointer(event) {
+            const rect = canvasContainer.getBoundingClientRect();
+            pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+            pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+        }
+
+        function updateLabels() {
+            const { A, B, C, H } = geometryState;
+            updateLabelPosition(document.getElementById('label-A'), A);
+            updateLabelPosition(document.getElementById('label-B'), B);
+            updateLabelPosition(document.getElementById('label-C'), C);
+            if (H) updateLabelPosition(document.getElementById('label-H'), H, true);
+        }
+
+        function updateLabelPosition(el, vec) {
+            const screenPos = vec.clone().project(camera);
+            const x = (screenPos.x * 0.5 + 0.5) * canvasContainer.clientWidth;
+            const y = (-screenPos.y * 0.5 + 0.5) * canvasContainer.clientHeight;
+            el.style.transform = `${el.style.transform.split(' ').filter(s=>s.includes('scale')).join(' ')} translate(${x}px, ${y-15}px)`;
+            el.style.display = screenPos.z < 1 ? 'block' : 'none';
+        }
+        
+        function updateNumericPanel() {
+            const { A, B, C, H } = geometryState;
+            const f = (n) => n.toFixed(2);
+            document.getElementById('coord-A').innerText = `A: (${f(A.x)}, ${f(A.y)})`;
+            document.getElementById('coord-B').innerText = `B: (${f(B.x)}, ${f(B.y)})`;
+            document.getElementById('coord-C').innerText = `C: (${f(C.x)}, ${f(C.y)})`;
+            document.getElementById('coord-H').innerText = `H: (${f(H.x)}, ${f(H.y)})`;
+
+            const center_a = new THREE.Vector3().addVectors(B, C).multiplyScalar(0.5); const r2_a = B.distanceToSquared(C) / 4;
+            const center_b = new THREE.Vector3().addVectors(C, A).multiplyScalar(0.5); const r2_b = C.distanceToSquared(A) / 4;
+            const center_c = new THREE.Vector3().addVectors(A, B).multiplyScalar(0.5); const r2_c = A.distanceToSquared(B) / 4;
+
+            const pow_a = H.distanceToSquared(center_a) - r2_a;
+            const pow_b = H.distanceToSquared(center_b) - r2_b;
+            const pow_c = H.distanceToSquared(center_c) - r2_c;
+
+            document.getElementById('power-a-val').innerHTML = `Pow(H, &omega;<sub>a</sub>) = ${f(pow_a)}`;
+            document.getElementById('power-b-val').innerHTML = `Pow(H, &omega;<sub>b</sub>) = ${f(pow_b)}`;
+            document.getElementById('power-c-val').innerHTML = `Pow(H, &omega;<sub>c</sub>) = ${f(pow_c)}`;
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            controls.update();
+            starField.rotation.z -= 0.0001;
+            composer.render();
+            updateLabels();
+        }
+        window.addEventListener('resize', () => {
+            camera.aspect = canvasContainer.clientWidth / canvasContainer.clientHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(canvasContainer.clientWidth, canvasContainer.clientHeight);
+            composer.setSize(canvasContainer.clientWidth, canvasContainer.clientHeight);
+        });
+
+        init();
+    </script>
+</body>
+</html>
