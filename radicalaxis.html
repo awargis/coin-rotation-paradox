@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Visualizing the Radical Axis of Two Circles — All Configurations</title>
+    <style>
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background-color: #000;
+            color: #00ff00;
+        }
+        #container {
+            display: flex;
+            height: 100vh;
+        }
+        #canvas {
+            border: 1px solid #00ff00;
+            flex: 1;
+            background-color: #000;
+        }
+        #controls {
+            width: 200px;
+            padding: 10px;
+            overflow-y: auto;
+            background-color: #111;
+            border-left: 1px solid #00ff00;
+        }
+        label {
+            display: block;
+            margin: 10px 0;
+            color: #00ff00;
+        }
+        input[type="range"] {
+            width: 100%;
+        }
+        select, input[type="checkbox"] {
+            background-color: #222;
+            color: #00ff00;
+            border: 1px solid #00ff00;
+        }
+        span {
+            margin-left: 5px;
+            color: #00ff00;
+        }
+    </style>
+</head>
+<body>
+    <div id="container">
+        <canvas id="canvas" width="800" height="600"></canvas>
+        <div id="controls">
+            <label>Configuration:
+                <select id="config">
+                    <option value="1">1. Disjoint</option>
+                    <option value="2">2. Intersecting</option>
+                    <option value="3">3. External Tangent</option>
+                    <option value="4">4. Internal Tangent</option>
+                    <option value="5">5. One Inside</option>
+                </select>
+            </label>
+            <label>r₁: <input type="range" id="r1" min="20" max="200" value="100"> <span id="r1val">100</span></label>
+            <label>r₂: <input type="range" id="r2" min="20" max="200" value="60"> <span id="r2val">60</span></label>
+            <label>
+                <input type="checkbox" id="showpower" checked> Show Powers & Tangents
+            </label>
+        </div>
+    </div>
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        const configSelect = document.getElementById('config');
+        const r1Slider = document.getElementById('r1');
+        const r2Slider = document.getElementById('r2');
+        const r1Val = document.getElementById('r1val');
+        const r2Val = document.getElementById('r2val');
+        const showPower = document.getElementById('showpower');
+
+        class Circle {
+            constructor(x, y, r, color) {
+                this.x = x;
+                this.y = y;
+                this.r = r;
+                this.color = color;
+            }
+        }
+
+        let circle1 = new Circle(200, 300, 100, '#00ffff'); // Cyan
+        let circle2 = new Circle(400, 300, 60, '#ff00ff'); // Magenta
+        let targetDist = 200;
+        let currentDist = 200;
+        let dragging = null;
+        let mouseX = 0;
+        let mouseY = 0;
+        let animating = false;
+        const baseX = 200;
+        const baseY = 300;
+
+        r1Slider.oninput = () => {
+            circle1.r = parseFloat(r1Slider.value);
+            r1Val.textContent = circle1.r;
+            draw();
+        };
+
+        r2Slider.oninput = () => {
+            circle2.r = parseFloat(r2Slider.value);
+            r2Val.textContent = circle2.r;
+            draw();
+        };
+
+        configSelect.onchange = () => {
+            const val = parseInt(configSelect.value);
+            const c1 = circle1;
+            const c2 = circle2;
+            const sum = c1.r + c2.r;
+            const diff = Math.abs(c1.r - c2.r);
+            let newDist;
+            switch (val) {
+                case 1:
+                    newDist = sum + 50;
+                    break;
+                case 2:
+                    newDist = (diff + sum) / 2;
+                    break;
+                case 3:
+                    newDist = sum;
+                    break;
+                case 4:
+                    newDist = diff;
+                    break;
+                case 5:
+                    newDist = Math.max(0, diff - 20);
+                    break;
+            }
+            const oldDist = Math.hypot(circle2.x - circle1.x, circle2.y - circle1.y);
+            currentDist = oldDist;
+            targetDist = newDist;
+            circle1.x = baseX;
+            circle1.y = baseY;
+            circle2.x = baseX + oldDist;
+            circle2.y = baseY;
+            animating = true;
+        };
+
+        canvas.onmousedown = (e) => {
+            const rect = canvas.getBoundingClientRect();
+            mouseX = e.clientX - rect.left;
+            mouseY = e.clientY - rect.top;
+            const dist1 = Math.hypot(mouseX - circle1.x, mouseY - circle1.y);
+            const dist2 = Math.hypot(mouseX - circle2.x, mouseY - circle2.y);
+            if (dist1 < 10) {
+                dragging = 'c1';
+            } else if (dist2 < 10) {
+                dragging = 'c2';
+            }
+        };
+
+        canvas.onmousemove = (e) => {
+            const rect = canvas.getBoundingClientRect();
+            mouseX = e.clientX - rect.left;
+            mouseY = e.clientY - rect.top;
+            if (dragging) {
+                if (dragging === 'c1') {
+                    circle1.x = mouseX;
+                    circle1.y = mouseY;
+                } else {
+                    circle2.x = mouseX;
+                    circle2.y = mouseY;
+                }
+                draw();
+            }
+        };
+
+        canvas.onmouseup = () => {
+            dragging = null;
+        };
+
+        function getRadicalAxis(c1, c2) {
+            const dx = c2.x - c1.x;
+            const dy = c2.y - c1.y;
+            const d2 = dx * dx + dy * dy;
+            if (d2 === 0) return null;
+            const d = Math.sqrt(d2);
+            const o1q = (d2 + c1.r * c1.r - c2.r * c2.r) / (2 * d);
+            const qx = c1.x + (o1q * dx) / d;
+            const qy = c1.y + (o1q * dy) / d;
+            const px = -dy / d;
+            const py = dx / d;
+            const extend = Math.hypot(canvas.width, canvas.height) * 0.7;
+            const p1x = qx + px * extend;
+            const p1y = qy + py * extend;
+            const p2x = qx - px * extend;
+            const p2y = qy - py * extend;
+            return { p1: { x: p1x, y: p1y }, p2: { x: p2x, y: p2y }, q: { x: qx, y: qy }, px, py, d };
+        }
+
+        function getIntersections(c1, c2) {
+            const dx = c2.x - c1.x;
+            const dy = c2.y - c1.y;
+            const d = Math.sqrt(dx * dx + dy * dy);
+            if (d > c1.r + c2.r || d < Math.abs(c1.r - c2.r) || d === 0) return [];
+            const a = (c1.r * c1.r - c2.r * c2.r + d * d) / (2 * d);
+            const hh = c1.r * c1.r - a * a;
+            if (hh < 0) return [];
+            const h = Math.sqrt(hh);
+            const xm = c1.x + a * dx / d;
+            const ym = c1.y + a * dy / d;
+            const xs1 = xm + h * dy / d;
+            const ys1 = ym - h * dx / d;
+            const xs2 = xm - h * dy / d;
+            const ys2 = ym + h * dx / d;
+            if (hh < 1e-6) { // tangent
+                return [{ x: xs1, y: ys1 }];
+            } else {
+                return [{ x: xs1, y: ys1 }, { x: xs2, y: ys2 }];
+            }
+        }
+
+        function getTangentsFromPointToCircle(p, c) {
+            const dx = p.x - c.x;  // from c to p
+            const dy = p.y - c.y;
+            const dist2 = dx * dx + dy * dy;
+            if (dist2 <= c.r * c.r) return [];
+            const dist = Math.sqrt(dist2);
+            const rr_over_d2 = c.r * c.r / dist2;
+            const hx = c.x + rr_over_d2 * dx;
+            const hy = c.y + rr_over_d2 * dy;
+            const half = c.r * Math.sqrt(1 - (c.r / dist) ** 2);
+            const px1 = -dy / dist;
+            const py1 = dx / dist;
+            const tx1x = hx + half * px1;
+            const tx1y = hy + half * py1;
+            const tx2x = hx - half * px1;
+            const tx2y = hy - half * py1;
+            const len = Math.sqrt(dist2 - c.r * c.r);
+            return [
+                { t: { x: tx1x, y: tx1y }, len: len },
+                { t: { x: tx2x, y: tx2y }, len: len }
+            ];
+        }
+
+        function drawDottedLine(x1, y1, x2, y2, color, width = 2) {
+            ctx.beginPath();
+            ctx.setLineDash([5, 5]);
+            ctx.moveTo(x1, y1);
+            ctx.lineTo(x2, y2);
+            ctx.strokeStyle = color;
+            ctx.lineWidth = width;
+            ctx.stroke();
+            ctx.setLineDash([]);
+        }
+
+        function drawGlowingCircle(c) {
+            ctx.shadowColor = c.color;
+            ctx.shadowBlur = 15;
+            ctx.beginPath();
+            ctx.arc(c.x, c.y, c.r, 0, 2 * Math.PI);
+            ctx.strokeStyle = c.color;
+            ctx.lineWidth = 3;
+            ctx.stroke();
+            ctx.shadowBlur = 0;
+        }
+
+        function drawGlowingPoint(x, y, color, size = 5) {
+            ctx.shadowColor = color;
+            ctx.shadowBlur = 10;
+            ctx.beginPath();
+            ctx.arc(x, y, size, 0, 2 * Math.PI);
+            ctx.fillStyle = color;
+            ctx.fill();
+            ctx.shadowBlur = 0;
+        }
+
+        function draw() {
+            // Background
+            ctx.fillStyle = '#000';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Glow effect for circles
+            drawGlowingCircle(circle1);
+            drawGlowingCircle(circle2);
+
+            // Centers
+            drawGlowingPoint(circle1.x, circle1.y, '#ffffff', 4);
+            ctx.fillStyle = '#00ffff';
+            ctx.font = 'bold 12px Arial';
+            ctx.shadowColor = '#00ffff';
+            ctx.shadowBlur = 5;
+            ctx.fillText('O₁', circle1.x + 8, circle1.y - 5);
+            drawGlowingPoint(circle2.x, circle2.y, '#ffffff', 4);
+            ctx.fillStyle = '#ff00ff';
+            ctx.shadowColor = '#ff00ff';
+            ctx.shadowBlur = 5;
+            ctx.fillText('O₂', circle2.x + 8, circle2.y - 5);
+            ctx.shadowBlur = 0;
+
+            // Radical axis
+            const axis = getRadicalAxis(circle1, circle2);
+            if (axis) {
+                ctx.shadowColor = '#00ff00';
+                ctx.shadowBlur = 10;
+                ctx.beginPath();
+                ctx.moveTo(axis.p1.x, axis.p1.y);
+                ctx.lineTo(axis.p2.x, axis.p2.y);
+                ctx.strokeStyle = '#00ff00';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+                ctx.shadowBlur = 0;
+
+                if (showPower.checked) {
+                    // Point Q
+                    let p = axis.q;
+                    drawGlowingPoint(p.x, p.y, '#ffff00', 4); // Yellow for Q
+                    ctx.fillStyle = '#ffff00';
+                    ctx.shadowColor = '#ffff00';
+                    ctx.shadowBlur = 5;
+                    ctx.font = 'bold 12px Arial';
+                    ctx.fillText('Q', p.x + 8, p.y - 5);
+
+                    const pow1Q = Math.hypot(p.x - circle1.x, p.y - circle1.y) ** 2 - circle1.r ** 2;
+                    const pow2Q = Math.hypot(p.x - circle2.x, p.y - circle2.y) ** 2 - circle2.r ** 2;
+                    ctx.shadowBlur = 0;
+                    ctx.fillStyle = '#00ff00';
+                    ctx.font = '12px Arial';
+                    ctx.fillText('At Q:', 10, 20);
+                    ctx.fillText(`Power C₁ = ${pow1Q.toFixed(2)}`, 10, 35);
+                    ctx.fillText(`Power C₂ = ${pow2Q.toFixed(2)}`, 10, 50);
+
+                    // Tangents from Q
+                    const tangents1Q = getTangentsFromPointToCircle(p, circle1);
+                    const tangents2Q = getTangentsFromPointToCircle(p, circle2);
+                    let lenQ = null;
+                    if (tangents1Q.length > 0 && tangents2Q.length > 0) {
+                        lenQ = tangents1Q[0].len.toFixed(2);
+                        // Draw tangents to C1
+                        ctx.strokeStyle = '#00ffff';
+                        tangents1Q.forEach(t => {
+                            drawDottedLine(p.x, p.y, t.t.x, t.t.y);
+                            drawGlowingPoint(t.t.x, t.t.y, '#00ffff', 3);
+                        });
+                        // Draw tangents to C2
+                        ctx.strokeStyle = '#ff00ff';
+                        tangents2Q.forEach(t => {
+                            drawDottedLine(p.x, p.y, t.t.x, t.t.y);
+                            drawGlowingPoint(t.t.x, t.t.y, '#ff00ff', 3);
+                        });
+                        ctx.fillStyle = '#ffff00';
+                        ctx.fillText(`Tangent length = √${pow1Q.toFixed(2)} = ${lenQ}`, 10, 65);
+                    } else {
+                        ctx.fillStyle = '#ff0000';
+                        ctx.fillText('Imaginary tangents (Power < 0)', 10, 65);
+                    }
+
+                    // Second point S along the axis
+                    const offset = 100;
+                    const sx = p.x + axis.px * offset;
+                    const sy = p.y + axis.py * offset;
+                    drawGlowingPoint(sx, sy, '#ffaa00', 4); // Orange for S
+                    ctx.fillStyle = '#ffaa00';
+                    ctx.shadowColor = '#ffaa00';
+                    ctx.shadowBlur = 5;
+                    ctx.font = 'bold 12px Arial';
+                    ctx.fillText('S', sx + 8, sy - 5);
+                    ctx.shadowBlur = 0;
+
+                    const pow1S = Math.hypot(sx - circle1.x, sy - circle1.y) ** 2 - circle1.r ** 2;
+                    const pow2S = Math.hypot(sx - circle2.x, sy - circle2.y) ** 2 - circle2.r ** 2;
+                    ctx.fillStyle = '#00ff00';
+                    ctx.font = '12px Arial';
+                    ctx.fillText('At S:', 10, 85);
+                    ctx.fillText(`Power C₁ = ${pow1S.toFixed(2)}`, 10, 100);
+                    ctx.fillText(`Power C₂ = ${pow2S.toFixed(2)}`, 10, 115);
+
+                    // Tangents from S
+                    const tangents1S = getTangentsFromPointToCircle({x: sx, y: sy}, circle1);
+                    const tangents2S = getTangentsFromPointToCircle({x: sx, y: sy}, circle2);
+                    let lenS = null;
+                    if (tangents1S.length > 0 && tangents2S.length > 0) {
+                        lenS = tangents1S[0].len.toFixed(2);
+                        // Draw tangents to C1 from S
+                        ctx.strokeStyle = '#00ffff';
+                        tangents1S.forEach(t => {
+                            drawDottedLine(sx, sy, t.t.x, t.t.y);
+                            drawGlowingPoint(t.t.x, t.t.y, '#00ffff', 3);
+                        });
+                        // Draw tangents to C2 from S
+                        ctx.strokeStyle = '#ff00ff';
+                        tangents2S.forEach(t => {
+                            drawDottedLine(sx, sy, t.t.x, t.t.y);
+                            drawGlowingPoint(t.t.x, t.t.y, '#ff00ff', 3);
+                        });
+                        ctx.fillStyle = '#ffaa00';
+                        ctx.fillText(`Tangent length = √${pow1S.toFixed(2)} = ${lenS}`, 10, 130);
+                    } else {
+                        ctx.fillStyle = '#ff0000';
+                        ctx.fillText('Imaginary tangents (Power < 0)', 10, 130);
+                    }
+
+                    ctx.fillStyle = '#00ff00';
+                    ctx.font = 'italic 11px Arial';
+                    ctx.fillText('Equal tangent lengths from any point on radical axis', 10, 150);
+                }
+            }
+
+            // Intersection/Tangent points
+            const inters = getIntersections(circle1, circle2);
+            ctx.fillStyle = '#ffaa00';
+            inters.forEach((pt, i) => {
+                drawGlowingPoint(pt.x, pt.y, '#ffaa00', 4);
+                const label = inters.length === 1 ? 'T' : String.fromCharCode(65 + i); // A or B
+                ctx.fillStyle = '#ffaa00';
+                ctx.shadowColor = '#ffaa00';
+                ctx.shadowBlur = 5;
+                ctx.font = 'bold 12px Arial';
+                ctx.fillText(label, pt.x + 8, pt.y - 5);
+                ctx.shadowBlur = 0;
+            });
+        }
+
+        function loop() {
+            if (animating && !dragging) {
+                currentDist += (targetDist - currentDist) * 0.1;
+                if (Math.abs(currentDist - targetDist) < 1) {
+                    currentDist = targetDist;
+                    animating = false;
+                }
+                circle2.x = baseX + currentDist;
+                circle2.y = baseY;
+            }
+            draw();
+            requestAnimationFrame(loop);
+        }
+
+        loop();
+    </script>
+</body>
+</html>
