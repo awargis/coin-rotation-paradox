@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Coaxial System of Circles - Interactive Visualization</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.4/dist/katex.min.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.4/dist/katex.min.css">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html, body {
+            height: 100%;
+            overflow: hidden;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #0c1445 0%, #1a237e 100%);
+            color: #fff;
+            display: flex;
+            flex-direction: column;
+        }
+        #header {
+            padding: 15px;
+            text-align: center;
+            background: rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            z-index: 100;
+        }
+        #header h1 {
+            font-size: 2.2rem;
+            background: linear-gradient(90deg, #ffd700, #ffed4e);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        #container {
+            flex: 1;
+            position: relative;
+        }
+        #canvas-container {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            cursor: grab;
+            touch-action: none;
+        }
+        #ui-panel {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(10px);
+            border-radius: 12px;
+            padding: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            z-index: 10;
+        }
+        .control-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            align-items: center;
+        }
+        .control-item { flex: 1; min-width: 220px; }
+        .control-item label { display: block; margin-bottom: 5px; font-size: 0.9rem; }
+        .slider-container { display: flex; align-items: center; gap: 10px; }
+        input[type="range"] {
+            flex: 1;
+            -webkit-appearance: none;
+            height: 5px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 5px;
+            outline: none;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: #ffd700;
+            cursor: pointer;
+        }
+        .slider-value { width: 45px; text-align: right; }
+        .toggle-container { display: flex; gap: 10px; flex-wrap: wrap; }
+        .toggle-btn {
+            padding: 8px 15px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 6px;
+            color: white;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .toggle-btn:hover { background: rgba(255, 255, 255, 0.2); }
+        .toggle-btn.active {
+            background: #ffd700;
+            border-color: #ffd700;
+            color: #0c1445;
+            font-weight: bold;
+        }
+        #loading {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: #0c1445;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            transition: opacity 0.5s ease;
+        }
+        .loader {
+            width: 50px; height: 50px;
+            border: 5px solid rgba(255, 215, 0, 0.3);
+            border-top: 5px solid #ffd700;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin { 100% { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
+    <div id="header">
+        <h1>Coaxial System of Circles</h1>
+    </div>
+    
+    <div id="container">
+        <div id="canvas-container"></div>
+        <div id="loading"><div class="loader"></div></div>
+    </div>
+    
+    <div id="ui-panel">
+        <div class="control-group">
+            <div class="control-item">
+                <label>Circle A Radius</label>
+                <div class="slider-container">
+                    <input type="range" id="radiusA" min="1" max="8" value="4" step="0.1">
+                    <span class="slider-value" id="radiusAValue">4.0</span>
+                </div>
+            </div>
+            <div class="control-item">
+                <label>Circle B Radius</label>
+                <div class="slider-container">
+                    <input type="range" id="radiusB" min="1" max="8" value="4" step="0.1">
+                    <span class="slider-value" id="radiusBValue">4.0</span>
+                </div>
+            </div>
+            <div class="control-item">
+                <label>Auto-Rotate Speed</label>
+                <div class="slider-container">
+                    <input type="range" id="animationSpeed" min="0" max="3" value="1" step="0.1">
+                    <span class="slider-value" id="animationSpeedValue">1.0</span>
+                </div>
+            </div>
+        </div>
+        <div class="control-group" style="margin-top: 15px;">
+            <div class="toggle-container">
+                <button id="toggleRadicalAxis" class="toggle-btn active">Radical Axis</button>
+                <button id="toggleFamily" class="toggle-btn active">Family of Circles</button>
+                <button id="toggleLimitingPoints" class="toggle-btn">Limiting Points</button>
+                <button id="animationToggle" class="toggle-btn active">Pause Auto-Rotate</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- SCENE SETUP ---
+        const canvasContainer = document.getElementById('canvas-container');
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x0c1445);
+        scene.fog = new THREE.Fog(0x0c1445, 20, 40);
+
+        const camera = new THREE.PerspectiveCamera(60, canvasContainer.clientWidth / canvasContainer.clientHeight, 0.1, 100);
+        camera.position.set(0, 12, 16);
+        camera.lookAt(0, 0, 0);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(canvasContainer.clientWidth, canvasContainer.clientHeight);
+        renderer.setPixelRatio(window.devicePixelRatio);
+        canvasContainer.appendChild(renderer.domElement);
+
+        // --- ORBIT CONTROLS ---
+        const controls = new THREE.OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.05;
+        controls.screenSpacePanning = false;
+        controls.minDistance = 5;
+        controls.maxDistance = 50;
+        controls.maxPolarAngle = Math.PI / 2;
+        controls.autoRotate = true;
+        controls.autoRotateSpeed = 0.5;
+
+        // --- LIGHTING & HELPERS ---
+        scene.add(new THREE.AmbientLight(0xffffff, 0.6));
+        const dirLight = new THREE.DirectionalLight(0xffd700, 1.0);
+        dirLight.position.set(-8, 10, 8);
+        scene.add(dirLight);
+        scene.add(new THREE.GridHelper(30, 30, 0x444444, 0x222222));
+
+        // --- STATE & PARAMETERS ---
+        let state = {
+            centerAx: -3, centerAy: 0, radiusA: 4,
+            centerBx: 3, centerBy: 0, radiusB: 4,
+            animationSpeed: 1,
+            isAnimating: true,
+            showRadicalAxis: true,
+            showFamily: true,
+            showLimitingPoints: false,
+        };
+
+        // --- 3D OBJECTS ---
+        const circleGeometry = new THREE.RingGeometry(0.98, 1, 128);
+        const circleAMaterial = new THREE.MeshBasicMaterial({ color: 0xff9800, side: THREE.DoubleSide });
+        const circleBMaterial = new THREE.MeshBasicMaterial({ color: 0x2196f3, side: THREE.DoubleSide });
+        const circleA = new THREE.Mesh(circleGeometry, circleAMaterial);
+        const circleB = new THREE.Mesh(circleGeometry, circleBMaterial);
+        circleA.rotation.x = -Math.PI / 2;
+        circleB.rotation.x = -Math.PI / 2;
+        scene.add(circleA, circleB);
+
+        const familyCircles = [];
+        const familyMaterial = new THREE.MeshBasicMaterial({ color: 0x4caf50, side: THREE.DoubleSide, transparent: true, opacity: 0.6 });
+        for (let i = 0; i < 20; i++) {
+            const familyCircle = new THREE.Mesh(circleGeometry, familyMaterial.clone());
+            familyCircle.rotation.x = -Math.PI / 2;
+            familyCircles.push(familyCircle);
+            scene.add(familyCircle);
+        }
+
+        const radicalAxis = new THREE.Line(new THREE.BufferGeometry(), new THREE.LineBasicMaterial({ color: 0x00bcd4, linewidth: 2 }));
+        scene.add(radicalAxis);
+
+        const pointGeometry = new THREE.SphereGeometry(0.3, 16, 16);
+        const limitingPointMaterial = new THREE.MeshBasicMaterial({ color: 0xff4081 });
+        const limitingPoint1 = new THREE.Mesh(pointGeometry, limitingPointMaterial);
+        const limitingPoint2 = new THREE.Mesh(pointGeometry, limitingPointMaterial);
+        scene.add(limitingPoint1, limitingPoint2);
+
+        const centerAGeo = new THREE.Mesh(pointGeometry, new THREE.MeshBasicMaterial({ color: 0xff9800 }));
+        const centerBGeo = new THREE.Mesh(pointGeometry, new THREE.MeshBasicMaterial({ color: 0x2196f3 }));
+        scene.add(centerAGeo, centerBGeo);
+
+        // --- DRAG INTERACTION ---
+        const raycaster = new THREE.Raycaster();
+        const mouse = new THREE.Vector2();
+        const plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+        let draggedObject = null;
+
+        function onPointerDown(event) {
+            mouse.x = (event.clientX / renderer.domElement.clientWidth) * 2 - 1;
+            mouse.y = -(event.clientY / renderer.domElement.clientHeight) * 2 + 1;
+            raycaster.setFromCamera(mouse, camera);
+            const intersects = raycaster.intersectObjects([centerAGeo, centerBGeo]);
+            if (intersects.length > 0) {
+                draggedObject = intersects[0].object;
+                controls.enabled = false;
+                canvasContainer.style.cursor = 'grabbing';
+            }
+        }
+        
+        function onPointerMove(event) {
+            if (draggedObject) {
+                mouse.x = (event.clientX / renderer.domElement.clientWidth) * 2 - 1;
+                mouse.y = -(event.clientY / renderer.domElement.clientHeight) * 2 + 1;
+                raycaster.setFromCamera(mouse, camera);
+                const intersectionPoint = new THREE.Vector3();
+                if (raycaster.ray.intersectPlane(plane, intersectionPoint)) {
+                    if (draggedObject === centerAGeo) {
+                        state.centerAx = intersectionPoint.x;
+                        state.centerAy = intersectionPoint.z;
+                    } else if (draggedObject === centerBGeo) {
+                        state.centerBx = intersectionPoint.x;
+                        state.centerBy = intersectionPoint.z;
+                    }
+                }
+            }
+        }
+
+        function onPointerUp() {
+            if (draggedObject) {
+                controls.enabled = true;
+                canvasContainer.style.cursor = 'grab';
+            }
+            draggedObject = null;
+        }
+
+        canvasContainer.addEventListener('pointerdown', onPointerDown);
+        canvasContainer.addEventListener('pointermove', onPointerMove);
+        canvasContainer.addEventListener('pointerup', onPointerUp);
+
+        // --- CORE MATH & UPDATE LOGIC ---
+        const s1 = {}, s2 = {}, radicalAxisEq = {};
+
+        function updateScene() {
+            // Circle S: x²+y²+2gx+2fy+c=0. Center(-g,-f), r²=g²+f²-c
+            s1.g = -state.centerAx;
+            s1.f = -state.centerAy;
+            s1.c = state.centerAx**2 + state.centerAy**2 - state.radiusA**2;
+
+            s2.g = -state.centerBx;
+            s2.f = -state.centerBy;
+            s2.c = state.centerBx**2 + state.centerBy**2 - state.radiusB**2;
+
+            // Radical Axis L = S1 - S2 = 0 => 2(g1-g2)x + 2(f1-f2)y + (c1-c2) = 0
+            radicalAxisEq.A = 2 * (s1.g - s2.g); // Coeff of x
+            radicalAxisEq.B = 2 * (s1.f - s2.f); // Coeff of z (y in 2D)
+            radicalAxisEq.C = s1.c - s2.c;       // Constant
+
+            // Update 3D object positions and scales
+            circleA.position.set(state.centerAx, 0, state.centerAy);
+            circleA.scale.set(state.radiusA, state.radiusA, 1);
+            centerAGeo.position.copy(circleA.position);
+
+            circleB.position.set(state.centerBx, 0, state.centerBy);
+            circleB.scale.set(state.radiusB, state.radiusB, 1);
+            centerBGeo.position.copy(circleB.position);
+
+            updateRadicalAxis();
+            updateFamilyCircles();
+            updateLimitingPoints();
+        }
+
+        function updateRadicalAxis() {
+            const { A, B, C } = radicalAxisEq;
+            // Handle case where centers are nearly coincident
+            if (Math.abs(A) < 1e-6 && Math.abs(B) < 1e-6) {
+                radicalAxis.visible = false;
+                return;
+            }
+
+            const points = [];
+            // Robustly find two points on the line within the grid boundaries
+            if (Math.abs(B) > Math.abs(A)) { // Line is more horizontal, solve for z
+                const x1 = -15, x2 = 15;
+                const z1 = (-C - A * x1) / B;
+                const z2 = (-C - A * x2) / B;
+                points.push(new THREE.Vector3(x1, 0, z1), new THREE.Vector3(x2, 0, z2));
+            } else { // Line is more vertical, solve for x
+                const z1 = -15, z2 = 15;
+                const x1 = (-C - B * z1) / A;
+                const x2 = (-C - B * z2) / A;
+                points.push(new THREE.Vector3(x1, 0, z1), new THREE.Vector3(x2, 0, z2));
+            }
+            radicalAxis.geometry.setFromPoints(points);
+            radicalAxis.geometry.computeBoundingSphere();
+            radicalAxis.visible = state.showRadicalAxis;
+        }
+
+        function updateFamilyCircles() {
+            const { A, B, C } = radicalAxisEq;
+            for (let i = 0; i < familyCircles.length; i++) {
+                const lambda = (i / (familyCircles.length - 1)) * 4 - 2; // Range [-2, 2]
+                const familyCircle = familyCircles[i];
+                
+                // From S1 + λL = 0
+                const g_new = s1.g + lambda * A / 2;
+                const f_new = s1.f + lambda * B / 2;
+                const c_new = s1.c + lambda * C;
+                const r_sq_new = g_new**2 + f_new**2 - c_new;
+
+                if (r_sq_new > 0.01) {
+                    familyCircle.position.set(-g_new, 0, -f_new);
+                    familyCircle.scale.set(Math.sqrt(r_sq_new), Math.sqrt(r_sq_new), 1);
+                    familyCircle.visible = state.showFamily;
+                } else {
+                    familyCircle.visible = false; // Hide if radius is zero or imaginary
+                }
+            }
+        }
+
+        function updateLimitingPoints() {
+            // Limiting points are family circles with radius=0. r² = g²+f²-c = 0.
+            // Solve (g1+λA/2)² + (f1+λB/2)² - (c1+λC) = 0 for λ. This is a quadratic in λ.
+            const { A, B, C } = radicalAxisEq;
+            const a_quad = (A**2 + B**2) / 4;
+            const b_quad = s1.g * A + s1.f * B - C;
+            const c_quad = s1.g**2 + s1.f**2 - s1.c;
+            
+            const discriminant = b_quad**2 - 4 * a_quad * c_quad;
+            
+            if (discriminant >= 0 && a_quad > 1e-6) {
+                const sqrt_d = Math.sqrt(discriminant);
+                const lambda1 = (-b_quad + sqrt_d) / (2 * a_quad);
+                const lambda2 = (-b_quad - sqrt_d) / (2 * a_quad);
+                
+                // Center is (-g', -f')
+                limitingPoint1.position.set(-s1.g - lambda1 * A / 2, 0, -s1.f - lambda1 * B / 2);
+                limitingPoint2.position.set(-s1.g - lambda2 * A / 2, 0, -s1.f - lambda2 * B / 2);
+                limitingPoint1.visible = limitingPoint2.visible = state.showLimitingPoints;
+            } else {
+                limitingPoint1.visible = limitingPoint2.visible = false;
+            }
+        }
+
+        // --- ANIMATION LOOP ---
+        function animate() {
+            requestAnimationFrame(animate);
+            updateScene(); // Update math and positions on every frame
+            controls.update();
+            renderer.render(scene, camera);
+        }
+
+        // --- UI BINDINGS ---
+        function setupUI() {
+            const sliders = {
+                radiusA: 'radiusAValue', radiusB: 'radiusBValue', animationSpeed: 'animationSpeedValue'
+            };
+            for (const [id, valueId] of Object.entries(sliders)) {
+                const slider = document.getElementById(id);
+                const valueSpan = document.getElementById(valueId);
+                slider.addEventListener('input', (e) => {
+                    state[id] = parseFloat(e.target.value);
+                    valueSpan.textContent = state[id].toFixed(1);
+                    if (id === 'animationSpeed') {
+                        controls.autoRotateSpeed = state.animationSpeed * 0.5;
+                    }
+                });
+            }
+            const toggles = {
+                toggleRadicalAxis: 'showRadicalAxis', toggleFamily: 'showFamily', toggleLimitingPoints: 'showLimitingPoints'
+            };
+            for (const [id, prop] of Object.entries(toggles)) {
+                document.getElementById(id).addEventListener('click', function() {
+                    state[prop] = !state[prop];
+                    this.classList.toggle('active');
+                });
+            }
+            document.getElementById('animationToggle').addEventListener('click', function() {
+                state.isAnimating = !state.isAnimating;
+                controls.autoRotate = state.isAnimating;
+                this.textContent = state.isAnimating ? 'Pause Auto-Rotate' : 'Start Auto-Rotate';
+                this.classList.toggle('active');
+            });
+        }
+
+        // --- INITIALIZATION ---
+        window.addEventListener('resize', () => {
+            camera.aspect = canvasContainer.clientWidth / canvasContainer.clientHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(canvasContainer.clientWidth, canvasContainer.clientHeight);
+        });
+
+        const loadingScreen = document.getElementById('loading');
+        loadingScreen.style.opacity = '0';
+        setTimeout(() => loadingScreen.style.display = 'none', 500);
+
+        setupUI();
+        animate();
+    </script>
+</body>
+</html>
