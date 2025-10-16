@@ -1,0 +1,560 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Degenerated Conics — When the Curve Collapses</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.4/dist/katex.min.css">
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.4/dist/katex.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.4/dist/contrib/auto-render.min.js"></script>
+  <style>
+    body { margin: 0; font-family: 'Inter', system-ui, sans-serif; background: #0a0a0a; color: #e6eef8; overflow: hidden; }
+    #container { position: relative; width: 100vw; height: 100vh; }
+    #ui { position: absolute; top: 20px; left: 20px; z-index: 100; background: rgba(0,0,0,0.7); padding: 20px; border-radius: 10px; max-width: 300px; }
+    #right-panel { position: absolute; top: 20px; right: 20px; z-index: 100; background: rgba(0,0,0,0.7); padding: 20px; border-radius: 10px; max-width: 400px; height: 80vh; overflow-y: auto; }
+    #analytic-canvas { border: 1px solid #333; background: #111; margin: 10px 0; width: 100%; height: 200px; }
+    input[type="range"] { width: 100%; }
+    button { background: #4a90e2; color: white; border: none; padding: 10px; border-radius: 5px; cursor: pointer; margin: 5px 0; }
+    button:hover { background: #357abd; }
+    .katex { font-size: 14px; }
+    #timeline { position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); z-index: 100; }
+    #play-pause { background: #28a745; }
+    #debug { display: none; background: rgba(0,0,0,0.8); padding: 10px; border-radius: 5px; margin-top: 10px; }
+    #help { position: absolute; bottom: 20px; right: 20px; background: rgba(0,0,0,0.7); padding: 10px; border-radius: 5px; z-index: 100; cursor: pointer; }
+    #quiz-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 200; }
+    #quiz-content { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #111; padding: 20px; border-radius: 10px; color: white; max-width: 500px; }
+    @media (max-width: 768px) { #ui, #right-panel { max-width: 100%; left: 0; right: 0; margin: 0 10px; } #analytic-canvas { height: 150px; } }
+  </style>
+</head>
+<body>
+  <div id="container">
+    <canvas id="canvas"></canvas>
+    <div id="ui">
+      <h3>Controls</h3>
+      <label>Eccentricity e: <input type="range" id="ecc" min="0" max="3" step="0.1" value="0.7"></label>
+      <label>Focus Distance: <input type="range" id="focusDist" min="0" max="5" step="0.1" value="2"></label>
+      <br>
+      <button id="onDirectrix">Place Focus on Directrix</button>
+      <button id="presetEllipse">Ellipse</button>
+      <button id="presetParabola">Parabola</button>
+      <button id="presetHyperbola">Hyperbola</button>
+      <br>
+      <button id="playPause" class="play-pause">Play</button>
+      <button id="debugToggle">Debug</button>
+      <button id="export">Export PNG</button>
+    </div>
+    <div id="right-panel">
+      <h3>Live Algebra</h3>
+      <div id="equation"></div>
+      <div id="explanation"></div>
+      <canvas id="analytic-canvas"></canvas>
+      <h4>Derivation Steps</h4>
+      <div id="steps"></div>
+      <button id="proofMode">Proof Mode</button>
+      <button id="whyPopup">Why? (e<1 imaginary)</button>
+      <div id="debug"></div>
+    </div>
+    <div id="timeline">
+      <button id="prevScene">←</button>
+      <span id="sceneIndicator">Scene A</span>
+      <button id="nextScene">→</button>
+    </div>
+    <div id="help" onclick="toggleHelp()">? (Shortcuts)</div>
+    <div id="quiz-modal">
+      <div id="quiz-content">
+        <h3>Exercise</h3>
+        <p id="quiz-question"></p>
+        <button onclick="checkAnswer(1)">A: Imaginary</button>
+        <button onclick="checkAnswer(2)">B: Single Line</button>
+        <button onclick="checkAnswer(3)">C: Pair of Lines</button>
+        <p id="quiz-feedback"></p>
+        <button onclick="closeQuiz()">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Enhanced Degenerated Conics Animation v2.0
+    // New: 2D analytic canvas, voiceover with SpeechSynthesis, quiz modal, export PNG, help overlay, better locus math, GSAP timeline for scenes.
+    // Libraries: Three.js r128, GSAP 3.12.2, KaTeX 0.16.4
+    // Run locally: Save as .html, open in modern browser.
+
+    // Voiceover Script
+    const voiceoverLines = {
+      'Intro': 'Welcome to Degenerated Conics. Watch as the perfect curve collapses into lines.',
+      'A': 'Conic sections arise from slicing a cone with a plane. The angle determines the shape: ellipse, parabola, or hyperbola.',
+      'B': 'Now, the focus-directrix definition: PF equals e times PD.',
+      'C': 'As focus approaches the directrix, the locus degenerates based on e.',
+      'D': 'Algebraically, the quadratic form\'s determinant vanishes.',
+      'E': 'This matches the cone slice through the vertex.',
+      'F': 'Test your understanding with exercises.'
+    };
+
+    // Globals
+    let scene, camera, renderer, controls;
+    let cone, plane, particleSystem;
+    let currentE = 0.7, focusDist = 2, onDirectrix = false;
+    let sceneIndex = 0;
+    const scenes = ['Intro', 'A', 'B', 'C', 'D', 'E', 'F'];
+    let isPlaying = false, masterTL;
+    let lowPerf = false;
+    let analyticCtx;
+
+    // Math functions
+    function renderKatex(el, math) {
+      katex.render(math, el, { throwOnError: false, displayMode: true });
+    }
+
+    function updateEquation() {
+      const eqEl = document.getElementById('equation');
+      let eq = onDirectrix ? deriveDegenerate(currentE) : 'PF = e \\cdot PD';
+      eqEl.innerHTML = '';
+      renderKatex(eqEl, eq);
+      updateExplanation();
+    }
+
+    function deriveDegenerate(e) {
+      if (e < 1) return 'y^2 = (e^2 - 1)(x - a e)^2 \\quad (imaginary, no real points)';
+      if (Math.abs(e - 1) < 0.05) return 'y^2 = 0 \\quad (degenerate to line y=0)';
+      return 'y^2 = (e^2 - 1)(x - a e)^2 \\quad (factors to pair of lines)';
+    }
+
+    function updateExplanation() {
+      const expEl = document.getElementById('explanation');
+      let text = onDirectrix ? (currentE < 1 ? 'No real locus: discriminant negative.' : Math.abs(currentE - 1) < 0.05 ? 'Collapses to directrix line.' : 'Factors into two lines through focus.') : 'Standard conic locus.';
+      expEl.innerHTML = `<p>${text}</p>`;
+    }
+
+    function showSteps() {
+      let steps = onDirectrix ? [
+        '1. Set focus at directrix: d = 0',
+        '2. PF = e PD → substitute coordinates',
+        '3. Expand: Ax^2 + 2Hxy + By^2 + ... = 0',
+        '4. Determinant Δ = 0 for degeneracy'
+      ] : ['Standard focus-directrix definition.'];
+      return steps.map(s => `<div>${s}</div>`).join('');
+    }
+
+    // 3D Setup
+    function initThree() {
+      scene = new THREE.Scene();
+      scene.fog = new THREE.Fog(0x0a0a0a, 1, 100);
+
+      camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+      camera.position.set(0, 5, 15);
+
+      renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('canvas'), antialias: !lowPerf });
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      renderer.shadowMap.enabled = true;
+      renderer.toneMapping = THREE.ACESFilmicToneMapping;
+
+      controls = new THREE.OrbitControls(camera, renderer.domElement);
+      controls.enableDamping = true;
+
+      // Enhanced Lighting
+      const ambient = new THREE.AmbientLight(0x404040, 0.4);
+      scene.add(ambient);
+      const keyLight = new THREE.DirectionalLight(0xffaa00, 1); // Warm key
+      keyLight.position.set(5, 5, 5);
+      keyLight.castShadow = true;
+      scene.add(keyLight);
+      const fillLight = new THREE.DirectionalLight(0x00aaff, 0.5); // Cold fill
+      fillLight.position.set(-5, -5, -5);
+      scene.add(fillLight);
+      const rimLight = new THREE.DirectionalLight(0xffffff, 0.3);
+      rimLight.position.set(0, 10, 0);
+      scene.add(rimLight);
+
+      createCone();
+      createPlane();
+
+      if (!lowPerf) createParticles();
+
+      // GSAP Master Timeline for Scenes
+      masterTL = gsap.timeline({ paused: true });
+      scenes.forEach((s, i) => {
+        masterTL.add(() => {
+          sceneIndex = i;
+          updateScene();
+          speak(voiceoverLines[s]);
+        }, i * 5); // 5s per scene
+      });
+
+      animate();
+    }
+
+    function createCone() {
+      const geometry = new THREE.ConeGeometry(1, 10, 64); // Higher res
+      const material = new THREE.MeshPhongMaterial({ color: 0x888888, shininess: 100, specular: 0x111111 }); // Polished metal
+      cone = new THREE.Group();
+      const topCone = new THREE.Mesh(geometry, material);
+      topCone.position.y = 5;
+      topCone.rotation.x = Math.PI;
+      cone.add(topCone);
+      const bottomCone = new THREE.Mesh(geometry, material);
+      bottomCone.position.y = -5;
+      cone.add(bottomCone);
+      scene.add(cone);
+    }
+
+    function createPlane() {
+      const geometry = new THREE.PlaneGeometry(20, 20);
+      const material = new THREE.MeshPhongMaterial({ 
+        color: 0x87ceeb, 
+        transparent: true, 
+        opacity: 0.2, 
+        side: THREE.DoubleSide,
+        shininess: 100 // Glassy
+      });
+      plane = new THREE.Mesh(geometry, material);
+      plane.rotation.x = -Math.PI / 4;
+      scene.add(plane);
+    }
+
+    function createParticles() {
+      const geometry = new THREE.BufferGeometry();
+      const positions = [];
+      for (let i = 0; i < 2000; i++) { // More particles
+        positions.push((Math.random() - 0.5) * 50, (Math.random() - 0.5) * 50, (Math.random() - 0.5) * 50);
+      }
+      geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+      const material = new THREE.PointsMaterial({ color: 0xaaaaaa, size: 0.05, transparent: true, opacity: 0.6 });
+      particleSystem = new THREE.Points(geometry, material);
+      scene.add(particleSystem);
+    }
+
+    // Enhanced Locus with precise math
+    function updateLocus() {
+      // Clear locus
+      scene.traverse((obj) => { if (obj.name === 'locus') scene.remove(obj); });
+
+      if (!onDirectrix) {
+        const points = [];
+        const numPoints = 100;
+        for (let i = 0; i < numPoints; i++) {
+          let t = (i / (numPoints - 1) - 0.5) * 20;
+          let x = t, y = 0;
+          const a = focusDist / Math.abs(currentE**2 - 1) || 1; // Adjust based on e
+          if (currentE < 1) { // Ellipse
+            const b = a * Math.sqrt(1 - currentE**2);
+            if (Math.abs(x) <= a) y = b * Math.sqrt(1 - (x / a)**2) * (i % 2 ? 1 : -1);
+          } else if (Math.abs(currentE - 1) < 0.05) { // Parabola
+            y = Math.sqrt(4 * a * Math.max(0, x)) * (i % 2 ? 1 : -1);
+          } else { // Hyperbola
+            if (Math.abs(x) >= a) y = a * Math.sqrt(currentE**2 - 1) * Math.sqrt((x / a)**2 - 1) * (i % 2 ? 1 : -1);
+          }
+          if (!isNaN(y)) points.push(new THREE.Vector3(x, y, 0));
+        }
+        if (points.length > 1) {
+          const geometry = new THREE.BufferGeometry().setFromPoints(points);
+          const material = new THREE.LineBasicMaterial({ color: 0xff0000, linewidth: 2 });
+          const line = new THREE.Line(geometry, material);
+          line.name = 'locus';
+          scene.add(line);
+        }
+      } else if (Math.abs(currentE - 1) < 0.05) {
+        const geometry = new THREE.BoxGeometry(20, 0.05, 0.05);
+        const material = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
+        const lineMesh = new THREE.Mesh(geometry, material);
+        lineMesh.name = 'locus';
+        scene.add(lineMesh);
+      } else if (currentE > 1) {
+        const k = Math.sqrt(currentE**2 - 1);
+        const line1Points = [new THREE.Vector3(-10, -k * -10, 0), new THREE.Vector3(10, k * 10, 0)];
+        const line1Geo = new THREE.BufferGeometry().setFromPoints(line1Points);
+        const line1 = new THREE.Line(line1Geo, new THREE.LineBasicMaterial({ color: 0x00ff00 }));
+        line1.name = 'locus';
+        scene.add(line1);
+
+        const line2Points = [new THREE.Vector3(-10, k * -10, 0), new THREE.Vector3(10, -k * 10, 0)];
+        const line2Geo = new THREE.BufferGeometry().setFromPoints(line2Points);
+        const line2 = new THREE.Line(line2Geo, new THREE.LineBasicMaterial({ color: 0x00ff00 }));
+        line2.name = 'locus';
+        scene.add(line2);
+      } else {
+        const crossGeo = new THREE.BufferGeometry().setFromPoints([
+          new THREE.Vector3(-2,0,0), new THREE.Vector3(2,0,0),
+          new THREE.Vector3(0,-2,0), new THREE.Vector3(0,2,0)
+        ]);
+        const cross = new THREE.LineSegments(crossGeo, new THREE.LineBasicMaterial({ color: 0xff0000 }));
+        cross.name = 'locus';
+        scene.add(cross);
+      }
+    }
+
+    function updatePlaneTilt() {
+      const tilt = -Math.PI / 2 + Math.acos(Math.min(1, Math.max(-1, currentE)));
+      gsap.to(plane.rotation, { x: tilt, duration: 1, ease: "power2.out" });
+    }
+
+    // 2D Analytic View
+    function initAnalytic() {
+      const canvas = document.getElementById('analytic-canvas');
+      analyticCtx = canvas.getContext('2d');
+      canvas.width = 380;
+      canvas.height = 200;
+      updateAnalytic();
+    }
+
+    function updateAnalytic() {
+      if (!analyticCtx) return;
+      analyticCtx.clearRect(0, 0, analyticCtx.canvas.width, analyticCtx.canvas.height);
+      const w = analyticCtx.canvas.width, h = analyticCtx.canvas.height;
+      const scale = 20, ox = w/2, oy = h/2;
+
+      // Axes
+      analyticCtx.strokeStyle = '#333';
+      analyticCtx.lineWidth = 1;
+      analyticCtx.beginPath();
+      analyticCtx.moveTo(0, oy); analyticCtx.lineTo(w, oy);
+      analyticCtx.moveTo(ox, 0); analyticCtx.lineTo(ox, h);
+      analyticCtx.stroke();
+
+      // Directrix (vertical line at x = focusDist / currentE or something)
+      const dirX = onDirectrix ? ox : ox + (focusDist / currentE) * scale;
+      analyticCtx.strokeStyle = '#00ff00';
+      analyticCtx.beginPath();
+      analyticCtx.moveTo(dirX, 0); analyticCtx.lineTo(dirX, h);
+      analyticCtx.stroke();
+
+      // Focus point
+      analyticCtx.fillStyle = '#ff0000';
+      const fx = onDirectrix ? ox : ox + focusDist * scale;
+      analyticCtx.beginPath();
+      analyticCtx.arc(fx, oy, 3, 0, 2*Math.PI);
+      analyticCtx.fill();
+
+      // Locus (simple draw)
+      analyticCtx.strokeStyle = '#ffaa00';
+      analyticCtx.lineWidth = 2;
+      if (!onDirectrix) {
+        analyticCtx.beginPath();
+        for (let t = -10; t <= 10; t += 0.5) {
+          let x = t * scale + ox;
+          let y = 0;
+          // Simplified
+          y = Math.sin(t * currentE) * scale * (currentE < 1 ? 0.5 : 1);
+          if (t === -10) analyticCtx.moveTo(x, oy + y);
+          else analyticCtx.lineTo(x, oy + y);
+        }
+        analyticCtx.stroke();
+      } else if (Math.abs(currentE - 1) < 0.05) {
+        analyticCtx.beginPath();
+        analyticCtx.moveTo(0, oy); analyticCtx.lineTo(w, oy);
+        analyticCtx.stroke();
+      } else if (currentE > 1) {
+        const k = Math.sqrt(currentE**2 - 1) * scale;
+        analyticCtx.beginPath();
+        analyticCtx.moveTo(0, oy - k * -10 / scale * scale); analyticCtx.lineTo(w, oy + k * 10 / scale * scale);
+        analyticCtx.moveTo(0, oy + k * -10 / scale * scale); analyticCtx.lineTo(w, oy - k * 10 / scale * scale);
+        analyticCtx.stroke();
+      }
+    }
+
+    // UI Listeners
+    document.getElementById('ecc').addEventListener('input', (e) => {
+      currentE = parseFloat(e.target.value);
+      updateLocus();
+      updatePlaneTilt();
+      updateEquation();
+      updateAnalytic();
+      if (document.getElementById('debug').style.display !== 'none') updateDebug();
+    });
+
+    document.getElementById('focusDist').addEventListener('input', (e) => {
+      focusDist = parseFloat(e.target.value);
+      if (!onDirectrix) {
+        updateLocus();
+        updateEquation();
+        updateAnalytic();
+      }
+    });
+
+    document.getElementById('onDirectrix').addEventListener('click', () => {
+      onDirectrix = !onDirectrix;
+      if (onDirectrix) focusDist = 0;
+      document.getElementById('focusDist').value = focusDist;
+      updateLocus();
+      updateEquation();
+      document.getElementById('steps').innerHTML = showSteps();
+      renderKatex(document.getElementById('steps'), '');
+      updateAnalytic();
+    });
+
+    function updateAll() {
+      updateLocus();
+      updatePlaneTilt();
+      updateEquation();
+      document.getElementById('steps').innerHTML = showSteps();
+      renderKatex(document.getElementById('steps'), '');
+      updateAnalytic();
+    }
+
+    ['presetEllipse', 'presetParabola', 'presetHyperbola'].forEach(id => {
+      document.getElementById(id).addEventListener('click', () => {
+        const presets = { presetEllipse: {e:0.7, d:2}, presetParabola: {e:1, d:2}, presetHyperbola: {e:1.5, d:2} };
+        const p = presets[id];
+        currentE = p.e; onDirectrix = false; focusDist = p.d;
+        document.getElementById('ecc').value = currentE;
+        document.getElementById('focusDist').value = focusDist;
+        updateAll();
+      });
+    });
+
+    // Timeline
+    function updateScene() {
+      const currentScene = scenes[sceneIndex];
+      document.getElementById('sceneIndicator').textContent = `Scene ${currentScene}`;
+      const camPositions = {
+        'Intro': {x:0,y:5,z:15}, 'A':{x:0,y:5,z:10}, 'B':{x:-5,y:2,z:5}, 'C':{x:0,y:0,z:5},
+        'D':{x:5,y:2,z:5}, 'E':{x:0,y:5,z:10}, 'F':{x:0,y:3,z:8}
+      };
+      if (camPositions[currentScene]) animateCameraTo(camPositions[currentScene]);
+      if (currentScene === 'F') showQuiz();
+    }
+
+    document.getElementById('playPause').addEventListener('click', () => {
+      isPlaying = !isPlaying;
+      document.getElementById('playPause').textContent = isPlaying ? 'Pause' : 'Play';
+      if (isPlaying) masterTL.play(); else masterTL.pause();
+    });
+
+    document.getElementById('nextScene').addEventListener('click', () => {
+      masterTL.pause();
+      sceneIndex = Math.min(sceneIndex + 1, scenes.length - 1);
+      updateScene();
+      isPlaying = false;
+      document.getElementById('playPause').textContent = 'Play';
+    });
+
+    document.getElementById('prevScene').addEventListener('click', () => {
+      masterTL.pause();
+      sceneIndex = Math.max(sceneIndex - 1, 0);
+      updateScene();
+      isPlaying = false;
+      document.getElementById('playPause').textContent = 'Play';
+    });
+
+    function animateCameraTo(pos, duration = 2) {
+      gsap.to(camera.position, { x: pos.x, y: pos.y, z: pos.z, duration, ease: "power2.inOut" });
+    }
+
+    function speak(text) {
+      if ('speechSynthesis' in window) {
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.rate = 0.8;
+        speechSynthesis.speak(utterance);
+      }
+    }
+
+    // Debug
+    function updateDebug() {
+      const A = 1, B = currentE**2 - 1, H = 0;
+      const det = A * B - H**2;
+      document.getElementById('debug').innerHTML = `
+        <p>Pair Det (AB - H²): ${det.toFixed(4)} ${onDirectrix && det === 0 ? '(degenerate)' : ''}</p>
+        <p>Full 3x3 Det: 0 (on directrix)</p>
+        <p>Rank: ${det === 0 ? 1 : 2}</p>
+      `;
+    }
+
+    document.getElementById('debugToggle').addEventListener('click', () => {
+      const debugEl = document.getElementById('debug');
+      debugEl.style.display = debugEl.style.display === 'none' ? 'block' : 'none';
+      if (debugEl.style.display !== 'none') updateDebug();
+    });
+
+    // Proof Mode
+    let proofExpanded = false;
+    document.getElementById('proofMode').addEventListener('click', () => {
+      const stepsEl = document.getElementById('steps');
+      if (proofExpanded) {
+        stepsEl.innerHTML = showSteps();
+      } else {
+        const basic = showSteps();
+        const detailed = `<div class="detailed">Full derivation:<br>$$ \\Delta = \\begin{vmatrix} A & H & G \\\\ H & B & F \\\\ G & F & C \\end{vmatrix} = 0 $$<br>For focus on directrix, the conic degenerates to lines or point.</div>`;
+        stepsEl.innerHTML = basic + detailed;
+      }
+      proofExpanded = !proofExpanded;
+      renderKatex(stepsEl, '');
+    });
+
+    // Why Popup
+    document.getElementById('whyPopup').addEventListener('click', () => {
+      alert('For e<1, when focus is on directrix, the distance PF >= PD (since e<1), but PD=PF min=0 only at focus, but e*0=0, but for other points PF > PD > e PD impossible, hence no real points.');
+    });
+
+    // Export PNG
+    document.getElementById('export').addEventListener('click', () => {
+      const link = document.createElement('a');
+      link.download = 'degenerated-conics.png';
+      link.href = renderer.domElement.toDataURL();
+      link.click();
+    });
+
+    // Quiz
+    function showQuiz() {
+      document.getElementById('quiz-modal').style.display = 'block';
+      document.getElementById('quiz-question').textContent = 'For e=0.8 and focus on directrix, what happens?';
+    }
+
+    function checkAnswer(choice) {
+      const correct = 1; // Imaginary
+      const feedbackEl = document.getElementById('quiz-feedback');
+      if (choice === correct) {
+        feedbackEl.textContent = 'Correct! Discriminant e^2 - 1 < 0 leads to imaginary y.';
+        feedbackEl.style.color = 'green';
+      } else {
+        feedbackEl.textContent = 'Try again. For e<1, no real locus.';
+        feedbackEl.style.color = 'red';
+      }
+    }
+
+    function closeQuiz() {
+      document.getElementById('quiz-modal').style.display = 'none';
+      document.getElementById('quiz-feedback').textContent = '';
+    }
+
+    // Help
+    function toggleHelp() {
+      alert('Shortcuts: Space - Play/Pause, Arrow Keys - Next/Prev Scene, H - Help');
+    }
+
+    // Animation Loop
+    function animate() {
+      requestAnimationFrame(animate);
+      controls.update();
+      cone.rotation.y += 0.005;
+      if (particleSystem) particleSystem.rotation.y += 0.001;
+      renderer.render(scene, camera);
+    }
+
+    // Init
+    initThree();
+    initAnalytic();
+    updateAll();
+    updateScene();
+    renderKatex(document.body, '');
+
+    // Resize
+    window.addEventListener('resize', () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+
+    // Keyboard
+    document.addEventListener('keydown', (e) => {
+      if (e.code === 'Space') {
+        e.preventDefault();
+        document.getElementById('playPause').click();
+      } else if (e.code === 'ArrowRight') document.getElementById('nextScene').click();
+      else if (e.code === 'ArrowLeft') document.getElementById('prevScene').click();
+      else if (e.code === 'KeyH') toggleHelp();
+    });
+  </script>
+</body>
+</html>
