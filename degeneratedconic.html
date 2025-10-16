@@ -1,0 +1,910 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Degenerate Conics: Focus on Directrix | Interactive Visualization</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1a2a6c, #b21f1f, #fdbb2d);
+            color: #fff;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        header {
+            text-align: center;
+            padding: 30px 0;
+            margin-bottom: 30px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(10px);
+        }
+
+        h1 {
+            font-size: 2.8rem;
+            margin-bottom: 10px;
+            text-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+        }
+
+        .subtitle {
+            font-size: 1.2rem;
+            opacity: 0.9;
+            max-width: 800px;
+            margin: 0 auto;
+            line-height: 1.6;
+        }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-bottom: 40px;
+        }
+
+        @media (max-width: 900px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .visualization-panel {
+            background: rgba(0, 0, 0, 0.4);
+            border-radius: 20px;
+            padding: 25px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(10px);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .canvas-container {
+            flex: 1;
+            position: relative;
+            border-radius: 15px;
+            overflow: hidden;
+            background: rgba(0, 0, 0, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+
+        .controls-panel {
+            background: rgba(0, 0, 0, 0.4);
+            border-radius: 20px;
+            padding: 25px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(10px);
+        }
+
+        .control-group {
+            margin-bottom: 25px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .control-title {
+            display: flex;
+            align-items: center;
+            margin-bottom: 15px;
+            font-size: 1.2rem;
+        }
+
+        .control-title i {
+            margin-right: 10px;
+            font-size: 1.5rem;
+        }
+
+        .slider-container {
+            margin-bottom: 15px;
+        }
+
+        .slider-label {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+        }
+
+        .slider-value {
+            font-weight: bold;
+            color: #fdbb2d;
+        }
+
+        input[type="range"] {
+            width: 100%;
+            height: 8px;
+            border-radius: 5px;
+            background: rgba(255, 255, 255, 0.1);
+            outline: none;
+            -webkit-appearance: none;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #fdbb2d;
+            cursor: pointer;
+            box-shadow: 0 0 10px rgba(253, 187, 45, 0.8);
+        }
+
+        .buttons {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        button {
+            padding: 12px 20px;
+            border: none;
+            border-radius: 10px;
+            background: linear-gradient(135deg, #fdbb2d, #b21f1f);
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+        }
+
+        button:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
+        }
+
+        button:active {
+            transform: translateY(1px);
+        }
+
+        .info-panel {
+            background: rgba(0, 0, 0, 0.4);
+            border-radius: 20px;
+            padding: 25px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(10px);
+            grid-column: 1 / -1;
+        }
+
+        .info-tabs {
+            display: flex;
+            margin-bottom: 20px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .tab {
+            padding: 12px 25px;
+            cursor: pointer;
+            border-bottom: 3px solid transparent;
+            transition: all 0.3s ease;
+        }
+
+        .tab.active {
+            border-bottom: 3px solid #fdbb2d;
+            color: #fdbb2d;
+        }
+
+        .tab-content {
+            display: none;
+            line-height: 1.7;
+        }
+
+        .tab-content.active {
+            display: block;
+            animation: fadeIn 0.5s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .case {
+            margin-bottom: 25px;
+            padding: 20px;
+            border-radius: 15px;
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .case h3 {
+            display: flex;
+            align-items: center;
+            margin-bottom: 15px;
+            font-size: 1.4rem;
+        }
+
+        .case-icon {
+            margin-right: 10px;
+            font-size: 1.8rem;
+        }
+
+        .ellipse-case {
+            border-left: 5px solid #4CAF50;
+        }
+
+        .parabola-case {
+            border-left: 5px solid #2196F3;
+        }
+
+        .hyperbola-case {
+            border-left: 5px solid #F44336;
+        }
+
+        .math-equation {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 15px;
+            border-radius: 10px;
+            margin: 15px 0;
+            font-family: 'Cambria Math', serif;
+            font-size: 1.2rem;
+            text-align: center;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .conic-type-display {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.6);
+            padding: 10px 20px;
+            border-radius: 10px;
+            font-size: 1.2rem;
+            font-weight: bold;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .degenerate-warning {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(244, 67, 54, 0.8);
+            padding: 10px 20px;
+            border-radius: 10px;
+            font-weight: bold;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(244, 67, 54, 0.7); }
+            70% { box-shadow: 0 0 0 10px rgba(244, 67, 54, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(244, 67, 54, 0); }
+        }
+
+        footer {
+            text-align: center;
+            padding: 20px;
+            margin-top: 40px;
+            font-size: 0.9rem;
+            opacity: 0.7;
+        }
+    </style>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Degenerate Conics Visualization</h1>
+            <p class="subtitle">Explore how ellipses, parabolas, and hyperbolas transform into lines and points when the focus lies on the directrix. This interactive visualization demonstrates the mathematical principles behind conic section degeneracy.</p>
+        </header>
+
+        <div class="main-content">
+            <div class="visualization-panel">
+                <div class="canvas-container">
+                    <canvas id="conicCanvas"></canvas>
+                    <div class="conic-type-display" id="conicTypeDisplay">Ellipse (e < 1)</div>
+                    <div class="degenerate-warning" id="degenerateWarning" style="display: none;">DEGENERATE CASE: Focus on Directrix</div>
+                </div>
+            </div>
+
+            <div class="controls-panel">
+                <div class="control-group">
+                    <div class="control-title">
+                        <i class="fas fa-bullseye"></i>
+                        <span>Focus Position</span>
+                    </div>
+                    <div class="slider-container">
+                        <div class="slider-label">
+                            <span>Distance from Directrix</span>
+                            <span class="slider-value" id="focusValue">2.0 units</span>
+                        </div>
+                        <input type="range" id="focusDistance" min="0" max="200" value="150">
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <div class="control-title">
+                        <i class="fas fa-expand-arrows-alt"></i>
+                        <span>Eccentricity</span>
+                    </div>
+                    <div class="slider-container">
+                        <div class="slider-label">
+                            <span>Eccentricity (e)</span>
+                            <span class="slider-value" id="eccentricityValue">0.7</span>
+                        </div>
+                        <input type="range" id="eccentricity" min="0.1" max="2" step="0.1" value="0.7">
+                    </div>
+                    <div class="slider-label">
+                        <span style="font-size: 0.9rem; opacity: 0.8;">e < 1: Ellipse | e = 1: Parabola | e > 1: Hyperbola</span>
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <div class="control-title">
+                        <i class="fas fa-palette"></i>
+                        <span>Visualization Options</span>
+                    </div>
+                    <div class="slider-container">
+                        <div class="slider-label">
+                            <span>Animation Speed</span>
+                            <span class="slider-value" id="speedValue">Normal</span>
+                        </div>
+                        <input type="range" id="animationSpeed" min="1" max="5" value="3">
+                    </div>
+                    <div class="slider-container">
+                        <div class="slider-label">
+                            <span>Particle Density</span>
+                            <span class="slider-value" id="densityValue">Medium</span>
+                        </div>
+                        <input type="range" id="particleDensity" min="1" max="5" value="3">
+                    </div>
+                </div>
+
+                <div class="buttons">
+                    <button id="animateBtn">
+                        <i class="fas fa-play"></i> Animate Transition
+                    </button>
+                    <button id="resetBtn">
+                        <i class="fas fa-redo"></i> Reset
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="info-panel">
+            <div class="info-tabs">
+                <div class="tab active" data-tab="theory">Mathematical Theory</div>
+                <div class="tab" data-tab="cases">Degenerate Cases</div>
+                <div class="tab" data-tab="applications">Applications</div>
+            </div>
+
+            <div class="tab-content active" id="theory-tab">
+                <h2>Conic Sections and the Focus-Directrix Definition</h2>
+                <p>A conic section is defined as the locus of points P such that the distance from P to a fixed point (the focus) is in a constant ratio (the eccentricity e) to the distance from P to a fixed line (the directrix).</p>
+                
+                <div class="math-equation">
+                    PF = e · PD
+                </div>
+                
+                <p>Where PF is the distance from P to the focus F, and PD is the perpendicular distance from P to the directrix d.</p>
+                
+                <p>When the focus F lies on the directrix d, this definition leads to degenerate conics. In our coordinate system with the directrix as the x-axis and focus at (0,0), the equation becomes:</p>
+                
+                <div class="math-equation">
+                    √(x² + y²) = e |y|
+                </div>
+                
+                <p>Squaring both sides gives us the fundamental equation for analyzing degeneracy:</p>
+                
+                <div class="math-equation">
+                    x² = (e² - 1) y²
+                </div>
+                
+                <p>The behavior of this equation depends entirely on the value of e, leading to the three degenerate cases explored in this visualization.</p>
+            </div>
+
+            <div class="tab-content" id="cases-tab">
+                <div class="case ellipse-case">
+                    <h3>
+                        <i class="fas fa-dot-circle case-icon"></i>
+                        Elliptic Case (e < 1)
+                    </h3>
+                    <p>When e < 1 and the focus reaches the directrix, the ellipse collapses to a single point - the focus itself.</p>
+                    <div class="math-equation">
+                        x² = (e² - 1) y² with e² - 1 < 0 ⇒ x = 0 and y = 0
+                    </div>
+                    <p><strong>Mathematical reason:</strong> Since e² - 1 is negative, the equation x² = (negative number) × y² forces both x and y to be zero. The only solution is the origin, which is the focus point.</p>
+                </div>
+
+                <div class="case parabola-case">
+                    <h3>
+                        <i class="fas fa-equals case-icon"></i>
+                        Parabolic Case (e = 1)
+                    </h3>
+                    <p>When e = 1 and the focus reaches the directrix, the parabola becomes a straight line perpendicular to the directrix.</p>
+                    <div class="math-equation">
+                        x² = 0 ⇒ x = 0 for all y
+                    </div>
+                    <p><strong>Mathematical reason:</strong> The equation simplifies to x² = 0, which means x must be zero for all values of y. This describes the vertical line x = 0 (the y-axis).</p>
+                </div>
+
+                <div class="case hyperbola-case">
+                    <h3>
+                        <i class="fas fa-times case-icon"></i>
+                        Hyperbolic Case (e > 1)
+                    </h3>
+                    <p>When e > 1 and the focus reaches the directrix, the hyperbola degenerates into two intersecting straight lines.</p>
+                    <div class="math-equation">
+                        x² = (e² - 1) y² ⇒ x = ±√(e² - 1) y
+                    </div>
+                    <p><strong>Mathematical reason:</strong> Since e² - 1 is positive, we can take square roots to get x = ±k y where k = √(e² - 1). These are two straight lines through the origin with slopes ±1/k.</p>
+                </div>
+            </div>
+
+            <div class="tab-content" id="applications-tab">
+                <h2>Real-World Applications</h2>
+                <p>Understanding degenerate conics has practical applications in several fields:</p>
+                
+                <h3>Physics and Engineering</h3>
+                <p>In orbital mechanics, degenerate cases represent boundary conditions between different types of orbits. A parabolic orbit (e=1) is the boundary between elliptical (e<1) and hyperbolic (e>1) orbits.</p>
+                
+                <h3>Computer Graphics</h3>
+                <p>Degenerate conics help in designing algorithms for curve rendering and intersection detection. Understanding these edge cases prevents computational errors in geometric modeling.</p>
+                
+                <h3>Optics</h3>
+                <p>Conic sections describe the shapes of lenses and mirrors. Degenerate cases help understand limiting behaviors in optical systems.</p>
+                
+                <h3>Architecture</h3>
+                <p>The mathematics of conic sections is used in architectural design, particularly for arches and domes. Understanding degeneracy helps in creating stable structures.</p>
+            </div>
+        </div>
+
+        <footer>
+            <p>Degenerate Conics Visualization | Created with HTML5, Canvas, and JavaScript</p>
+        </footer>
+    </div>
+
+    <script>
+        class EnhancedConicVisualization {
+            constructor(canvasId) {
+                this.canvas = document.getElementById(canvasId);
+                this.ctx = this.canvas.getContext('2d');
+                this.resizeCanvas();
+                
+                // Animation state
+                this.focusDistance = 150; // 0-200, where 100 is on directrix
+                this.eccentricity = 0.7;
+                this.animationSpeed = 3;
+                this.particleDensity = 3;
+                this.isAnimating = false;
+                this.animationProgress = 0;
+                this.particles = [];
+                this.time = 0;
+                
+                // Coordinate system
+                this.originX = this.canvas.width / 2;
+                this.originY = this.canvas.height / 2;
+                this.scale = 50; // pixels per unit
+                
+                // Colors
+                this.colors = {
+                    ellipse: '#4CAF50',
+                    parabola: '#2196F3',
+                    hyperbola: '#F44336',
+                    focus: '#FFC107',
+                    directrix: '#E91E63',
+                    particles: '#FFFFFF',
+                    grid: 'rgba(255, 255, 255, 0.1)',
+                    axes: 'rgba(255, 255, 255, 0.5)'
+                };
+                
+                this.setupEventListeners();
+                this.initParticles();
+                this.animate();
+            }
+            
+            resizeCanvas() {
+                const container = this.canvas.parentElement;
+                this.canvas.width = container.clientWidth;
+                this.canvas.height = container.clientHeight;
+                this.originX = this.canvas.width / 2;
+                this.originY = this.canvas.height / 2;
+            }
+            
+            setupEventListeners() {
+                const focusSlider = document.getElementById('focusDistance');
+                const eccentricitySlider = document.getElementById('eccentricity');
+                const speedSlider = document.getElementById('animationSpeed');
+                const densitySlider = document.getElementById('particleDensity');
+                const animateBtn = document.getElementById('animateBtn');
+                const resetBtn = document.getElementById('resetBtn');
+                const tabs = document.querySelectorAll('.tab');
+                
+                focusSlider.addEventListener('input', (e) => {
+                    this.focusDistance = parseInt(e.target.value);
+                    document.getElementById('focusValue').textContent = 
+                        (this.focusDistance - 100) / 50 + ' units';
+                    this.updateConicTypeDisplay();
+                });
+                
+                eccentricitySlider.addEventListener('input', (e) => {
+                    this.eccentricity = parseFloat(e.target.value);
+                    document.getElementById('eccentricityValue').textContent = this.eccentricity;
+                    this.updateConicTypeDisplay();
+                });
+                
+                speedSlider.addEventListener('input', (e) => {
+                    this.animationSpeed = parseInt(e.target.value);
+                    const speedLabels = ['Very Slow', 'Slow', 'Normal', 'Fast', 'Very Fast'];
+                    document.getElementById('speedValue').textContent = speedLabels[this.animationSpeed - 1];
+                });
+                
+                densitySlider.addEventListener('input', (e) => {
+                    this.particleDensity = parseInt(e.target.value);
+                    const densityLabels = ['Very Low', 'Low', 'Medium', 'High', 'Very High'];
+                    document.getElementById('densityValue').textContent = densityLabels[this.particleDensity - 1];
+                    this.initParticles();
+                });
+                
+                animateBtn.addEventListener('click', () => this.startAnimation());
+                resetBtn.addEventListener('click', () => this.reset());
+                
+                // Tab switching
+                tabs.forEach(tab => {
+                    tab.addEventListener('click', () => {
+                        const tabId = tab.getAttribute('data-tab');
+                        
+                        // Update active tab
+                        tabs.forEach(t => t.classList.remove('active'));
+                        tab.classList.add('active');
+                        
+                        // Update active content
+                        document.querySelectorAll('.tab-content').forEach(content => {
+                            content.classList.remove('active');
+                        });
+                        document.getElementById(`${tabId}-tab`).classList.add('active');
+                    });
+                });
+                
+                // Window resize
+                window.addEventListener('resize', () => {
+                    this.resizeCanvas();
+                });
+            }
+            
+            initParticles() {
+                this.particles = [];
+                const count = 50 + (this.particleDensity * 30);
+                
+                for (let i = 0; i < count; i++) {
+                    this.particles.push({
+                        x: Math.random() * this.canvas.width,
+                        y: Math.random() * this.canvas.height,
+                        size: Math.random() * 2 + 1,
+                        speed: Math.random() * 0.5 + 0.2,
+                        opacity: Math.random() * 0.5 + 0.2
+                    });
+                }
+            }
+            
+            updateParticles() {
+                this.particles.forEach(p => {
+                    p.y += p.speed;
+                    if (p.y > this.canvas.height) {
+                        p.y = 0;
+                        p.x = Math.random() * this.canvas.width;
+                    }
+                });
+            }
+            
+            drawParticles() {
+                this.ctx.fillStyle = this.colors.particles;
+                this.particles.forEach(p => {
+                    this.ctx.globalAlpha = p.opacity;
+                    this.ctx.beginPath();
+                    this.ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+                    this.ctx.fill();
+                });
+                this.ctx.globalAlpha = 1;
+            }
+            
+            updateConicTypeDisplay() {
+                const display = document.getElementById('conicTypeDisplay');
+                const warning = document.getElementById('degenerateWarning');
+                
+                if (this.focusDistance === 100) {
+                    if (this.eccentricity < 1) {
+                        display.textContent = "Point (Degenerate Ellipse)";
+                    } else if (this.eccentricity === 1) {
+                        display.textContent = "Line (Degenerate Parabola)";
+                    } else {
+                        display.textContent = "Two Lines (Degenerate Hyperbola)";
+                    }
+                    warning.style.display = 'block';
+                } else {
+                    if (this.eccentricity < 1) {
+                        display.textContent = "Ellipse (e < 1)";
+                    } else if (this.eccentricity === 1) {
+                        display.textContent = "Parabola (e = 1)";
+                    } else {
+                        display.textContent = "Hyperbola (e > 1)";
+                    }
+                    warning.style.display = 'none';
+                }
+            }
+            
+            startAnimation() {
+                if (this.isAnimating) return;
+                
+                this.isAnimating = true;
+                this.animationProgress = 0;
+                
+                const animateFrame = () => {
+                    this.animationProgress += 0.01 * this.animationSpeed;
+                    if (this.animationProgress >= 1) {
+                        this.animationProgress = 1;
+                        this.isAnimating = false;
+                    }
+                    
+                    // Move focus toward directrix during animation
+                    const startDistance = 150;
+                    const endDistance = 100;
+                    const animatedDistance = startDistance + (endDistance - startDistance) * this.animationProgress;
+                    this.focusDistance = animatedDistance;
+                    document.getElementById('focusDistance').value = animatedDistance;
+                    document.getElementById('focusValue').textContent = 
+                        (animatedDistance - 100) / 50 + ' units';
+                    
+                    this.updateConicTypeDisplay();
+                    
+                    if (this.isAnimating) {
+                        requestAnimationFrame(animateFrame);
+                    }
+                };
+                
+                animateFrame();
+            }
+            
+            reset() {
+                this.focusDistance = 150;
+                this.eccentricity = 0.7;
+                document.getElementById('focusDistance').value = 150;
+                document.getElementById('eccentricity').value = 0.7;
+                document.getElementById('focusValue').textContent = '1.0 units';
+                document.getElementById('eccentricityValue').textContent = '0.7';
+                this.updateConicTypeDisplay();
+                this.isAnimating = false;
+            }
+            
+            drawCoordinateSystem() {
+                // Draw grid
+                this.ctx.strokeStyle = this.colors.grid;
+                this.ctx.lineWidth = 1;
+                
+                // Vertical lines
+                for (let x = -10; x <= 10; x++) {
+                    this.ctx.beginPath();
+                    this.ctx.moveTo(this.originX + x * this.scale, 0);
+                    this.ctx.lineTo(this.originX + x * this.scale, this.canvas.height);
+                    this.ctx.stroke();
+                }
+                
+                // Horizontal lines
+                for (let y = -8; y <= 8; y++) {
+                    this.ctx.beginPath();
+                    this.ctx.moveTo(0, this.originY + y * this.scale);
+                    this.ctx.lineTo(this.canvas.width, this.originY + y * this.scale);
+                    this.ctx.stroke();
+                }
+                
+                // Draw axes
+                this.ctx.strokeStyle = this.colors.axes;
+                this.ctx.lineWidth = 2;
+                
+                // X-axis
+                this.ctx.beginPath();
+                this.ctx.moveTo(0, this.originY);
+                this.ctx.lineTo(this.canvas.width, this.originY);
+                this.ctx.stroke();
+                
+                // Y-axis
+                this.ctx.beginPath();
+                this.ctx.moveTo(this.originX, 0);
+                this.ctx.lineTo(this.originX, this.canvas.height);
+                this.ctx.stroke();
+                
+                // Axis labels
+                this.ctx.fillStyle = 'white';
+                this.ctx.font = '14px Arial';
+                this.ctx.fillText('x', this.canvas.width - 20, this.originY - 10);
+                this.ctx.fillText('y', this.originX + 10, 20);
+            }
+            
+            drawDirectrix() {
+                this.ctx.strokeStyle = this.colors.directrix;
+                this.ctx.lineWidth = 3;
+                this.ctx.setLineDash([5, 5]);
+                
+                this.ctx.beginPath();
+                this.ctx.moveTo(0, this.originY);
+                this.ctx.lineTo(this.canvas.width, this.originY);
+                this.ctx.stroke();
+                
+                this.ctx.setLineDash([]);
+                
+                // Label
+                this.ctx.fillStyle = this.colors.directrix;
+                this.ctx.font = 'bold 16px Arial';
+                this.ctx.fillText('Directrix (y=0)', 20, this.originY - 10);
+            }
+            
+            drawFocus() {
+                const focusY = this.originY - (this.focusDistance - 100) / 2;
+                
+                // Draw focus point with glow effect
+                const gradient = this.ctx.createRadialGradient(
+                    this.originX, focusY, 0,
+                    this.originX, focusY, 15
+                );
+                gradient.addColorStop(0, this.colors.focus);
+                gradient.addColorStop(1, 'transparent');
+                
+                this.ctx.fillStyle = gradient;
+                this.ctx.beginPath();
+                this.ctx.arc(this.originX, focusY, 15, 0, Math.PI * 2);
+                this.ctx.fill();
+                
+                // Draw focus point
+                this.ctx.fillStyle = this.colors.focus;
+                this.ctx.beginPath();
+                this.ctx.arc(this.originX, focusY, 6, 0, Math.PI * 2);
+                this.ctx.fill();
+                
+                // Label
+                this.ctx.fillStyle = this.colors.focus;
+                this.ctx.font = 'bold 16px Arial';
+                this.ctx.fillText('Focus', this.originX + 15, focusY - 10);
+                
+                // Draw distance line
+                this.ctx.strokeStyle = this.colors.focus;
+                this.ctx.lineWidth = 2;
+                this.ctx.setLineDash([2, 2]);
+                this.ctx.beginPath();
+                this.ctx.moveTo(this.originX, this.originY);
+                this.ctx.lineTo(this.originX, focusY);
+                this.ctx.stroke();
+                this.ctx.setLineDash([]);
+                
+                // Distance label
+                const distance = Math.abs(this.focusDistance - 100) / 50;
+                this.ctx.fillText(`d = ${distance.toFixed(1)}`, this.originX + 10, (this.originY + focusY) / 2);
+            }
+            
+            drawConic() {
+                const focusYOffset = (this.focusDistance - 100) / 2 / this.scale;
+                const e = this.eccentricity;
+                
+                // Determine color based on eccentricity
+                let conicColor;
+                if (e < 1) conicColor = this.colors.ellipse;
+                else if (e === 1) conicColor = this.colors.parabola;
+                else conicColor = this.colors.hyperbola;
+                
+                this.ctx.strokeStyle = conicColor;
+                this.ctx.lineWidth = 3;
+                this.ctx.beginPath();
+                
+                if (this.focusDistance === 100) { // Focus on directrix
+                    if (e < 1) {
+                        // Point ellipse - draw a pulsing point
+                        const pulseSize = 4 + Math.sin(this.time * 5) * 2;
+                        this.ctx.fillStyle = conicColor;
+                        this.ctx.beginPath();
+                        this.ctx.arc(this.originX, this.originY, pulseSize, 0, Math.PI * 2);
+                        this.ctx.fill();
+                    } else if (e === 1) {
+                        // Line (y-axis)
+                        this.ctx.moveTo(this.originX, 0);
+                        this.ctx.lineTo(this.originX, this.canvas.height);
+                    } else {
+                        // Two intersecting lines
+                        const k = Math.sqrt(e * e - 1);
+                        
+                        // First line
+                        this.ctx.moveTo(
+                            this.originX + (-5 * k) * this.scale, 
+                            this.originY - (-5) * this.scale
+                        );
+                        for (let y = -5; y <= 5; y += 0.1) {
+                            const x = k * y;
+                            const screenX = this.originX + x * this.scale;
+                            const screenY = this.originY - y * this.scale;
+                            this.ctx.lineTo(screenX, screenY);
+                        }
+                        
+                        // Second line
+                        this.ctx.moveTo(
+                            this.originX + (-5 * -k) * this.scale, 
+                            this.originY - (-5) * this.scale
+                        );
+                        for (let y = -5; y <= 5; y += 0.1) {
+                            const x = -k * y;
+                            const screenX = this.originX + x * this.scale;
+                            const screenY = this.originY - y * this.scale;
+                            this.ctx.lineTo(screenX, screenY);
+                        }
+                    }
+                } else {
+                    // Normal conic
+                    const points = [];
+                    
+                    for (let y = -8; y <= 8; y += 0.05) {
+                        const discriminant = e * e * y * y - (y * y - 2 * focusYOffset * y + focusYOffset * focusYOffset);
+                        
+                        if (discriminant >= 0) {
+                            const x = Math.sqrt(discriminant);
+                            points.push({ x: x, y: y });
+                            points.push({ x: -x, y: y });
+                        }
+                    }
+                    
+                    // Sort points for smooth drawing
+                    points.sort((a, b) => a.y - b.y);
+                    
+                    if (points.length > 0) {
+                        this.ctx.moveTo(
+                            this.originX + points[0].x * this.scale,
+                            this.originY - points[0].y * this.scale
+                        );
+                        
+                        for (let i = 1; i < points.length; i++) {
+                            this.ctx.lineTo(
+                                this.originX + points[i].x * this.scale,
+                                this.originY - points[i].y * this.scale
+                            );
+                        }
+                    }
+                }
+                
+                this.ctx.stroke();
+            }
+            
+            animate() {
+                this.time += 0.05;
+                this.updateParticles();
+                this.draw();
+                requestAnimationFrame(() => this.animate());
+            }
+            
+            draw() {
+                // Clear canvas with gradient background
+                const gradient = this.ctx.createLinearGradient(0, 0, 0, this.canvas.height);
+                gradient.addColorStop(0, 'rgba(26, 42, 108, 0.8)');
+                gradient.addColorStop(1, 'rgba(178, 31, 31, 0.6)');
+                this.ctx.fillStyle = gradient;
+                this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+                
+                // Draw elements
+                this.drawParticles();
+                this.drawCoordinateSystem();
+                this.drawDirectrix();
+                this.drawConic();
+                this.drawFocus();
+            }
+        }
+        
+        // Initialize the visualization when page loads
+        window.addEventListener('load', () => {
+            new EnhancedConicVisualization('conicCanvas');
+        });
+    </script>
+</body>
+</html>
