@@ -1,0 +1,882 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Parabola y² = 4x - Enhanced 3D Visualization</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            overflow: hidden;
+            background: #0a0a1a;
+            color: white;
+        }
+        
+        #canvas-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+        }
+        
+        #ui-overlay {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            z-index: 10;
+            background: rgba(0, 20, 40, 0.7);
+            backdrop-filter: blur(10px);
+            border-radius: 12px;
+            padding: 20px;
+            max-width: 450px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(100, 200, 255, 0.2);
+        }
+        
+        h1 {
+            font-size: 1.5rem;
+            margin-bottom: 15px;
+            color: #00ffff;
+            text-shadow: 0 0 10px rgba(0, 255, 255, 0.5);
+        }
+        
+        .section {
+            margin-bottom: 15px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid rgba(100, 200, 255, 0.2);
+        }
+        
+        .section:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+            padding-bottom: 0;
+        }
+        
+        h2 {
+            font-size: 1.1rem;
+            margin-bottom: 10px;
+            color: #ffd700;
+        }
+        
+        p {
+            font-size: 0.9rem;
+            line-height: 1.4;
+            margin-bottom: 8px;
+            color: #e0e0ff;
+        }
+        
+        .equation {
+            font-family: 'Cambria Math', serif;
+            font-size: 1.1rem;
+            color: #ffaa00;
+            margin: 10px 0;
+            text-align: center;
+        }
+        
+        .controls {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        
+        .control-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        label {
+            font-size: 0.9rem;
+            min-width: 120px;
+            color: #a0e0ff;
+        }
+        
+        input[type="range"] {
+            flex: 1;
+            height: 6px;
+            background: rgba(0, 150, 255, 0.3);
+            border-radius: 3px;
+            outline: none;
+            -webkit-appearance: none;
+        }
+        
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: #00ffff;
+            cursor: pointer;
+            box-shadow: 0 0 10px rgba(0, 255, 255, 0.8);
+        }
+        
+        .value-display {
+            min-width: 60px;
+            text-align: right;
+            font-size: 0.9rem;
+            color: #ffd700;
+        }
+        
+        .toggle-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin-top: 10px;
+        }
+        
+        .toggle-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .toggle-item input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            accent-color: #00ffff;
+        }
+        
+        .toggle-item label {
+            min-width: auto;
+            flex: 1;
+        }
+        
+        #loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 100;
+            text-align: center;
+            color: #00ffff;
+            font-size: 1.2rem;
+            text-shadow: 0 0 10px rgba(0, 255, 255, 0.7);
+        }
+        
+        #instructions {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(0, 20, 40, 0.7);
+            backdrop-filter: blur(10px);
+            border-radius: 8px;
+            padding: 15px;
+            max-width: 300px;
+            font-size: 0.85rem;
+            line-height: 1.4;
+            color: #a0e0ff;
+            z-index: 10;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(100, 200, 255, 0.2);
+        }
+        
+        @media (max-width: 768px) {
+            #ui-overlay {
+                max-width: 350px;
+                padding: 15px;
+            }
+            
+            h1 {
+                font-size: 1.3rem;
+            }
+            
+            #instructions {
+                max-width: 250px;
+                font-size: 0.8rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="canvas-container"></div>
+    
+    <div id="ui-overlay">
+        <h1>Parabola: y² = 4x</h1>
+        
+        <div class="section">
+            <h2>Parabola Properties</h2>
+            <p>The parabola is defined by the equation:</p>
+            <div class="equation">y² = 4ax (with a = 1)</div>
+            <p>• Focus: F(1, 0)</p>
+            <p>• Directrix: x = -1</p>
+            <p>• Vertex: (0, 0)</p>
+        </div>
+        
+        <div class="section">
+            <h2>Normals & Conormal Points</h2>
+            <p>From point P(h,k), three normals can be drawn to the parabola.</p>
+            <p>The cubic equation for the slopes:</p>
+            <div class="equation">t³ + (2a - h)t - k = 0</div>
+            <p>Roots t₁, t₂, t₃ give the conormal points A, B, C.</p>
+        </div>
+        
+        <div class="section">
+            <h2>Controls</h2>
+            <div class="controls">
+                <div class="control-group">
+                    <label for="h-slider">P(h,k) - h:</label>
+                    <input type="range" id="h-slider" min="0.5" max="5" step="0.1" value="3">
+                    <span class="value-display" id="h-value">3.0</span>
+                </div>
+                <div class="control-group">
+                    <label for="k-slider">P(h,k) - k:</label>
+                    <input type="range" id="k-slider" min="-5" max="5" step="0.1" value="4">
+                    <span class="value-display" id="k-value">4.0</span>
+                </div>
+            </div>
+            
+            <div class="toggle-group">
+                <div class="toggle-item">
+                    <input type="checkbox" id="show-triangle" checked>
+                    <label for="show-triangle">Show Triangle ABC</label>
+                </div>
+                <div class="toggle-item">
+                    <input type="checkbox" id="show-circle">
+                    <label for="show-circle">Show Circle through A,B,C & Vertex</label>
+                </div>
+                <div class="toggle-item">
+                    <input type="checkbox" id="animate-normals" checked>
+                    <label for="animate-normals">Animate Normals</label>
+                </div>
+            </div>
+        </div>
+        
+        <div class="section">
+            <h2>Geometric Properties</h2>
+            <p>• Three normals from P meet the parabola at A, B, C</p>
+            <p>• Triangle ABC is formed by the conormal points</p>
+            <p>• The circle through A, B, C also passes through the vertex (0,0)</p>
+        </div>
+    </div>
+    
+    <div id="instructions">
+        <p>• Drag to rotate the view</p>
+        <p>• Scroll to zoom in/out</p>
+        <p>• Use sliders to adjust point P</p>
+        <p>• Toggle triangle and circle visibility</p>
+    </div>
+    
+    <div id="loading">Loading Enhanced 3D Visualization...</div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.min.js"></script>
+    
+    <script>
+        // Main Three.js application
+        document.addEventListener('DOMContentLoaded', function() {
+            // Hide loading message
+            const loading = document.getElementById('loading');
+            
+            // Initialize Three.js scene
+            const scene = new THREE.Scene();
+            const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.set(8, 6, 10);
+            camera.lookAt(1, 0, 0);
+            
+            const renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+            
+            const container = document.getElementById('canvas-container');
+            container.appendChild(renderer.domElement);
+            
+            // Add OrbitControls
+            const controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.target.set(1, 0, 0);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.05;
+            
+            // Create gradient background
+            const canvas = document.createElement('canvas');
+            canvas.width = 32;
+            canvas.height = 32;
+            const context = canvas.getContext('2d');
+            const gradient = context.createLinearGradient(0, 0, 0, 32);
+            gradient.addColorStop(0, '#0A0A1A');
+            gradient.addColorStop(1, '#000000');
+            context.fillStyle = gradient;
+            context.fillRect(0, 0, 32, 32);
+            const backgroundTexture = new THREE.CanvasTexture(canvas);
+            scene.background = backgroundTexture;
+            
+            // Add stars
+            const starsGeometry = new THREE.BufferGeometry();
+            const starsCount = 1000;
+            const starsPositions = new Float32Array(starsCount * 3);
+            
+            for (let i = 0; i < starsCount * 3; i++) {
+                starsPositions[i] = (Math.random() - 0.5) * 100;
+            }
+            
+            starsGeometry.setAttribute('position', new THREE.BufferAttribute(starsPositions, 3));
+            
+            const starsMaterial = new THREE.PointsMaterial({
+                color: 0xffffff,
+                size: 0.1,
+                transparent: true,
+                opacity: 0.8,
+                blending: THREE.AdditiveBlending
+            });
+            
+            const stars = new THREE.Points(starsGeometry, starsMaterial);
+            scene.add(stars);
+            
+            // Lighting setup
+            const ambientLight = new THREE.AmbientLight(0x404060, 0.6);
+            scene.add(ambientLight);
+            
+            const keyLight = new THREE.DirectionalLight(0xfffdd0, 1);
+            keyLight.position.set(10, 10, 5);
+            keyLight.castShadow = true;
+            keyLight.shadow.mapSize.width = 2048;
+            keyLight.shadow.mapSize.height = 2048;
+            scene.add(keyLight);
+            
+            const rimLight = new THREE.DirectionalLight(0x00ffff, 0.7);
+            rimLight.position.set(-5, 5, -10);
+            scene.add(rimLight);
+            
+            // Grid
+            const gridHelper = new THREE.GridHelper(30, 30, 0x00ffff, 0x00ffff);
+            gridHelper.material.opacity = 0.3;
+            gridHelper.material.transparent = true;
+            scene.add(gridHelper);
+            
+            // Axes
+            const axesHelper = new THREE.AxesHelper(5);
+            axesHelper.material.opacity = 0.7;
+            axesHelper.material.transparent = true;
+            scene.add(axesHelper);
+            
+            // Create parabola geometry
+            const parabolaPoints = [];
+            const tMin = -3;
+            const tMax = 3;
+            const steps = 200;
+            
+            for (let i = 0; i <= steps; i++) {
+                const t = tMin + (tMax - tMin) * (i / steps);
+                const x = t * t;
+                const y = 2 * t;
+                parabolaPoints.push(new THREE.Vector3(x, y, 0));
+            }
+            
+            const parabolaCurve = new THREE.CatmullRomCurve3(parabolaPoints);
+            const parabolaGeometry = new THREE.TubeGeometry(parabolaCurve, steps, 0.05, 8, false);
+            
+            // Parabola material with glow effect
+            const parabolaMaterial = new THREE.MeshPhongMaterial({
+                color: 0x00ffff,
+                emissive: 0x004444,
+                shininess: 100,
+                transparent: true,
+                opacity: 0.9
+            });
+            
+            const parabola = new THREE.Mesh(parabolaGeometry, parabolaMaterial);
+            scene.add(parabola);
+            
+            // Add a second parabola for the negative y values
+            const parabolaPointsNeg = [];
+            for (let i = 0; i <= steps; i++) {
+                const t = tMin + (tMax - tMin) * (i / steps);
+                const x = t * t;
+                const y = -2 * t;
+                parabolaPointsNeg.push(new THREE.Vector3(x, y, 0));
+            }
+            
+            const parabolaCurveNeg = new THREE.CatmullRomCurve3(parabolaPointsNeg);
+            const parabolaGeometryNeg = new THREE.TubeGeometry(parabolaCurveNeg, steps, 0.05, 8, false);
+            const parabolaNeg = new THREE.Mesh(parabolaGeometryNeg, parabolaMaterial);
+            scene.add(parabolaNeg);
+            
+            // Vertex (0,0) - pulsing sphere
+            const vertexGeometry = new THREE.SphereGeometry(0.1, 16, 16);
+            const vertexMaterial = new THREE.MeshBasicMaterial({
+                color: 0xffffff,
+                emissive: 0xffffff,
+                emissiveIntensity: 0.5
+            });
+            
+            const vertex = new THREE.Mesh(vertexGeometry, vertexMaterial);
+            scene.add(vertex);
+            
+            // Focus F(1,0)
+            const focusGeometry = new THREE.SphereGeometry(0.15, 16, 16);
+            const focusMaterial = new THREE.MeshPhongMaterial({
+                color: 0xFFD700,
+                emissive: 0x886600,
+                shininess: 100
+            });
+            
+            const focus = new THREE.Mesh(focusGeometry, focusMaterial);
+            focus.position.set(1, 0, 0);
+            scene.add(focus);
+            
+            // Focus label
+            const focusLabel = createTextSprite("F(1,0)", 0xFFD700);
+            focusLabel.position.set(1.5, 0.3, 0);
+            scene.add(focusLabel);
+            
+            // Directrix x = -1
+            const directrixGeometry = new THREE.PlaneGeometry(0.05, 10, 1, 1);
+            const directrixMaterial = new THREE.MeshPhongMaterial({
+                color: 0xFF2D55,
+                transparent: true,
+                opacity: 0.7,
+                side: THREE.DoubleSide
+            });
+            
+            const directrix = new THREE.Mesh(directrixGeometry, directrixMaterial);
+            directrix.position.set(-1, 0, 0);
+            directrix.rotation.y = Math.PI / 2;
+            scene.add(directrix);
+            
+            // Directrix label
+            const directrixLabel = createTextSprite("x = -1", 0xFF2D55);
+            directrixLabel.position.set(-1, 3, 0);
+            scene.add(directrixLabel);
+            
+            // Point P(h,k) - Pole of Normals
+            let pointPGeometry = new THREE.SphereGeometry(0.15, 16, 16);
+            let pointPMaterial = new THREE.MeshPhongMaterial({
+                color: 0xffffff,
+                emissive: 0xffffff,
+                emissiveIntensity: 0.5,
+                shininess: 100
+            });
+            
+            let pointP = new THREE.Mesh(pointPGeometry, pointPMaterial);
+            pointP.position.set(3, 4, 0);
+            scene.add(pointP);
+            
+            // Point P label
+            let pointPLabel = createTextSprite("P(h,k) - Pole of Normals", 0xffffff);
+            pointPLabel.position.set(3.5, 4.5, 0);
+            scene.add(pointPLabel);
+            
+            // Point light at P
+            const pointLight = new THREE.PointLight(0xffffff, 2, 10, 2);
+            pointLight.position.copy(pointP.position);
+            scene.add(pointLight);
+            
+            // Variables for conormal points and normals
+            let conormalPoints = [];
+            let normalLines = [];
+            let particleTrails = [];
+            let triangle = null;
+            let circle = null;
+            
+            // Animation state for normals
+            let normalAnimationState = {
+                progress: 0,
+                direction: 1,
+                speed: 0.8
+            };
+            
+            // Function to solve cubic equation using Cardano's method
+            function solveCubic(a, b, c, d) {
+                // Convert to depressed cubic: t³ + pt + q = 0
+                const p = (3*a*c - b*b) / (3*a*a);
+                const q = (2*b*b*b - 9*a*b*c + 27*a*a*d) / (27*a*a*a);
+                
+                const discriminant = (q*q/4) + (p*p*p/27);
+                
+                if (discriminant > 0) {
+                    // One real root
+                    const u = Math.cbrt(-q/2 + Math.sqrt(discriminant));
+                    const v = Math.cbrt(-q/2 - Math.sqrt(discriminant));
+                    const root1 = u + v - b/(3*a);
+                    return [root1];
+                } else if (discriminant === 0) {
+                    // Multiple real roots
+                    const u = Math.cbrt(-q/2);
+                    const root1 = 2*u - b/(3*a);
+                    const root2 = -u - b/(3*a);
+                    return [root1, root2];
+                } else {
+                    // Three real roots
+                    const r = Math.sqrt(-p*p*p/27);
+                    const phi = Math.acos(-q/(2*r));
+                    
+                    const root1 = 2 * Math.cbrt(r) * Math.cos(phi/3) - b/(3*a);
+                    const root2 = 2 * Math.cbrt(r) * Math.cos((phi + 2*Math.PI)/3) - b/(3*a);
+                    const root3 = 2 * Math.cbrt(r) * Math.cos((phi + 4*Math.PI)/3) - b/(3*a);
+                    
+                    return [root1, root2, root3];
+                }
+            }
+            
+            // Function to create text sprites
+            function createTextSprite(text, color) {
+                const canvas = document.createElement('canvas');
+                const context = canvas.getContext('2d');
+                canvas.width = 256;
+                canvas.height = 64;
+                
+                context.fillStyle = 'rgba(0, 0, 0, 0)';
+                context.fillRect(0, 0, canvas.width, canvas.height);
+                
+                context.font = 'Bold 24px Arial';
+                context.fillStyle = `rgb(${(color >> 16) & 0xff}, ${(color >> 8) & 0xff}, ${color & 0xff})`;
+                context.textAlign = 'center';
+                context.textBaseline = 'middle';
+                context.fillText(text, canvas.width / 2, canvas.height / 2);
+                
+                const texture = new THREE.CanvasTexture(canvas);
+                const material = new THREE.SpriteMaterial({ 
+                    map: texture,
+                    transparent: true
+                });
+                
+                const sprite = new THREE.Sprite(material);
+                sprite.scale.set(2, 0.5, 1);
+                
+                return sprite;
+            }
+            
+            // Function to calculate circle through three points
+            function calculateCircleThroughPoints(p1, p2, p3) {
+                // Calculate the circumcircle of triangle p1, p2, p3
+                const x1 = p1.x, y1 = p1.y;
+                const x2 = p2.x, y2 = p2.y;
+                const x3 = p3.x, y3 = p3.y;
+                
+                const A = x1 * (y2 - y3) - y1 * (x2 - x3) + (x2 * y3 - x3 * y2);
+                const B = (x1*x1 + y1*y1) * (y3 - y2) + 
+                         (x2*x2 + y2*y2) * (y1 - y3) + 
+                         (x3*x3 + y3*y3) * (y2 - y1);
+                const C = (x1*x1 + y1*y1) * (x2 - x3) + 
+                         (x2*x2 + y2*y2) * (x3 - x1) + 
+                         (x3*x3 + y3*y3) * (x1 - x2);
+                
+                const centerX = -B / (2 * A);
+                const centerY = -C / (2 * A);
+                const radius = Math.sqrt((x1 - centerX)**2 + (y1 - centerY)**2);
+                
+                return {
+                    center: new THREE.Vector3(centerX, centerY, 0),
+                    radius: radius
+                };
+            }
+            
+            // Function to create a circle geometry
+            function createCircleGeometry(center, radius, segments = 64) {
+                const geometry = new THREE.BufferGeometry();
+                const vertices = [];
+                
+                for (let i = 0; i <= segments; i++) {
+                    const theta = (i / segments) * Math.PI * 2;
+                    const x = center.x + radius * Math.cos(theta);
+                    const y = center.y + radius * Math.sin(theta);
+                    const z = center.z;
+                    vertices.push(x, y, z);
+                }
+                
+                geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+                return geometry;
+            }
+            
+            // Function to update conormal points and normals
+            function updateConormalPoints(h, k) {
+                // Clear previous conormal points and normals
+                conormalPoints.forEach(point => scene.remove(point));
+                normalLines.forEach(line => scene.remove(line));
+                particleTrails.forEach(trail => scene.remove(trail));
+                
+                if (triangle) {
+                    scene.remove(triangle);
+                    triangle = null;
+                }
+                
+                if (circle) {
+                    scene.remove(circle);
+                    circle = null;
+                }
+                
+                conormalPoints = [];
+                normalLines = [];
+                particleTrails = [];
+                
+                // Solve the cubic equation: t³ + (2 - h)t - k = 0
+                const roots = solveCubic(1, 0, 2 - h, -k);
+                
+                // Colors for the conormal points
+                const colors = [0xFF2D55, 0x0FFF50, 0xFFAA00];
+                const labels = ['A', 'B', 'C'];
+                
+                // Store conormal point positions for triangle and circle
+                const conormalPositions = [];
+                
+                roots.forEach((root, index) => {
+                    // Calculate conormal point
+                    const x = root * root;
+                    const y = 2 * root;
+                    conormalPositions.push(new THREE.Vector3(x, y, 0));
+                    
+                    // Create conormal point sphere
+                    const pointGeometry = new THREE.SphereGeometry(0.1, 16, 16);
+                    const pointMaterial = new THREE.MeshPhongMaterial({
+                        color: colors[index],
+                        emissive: colors[index],
+                        emissiveIntensity: 0.3,
+                        shininess: 100
+                    });
+                    
+                    const conormalPoint = new THREE.Mesh(pointGeometry, pointMaterial);
+                    conormalPoint.position.set(x, y, 0);
+                    scene.add(conormalPoint);
+                    conormalPoints.push(conormalPoint);
+                    
+                    // Create label for conormal point
+                    const label = createTextSprite(`${labels[index]}(${x.toFixed(1)},${y.toFixed(1)})`, colors[index]);
+                    label.position.set(x + 0.3, y + 0.3, 0);
+                    scene.add(label);
+                    conormalPoints.push(label);
+                    
+                    // Create normal line from P to conormal point
+                    const lineGeometry = new THREE.BufferGeometry();
+                    const lineMaterial = new THREE.LineBasicMaterial({
+                        color: colors[index],
+                        linewidth: 3,
+                        transparent: true,
+                        opacity: 0.9
+                    });
+                    
+                    const normalLine = new THREE.Line(lineGeometry, lineMaterial);
+                    scene.add(normalLine);
+                    normalLines.push(normalLine);
+                    
+                    // Create particle trail along the normal
+                    const particleCount = 20;
+                    const particleGeometry = new THREE.BufferGeometry();
+                    const particlePositions = new Float32Array(particleCount * 3);
+                    
+                    for (let i = 0; i < particleCount; i++) {
+                        const ratio = i / (particleCount - 1);
+                        particlePositions[i * 3] = h + (x - h) * ratio;
+                        particlePositions[i * 3 + 1] = k + (y - k) * ratio;
+                        particlePositions[i * 3 + 2] = 0;
+                    }
+                    
+                    particleGeometry.setAttribute('position', new THREE.BufferAttribute(particlePositions, 3));
+                    
+                    const particleMaterial = new THREE.PointsMaterial({
+                        color: colors[index],
+                        size: 0.05,
+                        transparent: true,
+                        opacity: 0.7,
+                        blending: THREE.AdditiveBlending
+                    });
+                    
+                    const particleTrail = new THREE.Points(particleGeometry, particleMaterial);
+                    scene.add(particleTrail);
+                    particleTrails.push(particleTrail);
+                });
+                
+                // Create triangle if we have three points and checkbox is checked
+                if (conormalPositions.length === 3 && document.getElementById('show-triangle').checked) {
+                    const triangleGeometry = new THREE.BufferGeometry();
+                    triangleGeometry.setFromPoints([
+                        conormalPositions[0],
+                        conormalPositions[1],
+                        conormalPositions[2],
+                        conormalPositions[0] // Close the triangle
+                    ]);
+                    
+                    const triangleMaterial = new THREE.LineBasicMaterial({
+                        color: 0xffffff,
+                        linewidth: 2,
+                        transparent: true,
+                        opacity: 0.7
+                    });
+                    
+                    triangle = new THREE.Line(triangleGeometry, triangleMaterial);
+                    scene.add(triangle);
+                }
+                
+                // Create circle if we have three points and checkbox is checked
+                if (conormalPositions.length === 3 && document.getElementById('show-circle').checked) {
+                    const circleData = calculateCircleThroughPoints(
+                        conormalPositions[0],
+                        conormalPositions[1],
+                        conormalPositions[2]
+                    );
+                    
+                    const circleGeometry = createCircleGeometry(circleData.center, circleData.radius);
+                    const circleMaterial = new THREE.LineBasicMaterial({
+                        color: 0xff00ff,
+                        linewidth: 2,
+                        transparent: true,
+                        opacity: 0.8
+                    });
+                    
+                    circle = new THREE.Line(circleGeometry, circleMaterial);
+                    scene.add(circle);
+                    
+                    // Add circle center point
+                    const centerGeometry = new THREE.SphereGeometry(0.08, 16, 16);
+                    const centerMaterial = new THREE.MeshBasicMaterial({
+                        color: 0xff00ff,
+                        emissive: 0xff00ff,
+                        emissiveIntensity: 0.3
+                    });
+                    
+                    const centerPoint = new THREE.Mesh(centerGeometry, centerMaterial);
+                    centerPoint.position.copy(circleData.center);
+                    scene.add(centerPoint);
+                    conormalPoints.push(centerPoint);
+                    
+                    // Add circle label
+                    const circleLabel = createTextSprite("Circle through A,B,C & Vertex", 0xff00ff);
+                    circleLabel.position.set(circleData.center.x, circleData.center.y + circleData.radius + 0.5, 0);
+                    scene.add(circleLabel);
+                    conormalPoints.push(circleLabel);
+                }
+            }
+            
+            // Function to update normal animations
+            function updateNormalAnimations(deltaTime) {
+                if (!document.getElementById('animate-normals').checked) {
+                    // If animation is disabled, show full normals
+                    normalLines.forEach((line, index) => {
+                        const roots = solveCubic(1, 0, 2 - parseFloat(hSlider.value), -parseFloat(kSlider.value));
+                        if (index < roots.length) {
+                            const x = roots[index] * roots[index];
+                            const y = 2 * roots[index];
+                            const h = parseFloat(hSlider.value);
+                            const k = parseFloat(kSlider.value);
+                            
+                            const lineGeometry = new THREE.BufferGeometry().setFromPoints([
+                                new THREE.Vector3(h, k, 0),
+                                new THREE.Vector3(x, y, 0)
+                            ]);
+                            line.geometry = lineGeometry;
+                        }
+                    });
+                    return;
+                }
+                
+                // Update animation progress
+                normalAnimationState.progress += normalAnimationState.direction * normalAnimationState.speed * deltaTime;
+                
+                if (normalAnimationState.progress >= 1) {
+                    normalAnimationState.progress = 1;
+                    normalAnimationState.direction = -1;
+                } else if (normalAnimationState.progress <= 0) {
+                    normalAnimationState.progress = 0;
+                    normalAnimationState.direction = 1;
+                }
+                
+                // Update normal lines based on animation progress
+                normalLines.forEach((line, index) => {
+                    const roots = solveCubic(1, 0, 2 - parseFloat(hSlider.value), -parseFloat(kSlider.value));
+                    if (index < roots.length) {
+                        const x = roots[index] * roots[index];
+                        const y = 2 * roots[index];
+                        const h = parseFloat(hSlider.value);
+                        const k = parseFloat(kSlider.value);
+                        
+                        // Animate from P to conormal point
+                        const animatedX = h + (x - h) * normalAnimationState.progress;
+                        const animatedY = k + (y - k) * normalAnimationState.progress;
+                        
+                        const lineGeometry = new THREE.BufferGeometry().setFromPoints([
+                            new THREE.Vector3(h, k, 0),
+                            new THREE.Vector3(animatedX, animatedY, 0)
+                        ]);
+                        line.geometry = lineGeometry;
+                    }
+                });
+            }
+            
+            // Initial update of conormal points
+            updateConormalPoints(3, 4);
+            
+            // UI Controls
+            const hSlider = document.getElementById('h-slider');
+            const kSlider = document.getElementById('k-slider');
+            const hValue = document.getElementById('h-value');
+            const kValue = document.getElementById('k-value');
+            const showTriangleCheckbox = document.getElementById('show-triangle');
+            const showCircleCheckbox = document.getElementById('show-circle');
+            const animateNormalsCheckbox = document.getElementById('animate-normals');
+            
+            hSlider.addEventListener('input', function() {
+                const h = parseFloat(this.value);
+                hValue.textContent = h.toFixed(1);
+                pointP.position.x = h;
+                pointLight.position.x = h;
+                pointPLabel.position.x = h + 0.5;
+                updateConormalPoints(h, parseFloat(kSlider.value));
+            });
+            
+            kSlider.addEventListener('input', function() {
+                const k = parseFloat(this.value);
+                kValue.textContent = k.toFixed(1);
+                pointP.position.y = k;
+                pointLight.position.y = k;
+                pointPLabel.position.y = k + 0.5;
+                updateConormalPoints(parseFloat(hSlider.value), k);
+            });
+            
+            showTriangleCheckbox.addEventListener('change', function() {
+                updateConormalPoints(parseFloat(hSlider.value), parseFloat(kSlider.value));
+            });
+            
+            showCircleCheckbox.addEventListener('change', function() {
+                updateConormalPoints(parseFloat(hSlider.value), parseFloat(kSlider.value));
+            });
+            
+            // Animation loop
+            const clock = new THREE.Clock();
+            
+            function animate() {
+                requestAnimationFrame(animate);
+                
+                const elapsedTime = clock.getElapsedTime();
+                const deltaTime = clock.getDelta();
+                
+                // Pulsing vertex
+                vertex.scale.setScalar(1 + 0.1 * Math.sin(elapsedTime * 3));
+                
+                // Pulsing point P
+                pointP.scale.setScalar(1 + 0.1 * Math.sin(elapsedTime * 3));
+                
+                // Rotate stars slowly
+                stars.rotation.y = elapsedTime * 0.01;
+                
+                // Update normal animations
+                updateNormalAnimations(deltaTime);
+                
+                controls.update();
+                renderer.render(scene, camera);
+            }
+            
+            // Handle window resize
+            window.addEventListener('resize', function() {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            });
+            
+            // Hide loading message and start animation
+            setTimeout(() => {
+                loading.style.display = 'none';
+                animate();
+            }, 500);
+        });
+    </script>
+</body>
+</html>
