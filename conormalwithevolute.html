@@ -1,0 +1,907 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Parabola y² = 4ax | 3D Visualization</title>
+    
+    <script type="importmap">
+    {
+      "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.module.js",
+        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.128.0/examples/jsm/"
+      }
+    }
+    </script>
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            overflow: hidden;
+            background: #0a0a1a;
+            color: white;
+        }
+        
+        #canvas-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+        }
+        
+        #ui-overlay {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            z-index: 10;
+            background: rgba(0, 20, 40, 0.7);
+            backdrop-filter: blur(10px);
+            border-radius: 12px;
+            padding: 20px;
+            max-width: 450px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(100, 200, 255, 0.2);
+            max-height: calc(100vh - 40px);
+            overflow-y: auto;
+        }
+        
+        h1 {
+            font-size: 1.5rem;
+            margin-bottom: 15px;
+            color: #00ffff;
+            text-shadow: 0 0 10px rgba(0, 255, 255, 0.5);
+        }
+        
+        .section {
+            margin-bottom: 15px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid rgba(100, 200, 255, 0.2);
+        }
+        
+        .section:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+            padding-bottom: 0;
+        }
+        
+        h2 {
+            font-size: 1.1rem;
+            margin-bottom: 10px;
+            color: #ffd700;
+        }
+        
+        p {
+            font-size: 0.9rem;
+            line-height: 1.4;
+            margin-bottom: 8px;
+            color: #e0e0ff;
+        }
+        
+        .equation {
+            font-family: 'Cambria Math', serif;
+            font-size: 1.1rem;
+            color: #ffaa00;
+            margin: 10px 0;
+            text-align: center;
+        }
+        
+        .controls {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        
+        .control-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        label {
+            font-size: 0.9rem;
+            min-width: 120px;
+            color: #a0e0ff;
+        }
+        
+        input[type="range"] {
+            flex: 1;
+            height: 6px;
+            background: rgba(0, 150, 255, 0.3);
+            border-radius: 3px;
+            outline: none;
+            -webkit-appearance: none;
+        }
+        
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: #00ffff;
+            cursor: pointer;
+            box-shadow: 0 0 10px rgba(0, 255, 255, 0.8);
+        }
+        
+        .value-display {
+            min-width: 60px;
+            text-align: right;
+            font-size: 0.9rem;
+            color: #ffd700;
+        }
+        
+        .toggle-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin-top: 10px;
+        }
+        
+        .toggle-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .toggle-item input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            accent-color: #00ffff;
+        }
+        
+        .toggle-item label {
+            min-width: auto;
+            flex: 1;
+        }
+        
+        #loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 100;
+            text-align: center;
+            color: #00ffff;
+            font-size: 1.2rem;
+            text-shadow: 0 0 10px rgba(0, 255, 255, 0.7);
+        }
+        
+        #instructions {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(0, 20, 40, 0.7);
+            backdrop-filter: blur(10px);
+            border-radius: 8px;
+            padding: 15px;
+            max-width: 300px;
+            font-size: 0.85rem;
+            line-height: 1.4;
+            color: #a0e0ff;
+            z-index: 10;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(100, 200, 255, 0.2);
+        }
+        
+        @media (max-width: 768px) {
+            #ui-overlay {
+                max-width: 350px;
+                padding: 15px;
+            }
+            
+            h1 {
+                font-size: 1.3rem;
+            }
+            
+            #instructions {
+                max-width: 250px;
+                font-size: 0.8rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="canvas-container"></div>
+    
+    <div id="ui-overlay">
+        <h1>Parabola: y² = 4ax</h1>
+        
+        <div class="section">
+            <h2>Parabola Properties</h2>
+            <p>The parabola is defined by the equation:</p>
+            <div class="equation" id="parabola-equation">y² = 4(1.0)x = 4.0x</div>
+            <p id="focus-prop">• Focus: F(1.0, 0)</p>
+            <p id="directrix-prop">• Directrix: x = -1.0</p>
+            <p>• Vertex: (0, 0)</p>
+        </div>
+        
+        <div class="section">
+            <h2>Normals & Conormal Points</h2>
+            <p>From point P(h,k), normals can be drawn to the parabola.</p>
+            <p>The cubic equation for the slopes (t):</p>
+            <div class="equation" id="cubic-equation">t³ + (2.0 - 3.0)t - 4.0 = 0</div>
+            <p>Roots t₁, t₂, t₃ give the conormal points A, B, C.</p>
+        </div>
+
+        <div class="section">
+            <h2>Controls</h2>
+            <div class="controls">
+                <div class="control-group">
+                    <label for="a-slider">Parameter 'a':</label>
+                    <input type="range" id="a-slider" min="0.5" max="3" step="0.1" value="1">
+                    <span class="value-display" id="a-value">1.0</span>
+                </div>
+                <div class="control-group">
+                    <label for="h-slider">P(h,k) - h:</label>
+                    <input type="range" id="h-slider" min="-5" max="10" step="0.1" value="3">
+                    <span class="value-display" id="h-value">3.0</span>
+                </div>
+                <div class="control-group">
+                    <label for="k-slider">P(h,k) - k:</label>
+                    <input type="range" id="k-slider" min="-5" max="5" step="0.1" value="4">
+                    <span class="value-display" id="k-value">4.0</span>
+                </div>
+            </div>
+            
+            <div class="toggle-group">
+                <div class="toggle-item">
+                    <input type="checkbox" id="show-triangle" checked>
+                    <label for="show-triangle">Show Triangle ABC</label>
+                </div>
+                <div class="toggle-item">
+                    <input type="checkbox" id="show-circle">
+                    <label for="show-circle">Show Circle (A,B,C,V)</label>
+                </div>
+                <div class="toggle-item">
+                    <input type="checkbox" id="show-centroid" checked>
+                    <label for="show-centroid">Show Centroid (on X-Axis)</label>
+                </div>
+                <div class="toggle-item">
+                    <input type="checkbox" id="show-evolute" checked>
+                    <label for="show-evolute">Show Evolute (3-Normal Region)</label>
+                </div>
+                <div class="toggle-item">
+                    <input type="checkbox" id="animate-normals" checked>
+                    <label for="animate-normals">Animate Normals</label>
+                </div>
+            </div>
+        </div>
+        
+        <div class="section">
+            <h2>Geometric Properties</h2>
+            <p>• The circle through A, B, C also passes through the vertex (0,0).</p>
+            <p>• The centroid of triangle ABC always lies on the X-axis.</p>
+            <p>• P(h,k) must be outside the red **Evolute** curve for 3 real normals to exist.</p>
+        </div>
+    </div>
+    
+    <div id="instructions">
+        <p>• Drag to rotate the view</p>
+        <p>• Scroll to zoom in/out</p>
+        <p>• Use sliders to adjust 'a', 'h', 'k'</p>
+        <p>• Toggle elements on/off</p>
+    </div>
+    
+    <div id="loading">Loading Enhanced 3D Visualization...</div>
+
+    <script type="module">
+        // Import necessary Three.js components
+        import * as THREE from 'three';
+        // *** FIX: Removed the extra 'S' from this line ***
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+        import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+        import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+        import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+
+        class ParabolaVisualizer {
+            constructor() {
+                // UI Elements
+                this.ui = {
+                    loading: document.getElementById('loading'),
+                    container: document.getElementById('canvas-container'),
+                    aSlider: document.getElementById('a-slider'),
+                    hSlider: document.getElementById('h-slider'),
+                    kSlider: document.getElementById('k-slider'),
+                    aValue: document.getElementById('a-value'),
+                    hValue: document.getElementById('h-value'),
+                    kValue: document.getElementById('k-value'),
+                    showTriangle: document.getElementById('show-triangle'),
+                    showCircle: document.getElementById('show-circle'),
+                    showCentroid: document.getElementById('show-centroid'),
+                    showEvolute: document.getElementById('show-evolute'),
+                    animateNormals: document.getElementById('animate-normals'),
+                    parabolaEq: document.getElementById('parabola-equation'),
+                    cubicEq: document.getElementById('cubic-equation'),
+                    focusProp: document.getElementById('focus-prop'),
+                    directrixProp: document.getElementById('directrix-prop'),
+                };
+
+                // Scene parameters
+                this.params = {
+                    a: parseFloat(this.ui.aSlider.value),
+                    h: parseFloat(this.ui.hSlider.value),
+                    k: parseFloat(this.ui.kSlider.value),
+                };
+
+                // Animation state
+                this.normalAnimationState = {
+                    progress: 0,
+                    direction: 1,
+                    speed: 0.8
+                };
+                
+                // Three.js Core
+                this.scene = new THREE.Scene();
+                this.clock = new THREE.Clock();
+                this.camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+                this.camera.position.set(8, 6, 10);
+                this.camera.lookAt(1, 0, 0);
+
+                this.renderer = new THREE.WebGLRenderer({ antialias: true });
+                this.renderer.setSize(window.innerWidth, window.innerHeight);
+                this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+                this.renderer.shadowMap.enabled = true;
+                this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+                this.ui.container.appendChild(this.renderer.domElement);
+
+                // Post-Processing (Bloom)
+                this.composer = new EffectComposer(this.renderer);
+                this.composer.addPass(new RenderPass(this.scene, this.camera));
+                this.bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 1.0, 0.1, 0.1);
+                this.composer.addPass(this.bloomPass);
+
+                // Controls
+                this.controls = new OrbitControls(this.camera, this.renderer.domElement);
+                this.controls.target.set(1, 0, 0);
+                this.controls.enableDamping = true;
+                this.controls.dampingFactor = 0.05;
+
+                // Object Groups (for easy clearing)
+                this.baseGeometryGroup = new THREE.Group();
+                this.conormalGroup = new THREE.Group();
+                this.scene.add(this.baseGeometryGroup);
+                this.scene.add(this.conormalGroup);
+
+                // Store object references
+                this.pointP = null;
+                this.pointPLabel = null;
+                this.pointLight = null;
+                this.vertex = null;
+
+                this._init();
+            }
+
+            _init() {
+                this._createEnvironment();
+                this._createLights();
+                this._createBaseObjects();
+                this._addEventListeners();
+                
+                this.updateSceneFromUI(); // Initial calculation
+                
+                this.ui.loading.style.display = 'none';
+                this._animate(); // Start animation loop
+            }
+
+            _createEnvironment() {
+                // Gradient Background
+                const canvas = document.createElement('canvas');
+                canvas.width = 32; canvas.height = 32;
+                const context = canvas.getContext('2d');
+                const gradient = context.createLinearGradient(0, 0, 0, 32);
+                gradient.addColorStop(0, '#0A0A1A');
+                gradient.addColorStop(1, '#000000');
+                context.fillStyle = gradient;
+                context.fillRect(0, 0, 32, 32);
+                this.scene.background = new THREE.CanvasTexture(canvas);
+
+                // Stars
+                const starsGeometry = new THREE.BufferGeometry();
+                const starsCount = 1000;
+                const starsPositions = new Float32Array(starsCount * 3);
+                for (let i = 0; i < starsCount * 3; i++) {
+                    starsPositions[i] = (Math.random() - 0.5) * 100;
+                }
+                starsGeometry.setAttribute('position', new THREE.BufferAttribute(starsPositions, 3));
+                const starsMaterial = new THREE.PointsMaterial({
+                    color: 0xffffff,
+                    size: 0.1,
+                    transparent: true,
+                    opacity: 0.8,
+                    blending: THREE.AdditiveBlending
+                });
+                this.stars = new THREE.Points(starsGeometry, starsMaterial);
+                this.scene.add(this.stars);
+
+                // Grid
+                const gridHelper = new THREE.GridHelper(30, 30, 0x00ffff, 0x00ffff);
+                gridHelper.material.opacity = 0.3;
+                gridHelper.material.transparent = true;
+                this.scene.add(gridHelper);
+
+                // Axes
+                const axesHelper = new THREE.AxesHelper(5);
+                axesHelper.material.opacity = 0.7;
+                axesHelper.material.transparent = true;
+                this.scene.add(axesHelper);
+            }
+
+            _createLights() {
+                this.scene.add(new THREE.AmbientLight(0x404060, 0.6));
+                
+                const keyLight = new THREE.DirectionalLight(0xfffdd0, 1);
+                keyLight.position.set(10, 10, 5);
+                keyLight.castShadow = true;
+                keyLight.shadow.mapSize.width = 2048;
+                keyLight.shadow.mapSize.height = 2048;
+                this.scene.add(keyLight);
+                
+                const rimLight = new THREE.DirectionalLight(0x00ffff, 0.7);
+                rimLight.position.set(-5, 5, -10);
+                this.scene.add(rimLight);
+            }
+
+            _createBaseObjects() {
+                // Vertex (0,0) - pulsing sphere
+                const vertexGeometry = new THREE.SphereGeometry(0.1, 16, 16);
+                const vertexMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff });
+                this.vertex = new THREE.Mesh(vertexGeometry, vertexMaterial);
+                this.scene.add(this.vertex); // Add to main scene, not a group
+
+                // Point P(h,k) - Pole of Normals
+                let pointPGeometry = new THREE.SphereGeometry(0.15, 16, 16);
+                let pointPMaterial = new THREE.MeshPhongMaterial({
+                    color: 0xffffff,
+                    emissive: 0xffffff,
+                    emissiveIntensity: 0.5,
+                    shininess: 100
+                });
+                this.pointP = new THREE.Mesh(pointPGeometry, pointPMaterial);
+                this.scene.add(this.pointP);
+
+                // Point P label
+                this.pointPLabel = this._createTextSprite("P(h,k)", 0xffffff);
+                this.scene.add(this.pointPLabel);
+                
+                // Point light at P
+                this.pointLight = new THREE.PointLight(0xffffff, 2, 10, 2);
+                this.scene.add(this.pointLight);
+            }
+
+            _addEventListeners() {
+                // Bind 'this' to methods
+                this.updateSceneFromUI = this.updateSceneFromUI.bind(this);
+                this._onWindowResize = this._onWindowResize.bind(this);
+                this._animate = this._animate.bind(this);
+
+                // UI Listeners
+                this.ui.aSlider.addEventListener('input', this.updateSceneFromUI);
+                this.ui.hSlider.addEventListener('input', this.updateSceneFromUI);
+                this.ui.kSlider.addEventListener('input', this.updateSceneFromUI);
+                this.ui.showTriangle.addEventListener('change', this.updateSceneFromUI);
+                this.ui.showCircle.addEventListener('change', this.updateSceneFromUI);
+                this.ui.showCentroid.addEventListener('change', this.updateSceneFromUI);
+                this.ui.showEvolute.addEventListener('change', this.updateSceneFromUI);
+
+                // Window Resize
+                window.addEventListener('resize', this._onWindowResize);
+            }
+
+            _onWindowResize() {
+                this.camera.aspect = window.innerWidth / window.innerHeight;
+                this.camera.updateProjectionMatrix();
+                this.renderer.setSize(window.innerWidth, window.innerHeight);
+                this.composer.setSize(window.innerWidth, window.innerHeight);
+                this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            }
+
+            // --- Main Update Function ---
+            updateSceneFromUI() {
+                // 1. Read values
+                this.params.a = parseFloat(this.ui.aSlider.value);
+                this.params.h = parseFloat(this.ui.hSlider.value);
+                this.params.k = parseFloat(this.ui.kSlider.value);
+
+                // 2. Update UI text
+                this.ui.aValue.textContent = this.params.a.toFixed(1);
+                this.ui.hValue.textContent = this.params.h.toFixed(1);
+                this.ui.kValue.textContent = this.params.k.toFixed(1);
+
+                this.ui.parabolaEq.textContent = `y² = 4(${this.params.a.toFixed(1)})x = ${(4 * this.params.a).toFixed(1)}x`;
+                this.ui.focusProp.textContent = `• Focus: F(${this.params.a.toFixed(1)}, 0)`;
+                this.ui.directrixProp.textContent = `• Directrix: x = ${(-this.params.a).toFixed(1)}`;
+                
+                const pTerm = (2 * this.params.a - this.params.h).toFixed(1);
+                const qTerm = (-this.params.k).toFixed(1);
+                this.ui.cubicEq.textContent = `t³ + (${pTerm})t + (${qTerm}) = 0`;
+
+                // 3. Update 3D objects
+                this.pointP.position.set(this.params.h, this.params.k, 0);
+                this.pointLight.position.copy(this.pointP.position);
+                this.pointPLabel.position.set(this.params.h + 0.3, this.params.k + 0.3, 0);
+
+                // 4. Recalculate all geometries
+                this._updateBaseGeometry();
+                this._updateConormalPoints();
+            }
+
+            // --- Geometry Calculation Functions ---
+
+            _updateBaseGeometry() {
+                // Clear old geometry
+                this.baseGeometryGroup.clear();
+                
+                const a = this.params.a;
+                const steps = 200;
+
+                // 1. Parabola (y² = 4ax  =>  x = at², y = 2at)
+                const parabolaPoints = [];
+                const tMin = -3;
+                const tMax = 3;
+                const range = (tMax - tMin);
+                const tStep = range / steps;
+
+                // Adjust tMin/tMax to show a reasonable portion of the curve
+                const xMax = 12.0; // Max x-value to draw
+                const tLimit = Math.sqrt(xMax / a);
+
+                for (let t = -tLimit; t <= tLimit; t += tLimit / steps) {
+                    const x = a * t * t;
+                    const y = 2 * a * t;
+                    parabolaPoints.push(new THREE.Vector3(x, y, 0));
+                }
+                
+                const parabolaCurve = new THREE.CatmullRomCurve3(parabolaPoints);
+                const parabolaGeometry = new THREE.TubeGeometry(parabolaCurve, steps, 0.05, 8, false);
+                const parabolaMaterial = new THREE.MeshPhongMaterial({
+                    color: 0x00ffff,
+                    emissive: 0x004444,
+                    shininess: 100,
+                });
+                const parabola = new THREE.Mesh(parabolaGeometry, parabolaMaterial);
+                this.baseGeometryGroup.add(parabola);
+
+                // 2. Focus F(a, 0)
+                const focusGeometry = new THREE.SphereGeometry(0.15, 16, 16);
+                const focusMaterial = new THREE.MeshPhongMaterial({
+                    color: 0xFFD700,
+                    emissive: 0x886600,
+                    shininess: 100
+                });
+                const focus = new THREE.Mesh(focusGeometry, focusMaterial);
+                focus.position.set(a, 0, 0);
+                this.baseGeometryGroup.add(focus);
+                
+                const focusLabel = this._createTextSprite(`F(${a.toFixed(1)},0)`, 0xFFD700);
+                focusLabel.position.set(a + 0.3, 0.3, 0);
+                this.baseGeometryGroup.add(focusLabel);
+
+                // 3. Directrix x = -a
+                const directrixGeometry = new THREE.PlaneGeometry(0.05, 10, 1, 1);
+                const directrixMaterial = new THREE.MeshBasicMaterial({
+                    color: 0xFF2D55,
+                    side: THREE.DoubleSide
+                });
+                const directrix = new THREE.Mesh(directrixGeometry, directrixMaterial);
+                directrix.position.set(-a, 0, 0);
+                directrix.rotation.y = Math.PI / 2;
+                this.baseGeometryGroup.add(directrix);
+                
+                const directrixLabel = this._createTextSprite(`x = ${-a.toFixed(1)}`, 0xFF2D55);
+                directrixLabel.position.set(-a, 3, 0);
+                this.baseGeometryGroup.add(directrixLabel);
+
+                // 4. Evolute (27ay² = 4(x-2a)³)
+                if (this.ui.showEvolute.checked) {
+                    const evolutePoints = [];
+                    const xStart = 2 * a;
+                    const xEnd = xStart + 10; // Draw for 10 units
+                    const evoluteSteps = 100;
+
+                    for (let i = 0; i <= evoluteSteps; i++) {
+                        const x = xStart + (xEnd - xStart) * (i / evoluteSteps);
+                        const ySq = (4 * Math.pow(x - 2 * a, 3)) / (27 * a);
+                        const y = Math.sqrt(ySq);
+                        evolutePoints.push(new THREE.Vector3(x, y, 0));
+                    }
+                    // Add the other branch
+                    for (let i = evoluteSteps; i >= 0; i--) {
+                        const x = xStart + (xEnd - xStart) * (i / evoluteSteps);
+                        const ySq = (4 * Math.pow(x - 2 * a, 3)) / (27 * a);
+                        const y = -Math.sqrt(ySq);
+                        evolutePoints.push(new THREE.Vector3(x, y, 0));
+                    }
+                    
+                    const evoluteGeometry = new THREE.BufferGeometry().setFromPoints(evolutePoints);
+                    const evoluteMaterial = new THREE.LineBasicMaterial({
+                        color: 0xff0000,
+                        opacity: 0.7,
+                        transparent: true
+                    });
+                    const evoluteLine = new THREE.Line(evoluteGeometry, evoluteMaterial);
+                    this.baseGeometryGroup.add(evoluteLine);
+                }
+            }
+
+            _updateConormalPoints() {
+                // Clear old conormal geometry
+                this.conormalGroup.clear();
+                
+                const a = this.params.a;
+                const h = this.params.h;
+                const k = this.params.k;
+
+                // Solve the cubic equation: t³ + (2a - h)t - k = 0
+                const roots = this._solveCubic(1, 0, 2 * a - h, -k);
+                
+                const colors = [0xFF2D55, 0x0FFF50, 0xFFAA00];
+                const labels = ['A', 'B', 'C'];
+                const conormalPositions = [];
+                
+                // Store lines for animation
+                this.animatedNormalLines = [];
+
+                roots.forEach((root, index) => {
+                    // Calculate conormal point (at², 2at)
+                    const x = a * root * root;
+                    const y = 2 * a * root;
+                    const pos = new THREE.Vector3(x, y, 0);
+                    conormalPositions.push(pos);
+                    
+                    // Create conormal point sphere
+                    const pointGeometry = new THREE.SphereGeometry(0.1, 16, 16);
+                    const pointMaterial = new THREE.MeshPhongMaterial({
+                        color: colors[index],
+                        emissive: colors[index],
+                        emissiveIntensity: 0.3,
+                    });
+                    const conormalPoint = new THREE.Mesh(pointGeometry, pointMaterial);
+                    conormalPoint.position.copy(pos);
+                    this.conormalGroup.add(conormalPoint);
+                    
+                    // Create label
+                    const label = this._createTextSprite(`${labels[index]}(${x.toFixed(1)},${y.toFixed(1)})`, colors[index]);
+                    label.position.set(x + 0.3, y + 0.3, 0);
+                    this.conormalGroup.add(label);
+                    
+                    // Create normal line
+                    const lineMaterial = new THREE.LineBasicMaterial({
+                        color: colors[index],
+                        linewidth: 3,
+                        transparent: true,
+                        opacity: 0.9
+                    });
+                    const normalLine = new THREE.Line(new THREE.BufferGeometry(), lineMaterial);
+                    this.conormalGroup.add(normalLine);
+                    this.animatedNormalLines.push(normalLine); // Store for animation
+                });
+
+                // Only draw Triangle, Circle, Centroid if we have 3 real roots
+                if (conormalPositions.length === 3) {
+                    // 1. Triangle
+                    if (this.ui.showTriangle.checked) {
+                        const triangleGeometry = new THREE.BufferGeometry().setFromPoints([
+                            conormalPositions[0],
+                            conormalPositions[1],
+                            conormalPositions[2],
+                            conormalPositions[0] // Close the loop
+                        ]);
+                        const triangleMaterial = new THREE.LineBasicMaterial({
+                            color: 0xffffff,
+                            linewidth: 2,
+                            transparent: true,
+                            opacity: 0.7
+                        });
+                        const triangle = new THREE.Line(triangleGeometry, triangleMaterial);
+                        this.conormalGroup.add(triangle);
+                    }
+
+                    // 2. Circle
+                    if (this.ui.showCircle.checked) {
+                        // Pass Vertex (0,0,0) as p3
+                        const circleData = this._calculateCircleThroughPoints(
+                            conormalPositions[0],
+                            conormalPositions[1],
+                            conormalPositions[2] // This property works because A,B,C are conormal
+                        );
+                        
+                        const circleGeometry = this._createCircleGeometry(circleData.center, circleData.radius);
+                        const circleMaterial = new THREE.LineBasicMaterial({
+                            color: 0xff00ff,
+                            linewidth: 2,
+                            transparent: true,
+                            opacity: 0.8
+                        });
+                        const circle = new THREE.Line(circleGeometry, circleMaterial);
+                        this.conormalGroup.add(circle);
+                    }
+
+                    // 3. Centroid
+                    if (this.ui.showCentroid.checked) {
+                        const centroidPos = new THREE.Vector3()
+                            .add(conormalPositions[0])
+                            .add(conormalPositions[1])
+                            .add(conormalPositions[2])
+                            .divideScalar(3);
+                        
+                        const centroidGeometry = new THREE.SphereGeometry(0.12, 16, 16);
+                        const centroidMaterial = new THREE.MeshBasicMaterial({ color: 0x00ffaa });
+                        const centroidPoint = new THREE.Mesh(centroidGeometry, centroidMaterial);
+                        centroidPoint.position.copy(centroidPos);
+                        this.conormalGroup.add(centroidPoint);
+
+                        const centroidLabel = this._createTextSprite(`Centroid (y=${centroidPos.y.toFixed(2)})`, 0x00ffaa);
+                        centroidLabel.position.set(centroidPos.x, centroidPos.y + 0.3, 0);
+                        this.conormalGroup.add(centroidLabel);
+                    }
+                }
+                
+                // Force a single update of normal lines (for non-animated case)
+                this._updateNormalAnimations(0, true);
+            }
+
+            _updateNormalAnimations(deltaTime, forceFull = false) {
+                const a = this.params.a;
+                const h = this.params.h;
+                const k = this.params.k;
+
+                let progress = 1.0; // Default to full line
+                
+                if (this.ui.animateNormals.checked && !forceFull) {
+                    this.normalAnimationState.progress += this.normalAnimationState.direction * this.normalAnimationState.speed * deltaTime;
+                    if (this.normalAnimationState.progress >= 1) {
+                        this.normalAnimationState.progress = 1;
+                        this.normalAnimationState.direction = -1;
+                    } else if (this.normalAnimationState.progress <= 0) {
+                        this.normalAnimationState.progress = 0;
+                        this.normalAnimationState.direction = 1;
+                    }
+                    progress = this.normalAnimationState.progress;
+                } else if (forceFull) {
+                    // This is used by updateSceneFromUI to draw the lines
+                    // immediately, even if animation is off.
+                    progress = this.ui.animateNormals.checked ? this.normalAnimationState.progress : 1.0;
+                } else {
+                    progress = 1.0; // Animation is off, draw full line
+                }
+                
+                const roots = this._solveCubic(1, 0, 2 * a - h, -k);
+                const p1 = new THREE.Vector3(h, k, 0); // Start point P
+
+                this.animatedNormalLines.forEach((line, index) => {
+                    if (index < roots.length) {
+                        const x = a * roots[index] * roots[index];
+                        const y = 2 * a * roots[index];
+                        const p2 = new THREE.Vector3(x, y, 0); // End point (conormal)
+                        
+                        // Lerp between p1 and p2
+                        const animatedPoint = new THREE.Vector3().lerpVectors(p1, p2, progress);
+                        
+                        line.geometry.setFromPoints([p1, animatedPoint]);
+                        line.geometry.attributes.position.needsUpdate = true;
+                    }
+                });
+            }
+
+
+            // --- Animation Loop ---
+            _animate() {
+                requestAnimationFrame(this._animate);
+
+                const deltaTime = this.clock.getDelta();
+                const elapsedTime = this.clock.getElapsedTime();
+
+                this.controls.update();
+
+                if (this.animatedNormalLines && this.animatedNormalLines.length > 0) {
+                    this._updateNormalAnimations(deltaTime);
+                }
+
+                this.stars.rotation.y += 0.0001;
+                
+                const pulse = Math.sin(elapsedTime * 4) * 0.2 + 0.8;
+                this.vertex.scale.set(pulse, pulse, pulse);
+
+                // Use composer to render
+                this.composer.render();
+            }
+
+            // --- Utility Functions ---
+
+            _solveCubic(a, b, c, d) {
+                const p = (3*a*c - b*b) / (3*a*a);
+                const q = (2*b*b*b - 9*a*b*c + 27*a*a*d) / (27*a*a*a);
+                const discriminant = (q*q/4) + (p*p*p/27);
+                
+                if (discriminant > 0) {
+                    const u = Math.cbrt(-q/2 + Math.sqrt(discriminant));
+                    const v = Math.cbrt(-q/2 - Math.sqrt(discriminant));
+                    return [u + v - b/(3*a)];
+                } else if (discriminant === 0) {
+                    const u = Math.cbrt(-q/2);
+                    return [2*u - b/(3*a), -u - b/(3*a)];
+                } else {
+                    const r = Math.sqrt(-p*p*p/27);
+                    const phi = Math.acos(-q/(2*r));
+                    const root1 = 2 * Math.cbrt(r) * Math.cos(phi/3) - b/(3*a);
+                    const root2 = 2 * Math.cbrt(r) * Math.cos((phi + 2*Math.PI)/3) - b/(3*a);
+                    const root3 = 2 * Math.cbrt(r) * Math.cos((phi + 4*Math.PI)/3) - b/(3*a);
+                    return [root1, root2, root3];
+                }
+            }
+            
+            _createTextSprite(text, color) {
+                const canvas = document.createElement('canvas');
+                const context = canvas.getContext('2d');
+                canvas.width = 256; canvas.height = 64;
+                
+                context.font = 'Bold 24px Arial';
+                context.fillStyle = `rgb(${(color >> 16) & 0xff}, ${(color >> 8) & 0xff}, ${color & 0xff})`;
+                context.textAlign = 'center';
+                context.textBaseline = 'middle';
+                context.fillText(text, canvas.width / 2, canvas.height / 2);
+                
+                const texture = new THREE.CanvasTexture(canvas);
+                const material = new THREE.SpriteMaterial({ map: texture, transparent: true });
+                const sprite = new THREE.Sprite(material);
+                sprite.scale.set(2, 0.5, 1);
+                
+                return sprite;
+            }
+            
+            _calculateCircleThroughPoints(p1, p2, p3) {
+                const x1 = p1.x, y1 = p1.y;
+                const x2 = p2.x, y2 = p2.y;
+                const x3 = p3.x, y3 = p3.y;
+
+                // Handle collinear points, including the case where two points are the same
+                if (Math.abs((y2 - y1) * (x3 - x2) - (y3 - y2) * (x2 - x1)) < 1e-6) {
+                    // Points are collinear, return a fallback
+                    return { center: new THREE.Vector3(), radius: 1 };
+                }
+                
+                const A = x1 * (y2 - y3) - y1 * (x2 - x3) + (x2 * y3 - x3 * y2);
+                const B = (x1*x1 + y1*y1) * (y3 - y2) + (x2*x2 + y2*y2) * (y1 - y3) + (x3*x3 + y3*y3) * (y2 - y1);
+                const C = (x1*x1 + y1*y1) * (x2 - x3) + (x2*x2 + y2*y2) * (x3 - x1) + (x3*x3 + y3*y3) * (x1 - x2);
+                
+                const centerX = -B / (2 * A);
+                const centerY = -C / (2 * A);
+                const radius = Math.sqrt((x1 - centerX)**2 + (y1 - centerY)**2);
+                
+                return {
+                    center: new THREE.Vector3(centerX, centerY, 0),
+                    radius: radius
+                };
+            }
+            
+            _createCircleGeometry(center, radius, segments = 64) {
+                const geometry = new THREE.BufferGeometry();
+                const vertices = [];
+                for (let i = 0; i <= segments; i++) {
+                    const theta = (i / segments) * Math.PI * 2;
+                    vertices.push(
+                        center.x + radius * Math.cos(theta),
+                        center.y + radius * Math.sin(theta),
+                        center.z
+                    );
+                }
+                geometry.setAttribute('position', new THREE.Float33BufferAttribute(vertices, 3));
+                return geometry;
+            }
+        }
+
+        // --- Run the application ---
+        document.addEventListener('DOMContentLoaded', () => {
+            const app = new ParabolaVisualizer();
+        });
+    </script>
+</body>
+</html>
