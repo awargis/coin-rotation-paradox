@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ellipse Theorem: Mirror Dimension</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background: #000;
+            font-family: 'Arial', sans-serif;
+        }
+        canvas {
+            display: block;
+        }
+        #info {
+            position: absolute;
+            top: 10px;
+            width: 100%;
+            text-align: center;
+            color: white;
+            z-index: 100;
+            pointer-events: none;
+            text-shadow: 0 0 5px rgba(0,0,0,0.5);
+        }
+        #ui {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            color: white;
+            z-index: 100;
+            background: rgba(0,0,0,0.7);
+            padding: 10px;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+        #proof {
+            position: absolute;
+            top: 80px;
+            right: 20px;
+            color: white;
+            z-index: 100;
+            background: rgba(0,0,0,0.7);
+            padding: 15px;
+            border-radius: 5px;
+            font-size: 12px;
+            max-width: 300px;
+        }
+    </style>
+</head>
+<body>
+    <div id="info">
+        <h1>Ellipse Reflection Theorem</h1>
+        <p>The reflection of focus S₁ in any tangent lies on line PS₂</p>
+    </div>
+    <div id="proof">
+        <h3>Mathematical Proof</h3>
+        <p>For ellipse: x²/a² + y²/b² = 1</p>
+        <p>Foci: S₁(-c,0), S₂(c,0) where c² = a² - b²</p>
+        <p>Tangent at P(acosθ, bsinθ):<br>
+           (x cosθ)/a + (y sinθ)/b = 1</p>
+        <p>Reflection S₁' lies on PS₂ by ellipse property</p>
+    </div>
+    <div id="ui">
+        <div>Controls: Mouse to rotate, Scroll to zoom</div>
+        <div>Press P to pause animation</div>
+        <div id="collinearity">Collinearity: Perfect</div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+
+    <script>
+        // Main Three.js scene setup
+        let scene, camera, renderer;
+        let ellipse, foci = {}, tangent, reflection, linePS2, linePS1prime;
+        let controls;
+        let clock = new THREE.Clock();
+        let paused = false;
+
+        // Ellipse parameters
+        const a = 5; // semi-major axis
+        const b = 3; // semi-minor axis
+        const c = Math.sqrt(a*a - b*b); // focal distance
+
+        // Animation parameters
+        let angle = 0;
+        const speed = 0.3;
+
+        init();
+        animate();
+
+        function init() {
+            // Scene setup
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x000022);
+            scene.fog = new THREE.FogExp2(0x000022, 0.02);
+
+            // Camera
+            camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.set(8, 8, 8);
+            camera.lookAt(0, 0, 0);
+
+            // Renderer
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(window.devicePixelRatio);
+            renderer.toneMapping = THREE.ACESFilmicToneMapping;
+            renderer.toneMappingExposure = 1;
+            document.body.appendChild(renderer.domElement);
+
+            // Controls
+            controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+
+            // Lighting
+            setupLighting();
+
+            // Create environment
+            createEllipse();
+            createFoci();
+            createTangentAndReflection();
+            createLines();
+
+            // Event listeners
+            window.addEventListener('resize', onWindowResize);
+            window.addEventListener('keydown', onKeyDown);
+        }
+
+        function setupLighting() {
+            // White dwarf star (main light)
+            const starLight = new THREE.PointLight(0xffffff, 2, 100);
+            starLight.position.set(0, 10, 0);
+            scene.add(starLight);
+
+            // Ambient light
+            const ambientLight = new THREE.AmbientLight(0x222244, 0.3);
+            scene.add(ambientLight);
+
+            // Blue corona
+            const coronaLight = new THREE.PointLight(0x4488ff, 1, 50);
+            coronaLight.position.set(0, 10, 0);
+            scene.add(coronaLight);
+        }
+
+        function createEllipse() {
+            // Create ellipse geometry
+            const ellipsePoints = [];
+            const segments = 100;
+            
+            for (let i = 0; i <= segments; i++) {
+                const theta = (i / segments) * Math.PI * 2;
+                const x = a * Math.cos(theta);
+                const y = b * Math.sin(theta);
+                ellipsePoints.push(new THREE.Vector3(x, 0, y));
+            }
+            
+            const ellipseGeometry = new THREE.BufferGeometry().setFromPoints(ellipsePoints);
+            const ellipseMaterial = new THREE.LineBasicMaterial({
+                color: 0xaaaaaa,
+                linewidth: 2
+            });
+            
+            ellipse = new THREE.Line(ellipseGeometry, ellipseMaterial);
+            scene.add(ellipse);
+        }
+
+        function createFoci() {
+            // Focus S1 (crimson neutron core)
+            const s1Geometry = new THREE.SphereGeometry(0.3, 32, 32);
+            const s1Material = new THREE.MeshBasicMaterial({
+                color: 0xff2222,
+                emissive: 0xff0000,
+                emissiveIntensity: 0.8
+            });
+            foci.S1 = new THREE.Mesh(s1Geometry, s1Material);
+            foci.S1.position.set(-c, 0, 0);
+            scene.add(foci.S1);
+
+            // Add label
+            addLabel("S₁", new THREE.Vector3(-c-0.5, 0.5, 0), 0xff2222);
+
+            // Focus S2 (sapphire neutron core)
+            const s2Geometry = new THREE.SphereGeometry(0.3, 32, 32);
+            const s2Material = new THREE.MeshBasicMaterial({
+                color: 0x2222ff,
+                emissive: 0x0000ff,
+                emissiveIntensity: 0.8
+            });
+            foci.S2 = new THREE.Mesh(s2Geometry, s2Material);
+            foci.S2.position.set(c, 0, 0);
+            scene.add(foci.S2);
+
+            // Add label
+            addLabel("S₂", new THREE.Vector3(c+0.5, 0.5, 0), 0x2222ff);
+        }
+
+        function createTangentAndReflection() {
+            // Tangent line
+            tangent = new THREE.Line(
+                new THREE.BufferGeometry(),
+                new THREE.LineBasicMaterial({ 
+                    color: 0xffffff,
+                    linewidth: 3 
+                })
+            );
+            scene.add(tangent);
+
+            // Point P (contact point - ruby prism)
+            const pGeometry = new THREE.OctahedronGeometry(0.2, 0);
+            const pMaterial = new THREE.MeshBasicMaterial({
+                color: 0xff2222,
+                emissive: 0x880000,
+                emissiveIntensity: 0.8
+            });
+            const pointP = new THREE.Mesh(pGeometry, pMaterial);
+            scene.add(pointP);
+            addLabel("P", new THREE.Vector3(0, 0.5, 0), 0xff2222);
+
+            // Reflection of S1 (S1')
+            const reflectionGeometry = new THREE.SphereGeometry(0.25, 32, 32);
+            const reflectionMaterial = new THREE.MeshBasicMaterial({
+                color: 0xff4444,
+                transparent: true,
+                opacity: 0.8,
+                emissive: 0xff0000,
+                emissiveIntensity: 0.3
+            });
+            reflection = new THREE.Mesh(reflectionGeometry, reflectionMaterial);
+            scene.add(reflection);
+            addLabel("S₁'", new THREE.Vector3(0, 0.5, 0), 0xff4444);
+        }
+
+        function createLines() {
+            // Line from P to S2
+            linePS2 = new THREE.Line(
+                new THREE.BufferGeometry(),
+                new THREE.LineBasicMaterial({ 
+                    color: 0xffcc00,
+                    linewidth: 3
+                })
+            );
+            scene.add(linePS2);
+
+            // Line from P to S1' (for visual verification)
+            linePS1prime = new THREE.Line(
+                new THREE.BufferGeometry(),
+                new THREE.LineBasicMaterial({ 
+                    color: 0xff4444,
+                    linewidth: 2,
+                    transparent: true,
+                    opacity: 0.7
+                })
+            );
+            scene.add(linePS1prime);
+        }
+
+        function addLabel(text, position, color) {
+            // For a real implementation, we'd use Three.js text geometry
+            // This is a placeholder for the label concept
+        }
+
+        function calculateReflection(point, linePoint, lineNormal) {
+            // Calculate reflection of point across line defined by linePoint and lineNormal
+            const v = point.clone().sub(linePoint);
+            const dot = v.dot(lineNormal);
+            return point.clone().sub(lineNormal.clone().multiplyScalar(2 * dot));
+        }
+
+        function updateTangentAndReflection(theta) {
+            // Calculate point P on ellipse
+            const P = new THREE.Vector3(
+                a * Math.cos(theta),
+                0,
+                b * Math.sin(theta)
+            );
+
+            // Calculate tangent line equation at P
+            // For ellipse x²/a² + y²/b² = 1, tangent at (acosθ, bsinθ) is:
+            // (x cosθ)/a + (y sinθ)/b = 1
+            
+            // Tangent direction vector (derivative of ellipse param eq)
+            const tangentDir = new THREE.Vector3(
+                -a * Math.sin(theta),
+                0,
+                b * Math.cos(theta)
+            ).normalize();
+
+            // Normal vector to tangent (perpendicular to tangentDir)
+            const normal = new THREE.Vector3(
+                -b * Math.cos(theta),
+                0,
+                -a * Math.sin(theta)
+            ).normalize();
+
+            // Create tangent line visualization
+            const tangentLength = 12;
+            const tangentStart = P.clone().sub(tangentDir.clone().multiplyScalar(tangentLength));
+            const tangentEnd = P.clone().add(tangentDir.clone().multiplyScalar(tangentLength));
+            
+            const tangentPoints = [tangentStart, tangentEnd];
+            tangent.geometry.setFromPoints(tangentPoints);
+
+            // Calculate reflection of S1 across tangent line
+            const S1 = foci.S1.position;
+            const reflectionPoint = calculateReflection(S1, P, normal);
+            reflection.position.copy(reflectionPoint);
+
+            // Update point P position
+            scene.children.forEach(child => {
+                if (child.geometry && child.geometry.type === 'OctahedronGeometry') {
+                    child.position.copy(P);
+                }
+            });
+
+            // Update lines
+            const linePS2Points = [P, foci.S2.position];
+            linePS2.geometry.setFromPoints(linePS2Points);
+
+            const linePS1primePoints = [P, reflectionPoint];
+            linePS1prime.geometry.setFromPoints(linePS1primePoints);
+
+            // Verify collinearity - the core theorem
+            const PS2 = new THREE.Vector3().subVectors(foci.S2.position, P);
+            const PS1prime = new THREE.Vector3().subVectors(reflectionPoint, P);
+            
+            // Normalize vectors for angle comparison
+            const PS2norm = PS2.clone().normalize();
+            const PS1primeNorm = PS1prime.clone().normalize();
+            
+            // Check if vectors are parallel (dot product ≈ ±1)
+            const dotProduct = PS2norm.dot(PS1primeNorm);
+            const angleDiff = Math.acos(Math.abs(dotProduct)) * (180 / Math.PI);
+            
+            // Update UI with collinearity info
+            const collinearityElement = document.getElementById('collinearity');
+            if (angleDiff < 1) {
+                collinearityElement.textContent = `Collinearity: Perfect (${angleDiff.toFixed(2)}° deviation)`;
+                collinearityElement.style.color = '#00ff00';
+                linePS2.material.color.set(0x00ff00); // Green when perfect
+            } else if (angleDiff < 5) {
+                collinearityElement.textContent = `Collinearity: Good (${angleDiff.toFixed(2)}° deviation)`;
+                collinearityElement.style.color = '#ffff00';
+                linePS2.material.color.set(0xffff00); // Yellow when good
+            } else {
+                collinearityElement.textContent = `Collinearity: Poor (${angleDiff.toFixed(2)}° deviation)`;
+                collinearityElement.style.color = '#ff0000';
+                linePS2.material.color.set(0xff0000); // Red when poor
+            }
+
+            // Update labels positions
+            updateLabelPositions(P, reflectionPoint);
+        }
+
+        function updateLabelPositions(P, S1prime) {
+            // This would update the text label positions in a full implementation
+        }
+
+        function animate() {
+            if (!paused) {
+                requestAnimationFrame(animate);
+                
+                const delta = clock.getDelta();
+                angle += delta * speed;
+                
+                updateTangentAndReflection(angle);
+                
+                // Rotate S1 for visual effect
+                foci.S1.rotation.y += delta * 2;
+                
+                controls.update();
+            }
+            
+            renderer.render(scene, camera);
+        }
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        function onKeyDown(event) {
+            if (event.key === 'p' || event.key === 'P') {
+                paused = !paused;
+                if (!paused) {
+                    animate();
+                }
+            }
+        }
+    </script>
+</body>
+</html>
