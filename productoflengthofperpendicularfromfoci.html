@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ellipse Theorem - Hyper-Realistic Visualization</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            overflow: hidden;
+            font-family: 'Arial', sans-serif;
+            background: #000;
+            color: white;
+        }
+        
+        #canvas-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+        
+        #ui-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 10;
+        }
+        
+        .hud-panel {
+            position: absolute;
+            background: rgba(0, 10, 30, 0.7);
+            border: 1px solid rgba(100, 180, 255, 0.5);
+            border-radius: 8px;
+            padding: 15px;
+            backdrop-filter: blur(5px);
+            box-shadow: 0 0 20px rgba(0, 100, 255, 0.3);
+        }
+        
+        .hud-title {
+            font-size: 18px;
+            color: #4fc3f7;
+            margin-bottom: 10px;
+            text-shadow: 0 0 8px rgba(79, 195, 247, 0.7);
+        }
+        
+        .hud-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #ffeb3b;
+            text-shadow: 0 0 10px rgba(255, 235, 59, 0.8);
+        }
+        
+        #product-display {
+            top: 20px;
+            right: 20px;
+            width: 300px;
+        }
+        
+        #measurements {
+            bottom: 20px;
+            left: 20px;
+            width: 250px;
+        }
+        
+        #controls {
+            bottom: 20px;
+            right: 20px;
+            width: 200px;
+        }
+        
+        .control-btn {
+            background: rgba(30, 60, 120, 0.7);
+            border: 1px solid rgba(100, 180, 255, 0.5);
+            color: white;
+            padding: 8px 12px;
+            margin: 5px 0;
+            border-radius: 4px;
+            cursor: pointer;
+            pointer-events: auto;
+            transition: all 0.3s;
+        }
+        
+        .control-btn:hover {
+            background: rgba(50, 100, 200, 0.8);
+            box-shadow: 0 0 10px rgba(100, 180, 255, 0.7);
+        }
+        
+        #loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 24px;
+            color: #4fc3f7;
+            text-shadow: 0 0 10px rgba(79, 195, 247, 0.7);
+        }
+    </style>
+</head>
+<body>
+    <div id="canvas-container"></div>
+    
+    <div id="ui-overlay">
+        <div id="product-display" class="hud-panel">
+            <div class="hud-title">ELLIPSE THEOREM</div>
+            <div class="hud-value" id="product-value">d₁ × d₂ = b²</div>
+            <div id="equation" style="margin-top: 10px; font-size: 16px; color: #e0e0e0;">
+                d₁ × d₂ = <span id="b-squared">b²</span>
+            </div>
+        </div>
+        
+        <div id="measurements" class="hud-panel">
+            <div class="hud-title">MEASUREMENTS</div>
+            <div id="d1-value" class="hud-value">d₁ = 0.000</div>
+            <div id="d2-value" class="hud-value">d₂ = 0.000</div>
+        </div>
+        
+        <div id="controls" class="hud-panel">
+            <div class="hud-title">CONTROLS</div>
+            <button class="control-btn" id="reset-btn">Reset Animation</button>
+            <button class="control-btn" id="auto-rotate-btn">Auto-Rotate: ON</button>
+        </div>
+    </div>
+    
+    <div id="loading">Initializing Hyper-Realistic Visualization...</div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/libs/stats.min.js"></script>
+    
+    <script>
+        // Main Three.js application
+        class EllipseTheoremVisualization {
+            constructor() {
+                this.scene = null;
+                this.camera = null;
+                this.renderer = null;
+                this.controls = null;
+                
+                // Ellipse parameters
+                this.a = 5;  // semi-major axis
+                this.b = 3;  // semi-minor axis
+                this.c = Math.sqrt(this.a * this.a - this.b * this.b); // focal distance
+                
+                // Animation state
+                this.animationTime = 0;
+                this.autoRotate = true;
+                
+                // Visual elements
+                this.ellipse = null;
+                this.foci = [];
+                this.tangentLine = null;
+                this.perpendiculars = [];
+                this.footPoints = [];
+                
+                this.init();
+            }
+            
+            init() {
+                // Create scene
+                this.scene = new THREE.Scene();
+                this.scene.background = new THREE.Color(0x000010);
+                this.scene.fog = new THREE.FogExp2(0x000020, 0.02);
+                
+                // Create camera
+                this.camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+                this.camera.position.set(10, 8, 10);
+                
+                // Create renderer
+                this.renderer = new THREE.WebGLRenderer({ antialias: true });
+                this.renderer.setSize(window.innerWidth, window.innerHeight);
+                this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+                this.renderer.shadowMap.enabled = true;
+                this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+                document.getElementById('canvas-container').appendChild(this.renderer.domElement);
+                
+                // Add orbit controls
+                this.controls = new THREE.OrbitControls(this.camera, this.renderer.domElement);
+                this.controls.enableDamping = true;
+                this.controls.dampingFactor = 0.05;
+                this.controls.autoRotate = this.autoRotate;
+                this.controls.autoRotateSpeed = 0.5;
+                
+                // Add lighting
+                this.setupLighting();
+                
+                // Create the scene elements
+                this.createEllipse();
+                this.createFoci();
+                this.createCoordinateSystem();
+                
+                // Start animation
+                this.animate();
+                
+                // Handle window resize
+                window.addEventListener('resize', () => this.onWindowResize());
+                
+                // Setup UI controls
+                this.setupUIControls();
+                
+                // Hide loading screen
+                document.getElementById('loading').style.display = 'none';
+            }
+            
+            setupLighting() {
+                // Ambient light
+                const ambientLight = new THREE.AmbientLight(0x404060, 0.3);
+                this.scene.add(ambientLight);
+                
+                // Directional light (simulating star)
+                const directionalLight = new THREE.DirectionalLight(0x4fc3f7, 1);
+                directionalLight.position.set(10, 10, 5);
+                directionalLight.castShadow = true;
+                directionalLight.shadow.mapSize.width = 2048;
+                directionalLight.shadow.mapSize.height = 2048;
+                this.scene.add(directionalLight);
+                
+                // Point lights for foci
+                const focusLight1 = new THREE.PointLight(0xff3333, 2, 10);
+                focusLight1.position.set(-this.c, 0, 0);
+                this.scene.add(focusLight1);
+                
+                const focusLight2 = new THREE.PointLight(0x3333ff, 2, 10);
+                focusLight2.position.set(this.c, 0, 0);
+                this.scene.add(focusLight2);
+                
+                // Add some volumetric lighting effect (simulated with a large sphere)
+                const godRaysSphere = new THREE.Mesh(
+                    new THREE.SphereGeometry(20, 32, 32),
+                    new THREE.MeshBasicMaterial({
+                        color: 0x001133,
+                        transparent: true,
+                        opacity: 0.1,
+                        side: THREE.BackSide
+                    })
+                );
+                this.scene.add(godRaysSphere);
+            }
+            
+            createEllipse() {
+                // Create ellipse geometry
+                const ellipsePoints = [];
+                const segments = 100;
+                
+                for (let i = 0; i <= segments; i++) {
+                    const theta = (i / segments) * Math.PI * 2;
+                    const x = this.a * Math.cos(theta);
+                    const y = this.b * Math.sin(theta);
+                    ellipsePoints.push(new THREE.Vector3(x, y, 0));
+                }
+                
+                const ellipseGeometry = new THREE.BufferGeometry().setFromPoints(ellipsePoints);
+                const ellipseMaterial = new THREE.LineBasicMaterial({
+                    color: 0xffffff,
+                    linewidth: 2
+                });
+                
+                this.ellipse = new THREE.Line(ellipseGeometry, ellipseMaterial);
+                this.scene.add(this.ellipse);
+                
+                // Create a more prominent ellipse with obsidian-like material
+                const ellipseTubeGeometry = new THREE.TubeGeometry(
+                    new THREE.EllipseCurve(0, 0, this.a, this.b, 0, Math.PI * 2, false, 0),
+                    segments,
+                    0.05,
+                    8,
+                    false
+                );
+                
+                const obsidianMaterial = new THREE.MeshPhysicalMaterial({
+                    color: 0x101010,
+                    metalness: 0.9,
+                    roughness: 0.1,
+                    clearcoat: 1.0,
+                    clearcoatRoughness: 0.1,
+                    reflectivity: 1.0
+                });
+                
+                const ellipseTube = new THREE.Mesh(ellipseTubeGeometry, obsidianMaterial);
+                ellipseTube.rotation.x = Math.PI / 2;
+                this.scene.add(ellipseTube);
+            }
+            
+            createFoci() {
+                // Create focus S1 (crimson plasma orb)
+                const focusGeometry = new THREE.SphereGeometry(0.3, 32, 32);
+                
+                const focusMaterial1 = new THREE.MeshPhysicalMaterial({
+                    color: 0xff3333,
+                    emissive: 0xff0000,
+                    emissiveIntensity: 0.5,
+                    metalness: 0.8,
+                    roughness: 0.2
+                });
+                
+                const focus1 = new THREE.Mesh(focusGeometry, focusMaterial1);
+                focus1.position.set(-this.c, 0, 0);
+                this.scene.add(focus1);
+                this.foci.push(focus1);
+                
+                // Create focus S2 (azure plasma orb)
+                const focusMaterial2 = new THREE.MeshPhysicalMaterial({
+                    color: 0x3333ff,
+                    emissive: 0x0000ff,
+                    emissiveIntensity: 0.5,
+                    metalness: 0.8,
+                    roughness: 0.2
+                });
+                
+                const focus2 = new THREE.Mesh(focusGeometry, focusMaterial2);
+                focus2.position.set(this.c, 0, 0);
+                this.scene.add(focus2);
+                this.foci.push(focus2);
+                
+                // Add labels for foci
+                this.createLabel("S₁", -this.c - 0.5, -0.5, 0, 0xff3333);
+                this.createLabel("S₂", this.c + 0.5, -0.5, 0, 0x3333ff);
+            }
+            
+            createLabel(text, x, y, z, color) {
+                const canvas = document.createElement('canvas');
+                const context = canvas.getContext('2d');
+                canvas.width = 256;
+                canvas.height = 128;
+                
+                context.fillStyle = 'rgba(0, 0, 0, 0)';
+                context.fillRect(0, 0, canvas.width, canvas.height);
+                
+                context.font = 'Bold 80px Arial';
+                context.fillStyle = `rgb(${color.r * 255}, ${color.g * 255}, ${color.b * 255})`;
+                context.textAlign = 'center';
+                context.textBaseline = 'middle';
+                context.fillText(text, canvas.width / 2, canvas.height / 2);
+                
+                const texture = new THREE.CanvasTexture(canvas);
+                const material = new THREE.SpriteMaterial({ map: texture });
+                const sprite = new THREE.Sprite(material);
+                sprite.position.set(x, y, z);
+                sprite.scale.set(2, 1, 1);
+                this.scene.add(sprite);
+            }
+            
+            createCoordinateSystem() {
+                // Create coordinate axes
+                const axesHelper = new THREE.AxesHelper(8);
+                this.scene.add(axesHelper);
+                
+                // Create grid
+                const gridHelper = new THREE.GridHelper(20, 20, 0x444444, 0x222222);
+                gridHelper.position.y = -0.01;
+                this.scene.add(gridHelper);
+                
+                // Add axis labels
+                this.createLabel("X", 8.5, 0, 0, new THREE.Color(1, 0, 0));
+                this.createLabel("Y", 0, 8.5, 0, new THREE.Color(0, 1, 0));
+                this.createLabel("Z", 0, 0, 8.5, new THREE.Color(0, 0, 1));
+            }
+            
+            updateTangentAndPerpendiculars(time) {
+                // Calculate tangent point on ellipse
+                const theta = time * 0.5; // Angle parameter for ellipse
+                const tangentPoint = new THREE.Vector3(
+                    this.a * Math.cos(theta),
+                    this.b * Math.sin(theta),
+                    0
+                );
+                
+                // Calculate tangent line direction (derivative of ellipse)
+                const tangentDir = new THREE.Vector3(
+                    -this.a * Math.sin(theta),
+                    this.b * Math.cos(theta),
+                    0
+                ).normalize();
+                
+                // Remove previous tangent and perpendiculars if they exist
+                if (this.tangentLine) this.scene.remove(this.tangentLine);
+                if (this.perpendiculars.length > 0) {
+                    this.perpendiculars.forEach(p => this.scene.remove(p));
+                    this.perpendiculars = [];
+                }
+                if (this.footPoints.length > 0) {
+                    this.footPoints.forEach(p => this.scene.remove(p));
+                    this.footPoints = [];
+                }
+                
+                // Create tangent line
+                const tangentLength = 8;
+                const tangentGeometry = new THREE.BufferGeometry().setFromPoints([
+                    tangentPoint.clone().addScaledVector(tangentDir, -tangentLength),
+                    tangentPoint.clone().addScaledVector(tangentDir, tangentLength)
+                ]);
+                
+                const tangentMaterial = new THREE.LineBasicMaterial({
+                    color: 0xaa00ff,
+                    linewidth: 3
+                });
+                
+                this.tangentLine = new THREE.Line(tangentGeometry, tangentMaterial);
+                this.scene.add(this.tangentLine);
+                
+                // Calculate perpendiculars from foci to tangent line
+                const focus1 = new THREE.Vector3(-this.c, 0, 0);
+                const focus2 = new THREE.Vector3(this.c, 0, 0);
+                
+                // Calculate foot of perpendicular from focus1 to tangent line
+                const foot1 = this.pointToLineProjection(focus1, tangentPoint, tangentDir);
+                const d1 = focus1.distanceTo(foot1);
+                
+                // Calculate foot of perpendicular from focus2 to tangent line
+                const foot2 = this.pointToLineProjection(focus2, tangentPoint, tangentDir);
+                const d2 = focus2.distanceTo(foot2);
+                
+                // Create perpendicular lines
+                const perpGeometry1 = new THREE.BufferGeometry().setFromPoints([focus1, foot1]);
+                const perpMaterial1 = new THREE.LineBasicMaterial({ color: 0xff3333, linewidth: 2 });
+                const perpendicular1 = new THREE.Line(perpGeometry1, perpMaterial1);
+                this.scene.add(perpendicular1);
+                this.perpendiculars.push(perpendicular1);
+                
+                const perpGeometry2 = new THREE.BufferGeometry().setFromPoints([focus2, foot2]);
+                const perpMaterial2 = new THREE.LineBasicMaterial({ color: 0x3333ff, linewidth: 2 });
+                const perpendicular2 = new THREE.Line(perpGeometry2, perpMaterial2);
+                this.scene.add(perpendicular2);
+                this.perpendiculars.push(perpendicular2);
+                
+                // Create foot points
+                const footGeometry = new THREE.SphereGeometry(0.1, 16, 16);
+                
+                const footMaterial1 = new THREE.MeshBasicMaterial({ color: 0xff3333 });
+                const footPoint1 = new THREE.Mesh(footGeometry, footMaterial1);
+                footPoint1.position.copy(foot1);
+                this.scene.add(footPoint1);
+                this.footPoints.push(footPoint1);
+                
+                const footMaterial2 = new THREE.MeshBasicMaterial({ color: 0x3333ff });
+                const footPoint2 = new THREE.Mesh(footGeometry, footMaterial2);
+                footPoint2.position.copy(foot2);
+                this.scene.add(footPoint2);
+                this.footPoints.push(footPoint2);
+                
+                // Update UI with measurements
+                document.getElementById('d1-value').textContent = `d₁ = ${d1.toFixed(3)}`;
+                document.getElementById('d2-value').textContent = `d₂ = ${d2.toFixed(3)}`;
+                
+                const product = d1 * d2;
+                const bSquared = this.b * this.b;
+                document.getElementById('product-value').textContent = `d₁ × d₂ = ${product.toFixed(3)}`;
+                document.getElementById('b-squared').textContent = bSquared.toFixed(3);
+                
+                // Highlight when theorem is proven (product ≈ b²)
+                if (Math.abs(product - bSquared) < 0.1) {
+                    document.getElementById('product-value').style.color = '#4caf50';
+                    document.getElementById('product-value').style.textShadow = '0 0 15px #4caf50';
+                } else {
+                    document.getElementById('product-value').style.color = '#ffeb3b';
+                    document.getElementById('product-value').style.textShadow = '0 0 10px rgba(255, 235, 59, 0.8)';
+                }
+            }
+            
+            pointToLineProjection(point, linePoint, lineDir) {
+                const v = point.clone().sub(linePoint);
+                const d = v.dot(lineDir);
+                return linePoint.clone().addScaledVector(lineDir, d);
+            }
+            
+            setupUIControls() {
+                document.getElementById('reset-btn').addEventListener('click', () => {
+                    this.animationTime = 0;
+                });
+                
+                document.getElementById('auto-rotate-btn').addEventListener('click', () => {
+                    this.autoRotate = !this.autoRotate;
+                    this.controls.autoRotate = this.autoRotate;
+                    document.getElementById('auto-rotate-btn').textContent = 
+                        `Auto-Rotate: ${this.autoRotate ? 'ON' : 'OFF'}`;
+                });
+            }
+            
+            onWindowResize() {
+                this.camera.aspect = window.innerWidth / window.innerHeight;
+                this.camera.updateProjectionMatrix();
+                this.renderer.setSize(window.innerWidth, window.innerHeight);
+            }
+            
+            animate() {
+                requestAnimationFrame(() => this.animate());
+                
+                this.animationTime += 0.016; // ~60fps
+                
+                // Update tangent and perpendiculars
+                this.updateTangentAndPerpendiculars(this.animationTime);
+                
+                // Animate foci (pulsating effect)
+                const pulse = Math.sin(this.animationTime * 3) * 0.1 + 1;
+                this.foci.forEach(focus => {
+                    focus.scale.set(pulse, pulse, pulse);
+                });
+                
+                // Update controls
+                this.controls.update();
+                
+                // Render scene
+                this.renderer.render(this.scene, this.camera);
+            }
+        }
+        
+        // Initialize the visualization when the page loads
+        window.addEventListener('DOMContentLoaded', () => {
+            new EllipseTheoremVisualization();
+        });
+    </script>
+</body>
+</html>
