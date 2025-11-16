@@ -1,0 +1,1243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hyperbolic Nexus | Enhanced 3D Hyperbola Explorer</title>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/build/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/examples/js/controls/OrbitControls.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.2/dist/gsap.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/dat.gui@0.7.9/build/dat.gui.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            overflow: hidden;
+            background: #000;
+            color: white;
+        }
+        
+        #container {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            top: 0;
+            left: 0;
+        }
+        
+        #hud {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            z-index: 100;
+            pointer-events: none;
+        }
+        
+        .glass-panel {
+            background: rgba(10, 15, 30, 0.7);
+            backdrop-filter: blur(10px);
+            border-radius: 12px;
+            padding: 15px;
+            margin-bottom: 15px;
+            border: 1px solid rgba(100, 150, 255, 0.2);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            max-width: 400px;
+        }
+        
+        .title {
+            font-size: 24px;
+            font-weight: 700;
+            margin-bottom: 10px;
+            background: linear-gradient(90deg, #ff8a00, #e52e71);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-shadow: 0 0 20px rgba(229, 46, 113, 0.5);
+        }
+        
+        .subtitle {
+            font-size: 16px;
+            opacity: 0.8;
+            margin-bottom: 15px;
+        }
+        
+        .katex-display {
+            margin: 10px 0;
+            font-size: 18px;
+        }
+        
+        .property {
+            display: flex;
+            justify-content: space-between;
+            margin: 8px 0;
+            font-size: 14px;
+        }
+        
+        .property-name {
+            opacity: 0.7;
+        }
+        
+        .property-value {
+            font-weight: 600;
+            color: #4fc3f7;
+        }
+        
+        #instructions {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            font-size: 14px;
+            opacity: 0.7;
+            pointer-events: none;
+        }
+        
+        #point-info {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            opacity: 0;
+            transition: opacity 0.5s;
+        }
+        
+        .highlight {
+            color: #ffeb3b;
+            font-weight: 600;
+        }
+        
+        .mnemonic-cube {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            width: 120px;
+            height: 120px;
+            perspective: 800px;
+            pointer-events: none;
+        }
+        
+        .cube {
+            width: 100%;
+            height: 100%;
+            position: relative;
+            transform-style: preserve-3d;
+            animation: rotate 15s infinite linear;
+        }
+        
+        .face {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            background: rgba(30, 40, 80, 0.7);
+            border: 1px solid rgba(100, 150, 255, 0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            text-align: center;
+            padding: 10px;
+            color: #4fc3f7;
+            font-weight: 600;
+            backdrop-filter: blur(5px);
+        }
+        
+        .face-front { transform: translateZ(60px); }
+        .face-back { transform: rotateY(180deg) translateZ(60px); }
+        .face-right { transform: rotateY(90deg) translateZ(60px); }
+        .face-left { transform: rotateY(-90deg) translateZ(60px); }
+        .face-top { transform: rotateX(90deg) translateZ(60px); }
+        .face-bottom { transform: rotateX(-90deg) translateZ(60px); }
+        
+        @keyframes rotate {
+            0% { transform: rotateX(0) rotateY(0); }
+            100% { transform: rotateX(360deg) rotateY(360deg); }
+        }
+        
+        .jee-badge {
+            position: absolute;
+            bottom: 160px;
+            right: 20px;
+            background: linear-gradient(135deg, #ffd700, #ff8a00);
+            color: #000;
+            padding: 8px 15px;
+            border-radius: 20px;
+            font-weight: 700;
+            font-size: 14px;
+            box-shadow: 0 4px 15px rgba(255, 215, 0, 0.5);
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+        
+        .credit {
+            position: absolute;
+            bottom: 130px;
+            right: 20px;
+            font-size: 12px;
+            opacity: 0.7;
+        }
+        
+        #loading {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #000;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            transition: opacity 1s;
+        }
+        
+        .loader {
+            width: 60px;
+            height: 60px;
+            border: 5px solid rgba(100, 150, 255, 0.3);
+            border-top: 5px solid #4fc3f7;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 20px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .tooltip {
+            position: absolute;
+            background: rgba(10, 15, 30, 0.9);
+            border: 1px solid rgba(100, 150, 255, 0.5);
+            border-radius: 8px;
+            padding: 10px;
+            font-size: 12px;
+            max-width: 250px;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.3s;
+            z-index: 200;
+        }
+        
+        .conic-hyperbola {
+            position: absolute;
+            bottom: 200px;
+            right: 20px;
+            font-size: 12px;
+            opacity: 0.7;
+            max-width: 150px;
+        }
+    </style>
+</head>
+<body>
+    <div id="loading">
+        <div class="loader"></div>
+        <div>Initializing Hyperbolic Nexus...</div>
+    </div>
+    
+    <div id="container"></div>
+    
+    <div id="hud">
+        <div class="glass-panel">
+            <div class="title">HYPERBOLIC NEXUS</div>
+            <div class="subtitle">Enhanced 3D Hyperbola Explorer</div>
+            
+            <div class="katex-equation" id="eq-main"></div>
+            
+            <div class="property">
+                <span class="property-name">Transverse Axis:</span>
+                <span class="property-value" id="transverse-axis">2a = 6</span>
+            </div>
+            <div class="property">
+                <span class="property-name">Conjugate Axis:</span>
+                <span class="property-value" id="conjugate-axis">2b = 4</span>
+            </div>
+            <div class="property">
+                <span class="property-name">Focal Distance:</span>
+                <span class="property-value" id="focal-distance">c = √13 ≈ 3.606</span>
+            </div>
+            <div class="property">
+                <span class="property-name">Eccentricity:</span>
+                <span class="property-value" id="eccentricity">e = √13/3 ≈ 1.201</span>
+            </div>
+            <div class="property">
+                <span class="property-name">Asymptotes:</span>
+                <span class="property-value" id="asymptotes">y = ±(2/3)x</span>
+            </div>
+            <div class="property">
+                <span class="property-name">Latus Rectum:</span>
+                <span class="property-value" id="latus-rectum">2b²/a ≈ 2.667</span>
+            </div>
+        </div>
+        
+        <div class="glass-panel">
+            <div class="property">
+                <span class="property-name">Selected Point P:</span>
+                <span class="property-value" id="point-coords">(0, 0)</span>
+            </div>
+            <div class="property">
+                <span class="property-name">Distance to F1:</span>
+                <span class="property-value" id="dist-f1">0</span>
+            </div>
+            <div class="property">
+                <span class="property-name">Distance to F2:</span>
+                <span class="property-value" id="dist-f2">0</span>
+            </div>
+            <div class="property">
+                <span class="property-name">|PF₁ - PF₂|:</span>
+                <span class="property-value highlight" id="dist-diff">0</span>
+            </div>
+            <div class="property">
+                <span class="property-name">2a (Expected):</span>
+                <span class="property-value" id="expected-2a">6</span>
+            </div>
+            <div class="property">
+                <span class="property-name">Error:</span>
+                <span class="property-value" id="error">0%</span>
+            </div>
+        </div>
+    </div>
+    
+    <div id="point-info" class="glass-panel">
+        <div class="property highlight" id="difference-check">|PF₁ - PF₂| = 2a ✓</div>
+    </div>
+    
+    <div id="instructions" class="glass-panel">
+        <div>Click anywhere on the hyperbola to place a point</div>
+        <div>Drag to rotate • Scroll to zoom • Hover over elements for details</div>
+    </div>
+    
+    <div class="mnemonic-cube">
+        <div class="cube">
+            <div class="face face-front">TRANSVERSE<br>REAL, VERTICES, FOCI, 2a</div>
+            <div class="face face-back">CONJUGATE<br>IMAGINARY, ASYMPTOTES, 2b</div>
+            <div class="face face-right">RECTANGLE<br>2a × 2b</div>
+            <div class="face face-left">DIAGONALS<br>= ASYMPTOTES</div>
+            <div class="face face-top">HYPERBOLA<br>x²/a² - y²/b² = 1</div>
+            <div class="face face-bottom">ECCENTRICITY<br>e > 1</div>
+        </div>
+    </div>
+    
+    <div class="conic-hyperbola glass-panel">
+        <div>Conic Section: Plane intersecting both nappes of a cone</div>
+    </div>
+    
+        
+    
+    <div id="tooltip" class="tooltip"></div>
+
+    <script>
+        // Main Three.js application
+        let scene, camera, renderer, controls;
+        let hyperbolaGroup, hyperbolaLeft, hyperbolaRight;
+        let transverseAxis, conjugateAxis, asymptoteLines, fociPoints;
+        let rectangle, verticesPoints, latusRectumLines;
+        let pointP = null, lineToF1, lineToF2;
+        let raycaster, mouse;
+        let parameters = { a: 3, b: 2 };
+        let isAnimating = false;
+        let tooltip = document.getElementById('tooltip');
+        let tooltipTimeout;
+        
+        // Initialize the application
+        function init() {
+            // Create scene
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x050510);
+            scene.fog = new THREE.Fog(0x050510, 15, 50);
+            
+            // Create camera
+            camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.set(10, 8, 10);
+            
+            // Create renderer
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            document.getElementById('container').appendChild(renderer.domElement);
+            
+            // Add orbit controls
+            controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.05;
+            
+            // Add lighting
+            const ambientLight = new THREE.AmbientLight(0x404040, 0.6);
+            scene.add(ambientLight);
+            
+            const keyLight = new THREE.DirectionalLight(0xffd700, 1);
+            keyLight.position.set(-10, 10, 10);
+            scene.add(keyLight);
+            
+            const rimLight = new THREE.DirectionalLight(0x4fc3f7, 0.8);
+            rimLight.position.set(0, -10, 0);
+            scene.add(rimLight);
+            
+            // Create the grid floor
+            const gridHelper = new THREE.GridHelper(30, 30, 0x444477, 0x222244);
+            gridHelper.position.y = -0.01;
+            scene.add(gridHelper);
+            
+            // Create coordinate axes
+            createCoordinateAxes();
+            
+            // Create starfield
+            createStarfield();
+            
+            // Initialize raycaster for mouse interactions
+            raycaster = new THREE.Raycaster();
+            mouse = new THREE.Vector2();
+            
+            // Create the hyperbola and its elements
+            createHyperbola();
+            
+            // Set up GUI
+            setupGUI();
+            
+            // Set up event listeners
+            window.addEventListener('resize', onWindowResize);
+            renderer.domElement.addEventListener('click', onCanvasClick);
+            renderer.domElement.addEventListener('mousemove', onMouseMove);
+            
+            // Start animation
+            animate();
+            
+            // Start cinematic intro
+            startCinematicIntro();
+            
+            // Hide loading screen after a short delay
+            setTimeout(() => {
+                document.getElementById('loading').style.opacity = '0';
+                setTimeout(() => {
+                    document.getElementById('loading').style.display = 'none';
+                }, 1000);
+            }, 2000);
+        }
+        
+        // Create coordinate axes
+        function createCoordinateAxes() {
+            // X-axis (red)
+            const xAxisGeometry = new THREE.BufferGeometry().setFromPoints([
+                new THREE.Vector3(-20, 0, 0),
+                new THREE.Vector3(20, 0, 0)
+            ]);
+            const xAxisMaterial = new THREE.LineBasicMaterial({ color: 0xff4444, linewidth: 1 });
+            const xAxis = new THREE.Line(xAxisGeometry, xAxisMaterial);
+            scene.add(xAxis);
+            
+            // Z-axis (blue) - representing y in our coordinate system
+            const zAxisGeometry = new THREE.BufferGeometry().setFromPoints([
+                new THREE.Vector3(0, 0, -20),
+                new THREE.Vector3(0, 0, 20)
+            ]);
+            const zAxisMaterial = new THREE.LineBasicMaterial({ color: 0x4444ff, linewidth: 1 });
+            const zAxis = new THREE.Line(zAxisGeometry, zAxisMaterial);
+            scene.add(zAxis);
+        }
+        
+        // Create starfield background
+        function createStarfield() {
+            const starGeometry = new THREE.BufferGeometry();
+            const starCount = 5000;
+            const positions = new Float32Array(starCount * 3);
+            
+            for (let i = 0; i < starCount * 3; i += 3) {
+                positions[i] = (Math.random() - 0.5) * 2000;
+                positions[i + 1] = (Math.random() - 0.5) * 2000;
+                positions[i + 2] = (Math.random() - 0.5) * 2000;
+            }
+            
+            starGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+            
+            const starMaterial = new THREE.PointsMaterial({
+                color: 0xffffff,
+                size: 0.7,
+                sizeAttenuation: true
+            });
+            
+            const stars = new THREE.Points(starGeometry, starMaterial);
+            scene.add(stars);
+        }
+        
+        // Create the hyperbola and its geometric elements
+        function createHyperbola() {
+            // Create group for hyperbola elements
+            hyperbolaGroup = new THREE.Group();
+            scene.add(hyperbolaGroup);
+            
+            // Create hyperbola branches
+            createHyperbolaBranches();
+            
+            // Create geometric elements
+            createTransverseAxis();
+            createConjugateAxis();
+            createAsymptotes();
+            createFoci();
+            createVertices();
+            createRectangle();
+            createLatusRectum();
+            
+            // Update equations and labels
+            updateEquations();
+        }
+        
+        // Create the hyperbola branches with mathematical precision
+        function createHyperbolaBranches() {
+            // Right branch
+            const rightPoints = [];
+            const leftPoints = [];
+            
+            // Generate points using parametric equations
+            // x = a * sec(t), y = b * tan(t)
+            // We'll use a more precise approach with proper domain handling
+            const step = 0.005;
+            const epsilon = 0.01; // Small offset to avoid asymptotes
+            
+            // Right branch (x > 0)
+            for (let t = -Math.PI/2 + epsilon; t < Math.PI/2 - epsilon; t += step) {
+                const sec_t = 1 / Math.cos(t);
+                // Avoid extreme values that cause numerical instability
+                if (Math.abs(sec_t) < 100) {
+                    const x = parameters.a * sec_t;
+                    const y = parameters.b * Math.tan(t);
+                    
+                    if (Math.abs(x) < 50 && Math.abs(y) < 50) {
+                        rightPoints.push(new THREE.Vector3(x, 0, y));
+                    }
+                }
+            }
+            
+            // Left branch (x < 0)
+            for (let t = -Math.PI/2 + epsilon; t < Math.PI/2 - epsilon; t += step) {
+                const sec_t = 1 / Math.cos(t);
+                // Avoid extreme values that cause numerical instability
+                if (Math.abs(sec_t) < 100) {
+                    const x = -parameters.a * sec_t;
+                    const y = parameters.b * Math.tan(t);
+                    
+                    if (Math.abs(x) < 50 && Math.abs(y) < 50) {
+                        leftPoints.push(new THREE.Vector3(x, 0, y));
+                    }
+                }
+            }
+            
+            // Create geometry for right branch
+            const rightGeometry = new THREE.BufferGeometry().setFromPoints(rightPoints);
+            const rightMaterial = new THREE.LineBasicMaterial({
+                color: 0xff3366,
+                linewidth: 3,
+                transparent: true,
+                opacity: 0.9
+            });
+            hyperbolaRight = new THREE.Line(rightGeometry, rightMaterial);
+            hyperbolaGroup.add(hyperbolaRight);
+            
+            // Create geometry for left branch
+            const leftGeometry = new THREE.BufferGeometry().setFromPoints(leftPoints);
+            const leftMaterial = new THREE.LineBasicMaterial({
+                color: 0xff3366,
+                linewidth: 3,
+                transparent: true,
+                opacity: 0.9
+            });
+            hyperbolaLeft = new THREE.Line(leftGeometry, leftMaterial);
+            hyperbolaGroup.add(hyperbolaLeft);
+            
+            // Add tooltip interaction
+            addTooltipInteraction(hyperbolaRight, "Hyperbola Branch: x²/a² - y²/b² = 1");
+            addTooltipInteraction(hyperbolaLeft, "Hyperbola Branch: x²/a² - y²/b² = 1");
+        }
+        
+        // Create transverse axis
+        function createTransverseAxis() {
+            const axisGeometry = new THREE.BufferGeometry().setFromPoints([
+                new THREE.Vector3(-parameters.a * 1.5, 0, 0),
+                new THREE.Vector3(parameters.a * 1.5, 0, 0)
+            ]);
+            
+            const axisMaterial = new THREE.LineBasicMaterial({
+                color: 0xffd700,
+                linewidth: 4
+            });
+            
+            transverseAxis = new THREE.Line(axisGeometry, axisMaterial);
+            hyperbolaGroup.add(transverseAxis);
+            
+            // Add tooltip
+            addTooltipInteraction(transverseAxis, "Transverse Axis: Length = 2a, contains vertices and foci");
+        }
+        
+        // Create conjugate axis
+        function createConjugateAxis() {
+            const axisGeometry = new THREE.BufferGeometry().setFromPoints([
+                new THREE.Vector3(0, 0, -parameters.b * 1.5),
+                new THREE.Vector3(0, 0, parameters.b * 1.5)
+            ]);
+            
+            const axisMaterial = new THREE.LineDashedMaterial({
+                color: 0x4fc3f7,
+                linewidth: 3,
+                dashSize: 0.5,
+                gapSize: 0.2
+            });
+            
+            conjugateAxis = new THREE.Line(axisGeometry, axisMaterial);
+            conjugateAxis.computeLineDistances();
+            hyperbolaGroup.add(conjugateAxis);
+            
+            // Add tooltip
+            addTooltipInteraction(conjugateAxis, "Conjugate Axis: Length = 2b, defines conjugate hyperbola");
+        }
+        
+        // Create asymptotes with precise mathematical slopes
+        function createAsymptotes() {
+            const slope = parameters.b / parameters.a;
+            const length = 20;
+            
+            // First asymptote: y = (b/a)x
+            const asymptote1Geometry = new THREE.BufferGeometry().setFromPoints([
+                new THREE.Vector3(-length, 0, slope * length),
+                new THREE.Vector3(length, 0, -slope * length)
+            ]);
+            
+            // Second asymptote: y = -(b/a)x
+            const asymptote2Geometry = new THREE.BufferGeometry().setFromPoints([
+                new THREE.Vector3(-length, 0, -slope * length),
+                new THREE.Vector3(length, 0, slope * length)
+            ]);
+            
+            const asymptoteMaterial = new THREE.LineBasicMaterial({
+                color: 0x00ff88,
+                linewidth: 2,
+                transparent: true,
+                opacity: 0.7
+            });
+            
+            const asymptote1 = new THREE.Line(asymptote1Geometry, asymptoteMaterial);
+            const asymptote2 = new THREE.Line(asymptote2Geometry, asymptoteMaterial);
+            
+            asymptoteLines = [asymptote1, asymptote2];
+            hyperbolaGroup.add(asymptote1);
+            hyperbolaGroup.add(asymptote2);
+            
+            // Add tooltips
+            addTooltipInteraction(asymptote1, "Asymptote: y = (b/a)x");
+            addTooltipInteraction(asymptote2, "Asymptote: y = -(b/a)x");
+        }
+        
+        // Create foci points with precise mathematical positions
+        function createFoci() {
+            const c = Math.sqrt(parameters.a * parameters.a + parameters.b * parameters.b);
+            
+            // Focus 1
+            const focus1Geometry = new THREE.SphereGeometry(0.3, 16, 16);
+            const focus1Material = new THREE.MeshBasicMaterial({
+                color: 0xff00ff
+            });
+            const focus1 = new THREE.Mesh(focus1Geometry, focus1Material);
+            focus1.position.set(c, 0, 0);
+            
+            // Focus 2
+            const focus2Geometry = new THREE.SphereGeometry(0.3, 16, 16);
+            const focus2Material = new THREE.MeshBasicMaterial({
+                color: 0xff00ff
+            });
+            const focus2 = new THREE.Mesh(focus2Geometry, focus2Material);
+            focus2.position.set(-c, 0, 0);
+            
+            fociPoints = [focus1, focus2];
+            hyperbolaGroup.add(focus1);
+            hyperbolaGroup.add(focus2);
+            
+            // Add tooltips
+            addTooltipInteraction(focus1, `Focus F₁: (${c.toFixed(2)}, 0)`);
+            addTooltipInteraction(focus2, `Focus F₂: (${-c.toFixed(2)}, 0)`);
+            
+            // Add pulsing animation to foci
+            animateFoci();
+        }
+        
+        // Create vertices points
+        function createVertices() {
+            // Vertex 1
+            const vertex1Geometry = new THREE.SphereGeometry(0.25, 16, 16);
+            const vertex1Material = new THREE.MeshBasicMaterial({
+                color: 0xffffff
+            });
+            const vertex1 = new THREE.Mesh(vertex1Geometry, vertex1Material);
+            vertex1.position.set(parameters.a, 0, 0);
+            
+            // Vertex 2
+            const vertex2Geometry = new THREE.SphereGeometry(0.25, 16, 16);
+            const vertex2Material = new THREE.MeshBasicMaterial({
+                color: 0xffffff
+            });
+            const vertex2 = new THREE.Mesh(vertex2Geometry, vertex2Material);
+            vertex2.position.set(-parameters.a, 0, 0);
+            
+            verticesPoints = [vertex1, vertex2];
+            hyperbolaGroup.add(vertex1);
+            hyperbolaGroup.add(vertex2);
+            
+            // Add tooltips
+            addTooltipInteraction(vertex1, `Vertex V₁: (${parameters.a.toFixed(1)}, 0)`);
+            addTooltipInteraction(vertex2, `Vertex V₂: (${-parameters.a.toFixed(1)}, 0)`);
+        }
+        
+        // Create auxiliary rectangle
+        function createRectangle() {
+            const rectangleGeometry = new THREE.BufferGeometry().setFromPoints([
+                new THREE.Vector3(parameters.a, 0, parameters.b),
+                new THREE.Vector3(-parameters.a, 0, parameters.b),
+                new THREE.Vector3(-parameters.a, 0, -parameters.b),
+                new THREE.Vector3(parameters.a, 0, -parameters.b),
+                new THREE.Vector3(parameters.a, 0, parameters.b) // Close the rectangle
+            ]);
+            
+            const rectangleMaterial = new THREE.LineBasicMaterial({
+                color: 0x8888ff,
+                linewidth: 2,
+                transparent: true,
+                opacity: 0.5
+            });
+            
+            rectangle = new THREE.Line(rectangleGeometry, rectangleMaterial);
+            hyperbolaGroup.add(rectangle);
+            
+            // Add tooltip
+            addTooltipInteraction(rectangle, "Auxiliary Rectangle: Dimensions 2a × 2b, diagonals are asymptotes");
+        }
+        
+        // Create latus rectum lines
+        function createLatusRectum() {
+            const c = Math.sqrt(parameters.a * parameters.a + parameters.b * parameters.b);
+            const latusLength = 2 * parameters.b * parameters.b / parameters.a;
+            
+            // Latus rectum for right branch
+            const latusRightGeometry = new THREE.BufferGeometry().setFromPoints([
+                new THREE.Vector3(c, 0, -latusLength/2),
+                new THREE.Vector3(c, 0, latusLength/2)
+            ]);
+            
+            // Latus rectum for left branch
+            const latusLeftGeometry = new THREE.BufferGeometry().setFromPoints([
+                new THREE.Vector3(-c, 0, -latusLength/2),
+                new THREE.Vector3(-c, 0, latusLength/2)
+            ]);
+            
+            const latusMaterial = new THREE.LineDashedMaterial({
+                color: 0xffa500,
+                linewidth: 2,
+                dashSize: 0.2,
+                gapSize: 0.1,
+                transparent: true,
+                opacity: 0.7
+            });
+            
+            const latusRight = new THREE.Line(latusRightGeometry, latusMaterial);
+            const latusLeft = new THREE.Line(latusLeftGeometry, latusMaterial);
+            
+            latusRight.computeLineDistances();
+            latusLeft.computeLineDistances();
+            
+            latusRectumLines = [latusRight, latusLeft];
+            hyperbolaGroup.add(latusRight);
+            hyperbolaGroup.add(latusLeft);
+            
+            // Add tooltips
+            addTooltipInteraction(latusRight, `Latus Rectum: Length = 2b²/a = ${latusLength.toFixed(3)}`);
+            addTooltipInteraction(latusLeft, `Latus Rectum: Length = 2b²/a = ${latusLength.toFixed(3)}`);
+        }
+        
+        // Add tooltip interaction to an object
+        function addTooltipInteraction(object, text) {
+            object.userData.tooltip = text;
+        }
+        
+        // Animate the foci with a pulsing effect
+        function animateFoci() {
+            if (!fociPoints) return;
+            
+            const time = Date.now() * 0.002;
+            const scale = 1 + 0.3 * Math.sin(time);
+            
+            fociPoints.forEach(focus => {
+                focus.scale.set(scale, scale, scale);
+            });
+            
+            requestAnimationFrame(animateFoci);
+        }
+        
+        // Set up the GUI controls
+        function setupGUI() {
+            const gui = new dat.GUI({ autoPlace: false });
+            const guiContainer = document.createElement('div');
+            guiContainer.id = 'gui-container';
+            guiContainer.style.position = 'absolute';
+            guiContainer.style.top = '20px';
+            guiContainer.style.right = '20px';
+            document.body.appendChild(guiContainer);
+            guiContainer.appendChild(gui.domElement);
+            
+            // Add sliders for parameters
+            const paramsFolder = gui.addFolder('Hyperbola Parameters');
+            paramsFolder.add(parameters, 'a', 1, 5, 0.1).name('a (Transverse)').onChange(updateHyperbola);
+            paramsFolder.add(parameters, 'b', 1, 5, 0.1).name('b (Conjugate)').onChange(updateHyperbola);
+            paramsFolder.open();
+            
+            // Add toggles for elements
+            const elementsFolder = gui.addFolder('Geometric Elements');
+            elementsFolder.add({ transverseAxis: true }, 'transverseAxis').name('Transverse Axis').onChange(toggleTransverseAxis);
+            elementsFolder.add({ conjugateAxis: true }, 'conjugateAxis').name('Conjugate Axis').onChange(toggleConjugateAxis);
+            elementsFolder.add({ asymptotes: true }, 'asymptotes').name('Asymptotes').onChange(toggleAsymptotes);
+            elementsFolder.add({ foci: true }, 'foci').name('Foci').onChange(toggleFoci);
+            elementsFolder.add({ rectangle: true }, 'rectangle').name('Auxiliary Rectangle').onChange(toggleRectangle);
+            elementsFolder.add({ latusRectum: true }, 'latusRectum').name('Latus Rectum').onChange(toggleLatusRectum);
+            elementsFolder.open();
+            
+            // Add animation buttons
+            const animationFolder = gui.addFolder('Animations');
+            animationFolder.add({ animate: () => startCinematicIntro() }, 'animate').name('Play Intro');
+            animationFolder.add({ reset: () => resetView() }, 'reset').name('Reset View');
+            animationFolder.open();
+        }
+        
+        // Update the hyperbola when parameters change
+        function updateHyperbola() {
+            // Remove old hyperbola group
+            scene.remove(hyperbolaGroup);
+            
+            // Create new hyperbola with updated parameters
+            createHyperbola();
+            
+            // Update equations and labels
+            updateEquations();
+            
+            // Update point P if it exists
+            if (pointP) {
+                updatePointP(pointP.position);
+            }
+        }
+        
+        // Update the mathematical equations and labels
+        function updateEquations() {
+            const c = Math.sqrt(parameters.a * parameters.a + parameters.b * parameters.b);
+            const e = c / parameters.a;
+            const latusRectum = 2 * parameters.b * parameters.b / parameters.a;
+            
+            // Update main equation
+            katex.render(`\\frac{x^2}{${parameters.a.toFixed(1)}^2} - \\frac{y^2}{${parameters.b.toFixed(1)}^2} = 1`, 
+                         document.getElementById('eq-main'), { displayMode: true });
+            
+            // Update properties
+            document.getElementById('transverse-axis').textContent = `2a = ${(2 * parameters.a).toFixed(1)}`;
+            document.getElementById('conjugate-axis').textContent = `2b = ${(2 * parameters.b).toFixed(1)}`;
+            document.getElementById('focal-distance').textContent = `c = √${(parameters.a*parameters.a + parameters.b*parameters.b).toFixed(1)} ≈ ${c.toFixed(3)}`;
+            document.getElementById('eccentricity').textContent = `e = ${c.toFixed(2)}/${parameters.a.toFixed(1)} ≈ ${e.toFixed(3)}`;
+            document.getElementById('asymptotes').textContent = `y = ±(${parameters.b.toFixed(1)}/${parameters.a.toFixed(1)})x`;
+            document.getElementById('latus-rectum').textContent = `2b²/a ≈ ${latusRectum.toFixed(3)}`;
+            document.getElementById('expected-2a').textContent = (2 * parameters.a).toFixed(1);
+        }
+        
+        // Toggle visibility of transverse axis
+        function toggleTransverseAxis(visible) {
+            if (transverseAxis) transverseAxis.visible = visible;
+        }
+        
+        // Toggle visibility of conjugate axis
+        function toggleConjugateAxis(visible) {
+            if (conjugateAxis) conjugateAxis.visible = visible;
+        }
+        
+        // Toggle visibility of asymptotes
+        function toggleAsymptotes(visible) {
+            if (asymptoteLines) {
+                asymptoteLines.forEach(line => line.visible = visible);
+            }
+        }
+        
+        // Toggle visibility of foci
+        function toggleFoci(visible) {
+            if (fociPoints) {
+                fociPoints.forEach(focus => focus.visible = visible);
+            }
+        }
+        
+        // Toggle visibility of rectangle
+        function toggleRectangle(visible) {
+            if (rectangle) rectangle.visible = visible;
+        }
+        
+        // Toggle visibility of latus rectum
+        function toggleLatusRectum(visible) {
+            if (latusRectumLines) {
+                latusRectumLines.forEach(line => line.visible = visible);
+            }
+        }
+        
+        // Handle canvas click to place point P
+        function onCanvasClick(event) {
+            if (isAnimating) return;
+            
+            // Calculate mouse position in normalized device coordinates
+            mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+            mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+            
+            // Update the raycaster
+            raycaster.setFromCamera(mouse, camera);
+            
+            // Create a plane at y=0 to intersect with
+            const plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+            
+            // Find intersection point
+            const intersectionPoint = new THREE.Vector3();
+            const result = raycaster.ray.intersectPlane(plane, intersectionPoint);
+            
+            if (result) {
+                // Check if point is on the hyperbola (within a tolerance)
+                const x = intersectionPoint.x;
+                const z = intersectionPoint.z; // Using z as y in our coordinate system
+                const hyperbolaValue = (x*x)/(parameters.a*parameters.a) - (z*z)/(parameters.b*parameters.b);
+                
+                if (Math.abs(hyperbolaValue - 1) < 0.1) {
+                    placePointP(intersectionPoint);
+                }
+            }
+        }
+        
+        // Handle mouse move for tooltips
+        function onMouseMove(event) {
+            // Calculate mouse position in normalized device coordinates
+            mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+            mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+            
+            // Update the raycaster
+            raycaster.setFromCamera(mouse, camera);
+            
+            // Check for intersections with objects that have tooltips
+            const intersects = raycaster.intersectObjects(scene.children, true);
+            
+            if (intersects.length > 0) {
+                const object = intersects[0].object;
+                if (object.userData.tooltip) {
+                    showTooltip(event.clientX, event.clientY, object.userData.tooltip);
+                    return;
+                }
+            }
+            
+            hideTooltip();
+        }
+        
+        // Show tooltip at specified position
+        function showTooltip(x, y, text) {
+            tooltip.style.left = (x + 10) + 'px';
+            tooltip.style.top = (y + 10) + 'px';
+            tooltip.innerHTML = text;
+            tooltip.style.opacity = '1';
+            
+            // Clear any existing timeout
+            if (tooltipTimeout) clearTimeout(tooltipTimeout);
+        }
+        
+        // Hide tooltip
+        function hideTooltip() {
+            tooltip.style.opacity = '0';
+        }
+        
+        // Place point P on the hyperbola
+        function placePointP(position) {
+            // Remove existing point P and lines
+            if (pointP) {
+                hyperbolaGroup.remove(pointP);
+                hyperbolaGroup.remove(lineToF1);
+                hyperbolaGroup.remove(lineToF2);
+            }
+            
+            // Create point P
+            const pointGeometry = new THREE.SphereGeometry(0.2, 16, 16);
+            const pointMaterial = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
+            pointP = new THREE.Mesh(pointGeometry, pointMaterial);
+            pointP.position.copy(position);
+            hyperbolaGroup.add(pointP);
+            
+            // Add tooltip
+            addTooltipInteraction(pointP, "Point P on hyperbola: |PF₁ - PF₂| = 2a");
+            
+            // Update point information
+            updatePointP(position);
+        }
+        
+        // Update point P information and draw lines to foci
+        function updatePointP(position) {
+            if (!pointP) return;
+            
+            const x = position.x;
+            const z = position.z; // Using z as y in our coordinate system
+            
+            // Calculate distances to foci
+            const c = Math.sqrt(parameters.a * parameters.a + parameters.b * parameters.b);
+            const distF1 = Math.sqrt((x - c) * (x - c) + z * z);
+            const distF2 = Math.sqrt((x + c) * (x + c) + z * z);
+            const diff = Math.abs(distF1 - distF2);
+            const error = Math.abs(diff - 2 * parameters.a) / (2 * parameters.a) * 100;
+            
+            // Update HUD
+            document.getElementById('point-coords').textContent = `(${x.toFixed(2)}, ${z.toFixed(2)})`;
+            document.getElementById('dist-f1').textContent = distF1.toFixed(2);
+            document.getElementById('dist-f2').textContent = distF2.toFixed(2);
+            document.getElementById('dist-diff').textContent = diff.toFixed(2);
+            document.getElementById('error').textContent = error.toFixed(2) + '%';
+            
+            // Check if difference equals 2a (within tolerance)
+            const tolerance = 0.1;
+            const isEqual = Math.abs(diff - 2 * parameters.a) < tolerance;
+            
+            // Show/hide difference check
+            const pointInfo = document.getElementById('point-info');
+            const differenceCheck = document.getElementById('difference-check');
+            
+            if (isEqual) {
+                differenceCheck.textContent = `|PF₁ - PF₂| = 2a ✓`;
+                differenceCheck.style.color = '#00ff00';
+                pointInfo.style.opacity = '1';
+                
+                // Visual feedback - pulse the point
+                gsap.to(pointP.scale, { 
+                    x: 1.5, y: 1.5, z: 1.5, duration: 0.2, yoyo: true, repeat: 1 
+                });
+            } else {
+                differenceCheck.textContent = `|PF₁ - PF₂| ≠ 2a`;
+                differenceCheck.style.color = '#ff4444';
+                pointInfo.style.opacity = '1';
+            }
+            
+            // Create lines to foci
+            createLinesToFoci(position);
+        }
+        
+        // Create lines from point P to foci
+        function createLinesToFoci(position) {
+            // Remove existing lines
+            if (lineToF1) hyperbolaGroup.remove(lineToF1);
+            if (lineToF2) hyperbolaGroup.remove(lineToF2);
+            
+            const c = Math.sqrt(parameters.a * parameters.a + parameters.b * parameters.b);
+            
+            // Line to F1
+            const line1Geometry = new THREE.BufferGeometry().setFromPoints([
+                position,
+                new THREE.Vector3(c, 0, 0)
+            ]);
+            const line1Material = new THREE.LineBasicMaterial({
+                color: 0xff00ff,
+                linewidth: 2,
+                transparent: true,
+                opacity: 0.7
+            });
+            lineToF1 = new THREE.Line(line1Geometry, line1Material);
+            hyperbolaGroup.add(lineToF1);
+            
+            // Line to F2
+            const line2Geometry = new THREE.BufferGeometry().setFromPoints([
+                position,
+                new THREE.Vector3(-c, 0, 0)
+            ]);
+            const line2Material = new THREE.LineBasicMaterial({
+                color: 0xff00ff,
+                linewidth: 2,
+                transparent: true,
+                opacity: 0.7
+            });
+            lineToF2 = new THREE.Line(line2Geometry, line2Material);
+            hyperbolaGroup.add(lineToF2);
+        }
+        
+        // Start cinematic intro animation
+        function startCinematicIntro() {
+            isAnimating = true;
+            
+            // Reset camera position
+            camera.position.set(15, 10, 15);
+            camera.lookAt(0, 0, 0);
+            controls.reset();
+            
+            // Hide all elements initially
+            hyperbolaGroup.visible = false;
+            
+            // Animation timeline
+            const tl = gsap.timeline({
+                onComplete: () => { isAnimating = false; }
+            });
+            
+            // Phase 1: Camera fly-in
+            tl.to(camera.position, {
+                x: 10, y: 8, z: 10, duration: 2, ease: "power2.inOut"
+            });
+            
+            // Phase 2: Reveal transverse axis
+            tl.add(() => {
+                hyperbolaGroup.visible = true;
+                transverseAxis.visible = true;
+                transverseAxis.scale.set(0, 1, 1);
+            });
+            tl.to(transverseAxis.scale, {
+                x: 1, duration: 1, ease: "power2.out"
+            });
+            
+            // Phase 3: Reveal conjugate axis
+            tl.add(() => {
+                conjugateAxis.visible = true;
+                conjugateAxis.scale.set(1, 1, 0);
+            });
+            tl.to(conjugateAxis.scale, {
+                z: 1, duration: 1, ease: "power2.out"
+            });
+            
+            // Phase 4: Reveal rectangle
+            tl.add(() => {
+                rectangle.visible = true;
+                rectangle.scale.set(0, 1, 0);
+            });
+            tl.to(rectangle.scale, {
+                x: 1, z: 1, duration: 1, ease: "power2.out"
+            });
+            
+            // Phase 5: Reveal asymptotes
+            tl.add(() => {
+                asymptoteLines.forEach(line => {
+                    line.visible = true;
+                    line.scale.set(0, 1, 0);
+                });
+            });
+            tl.to(asymptoteLines[0].scale, {
+                x: 1, z: 1, duration: 1, ease: "power2.out"
+            });
+            tl.to(asymptoteLines[1].scale, {
+                x: 1, z: 1, duration: 1, ease: "power2.out"
+            }, "-=0.5");
+            
+            // Phase 6: Reveal hyperbola branches
+            tl.add(() => {
+                hyperbolaRight.visible = true;
+                hyperbolaLeft.visible = true;
+                
+                // Animate the hyperbola branches growing from vertices
+                const rightPoints = hyperbolaRight.geometry.attributes.position.array;
+                const leftPoints = hyperbolaLeft.geometry.attributes.position.array;
+                
+                const rightCount = rightPoints.length / 3;
+                const leftCount = leftPoints.length / 3;
+                
+                // Create clone geometries for animation
+                const rightAnimGeometry = new THREE.BufferGeometry();
+                const leftAnimGeometry = new THREE.BufferGeometry();
+                
+                const rightAnimPositions = new Float32Array(rightPoints.length);
+                const leftAnimPositions = new Float32Array(leftPoints.length);
+                
+                rightAnimGeometry.setAttribute('position', new THREE.BufferAttribute(rightAnimPositions, 3));
+                leftAnimGeometry.setAttribute('position', new THREE.BufferAttribute(leftAnimPositions, 3));
+                
+                hyperbolaRight.geometry = rightAnimGeometry;
+                hyperbolaLeft.geometry = leftAnimGeometry;
+                
+                // Animate points appearing over time
+                for (let i = 0; i < rightCount; i++) {
+                    const idx = i * 3;
+                    setTimeout(() => {
+                        rightAnimPositions[idx] = rightPoints[idx];
+                        rightAnimPositions[idx + 1] = rightPoints[idx + 1];
+                        rightAnimPositions[idx + 2] = rightPoints[idx + 2];
+                        rightAnimGeometry.attributes.position.needsUpdate = true;
+                    }, i * 10);
+                }
+                
+                for (let i = 0; i < leftCount; i++) {
+                    const idx = i * 3;
+                    setTimeout(() => {
+                        leftAnimPositions[idx] = leftPoints[idx];
+                        leftAnimPositions[idx + 1] = leftPoints[idx + 1];
+                        leftAnimPositions[idx + 2] = leftPoints[idx + 2];
+                        leftAnimGeometry.attributes.position.needsUpdate = true;
+                    }, i * 10);
+                }
+            });
+            
+            // Phase 7: Reveal foci and vertices
+            tl.add(() => {
+                fociPoints.forEach(focus => {
+                    focus.visible = true;
+                    focus.scale.set(0, 0, 0);
+                    gsap.to(focus.scale, { x: 1, y: 1, z: 1, duration: 0.5, ease: "back.out(1.7)" });
+                });
+                
+                verticesPoints.forEach(vertex => {
+                    vertex.visible = true;
+                    vertex.scale.set(0, 0, 0);
+                    gsap.to(vertex.scale, { x: 1, y: 1, z: 1, duration: 0.5, ease: "back.out(1.7)" });
+                });
+            });
+            
+            // Phase 8: Reveal latus rectum
+            tl.add(() => {
+                if (latusRectumLines) {
+                    latusRectumLines.forEach(line => {
+                        line.visible = true;
+                        line.scale.set(1, 1, 0);
+                        gsap.to(line.scale, { z: 1, duration: 0.5, ease: "power2.out" });
+                    });
+                }
+            });
+            
+            // Final phase: Display the focal property
+            tl.add(() => {
+                // Place a point on the right branch
+                const t = Math.PI / 4;
+                const x = parameters.a / Math.cos(t);
+                const y = parameters.b * Math.tan(t);
+                placePointP(new THREE.Vector3(x, 0, y));
+                
+                // Animate the distance lines
+                gsap.fromTo([lineToF1, lineToF2], 
+                    { material: { opacity: 0 } },
+                    { material: { opacity: 0.7 }, duration: 1 }
+                );
+            });
+        }
+        
+        // Reset the view
+        function resetView() {
+            controls.reset();
+            camera.position.set(10, 8, 10);
+            camera.lookAt(0, 0, 0);
+        }
+        
+        // Handle window resize
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+        
+        // Animation loop
+        function animate() {
+            requestAnimationFrame(animate);
+            controls.update();
+            renderer.render(scene, camera);
+        }
+        
+        // Initialize the application when the page loads
+        window.addEventListener('load', init);
+    </script>
+</body>
+</html>
