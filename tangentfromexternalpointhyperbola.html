@@ -1,0 +1,469 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JEE Visualizer: Hyperbola Tangents</title>
+    <style>
+        body { margin: 0; overflow: hidden; background-color: #020204; font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }
+        canvas { display: block; width: 100vw; height: 100vh; }
+        
+        /* HUD Styling */
+        #ui-layer {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            pointer-events: none;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        header {
+            text-shadow: 0 0 15px rgba(0, 255, 255, 0.6);
+        }
+
+        h1 {
+            color: #fff;
+            margin: 0;
+            font-weight: 200;
+            letter-spacing: 4px;
+            font-size: 2rem;
+            text-transform: uppercase;
+            border-left: 4px solid #00ffcc;
+            padding-left: 15px;
+        }
+
+        .subtitle { color: #00ffcc; font-size: 0.9rem; margin-top: 5px; opacity: 0.8; padding-left: 19px; }
+
+        /* Info Panel */
+        #info-panel {
+            background: rgba(10, 10, 15, 0.85);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-left: 3px solid #ff0055;
+            padding: 20px;
+            border-radius: 0 10px 10px 0;
+            max-width: 400px;
+            pointer-events: auto;
+            transition: all 0.3s ease;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+
+        .math-row { margin-bottom: 12px; font-size: 1.1rem; color: #eee; }
+        .status-tag {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-top: 5px;
+        }
+        .tag-opposite { background: rgba(0, 255, 204, 0.2); color: #00ffcc; border: 1px solid #00ffcc; }
+        .tag-same { background: rgba(255, 165, 0, 0.2); color: #ffa500; border: 1px solid #ffa500; }
+        .tag-asymp { background: rgba(255, 0, 85, 0.2); color: #ff0055; border: 1px solid #ff0055; }
+
+        /* Controls Hint */
+        #controls {
+            text-align: right;
+            color: #666;
+            font-size: 0.8rem;
+            pointer-events: none;
+        }
+        
+        /* Loader */
+        #loader {
+            position: absolute; top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            color: #00ffcc; font-size: 1.2rem; letter-spacing: 2px;
+        }
+
+        /* KaTeX Overrides */
+        .katex { font-size: 1.1em !important; color: #ddd; }
+        .katex .mord.mathnormal { color: #fff; }
+    </style>
+
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+                "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+            }
+        }
+    </script>
+
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+</head>
+<body>
+
+    <div id="loader">INITIALIZING MATH ENGINE...</div>
+
+    <div id="ui-layer">
+        <header>
+            <h1>Hyperbola Tangents</h1>
+            <div class="subtitle"> JEE Visualization By Aditya Wargis // Tangents from External Point P(h,k)</div>
+        </header>
+
+        <div style="display:flex; justify-content:space-between; align-items:flex-end;">
+            <div id="info-panel">
+                <div id="eq-display" class="math-row"></div>
+                <div id="tangent-eq" class="math-row" style="font-size: 0.9rem; color: #aaa;"></div>
+                <div id="status-display"></div>
+                <div style="margin-top:10px; font-size: 0.85rem; color:#888; line-height: 1.4;">
+                    Drag the <b style="color:#00ffcc">Cyan Sphere</b> (Point P).<br>
+                    Observe how the tangents interact with branches.
+                </div>
+            </div>
+
+            <div id="controls">
+                Left Click + Drag: Rotate Camera<br>
+                Scroll: Zoom<br>
+                Right Click: Pan
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+        import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+        import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+        import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+        import { GUI } from 'three/addons/libs/lil-gui.module.min.js';
+
+        // --- CONFIGURATION ---
+        const CONFIG = {
+            a: 3,
+            b: 2,
+            h: 5, // Initial P x
+            k: 1, // Initial P y
+            bloomStrength: 1.5,
+            bloomRadius: 0.4,
+            bloomThreshold: 0.05,
+            showAsymptotes: true,
+            showDirector: false, // Director circle
+            showChord: true,     // Chord of contact
+            showGrid: true
+        };
+
+        // --- SETUP SCENE ---
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x020204);
+        scene.fog = new THREE.FogExp2(0x020204, 0.015);
+
+        const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 200);
+        camera.position.set(0, 0, 25);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2)); // Cap pixel ratio for performance
+        document.body.appendChild(renderer.domElement);
+
+        // --- POST PROCESSING ---
+        const renderScene = new RenderPass(scene, camera);
+        const bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 1.5, 0.4, 0.85);
+        bloomPass.threshold = CONFIG.bloomThreshold;
+        bloomPass.strength = CONFIG.bloomStrength;
+        bloomPass.radius = CONFIG.bloomRadius;
+
+        const composer = new EffectComposer(renderer);
+        composer.addPass(renderScene);
+        composer.addPass(bloomPass);
+
+        // --- CONTROLS ---
+        const controls = new OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.05;
+        controls.maxDistance = 60;
+
+        // --- MATERIALS ---
+        const hyperbolaMat = new THREE.MeshBasicMaterial({ color: 0xff0055 }); // Hot Pink Neon
+        const tangentMat = new THREE.LineBasicMaterial({ color: 0x00ffcc, linewidth: 2 }); // Cyan Neon
+        const asymptoteMat = new THREE.LineBasicMaterial({ color: 0xffaa00, transparent: true, opacity: 0.3, dashSize: 0.5, gapSize: 0.2 });
+        const chordMat = new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.4 });
+        const directorMat = new THREE.LineBasicMaterial({ color: 0x0055ff, transparent: true, opacity: 0.5 });
+        const gridMat = new THREE.LineBasicMaterial({ color: 0x222222 });
+
+        // --- OBJECTS CONTAINER ---
+        const graphGroup = new THREE.Group();
+        scene.add(graphGroup);
+
+        // Point P
+        const pGeometry = new THREE.SphereGeometry(0.35, 32, 32);
+        const pMaterial = new THREE.MeshBasicMaterial({ color: 0x00ffcc });
+        const pMesh = new THREE.Mesh(pGeometry, pMaterial);
+        pMesh.position.set(CONFIG.h, CONFIG.k, 0);
+        scene.add(pMesh);
+
+        // Tangent Lines Group
+        const tangentGroup = new THREE.Group();
+        scene.add(tangentGroup);
+
+        // Interactive Plane
+        const dragPlane = new THREE.Mesh(
+            new THREE.PlaneGeometry(100, 100),
+            new THREE.MeshBasicMaterial({ visible: false })
+        );
+        scene.add(dragPlane);
+
+        // --- MATH FUNCTIONS ---
+
+        // 1. Draw Hyperbola (using Parametric: x = a*cosh(t), y = b*sinh(t))
+        function updateHyperbola() {
+            // Clear existing graph
+            while(graphGroup.children.length > 0){
+                const obj = graphGroup.children[0];
+                if(obj.geometry) obj.geometry.dispose();
+                graphGroup.remove(obj);
+            }
+
+            // Draw Branches
+            const pointsR = [], pointsL = [];
+            const range = 2.8; // parameter range
+            const steps = 100;
+
+            for (let i = 0; i <= steps; i++) {
+                const t = (i / steps) * 2 * range - range;
+                const x = CONFIG.a * Math.cosh(t);
+                const y = CONFIG.b * Math.sinh(t);
+                pointsR.push(new THREE.Vector3(x, y, 0));
+                pointsL.push(new THREE.Vector3(-x, y, 0));
+            }
+
+            // Create thick lines (Tubes) for better visibility
+            const curveR = new THREE.CatmullRomCurve3(pointsR);
+            const curveL = new THREE.CatmullRomCurve3(pointsL);
+            
+            const tubeGeoR = new THREE.TubeGeometry(curveR, 64, 0.08, 8, false);
+            const tubeGeoL = new THREE.TubeGeometry(curveL, 64, 0.08, 8, false);
+
+            const meshR = new THREE.Mesh(tubeGeoR, hyperbolaMat);
+            const meshL = new THREE.Mesh(tubeGeoL, hyperbolaMat);
+            graphGroup.add(meshR, meshL);
+
+            // Draw Asymptotes (y = +/- (b/a)x)
+            if(CONFIG.showAsymptotes) {
+                const limit = 50;
+                const slope = CONFIG.b / CONFIG.a;
+                const pts1 = [new THREE.Vector3(-limit, -limit*slope, -0.1), new THREE.Vector3(limit, limit*slope, -0.1)];
+                const pts2 = [new THREE.Vector3(-limit, limit*slope, -0.1), new THREE.Vector3(limit, -limit*slope, -0.1)];
+                
+                const line1 = new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts1), asymptoteMat);
+                const line2 = new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts2), asymptoteMat);
+                graphGroup.add(line1, line2);
+            }
+
+            // Draw Director Circle x^2 + y^2 = a^2 - b^2 (Only if a > b)
+            if(CONFIG.showDirector && CONFIG.a > CONFIG.b) {
+                const radius = Math.sqrt(CONFIG.a**2 - CONFIG.b**2);
+                const curve = new THREE.EllipseCurve(0, 0, radius, radius, 0, 2 * Math.PI, false, 0);
+                const pts = curve.getPoints(64);
+                const geo = new THREE.BufferGeometry().setFromPoints(pts);
+                const directorCircle = new THREE.Line(geo, directorMat);
+                graphGroup.add(directorCircle);
+            }
+
+            // Draw Grid
+            if(CONFIG.showGrid) {
+                const gridHelper = new THREE.GridHelper(40, 40, 0x333333, 0x111111);
+                gridHelper.rotation.x = Math.PI / 2;
+                gridHelper.position.z = -0.5;
+                graphGroup.add(gridHelper);
+            }
+        }
+
+        // 2. Calculate and Draw Tangents
+        function updateTangents() {
+            // Clear old
+            while(tangentGroup.children.length > 0) {
+                tangentGroup.remove(tangentGroup.children[0]);
+            }
+
+            const h = pMesh.position.x;
+            const k = pMesh.position.y;
+            const a2 = CONFIG.a**2;
+            const b2 = CONFIG.b**2;
+
+            // Equation of tangent slope m passing through (h,k):
+            // (h^2 - a^2)m^2 - 2hkm + (k^2 + b^2) = 0
+            // This is derived from Condition of Tangency c^2 = a^2m^2 - b^2 where c = k - mh
+            
+            const A_coeff = h*h - a2;
+            const B_coeff = -2 * h * k;
+            const C_coeff = k*k + b2;
+
+            const D = B_coeff*B_coeff - 4*A_coeff*C_coeff; // Discriminant
+
+            // Determine Region for UI
+            const slopeAsymp = CONFIG.b / CONFIG.a;
+            const isBetweenAsymptotes = Math.abs(k) > slopeAsymp * Math.abs(h);
+            const uiStatus = document.getElementById('status-display');
+            const uiEq = document.getElementById('eq-display');
+
+            // Render Equation
+            katex.render(`\\frac{x^2}{${CONFIG.a.toFixed(1)}^2} - \\frac{y^2}{${CONFIG.b.toFixed(1)}^2} = 1`, uiEq);
+
+            const pointsOfContact = [];
+
+            // Handle Tangents
+            if (D >= -0.0001) { // Tolerance for float errors
+                let slopes = [];
+                
+                if (Math.abs(A_coeff) < 0.001) {
+                    // Linear case (P is on directrix-ish vertical line x = +/- a)
+                    // Bm + C = 0 => m = -C/B
+                    if(Math.abs(B_coeff) > 0.001) slopes.push(-C_coeff / B_coeff);
+                    // One vertical tangent x = a might exist here
+                    // For visualization, quadratic formula is usually robust enough unless h=a exactly.
+                } else {
+                    const sqrtD = Math.sqrt(Math.max(0, D));
+                    const m1 = (-B_coeff + sqrtD) / (2 * A_coeff);
+                    const m2 = (-B_coeff - sqrtD) / (2 * A_coeff);
+                    slopes.push(m1, m2);
+                }
+
+                // Draw Lines
+                slopes.forEach(m => {
+                    // Draw long line
+                    const len = 40;
+                    const p1 = new THREE.Vector3(h + len, k + m * len, 0);
+                    const p2 = new THREE.Vector3(h - len, k - m * len, 0);
+                    const geo = new THREE.BufferGeometry().setFromPoints([p1, p2]);
+                    const line = new THREE.Line(geo, tangentMat);
+                    tangentGroup.add(line);
+
+                    // Calculate Point of Contact (x1, y1)
+                    // Condition: x1 = -a^2 m / c, y1 = -b^2 / c   Wait, that's for y=mx+c
+                    // c = k - mh
+                    const c = k - m * h;
+                    // Point of contact for y=mx+c to hyperbola:
+                    // x = - (a^2 m) / c
+                    // y = - (b^2) / c
+                    // Note: Formula assumes c^2 = a^2m^2 - b^2. 
+                    // Check sign conventions carefully.
+                    // Correct formula: Contact point is ( (a^2 m)/c , (b^2)/c ) ? 
+                    // Let's use T=0 logic (Chord of contact): xx1/a^2 - yy1/b2 = 1
+                    // Actually simpler: solve intersection of Line and Curve.
+                    
+                    // Standard formula for contact point (x0, y0) with slope m:
+                    // x0 = +/- (a^2 m) / sqrt(a^2 m^2 - b^2)
+                    // y0 = +/- (b^2) / sqrt(a^2 m^2 - b^2)
+                    // This is ambiguous on sign.
+                    
+                    // Let's use the exact intersection:
+                    // Substitute y = mx + c into b^2 x^2 - a^2 y^2 = a^2 b^2
+                    // (b^2 - a^2 m^2)x^2 - 2a^2 m c x - a^2(c^2 + b^2) = 0
+                    // Since it's a tangent, D=0, so x = -B/2A = (2a^2 m c) / 2(b^2 - a^2 m^2)
+                    // x = (a^2 m c) / (b^2 - a^2 m^2). Since c^2 = a^2m^2 - b^2 => b^2 - a^2m^2 = -c^2
+                    // x = (a^2 m c) / (-c^2) = - (a^2 m) / c
+                    // y = m(x) + c = m(-a^2 m / c) + c = (-a^2 m^2 + c^2)/c = (-a^2 m^2 + a^2 m^2 - b^2)/c = -b^2 / c
+                    
+                    if(Math.abs(c) > 0.001) {
+                        const cx = -(a2 * m) / c;
+                        const cy = -(b2) / c;
+                        pointsOfContact.push(new THREE.Vector3(cx, cy, 0));
+                        
+                        // Add a dot at contact
+                        const dot = new THREE.Mesh(new THREE.SphereGeometry(0.15), new THREE.MeshBasicMaterial({color:0xffffff}));
+                        dot.position.set(cx, cy, 0);
+                        tangentGroup.add(dot);
+                    }
+                });
+
+                // UI Logic
+                if(Math.abs(Math.abs(k) - slopeAsymp * Math.abs(h)) < 0.1) {
+                     uiStatus.innerHTML = `<span class="status-tag tag-asymp">On Asymptote (1 Tangent at Infinity)</span>`;
+                } else if (isBetweenAsymptotes) {
+                    // Region containing Center (Void)
+                    uiStatus.innerHTML = `<span class="status-tag tag-opposite">Tangents touch OPPOSITE Branches</span>`;
+                } else {
+                    // Region containing Foci
+                    uiStatus.innerHTML = `<span class="status-tag tag-same">Tangents touch SAME Branch</span>`;
+                }
+
+            } else {
+                 uiStatus.innerHTML = `<span class="status-tag" style="color:#555; border:1px solid #555">No Real Tangents (Inside Branch)</span>`;
+            }
+
+            // Draw Chord of Contact
+            if(CONFIG.showChord && pointsOfContact.length === 2) {
+                const chordGeo = new THREE.BufferGeometry().setFromPoints(pointsOfContact);
+                const chordLine = new THREE.Line(chordGeo, chordMat);
+                tangentGroup.add(chordLine);
+            }
+        }
+
+        // --- INTERACTION ---
+        const raycaster = new THREE.Raycaster();
+        const mouse = new THREE.Vector2();
+        let isDragging = false;
+
+        window.addEventListener('pointermove', (e) => {
+            mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
+            mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
+
+            if(isDragging) {
+                raycaster.setFromCamera(mouse, camera);
+                const intersects = raycaster.intersectObject(dragPlane);
+                if(intersects.length > 0) {
+                    const pt = intersects[0].point;
+                    pMesh.position.set(pt.x, pt.y, 0);
+                    CONFIG.h = pt.x;
+                    CONFIG.k = pt.y;
+                    updateTangents();
+                }
+            }
+        });
+
+        window.addEventListener('pointerdown', (e) => {
+            raycaster.setFromCamera(mouse, camera);
+            const intersects = raycaster.intersectObject(pMesh);
+            if(intersects.length > 0) {
+                isDragging = true;
+                controls.enabled = false;
+                document.body.style.cursor = 'grabbing';
+            }
+        });
+
+        window.addEventListener('pointerup', () => {
+            isDragging = false;
+            controls.enabled = true;
+            document.body.style.cursor = 'default';
+        });
+
+        // --- GUI ---
+        const gui = new GUI({ title: 'Parameters' });
+        gui.add(CONFIG, 'a', 1, 5).onChange(() => { updateHyperbola(); updateTangents(); });
+        gui.add(CONFIG, 'b', 1, 5).onChange(() => { updateHyperbola(); updateTangents(); });
+        gui.add(CONFIG, 'showDirector').name('Director Circle').onChange(updateHyperbola);
+        gui.add(CONFIG, 'showChord').name('Chord of Contact').onChange(updateTangents);
+        
+        // --- ANIMATION LOOP ---
+        document.getElementById('loader').style.display = 'none';
+        
+        // Initial Render
+        updateHyperbola();
+        updateTangents();
+
+        function animate() {
+            requestAnimationFrame(animate);
+            controls.update();
+            composer.render();
+        }
+        animate();
+
+        // Resize Handling
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            composer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+    </script>
+</body>
+</html>
