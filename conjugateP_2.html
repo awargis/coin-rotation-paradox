@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ellipse Property: Constant Sum of Conjugate Semi-Diameters</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/dat.gui@0.7.7/build/dat.gui.min.js"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background-color: #000;
+            font-family: 'Arial', sans-serif;
+            color: #fff;
+        }
+        canvas {
+            display: block;
+        }
+        #infoPanel {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 15px;
+            border-radius: 10px;
+            border: 1px solid #00aaff;
+            box-shadow: 0 0 15px rgba(0, 170, 255, 0.5);
+            max-width: 400px;
+            backdrop-filter: blur(5px);
+        }
+        #algebraPanel {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 15px;
+            border-radius: 10px;
+            border: 1px solid #ff00aa;
+            box-shadow: 0 0 15px rgba(255, 0, 170, 0.5);
+            max-width: 400px;
+            backdrop-filter: blur(5px);
+        }
+        #controls {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 15px;
+            border-radius: 10px;
+            border: 1px solid #00ffaa;
+            box-shadow: 0 0 15px rgba(0, 255, 170, 0.5);
+            backdrop-filter: blur(5px);
+        }
+        .slider-container {
+            margin: 10px 0;
+        }
+        .slider-container label {
+            display: inline-block;
+            width: 80px;
+        }
+        .slider-container input {
+            width: 200px;
+        }
+        .value-display {
+            display: inline-block;
+            width: 60px;
+            text-align: right;
+        }
+        h1, h2, h3 {
+            margin-top: 0;
+            color: #00aaff;
+            text-shadow: 0 0 10px rgba(0, 170, 255, 0.7);
+        }
+        .highlight {
+            color: #ffaa00;
+            font-weight: bold;
+        }
+        .constant {
+            color: #00ffaa;
+            font-weight: bold;
+            text-shadow: 0 0 10px rgba(0, 255, 170, 0.7);
+        }
+        .equation {
+            font-family: 'Courier New', monospace;
+            font-size: 1.1em;
+            margin: 10px 0;
+            padding: 5px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 5px;
+        }
+        button {
+            background: #00aaff;
+            border: none;
+            color: white;
+            padding: 8px 15px;
+            margin: 5px;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        button:hover {
+            background: #0088cc;
+        }
+        .toggle-btn {
+            background: #ff00aa;
+        }
+        .toggle-btn:hover {
+            background: #cc0088;
+        }
+    </style>
+</head>
+<body>
+    <div id="infoPanel">
+        <h1>Property 2: Constant Sum Property</h1>
+        <p>For any ellipse, the sum of the squares of two conjugate semi-diameters is always constant:</p>
+        <div class="equation constant">CP² + CD² = a² + b²</div>
+        <p>Where CP and CD are conjugate semi-diameters.</p>
+    </div>
+    
+    <div id="algebraPanel">
+        <h2>Algebraic Proof</h2>
+        <div id="algebraSteps">
+            <div class="equation">CP² = a²cos²φ + b²sin²φ</div>
+            <div class="equation">CD² = a²sin²φ + b²cos²φ</div>
+            <div class="equation">CP² + CD² = a²(cos²φ + sin²φ) + b²(sin²φ + cos²φ)</div>
+            <div class="equation constant">CP² + CD² = a² + b²</div>
+        </div>
+    </div>
+    
+    <div id="controls">
+        <h3>Interactive Controls</h3>
+        <div class="slider-container">
+            <label for="aSlider">a:</label>
+            <input type="range" id="aSlider" min="1" max="5" step="0.1" value="3">
+            <span class="value-display" id="aValue">3.0</span>
+        </div>
+        <div class="slider-container">
+            <label for="bSlider">b:</label>
+            <input type="range" id="bSlider" min="1" max="5" step="0.1" value="2">
+            <span class="value-display" id="bValue">2.0</span>
+        </div>
+        <div class="slider-container">
+            <label for="phiSlider">φ:</label>
+            <input type="range" id="phiSlider" min="0" max="360" step="1" value="30">
+            <span class="value-display" id="phiValue">30°</span>
+        </div>
+        <div>
+            <button id="resetBtn">Reset</button>
+            <button id="toggleAlgebra" class="toggle-btn">Hide Algebra</button>
+            <button id="slowMotion" class="toggle-btn">Slow Motion</button>
+        </div>
+    </div>
+
+    <script>
+        // Scene setup
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setClearColor(0x000011);
+        document.body.appendChild(renderer.domElement);
+
+        // Lighting
+        const ambientLight = new THREE.AmbientLight(0x333333);
+        scene.add(ambientLight);
+        
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
+        directionalLight.position.set(5, 5, 5);
+        scene.add(directionalLight);
+
+        // Parameters
+        let a = 3.0;
+        let b = 2.0;
+        let phi = 30 * Math.PI / 180; // radians
+        let slowMotion = false;
+        let showAlgebra = true;
+
+        // Ellipse geometry
+        const ellipseGeometry = new THREE.BufferGeometry();
+        const ellipsePoints = [];
+        const segments = 100;
+        
+        for (let i = 0; i <= segments; i++) {
+            const theta = (i / segments) * Math.PI * 2;
+            ellipsePoints.push(
+                a * Math.cos(theta),
+                b * Math.sin(theta),
+                0
+            );
+        }
+        
+        ellipseGeometry.setAttribute('position', new THREE.Float32BufferAttribute(ellipsePoints, 3));
+        const ellipseMaterial = new THREE.LineBasicMaterial({ 
+            color: 0x00aaff,
+            transparent: true,
+            opacity: 0.8
+        });
+        const ellipse = new THREE.Line(ellipseGeometry, ellipseMaterial);
+        scene.add(ellipse);
+
+        // Axes
+        const axesHelper = new THREE.AxesHelper(6);
+        scene.add(axesHelper);
+
+        // Points P and D
+        const pointGeometry = new THREE.SphereGeometry(0.1, 16, 16);
+        const pointMaterial = new THREE.MeshBasicMaterial({ color: 0xffaa00 });
+        
+        const pointP = new THREE.Mesh(pointGeometry, pointMaterial);
+        scene.add(pointP);
+        
+        const pointD = new THREE.Mesh(pointGeometry, pointMaterial);
+        pointD.material = new THREE.MeshBasicMaterial({ color: 0xff00aa });
+        scene.add(pointD);
+
+        // Semi-diameters CP and CD
+        const lineMaterial = new THREE.LineBasicMaterial({ 
+            color: 0x00ffaa,
+            linewidth: 2
+        });
+        
+        const lineGeometryCP = new THREE.BufferGeometry();
+        const lineCP = new THREE.Line(lineGeometryCP, lineMaterial);
+        scene.add(lineCP);
+        
+        const lineGeometryCD = new THREE.BufferGeometry();
+        const lineCD = new THREE.Line(lineGeometryCD, lineMaterial);
+        lineCD.material = new THREE.LineBasicMaterial({ color: 0xff00aa });
+        scene.add(lineCD);
+
+        // Labels for points
+        function createLabel(text, color) {
+            const canvas = document.createElement('canvas');
+            const context = canvas.getContext('2d');
+            canvas.width = 256;
+            canvas.height = 128;
+            context.fillStyle = 'rgba(0, 0, 0, 0.7)';
+            context.fillRect(0, 0, canvas.width, canvas.height);
+            context.font = '24px Arial';
+            context.fillStyle = color;
+            context.textAlign = 'center';
+            context.fillText(text, canvas.width / 2, canvas.height / 2);
+            
+            const texture = new THREE.CanvasTexture(canvas);
+            const material = new THREE.SpriteMaterial({ map: texture });
+            const sprite = new THREE.Sprite(material);
+            sprite.scale.set(1, 0.5, 1);
+            return sprite;
+        }
+
+        const labelP = createLabel('P', '#ffaa00');
+        scene.add(labelP);
+        
+        const labelD = createLabel('D', '#ff00aa');
+        scene.add(labelD);
+
+        // Update function
+        function updateEllipse() {
+            // Update ellipse
+            const ellipsePoints = [];
+            for (let i = 0; i <= segments; i++) {
+                const theta = (i / segments) * Math.PI * 2;
+                ellipsePoints.push(
+                    a * Math.cos(theta),
+                    b * Math.sin(theta),
+                    0
+                );
+            }
+            ellipseGeometry.setAttribute('position', new THREE.Float32BufferAttribute(ellipsePoints, 3));
+            
+            // Update points P and D
+            const xP = a * Math.cos(phi);
+            const yP = b * Math.sin(phi);
+            pointP.position.set(xP, yP, 0);
+            
+            const phiD = phi + Math.PI / 2;
+            const xD = a * Math.cos(phiD);
+            const yD = b * Math.sin(phiD);
+            pointD.position.set(xD, yD, 0);
+            
+            // Update semi-diameters
+            const cpPoints = [0, 0, 0, xP, yP, 0];
+            lineGeometryCP.setAttribute('position', new THREE.Float32BufferAttribute(cpPoints, 3));
+            
+            const cdPoints = [0, 0, 0, xD, yD, 0];
+            lineGeometryCD.setAttribute('position', new THREE.Float32BufferAttribute(cdPoints, 3));
+            
+            // Update labels
+            labelP.position.set(xP + 0.3, yP + 0.3, 0);
+            labelD.position.set(xD + 0.3, yD + 0.3, 0);
+            
+            // Update info panel
+            const cp = Math.sqrt(xP*xP + yP*yP);
+            const cd = Math.sqrt(xD*xD + yD*yD);
+            const cp2 = cp * cp;
+            const cd2 = cd * cd;
+            const sum = cp2 + cd2;
+            const a2b2 = a*a + b*b;
+            
+            document.getElementById('infoPanel').innerHTML = `
+                <h1>Property 2: Constant Sum Property</h1>
+                <p>For any ellipse, the sum of the squares of two conjugate semi-diameters is always constant:</p>
+                <div class="equation constant">CP² + CD² = a² + b²</div>
+                <div class="equation">CP = ${cp.toFixed(2)}, CD = ${cd.toFixed(2)}</div>
+                <div class="equation">CP² = ${cp2.toFixed(2)}, CD² = ${cd2.toFixed(2)}</div>
+                <div class="equation">CP² + CD² = ${sum.toFixed(2)}</div>
+                <div class="equation constant">a² + b² = ${a2b2.toFixed(2)}</div>
+                <p>Where CP and CD are conjugate semi-diameters.</p>
+            `;
+        }
+
+        // Camera position
+        camera.position.z = 10;
+
+        // Animation loop
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            // Slow rotation for better visualization
+            if (slowMotion) {
+                phi += 0.002;
+                document.getElementById('phiSlider').value = (phi * 180 / Math.PI) % 360;
+                document.getElementById('phiValue').textContent = `${(phi * 180 / Math.PI % 360).toFixed(0)}°`;
+                updateEllipse();
+            }
+            
+            renderer.render(scene, camera);
+        }
+        animate();
+
+        // Event listeners for controls
+        document.getElementById('aSlider').addEventListener('input', function() {
+            a = parseFloat(this.value);
+            document.getElementById('aValue').textContent = a.toFixed(1);
+            updateEllipse();
+        });
+
+        document.getElementById('bSlider').addEventListener('input', function() {
+            b = parseFloat(this.value);
+            document.getElementById('bValue').textContent = b.toFixed(1);
+            updateEllipse();
+        });
+
+        document.getElementById('phiSlider').addEventListener('input', function() {
+            phi = parseFloat(this.value) * Math.PI / 180;
+            document.getElementById('phiValue').textContent = `${this.value}°`;
+            updateEllipse();
+        });
+
+        document.getElementById('resetBtn').addEventListener('click', function() {
+            a = 3.0;
+            b = 2.0;
+            phi = 30 * Math.PI / 180;
+            
+            document.getElementById('aSlider').value = a;
+            document.getElementById('bSlider').value = b;
+            document.getElementById('phiSlider').value = 30;
+            
+            document.getElementById('aValue').textContent = a.toFixed(1);
+            document.getElementById('bValue').textContent = b.toFixed(1);
+            document.getElementById('phiValue').textContent = '30°';
+            
+            updateEllipse();
+        });
+
+        document.getElementById('toggleAlgebra').addEventListener('click', function() {
+            showAlgebra = !showAlgebra;
+            document.getElementById('algebraPanel').style.display = showAlgebra ? 'block' : 'none';
+            this.textContent = showAlgebra ? 'Hide Algebra' : 'Show Algebra';
+        });
+
+        document.getElementById('slowMotion').addEventListener('click', function() {
+            slowMotion = !slowMotion;
+            this.textContent = slowMotion ? 'Normal Speed' : 'Slow Motion';
+        });
+
+        // Initial update
+        updateEllipse();
+
+        // Handle window resize
+        window.addEventListener('resize', function() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+    </script>
+</body>
+</html>
