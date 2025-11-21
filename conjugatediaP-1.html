@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>JEE Visuals: Conjugate Diameters</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Roboto+Mono:wght@300;500&display=swap');
+
+        body { margin: 0; overflow: hidden; background-color: #050505; font-family: 'Roboto Mono', monospace; color: white; }
+        
+        /* UI Container */
+        #ui-layer {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            pointer-events: none;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        /* Universal Glassmorphism */
+        .glass-panel {
+            background: rgba(10, 15, 20, 0.85);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(0, 243, 255, 0.2);
+            border-radius: 8px;
+            padding: 15px;
+            pointer-events: auto;
+            box-shadow: 0 0 15px rgba(0, 243, 255, 0.1);
+            transition: all 0.3s ease;
+        }
+
+        /* Header / Statement */
+        #header {
+            text-align: center;
+            margin-top: 10px;
+        }
+        h1 {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.8rem;
+            margin: 0 0 10px 0;
+            text-shadow: 0 0 10px #00f3ff;
+            letter-spacing: 2px;
+        }
+        .statement {
+            font-size: 1rem;
+            color: #aee;
+            max-width: 800px;
+            margin: 0 auto;
+            line-height: 1.4;
+        }
+        .highlight { color: #ff00ff; font-weight: bold; }
+
+        /* Right Side: Proof */
+        #proof-panel {
+            position: absolute;
+            right: 20px;
+            top: 120px;
+            width: 320px;
+            font-size: 0.9rem;
+        }
+        .math-step { margin-bottom: 12px; border-left: 3px solid #00f3ff; padding-left: 10px; opacity: 0.8; transition: opacity 0.3s; }
+        .math-step:hover { opacity: 1; border-left-color: #ff00ff; }
+        .equation {
+            font-family: 'Times New Roman', serif;
+            font-style: italic;
+            font-size: 1.1rem;
+            background: rgba(0,0,0,0.3);
+            padding: 5px;
+            margin-top: 5px;
+            display: block;
+            text-align: center;
+        }
+        .final-box { border: 1px solid #00ffaa; color: #00ffaa; font-weight: bold; padding: 10px; text-align: center; margin-top: 10px; }
+
+        /* Bottom Left: Controls */
+        #controls {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            width: 300px;
+        }
+        .slider-group { margin-bottom: 10px; }
+        label { display: flex; justify-content: space-between; font-size: 0.8rem; margin-bottom: 5px; }
+        input[type=range] {
+            width: 100%;
+            accent-color: #00f3ff;
+            cursor: pointer;
+        }
+
+        /* Bottom Center: Dynamic Stats */
+        #stats-bar {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 20px;
+        }
+        .stat-box {
+            text-align: center;
+            min-width: 120px;
+        }
+        .stat-val { font-family: 'Orbitron'; font-size: 1.2rem; color: #fff; }
+        .stat-label { font-size: 0.7rem; color: #888; text-transform: uppercase; }
+
+        /* Floating Labels in 3D */
+        .label-3d {
+            position: absolute;
+            background: rgba(0,0,0,0.7);
+            border: 1px solid white;
+            color: white;
+            padding: 2px 6px;
+            font-size: 12px;
+            border-radius: 4px;
+            pointer-events: none;
+            transform: translate(-50%, -50%);
+        }
+
+        /* Eccentric Angle Panel */
+        #angle-panel {
+            position: absolute;
+            left: 20px;
+            top: 120px;
+            width: 320px;
+        }
+        .angle-display {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            padding: 5px;
+            border-radius: 4px;
+            background: rgba(0,0,0,0.3);
+        }
+        .angle-label { color: #aaa; }
+        .angle-value { font-family: 'Orbitron'; }
+        .angle-p { color: #00f3ff; }
+        .angle-d { color: #ff00ff; }
+
+    </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://unpkg.com/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+</head>
+<body>
+
+    <div id="canvas-container"></div>
+
+    <div id="ui-layer">
+        
+        <div id="header" class="glass-panel">
+            <h1>CONJUGATE DIAMETERS</h1>
+            <div class="statement">
+                "Two diameters are <strong>conjugate</strong> if their parametric angles differ by 90°."<br>
+                <span style="font-size: 0.9em; color: #aaa;">(Equivalently: Each bisects chords parallel to the other)</span>
+            </div>
+        </div>
+
+        <!-- New Eccentric Angle Panel -->
+        <div id="angle-panel" class="glass-panel">
+            <div style="text-align:center; margin-bottom:10px; font-weight:bold; color:#00f3ff;">ECCENTRIC ANGLES</div>
+            
+            <div class="angle-display">
+                <span class="angle-label">Point P (φ):</span>
+                <span class="angle-value angle-p" id="angle-p">45°</span>
+            </div>
+            
+            <div class="angle-display">
+                <span class="angle-label">Point D (φ + 90°):</span>
+                <span class="angle-value angle-d" id="angle-d">135°</span>
+            </div>
+            
+            <div class="angle-display">
+                <span class="angle-label">Difference:</span>
+                <span class="angle-value" style="color:#00ffaa;">90°</span>
+            </div>
+            
+            <div style="margin-top: 10px; font-size: 0.8rem; color: #aaa;">
+                <div>Parametric Equations:</div>
+                <div>P: (a·cos φ, b·sin φ)</div>
+                <div>D: (a·cos(φ+90°), b·sin(φ+90°))</div>
+            </div>
+        </div>
+
+        <div id="proof-panel" class="glass-panel">
+            <div style="text-align:center; margin-bottom:10px; font-weight:bold; color:#00f3ff;">ALGEBRAIC PROOF</div>
+            
+            <div class="math-step">
+                1. Slope of CP (Point P at φ):
+                <span class="equation" id="eq-m1">m₁ = (b/a) tan(φ)</span>
+            </div>
+            
+            <div class="math-step">
+                2. Slope of CD (Point D at φ + 90°):
+                <span class="equation">m₂ = (b/a) tan(φ + 90°)</span>
+            </div>
+
+            <div class="math-step">
+                3. Trig Identity: tan(φ + 90°) = -cot(φ)
+                <span class="equation">m₂ = (b/a) [-1/tan(φ)]</span>
+            </div>
+
+            <div class="math-step">
+                4. Product of Slopes:
+                <span class="equation">m₁ × m₂ = - (b²/a²)</span>
+            </div>
+
+            <div class="final-box">
+                Product is CONSTANT<br>
+                Dependant only on a & b
+            </div>
+        </div>
+
+        <div id="stats-bar" class="glass-panel">
+            <div class="stat-box">
+                <div class="stat-val" id="val-m1" style="color: #00f3ff;">0.00</div>
+                <div class="stat-label">Slope m1 (CP)</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-val" id="val-prod" style="color: #00ffaa;">-1.00</div>
+                <div class="stat-label">Product m1 × m2</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-val" id="val-m2" style="color: #ff00ff;">0.00</div>
+                <div class="stat-label">Slope m2 (CD)</div>
+            </div>
+        </div>
+
+        <div id="controls" class="glass-panel">
+            <div class="slider-group">
+                <label><span>Semi-major axis (a)</span> <span id="disp-a">3.0</span></label>
+                <input type="range" id="input-a" min="1.5" max="5" step="0.1" value="3.0">
+            </div>
+            <div class="slider-group">
+                <label><span>Semi-minor axis (b)</span> <span id="disp-b">2.0</span></label>
+                <input type="range" id="input-b" min="1.0" max="4.0" step="0.1" value="2.0">
+            </div>
+            <div class="slider-group">
+                <label><span>Angle φ (Phi)</span> <span id="disp-phi">45°</span></label>
+                <input type="range" id="input-phi" min="0" max="360" step="1" value="45">
+            </div>
+            <button id="anim-btn" style="width:100%; padding:8px; background:#00f3ff; border:none; border-radius:4px; cursor:pointer; font-weight:bold;">Start Rotation</button>
+        </div>
+    </div>
+
+    <script>
+        // --- SCENE SETUP ---
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x050505);
+        scene.fog = new THREE.FogExp2(0x050505, 0.02);
+
+        const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
+        camera.position.set(0, -10, 8);
+        camera.lookAt(0, 0, 0);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(window.devicePixelRatio);
+        document.getElementById('canvas-container').appendChild(renderer.domElement);
+
+        const controls = new THREE.OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+
+        // --- LIGHTING ---
+        const ambientLight = new THREE.AmbientLight(0x404040, 2);
+        scene.add(ambientLight);
+
+        const pointLight = new THREE.PointLight(0xffffff, 1, 100);
+        pointLight.position.set(10, 10, 10);
+        scene.add(pointLight);
+        
+        const centerGlow = new THREE.PointLight(0x00f3ff, 0.5, 20);
+        centerGlow.position.set(0,0,0);
+        scene.add(centerGlow);
+
+        // --- OBJECTS ---
+
+        // 1. Grid Helper (Floor)
+        const gridHelper = new THREE.GridHelper(20, 20, 0x333333, 0x111111);
+        gridHelper.rotation.x = Math.PI / 2;
+        scene.add(gridHelper);
+
+        // 2. The Ellipse (Liquid Metal Look)
+        const ellipseMaterial = new THREE.MeshStandardMaterial({ 
+            color: 0xaaaaaa, 
+            roughness: 0.0, 
+            metalness: 1.0,
+            emissive: 0x222222
+        });
+        
+        // We will generate the geometry dynamically in the update loop
+        let ellipseMesh = new THREE.Mesh(new THREE.BufferGeometry(), ellipseMaterial);
+        scene.add(ellipseMesh);
+
+        // 3. Diameter Lines (Neon Beams)
+        const matLine1 = new THREE.LineBasicMaterial({ color: 0x00f3ff, linewidth: 2 });
+        const matLine2 = new THREE.LineBasicMaterial({ color: 0xff00ff, linewidth: 2 });
+
+        const geoLine1 = new THREE.BufferGeometry();
+        const geoLine2 = new THREE.BufferGeometry();
+
+        const diameter1 = new THREE.Line(geoLine1, matLine1);
+        const diameter2 = new THREE.Line(geoLine2, matLine2);
+        scene.add(diameter1);
+        scene.add(diameter2);
+
+        // 4. Points P and D (Glowing Spheres)
+        const sphereGeo = new THREE.SphereGeometry(0.15, 32, 32);
+        const matP = new THREE.MeshBasicMaterial({ color: 0x00f3ff });
+        const matD = new THREE.MeshBasicMaterial({ color: 0xff00ff });
+        const matC = new THREE.MeshBasicMaterial({ color: 0xffffff });
+
+        const pointP = new THREE.Mesh(sphereGeo, matP);
+        const pointD = new THREE.Mesh(sphereGeo, matD);
+        const pointC = new THREE.Mesh(sphereGeo, matC); // Center
+        
+        scene.add(pointP);
+        scene.add(pointD);
+        scene.add(pointC);
+
+        // 5. Auxiliary Circle and Angle Visualization
+        const circleMaterial = new THREE.LineBasicMaterial({ color: 0x4444ff, transparent: true, opacity: 0.3 });
+        const circleGeometry = new THREE.BufferGeometry();
+        const auxiliaryCircle = new THREE.Line(circleGeometry, circleMaterial);
+        scene.add(auxiliaryCircle);
+
+        // 6. Angle Visualization Lines
+        const angleLineMaterial = new THREE.LineBasicMaterial({ color: 0xffff00, linewidth: 1 });
+        const angleLineGeometry = new THREE.BufferGeometry();
+        const angleLine = new THREE.Line(angleLineGeometry, angleLineMaterial);
+        scene.add(angleLine);
+
+        // 7. Angle Arc Visualization
+        const arcMaterial = new THREE.LineBasicMaterial({ color: 0xffff00, transparent: true, opacity: 0.7 });
+        let arcLine = null;
+
+        // --- STATE & VARIABLES ---
+        const state = {
+            a: 3.0,
+            b: 2.0,
+            phi: 45, // degrees
+            animating: false
+        };
+
+        // --- UPDATE FUNCTION ---
+        function updateScene() {
+            const a = parseFloat(state.a);
+            const b = parseFloat(state.b);
+            const phiRad = state.phi * (Math.PI / 180);
+            const phiConj = phiRad + (Math.PI / 2);
+
+            // 1. Rebuild Ellipse Geometry
+            class EllipseCurve extends THREE.Curve {
+                constructor(scaleX, scaleY) {
+                    super();
+                    this.scaleX = scaleX;
+                    this.scaleY = scaleY;
+                }
+                getPoint(t, optionalTarget = new THREE.Vector3()) {
+                    const tx = 0; 
+                    const ty = 0; 
+                    const radians = 2 * Math.PI * t;
+                    return optionalTarget.set(
+                        this.scaleX * Math.cos(radians),
+                        this.scaleY * Math.sin(radians),
+                        0
+                    );
+                }
+            }
+            const path = new EllipseCurve(a, b);
+            // Dispose old geometry to free memory
+            if(ellipseMesh.geometry) ellipseMesh.geometry.dispose();
+            ellipseMesh.geometry = new THREE.TubeGeometry(path, 64, 0.03, 8, true);
+
+            // 2. Update Auxiliary Circle
+            const circlePoints = [];
+            for (let i = 0; i <= 64; i++) {
+                const angle = (i / 64) * Math.PI * 2;
+                circlePoints.push(new THREE.Vector3(a * Math.cos(angle), a * Math.sin(angle), 0));
+            }
+            auxiliaryCircle.geometry.setFromPoints(circlePoints);
+
+            // 3. Calculate Points
+            const Px = a * Math.cos(phiRad);
+            const Py = b * Math.sin(phiRad);
+            
+            const Dx = a * Math.cos(phiConj);
+            const Dy = b * Math.sin(phiConj);
+
+            pointP.position.set(Px, Py, 0);
+            pointD.position.set(Dx, Dy, 0);
+
+            // 4. Update Diameter Lines (passing through center)
+            // Diameter 1: P to -P
+            const points1 = [];
+            points1.push(new THREE.Vector3(Px, Py, 0));
+            points1.push(new THREE.Vector3(-Px, -Py, 0)); // Extend to other side
+            diameter1.geometry.setFromPoints(points1);
+
+            // Diameter 2: D to -D
+            const points2 = [];
+            points2.push(new THREE.Vector3(Dx, Dy, 0));
+            points2.push(new THREE.Vector3(-Dx, -Dy, 0));
+            diameter2.geometry.setFromPoints(points2);
+
+            // 5. Update Angle Visualization
+            // Line from center to point on auxiliary circle
+            const anglePoints = [];
+            anglePoints.push(new THREE.Vector3(0, 0, 0));
+            anglePoints.push(new THREE.Vector3(a * Math.cos(phiRad), a * Math.sin(phiRad), 0));
+            angleLine.geometry.setFromPoints(anglePoints);
+
+            // Create arc for angle visualization
+            if (arcLine) scene.remove(arcLine);
+            const arcPoints = [];
+            const arcSegments = 20;
+            for (let i = 0; i <= arcSegments; i++) {
+                const angle = (i / arcSegments) * phiRad;
+                arcPoints.push(new THREE.Vector3(a * 0.5 * Math.cos(angle), a * 0.5 * Math.sin(angle), 0));
+            }
+            const arcGeometry = new THREE.BufferGeometry().setFromPoints(arcPoints);
+            arcLine = new THREE.Line(arcGeometry, arcMaterial);
+            scene.add(arcLine);
+
+            // 6. Calculate Slopes & Update UI
+            let m1 = (Px !== 0) ? (Py / Px) : 9999; // handle infinity roughly
+            let m2 = (Dx !== 0) ? (Dy / Dx) : 9999;
+            
+            // Theoretical Product
+            const product = -(b*b)/(a*a);
+
+            // DOM Updates
+            document.getElementById('disp-a').innerText = a.toFixed(1);
+            document.getElementById('disp-b').innerText = b.toFixed(1);
+            document.getElementById('disp-phi').innerText = Math.round(state.phi) + "°";
+
+            document.getElementById('val-m1').innerText = m1 > 100 ? "∞" : m1.toFixed(2);
+            document.getElementById('val-m2').innerText = m2 > 100 ? "∞" : m2.toFixed(2);
+            document.getElementById('val-prod').innerText = product.toFixed(2);
+
+            // Update Equation text
+            document.getElementById('eq-m1').innerText = `m₁ = (${b.toFixed(1)}/${a.toFixed(1)}) tan(${Math.round(state.phi)}°)`;
+
+            // Update Eccentric Angle Display
+            document.getElementById('angle-p').innerText = Math.round(state.phi) + "°";
+            document.getElementById('angle-d').innerText = Math.round((state.phi + 90) % 360) + "°";
+        }
+
+        // --- EVENT LISTENERS ---
+        document.getElementById('input-a').addEventListener('input', (e) => { state.a = e.target.value; updateScene(); });
+        document.getElementById('input-b').addEventListener('input', (e) => { state.b = e.target.value; updateScene(); });
+        document.getElementById('input-phi').addEventListener('input', (e) => { state.phi = parseFloat(e.target.value); updateScene(); });
+
+        const animBtn = document.getElementById('anim-btn');
+        animBtn.addEventListener('click', () => {
+            state.animating = !state.animating;
+            animBtn.innerText = state.animating ? "Stop Rotation" : "Start Rotation";
+            animBtn.style.background = state.animating ? "#ff0055" : "#00f3ff";
+        });
+
+        // --- ANIMATION LOOP ---
+        function animate() {
+            requestAnimationFrame(animate);
+
+            if (state.animating) {
+                state.phi = (state.phi + 0.5) % 360;
+                document.getElementById('input-phi').value = state.phi;
+                updateScene();
+            }
+
+            controls.update();
+            renderer.render(scene, camera);
+        }
+
+        // --- RESIZE HANDLER ---
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            updateScene();
+        });
+
+        // Init
+        updateScene();
+        animate();
+
+    </script>
+</body>
+</html>
