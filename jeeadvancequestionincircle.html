@@ -1,0 +1,889 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Enhanced Geometric Progression & Circles Visualization</title>
+    <style>
+        /* --- CSS RESET & FONTS --- */
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&family=JetBrains+Mono:wght@400;700&display=swap');
+
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #ffffff;
+            font-family: 'Inter', sans-serif;
+            color: #333;
+        }
+
+        /* --- UI LAYOUT --- */
+        #canvas-container {
+            width: 100%;
+            height: 100%;
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 1;
+            cursor: grab;
+        }
+        #canvas-container.dragging {
+            cursor: grabbing;
+        }
+
+        .ui-panel {
+            position: absolute;
+            z-index: 10;
+            pointer-events: none; /* Let clicks pass through to canvas unless on interactive elements */
+        }
+
+        /* --- TOP LEFT: FORMULA --- */
+        #formula-panel {
+            top: 20px;
+            left: 20px;
+            background: rgba(255, 255, 255, 0.9);
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.05);
+            border: 1px solid #eee;
+            max-width: 350px;
+        }
+
+        h1 { font-size: 18px; margin: 0 0 10px 0; color: #111; font-weight: 800; letter-spacing: -0.5px; }
+        .math { font-family: 'JetBrains Mono', monospace; font-size: 14px; color: #555; line-height: 1.6; }
+        .highlight { color: #2563EB; font-weight: bold; }
+        
+        /* --- TOP RIGHT: GP VISUALIZATION --- */
+        #gp-panel {
+            top: 20px;
+            right: 20px;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 20px;
+            border-radius: 12px;
+            border: 1px solid #eee;
+            width: 280px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.05);
+        }
+        .bar-container { display: flex; align-items: flex-end; height: 60px; gap: 4px; margin-top: 10px; }
+        .bar { background: #3B82F6; width: 10px; border-radius: 2px 2px 0 0; transition: height 0.3s; }
+        .sum-bar-track { width: 100%; height: 10px; background: #eee; margin-top: 10px; border-radius: 5px; overflow: hidden; }
+        .sum-bar-fill { height: 100%; background: #10B981; width: 0%; transition: width 0.3s; }
+
+        /* --- BOTTOM LEFT: DYNAMIC STATS --- */
+        #stats-panel {
+            bottom: 20px;
+            left: 20px;
+            background: rgba(255, 255, 255, 0.9);
+            padding: 20px;
+            border-radius: 12px;
+            border: 1px solid #eee;
+            min-width: 300px;
+        }
+        .stat-row { display: flex; justify-content: space-between; margin-bottom: 5px; font-size: 13px; }
+        .stat-val { font-family: 'JetBrains Mono', monospace; font-weight: 700; }
+        .status-green { color: #10B981; }
+        .status-red { color: #EF4444; }
+
+        /* --- BOTTOM RIGHT: CELEBRATION --- */
+        #celebration {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            font-size: 24px;
+            font-weight: 800;
+            color: #10B981;
+            text-align: center;
+            opacity: 0;
+            text-shadow: 0 0 20px rgba(16, 185, 129, 0.4);
+            pointer-events: none;
+            z-index: 100;
+            background: rgba(255,255,255,0.95);
+            padding: 20px;
+            border-radius: 12px;
+            border: 2px solid #10B981;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            max-width: 300px;
+            transform: translateY(20px);
+        }
+        #celebration .subtitle {
+            font-size: 16px;
+            color: #333;
+            font-weight: 500;
+            margin-top: 8px;
+        }
+
+        /* --- BOTTOM CENTER: CONTROLS --- */
+        #controls {
+            position: absolute;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 50;
+            display: flex;
+            gap: 15px;
+            background: white;
+            padding: 10px 20px;
+            border-radius: 50px;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+            pointer-events: auto;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        button {
+            background: #2563EB;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 20px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        button:hover { background: #1D4ED8; }
+        button:disabled { background: #9CA3AF; cursor: not-allowed; }
+        
+        .slider-container { display: flex; align-items: center; gap: 10px; }
+        input[type=range] { width: 150px; }
+        
+        /* --- PROGRESS BAR --- */
+        #progress-container {
+            position: absolute;
+            bottom: 80px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 300px;
+            height: 6px;
+            background: #eee;
+            border-radius: 3px;
+            z-index: 50;
+        }
+        #progress-bar {
+            width: 0%;
+            height: 100%;
+            background: #2563EB;
+            border-radius: 3px;
+            transition: width 0.3s;
+        }
+
+        /* --- DRAG INSTRUCTIONS --- */
+        #drag-instructions {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(255, 255, 255, 0.9);
+            padding: 10px 20px;
+            border-radius: 20px;
+            font-size: 12px;
+            color: #666;
+            z-index: 10;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.3s;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+        #drag-instructions.show {
+            opacity: 1;
+        }
+
+        /* --- RESPONSIVE DESIGN --- */
+        @media (max-width: 768px) {
+            .ui-panel {
+                position: relative;
+                margin: 10px;
+                max-width: none;
+            }
+            
+            #formula-panel, #gp-panel, #stats-panel {
+                position: relative;
+                top: auto;
+                left: auto;
+                right: auto;
+                bottom: auto;
+                margin-bottom: 10px;
+            }
+            
+            #controls {
+                flex-wrap: wrap;
+                bottom: 10px;
+                padding: 8px 15px;
+            }
+            
+            #progress-container {
+                width: 200px;
+                bottom: 70px;
+            }
+            
+            #celebration {
+                position: relative;
+                bottom: auto;
+                right: auto;
+                margin: 20px;
+                max-width: none;
+            }
+
+            #drag-instructions {
+                display: none;
+            }
+        }
+
+    </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+</head>
+<body>
+
+    <div id="canvas-container"></div>
+
+    <div id="formula-panel" class="ui-panel">
+        <h1>The Large Circle M</h1>
+        <div class="math">
+            M = { (x,y) : x² + y² ≤ r² }<br><br>
+            <span id="r-value-anim" style="opacity:0;">
+                r = √2(2 - 1/2¹⁹⁸)<br>
+                r ≈ 2.8284...
+            </span>
+        </div>
+    </div>
+
+    <div id="gp-panel" class="ui-panel">
+        <h1>Geometric Progression</h1>
+        <div class="math">aₙ = 1 / 2ⁿ⁻¹</div>
+        <div class="bar-container" id="gp-bars">
+            </div>
+        <div class="math" style="margin-top:10px;">Sₙ = ∑ aᵢ (Cumulative Sum)</div>
+        <div class="sum-bar-track">
+            <div class="sum-bar-fill" id="sum-fill"></div>
+        </div>
+        <div class="math" style="margin-top:5px; font-size:12px; color:#888;">Center Dₙ = (Sₙ₋₁, Sₙ₋₁)</div>
+    </div>
+
+    <div id="stats-panel" class="ui-panel">
+        <div class="stat-row">
+            <span>Current n:</span>
+            <span class="stat-val" id="val-n">0</span>
+        </div>
+        <div class="stat-row">
+            <span>Radius (aₙ):</span>
+            <span class="stat-val" id="val-radius">-</span>
+        </div>
+        <div class="stat-row">
+            <span>Center Sₙ₋₁:</span>
+            <span class="stat-val" id="val-center">-</span>
+        </div>
+        <div class="stat-row">
+            <span>Dist from Origin:</span>
+            <span class="stat-val" id="val-dist">-</span>
+        </div>
+        <hr style="border:0; border-top:1px solid #eee; margin:10px 0;">
+        <div class="stat-row">
+            <span>Circles Inside M:</span>
+            <span class="stat-val highlight" id="val-count">0</span>
+        </div>
+    </div>
+
+    <div id="celebration">
+        FINAL RESULT<br>
+        <span class="subtitle">199 Circles lie completely inside M</span>
+    </div>
+
+    <div id="drag-instructions">
+        Click and drag to pan • Mouse wheel to zoom
+    </div>
+
+    <div id="progress-container">
+        <div id="progress-bar"></div>
+    </div>
+
+    <div id="controls">
+        <button id="btn-play">Play Animation</button>
+        <button id="btn-reset">Reset</button>
+        <button id="btn-step">Step Forward</button>
+        <button id="btn-back">Step Back</button>
+        <div class="slider-container">
+            <span style="font-size:12px; font-weight:bold;">Zoom</span>
+            <input type="range" id="zoom-slider" min="1" max="50" value="2">
+        </div>
+        <div class="slider-container">
+            <span style="font-size:12px; font-weight:bold;">Speed</span>
+            <input type="range" id="speed-slider" min="1" max="10" value="5">
+        </div>
+        <button id="btn-center">Center View</button>
+    </div>
+
+<script>
+    // =========================================================================
+    // 1. SCENE SETUP
+    // =========================================================================
+    const container = document.getElementById('canvas-container');
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0xffffff);
+
+    // Camera (Orthographic as requested for math precision)
+    const aspect = window.innerWidth / window.innerHeight;
+    const viewSize = 4.5; // Fits the circle of radius ~2.8
+    const camera = new THREE.OrthographicCamera(
+        -viewSize * aspect, viewSize * aspect,
+        viewSize, -viewSize,
+        0.1, 100
+    );
+    camera.position.set(0, 0, 10);
+    camera.lookAt(0, 0, 0);
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(window.devicePixelRatio);
+    container.appendChild(renderer.domElement);
+
+    // Enhanced camera controls
+    let targetZoom = 2;
+    let targetCameraPos = new THREE.Vector3(0, 0, 10);
+    let isDragging = false;
+    let previousMousePosition = { x: 0, y: 0 };
+
+    // =========================================================================
+    // 2. MATH CONSTANTS
+    // =========================================================================
+    const LIMIT = 210; // Visual limit
+    const TRUE_LIMIT = 199; // The math answer
+    
+    // r = sqrt(2) * (2 - 1/2^198)
+    // For visualization, this is practically 2*sqrt(2).
+    const R_VAL = Math.sqrt(2) * 2; 
+
+    // =========================================================================
+    // 3. VISUAL ELEMENTS
+    // =========================================================================
+
+    // --- A. The Large Circle M ---
+    const outerGeometry = new THREE.CircleGeometry(R_VAL, 128);
+    const outerMaterial = new THREE.MeshBasicMaterial({ 
+        color: 0xE0F2FE, // Very light blue
+        transparent: true, 
+        opacity: 0.3,
+        side: THREE.DoubleSide
+    });
+    const circleM = new THREE.Mesh(outerGeometry, outerMaterial);
+    scene.add(circleM);
+
+    // Boundary Line for M
+    const outerBorderGeo = new THREE.RingGeometry(R_VAL - 0.015, R_VAL, 128);
+    const outerBorderMat = new THREE.MeshBasicMaterial({ color: 0x3B82F6 });
+    const circleMBorder = new THREE.Mesh(outerBorderGeo, outerBorderMat);
+    scene.add(circleMBorder);
+
+    // Grid - Make it larger for panning
+    const gridHelper = new THREE.GridHelper(20, 20, 0xdddddd, 0xf5f5f5);
+    gridHelper.rotation.x = Math.PI / 2;
+    scene.add(gridHelper);
+
+    // Axes - Make them longer for panning
+    const axesMaterial = new THREE.LineBasicMaterial({ color: 0x000000, opacity: 0.2, transparent: true });
+    const axesGeo = new THREE.BufferGeometry().setFromPoints([
+        new THREE.Vector3(-10, 0, 0), new THREE.Vector3(10, 0, 0),
+        new THREE.Vector3(0, -10, 0), new THREE.Vector3(0, 10, 0)
+    ]);
+    const axes = new THREE.LineSegments(axesGeo, axesMaterial);
+    scene.add(axes);
+
+    // Diagonal Line (y=x) where centers lie - Make it longer
+    const diagGeo = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0,0,0), new THREE.Vector3(6,6,0)]);
+    const diagMat = new THREE.LineDashedMaterial({ color: 0x94A3B8, dashSize: 0.1, gapSize: 0.1 });
+    const diagLine = new THREE.Line(diagGeo, diagMat);
+    diagLine.computeLineDistances();
+    scene.add(diagLine);
+
+    // --- B. The Dynamic Circles D_n ---
+    const circlesGroup = new THREE.Group();
+    scene.add(circlesGroup);
+    
+    // Store references for animation
+    let circlesData = [];
+
+    // =========================================================================
+    // 4. LOGIC & ANIMATION STATE
+    // =========================================================================
+    let currentN = 0;
+    let isPlaying = false;
+    let S_prev = 0; // S_{n-1}
+    let animationSpeed = 5;
+
+    // Setup GP Visuals (DOM)
+    const gpContainer = document.getElementById('gp-bars');
+    for(let i=0; i<8; i++) {
+        let b = document.createElement('div');
+        b.className = 'bar';
+        b.style.height = '0%';
+        gpContainer.appendChild(b);
+    }
+
+    // =========================================================================
+    // 5. CORE FUNCTIONS
+    // =========================================================================
+
+    // Enhanced camera update function
+    function updateCamera() {
+        // Smooth zoom
+        camera.zoom += (targetZoom - camera.zoom) * 0.1;
+        
+        // Smooth camera movement
+        camera.position.lerp(targetCameraPos, 0.1);
+        
+        camera.updateProjectionMatrix();
+    }
+
+    // Enhanced math precision for large exponents
+    function precisePowerOfTwo(exponent) {
+        if (exponent <= 53) {
+            return 1 / Math.pow(2, exponent);
+        }
+        // For very small numbers, use approximation
+        return Math.pow(2, -exponent);
+    }
+
+    function calculateSPrev(n) {
+        // S_n = 2(1 - 1/2^n)
+        if (n === 0) return 0;
+        return 2 * (1 - Math.pow(0.5, n));
+    }
+
+    function updateProgress() {
+        const progress = (currentN / LIMIT) * 100;
+        document.getElementById('progress-bar').style.width = `${progress}%`;
+    }
+
+    function updateUI(n, radius, center, dist, inside) {
+        document.getElementById('val-n').innerText = n;
+        document.getElementById('val-radius').innerText = n > 15 ? "Very Small" : radius.toFixed(4);
+        document.getElementById('val-center').innerText = `(${center.toFixed(2)}, ${center.toFixed(2)})`;
+        document.getElementById('val-dist').innerText = dist.toFixed(3);
+        
+        if(inside) {
+            const countElem = document.getElementById('val-count');
+            countElem.innerText = parseInt(countElem.innerText) + 1;
+        }
+
+        // Update GP Bars HTML
+        const bars = document.querySelectorAll('.bar');
+        if (n <= 8) {
+            // Height relative to first term (1)
+            const h = (1 / Math.pow(2, n-1)) * 100; 
+            bars[n-1].style.height = h + '%';
+        }
+
+        // Update Sum Bar
+        const Sn = 2 * (1 - Math.pow(0.5, n));
+        const sumFill = (Sn / 2) * 100; // Since Sum converges to 2
+        document.getElementById('sum-fill').style.width = sumFill + '%';
+        
+        // Update progress
+        updateProgress();
+    }
+
+    // Create particle effects for celebration
+    function createParticles() {
+        const particleCount = 100;
+        const particles = new THREE.BufferGeometry();
+        const positions = new Float32Array(particleCount * 3);
+        
+        for (let i = 0; i < particleCount * 3; i += 3) {
+            positions[i] = (Math.random() - 0.5) * 10;
+            positions[i + 1] = (Math.random() - 0.5) * 10;
+            positions[i + 2] = 0;
+        }
+        
+        particles.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+        
+        const particleMaterial = new THREE.PointsMaterial({
+            color: 0x10B981,
+            size: 0.1,
+            transparent: true
+        });
+        
+        const particleSystem = new THREE.Points(particles, particleMaterial);
+        scene.add(particleSystem);
+        
+        // Animate particles
+        gsap.to(particleSystem.rotation, { 
+            x: Math.PI * 2, 
+            y: Math.PI * 2, 
+            duration: 5, 
+            repeat: -1 
+        });
+        
+        gsap.to(particleSystem.scale, { 
+            x: 0, 
+            y: 0, 
+            duration: 3, 
+            delay: 2, 
+            ease: "power2.in" 
+        });
+    }
+
+    function addNextCircle() {
+        if (!isPlaying && currentN >= LIMIT) return;
+
+        currentN++;
+        
+        // Math
+        const a_n = precisePowerOfTwo(currentN - 1);
+        const centerVal = S_prev; // Center is at S_{n-1}
+        
+        // Update S for next round
+        S_prev += a_n; 
+
+        // Determination
+        const isInside = currentN <= TRUE_LIMIT;
+        
+        // Visuals
+        // Note: If n is very large, radius is invisible. We clamp visuals.
+        const visualRadius = Math.max(a_n, 0.005); 
+        
+        // Create Geometry
+        const geometry = new THREE.RingGeometry(visualRadius - (visualRadius*0.1), visualRadius, 64);
+        const color = isInside ? 0x10B981 : 0xEF4444; // Green : Red
+        const material = new THREE.MeshBasicMaterial({ 
+            color: color, 
+            side: THREE.DoubleSide,
+            transparent: true,
+            opacity: 0
+        });
+        
+        const circle = new THREE.Mesh(geometry, material);
+        circle.position.set(centerVal, centerVal, 0);
+        circlesGroup.add(circle);
+
+        // Add Center Dot
+        const dotGeo = new THREE.CircleGeometry(visualRadius * 0.2, 8);
+        const dotMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+        const dot = new THREE.Mesh(dotGeo, dotMat);
+        dot.position.z = 0.01; // stacking
+        circle.add(dot);
+
+        // Store circle data for stepping back
+        circlesData.push({
+            n: currentN,
+            circle: circle,
+            material: material,
+            centerVal: centerVal,
+            a_n: a_n,
+            isInside: isInside
+        });
+
+        // Animation: Pop in and Expand
+        gsap.to(material, { opacity: 1, duration: 0.5 });
+        gsap.from(circle.scale, { x: 0, y: 0, duration: 0.6, ease: "back.out(1.7)" });
+
+        // Camera follow logic (subtle pan)
+        const camTargetX = centerVal;
+        const camTargetY = centerVal;
+        targetCameraPos.set(camTargetX * 0.5, camTargetY * 0.5, 10); // Don't center exactly, keep perspective
+
+        // UI Updates
+        updateUI(currentN, a_n, centerVal, centerVal * Math.sqrt(2), isInside);
+
+        // Loop Logic
+        if (isPlaying && currentN < LIMIT) {
+            let delay = 1.5;
+            if(currentN > 5) delay = 0.5;
+            if(currentN > 10) delay = 0.1;
+            if(currentN > 20) delay = 0.01; // Fast forward
+            
+            // Adjust delay based on speed setting
+            delay = delay * (10 - animationSpeed) / 10;
+            
+            setTimeout(addNextCircle, delay * 1000);
+        } else if (currentN === TRUE_LIMIT + 1) {
+            // We hit the first OUTSIDE circle
+            finishAnimation();
+        } else if (currentN >= LIMIT) {
+            finishAnimation();
+        }
+    }
+
+    function stepBackward() {
+        if (currentN <= 0 || circlesData.length === 0) return;
+        
+        const lastCircle = circlesData.pop();
+        circlesGroup.remove(lastCircle.circle);
+        
+        // Clean up resources
+        lastCircle.circle.geometry.dispose();
+        lastCircle.material.dispose();
+        
+        currentN--;
+        S_prev = currentN > 0 ? calculateSPrev(currentN) : 0;
+        
+        // Update UI
+        document.getElementById('val-n').innerText = currentN;
+        document.getElementById('val-count').innerText = Math.max(0, parseInt(document.getElementById('val-count').innerText) - (lastCircle.isInside ? 1 : 0));
+        updateProgress();
+        
+        // Update camera position
+        if (currentN > 0) {
+            const prevCircle = circlesData[circlesData.length - 1];
+            targetCameraPos.set(prevCircle.centerVal * 0.5, prevCircle.centerVal * 0.5, 10);
+        } else {
+            targetCameraPos.set(0, 0, 10);
+        }
+    }
+
+    function finishAnimation() {
+        isPlaying = false;
+        document.getElementById('btn-play').innerText = "Restart";
+        
+        // Show celebration in bottom right corner
+        gsap.to('#celebration', { 
+            opacity: 1, 
+            duration: 1, 
+            ease: "back.out(1.7)",
+            y: 0
+        });
+        
+        // Create celebration particles
+        createParticles();
+        
+        // Zoom out to see everything
+        targetZoom = 1;
+        targetCameraPos.set(0, 0, 10);
+    }
+
+    // =========================================================================
+    // 6. DRAGGABLE CAMERA FUNCTIONALITY
+    // =========================================================================
+
+    function onMouseDown(event) {
+        isDragging = true;
+        container.classList.add('dragging');
+        previousMousePosition = {
+            x: event.clientX,
+            y: event.clientY
+        };
+    }
+
+    function onMouseMove(event) {
+        if (!isDragging) return;
+
+        const deltaMove = {
+            x: event.clientX - previousMousePosition.x,
+            y: event.clientY - previousMousePosition.y
+        };
+
+        // Adjust pan speed based on zoom level (pan slower when zoomed in)
+        const panSpeed = 0.01 / targetZoom;
+        
+        // Convert screen movement to world movement
+        targetCameraPos.x -= deltaMove.x * panSpeed;
+        targetCameraPos.y += deltaMove.y * panSpeed;
+
+        previousMousePosition = {
+            x: event.clientX,
+            y: event.clientY
+        };
+    }
+
+    function onMouseUp() {
+        isDragging = false;
+        container.classList.remove('dragging');
+    }
+
+    function onWheel(event) {
+        event.preventDefault();
+        
+        // Adjust zoom based on wheel direction
+        const zoomFactor = event.deltaY > 0 ? 0.9 : 1.1;
+        targetZoom *= zoomFactor;
+        
+        // Clamp zoom values
+        targetZoom = Math.max(0.5, Math.min(100, targetZoom));
+        
+        // Update zoom slider to match
+        document.getElementById('zoom-slider').value = targetZoom;
+        
+        // Show drag instructions when zoomed in
+        if (targetZoom > 3) {
+            document.getElementById('drag-instructions').classList.add('show');
+        } else {
+            document.getElementById('drag-instructions').classList.remove('show');
+        }
+    }
+
+    function centerView() {
+        targetCameraPos.set(0, 0, 10);
+        targetZoom = 2;
+        document.getElementById('zoom-slider').value = 2;
+        document.getElementById('drag-instructions').classList.remove('show');
+    }
+
+    // =========================================================================
+    // 7. CONTROLS & EVENTS
+    // =========================================================================
+    
+    document.getElementById('btn-play').addEventListener('click', () => {
+        if(currentN >= LIMIT) {
+            // Reset logic
+            resetSim();
+        }
+        if(!isPlaying) {
+            isPlaying = true;
+            document.getElementById('btn-play').innerText = "Pause";
+            // Fade in R value
+            gsap.to('#r-value-anim', {opacity: 1, duration: 1});
+            addNextCircle();
+        } else {
+            isPlaying = false;
+            document.getElementById('btn-play').innerText = "Resume";
+        }
+    });
+
+    document.getElementById('btn-reset').addEventListener('click', resetSim);
+    
+    document.getElementById('btn-step').addEventListener('click', () => {
+        if (!isPlaying && currentN < LIMIT) {
+            addNextCircle();
+        }
+    });
+
+    document.getElementById('btn-back').addEventListener('click', stepBackward);
+
+    document.getElementById('btn-center').addEventListener('click', centerView);
+
+    function resetSim() {
+        isPlaying = false;
+        currentN = 0;
+        S_prev = 0;
+        circlesData = [];
+        
+        // Clear Scene
+        while(circlesGroup.children.length > 0){ 
+            const child = circlesGroup.children[0];
+            if (child.geometry) child.geometry.dispose();
+            if (child.material) {
+                if (Array.isArray(child.material)) {
+                    child.material.forEach(m => m.dispose());
+                } else {
+                    child.material.dispose();
+                }
+            }
+            circlesGroup.remove(child);
+        }
+        
+        // Reset UI
+        document.getElementById('val-n').innerText = "0";
+        document.getElementById('val-count').innerText = "0";
+        document.getElementById('sum-fill').style.width = "0%";
+        document.querySelectorAll('.bar').forEach(b => b.style.height = '0%');
+        document.getElementById('celebration').style.opacity = 0;
+        document.getElementById('btn-play').innerText = "Start Animation";
+        document.getElementById('progress-bar').style.width = "0%";
+
+        // Reset Camera
+        centerView();
+    }
+
+    // Zoom Slider
+    const slider = document.getElementById('zoom-slider');
+    slider.addEventListener('input', (e) => {
+        targetZoom = parseFloat(e.target.value);
+        
+        // Show drag instructions when zoomed in
+        if (targetZoom > 3) {
+            document.getElementById('drag-instructions').classList.add('show');
+        } else {
+            document.getElementById('drag-instructions').classList.remove('show');
+        }
+    });
+
+    // Speed Slider
+    const speedSlider = document.getElementById('speed-slider');
+    speedSlider.addEventListener('input', (e) => {
+        animationSpeed = parseInt(e.target.value);
+    });
+
+    // Mouse events for dragging
+    container.addEventListener('mousedown', onMouseDown);
+    window.addEventListener('mousemove', onMouseMove);
+    window.addEventListener('mouseup', onMouseUp);
+    
+    // Mouse wheel for zooming
+    container.addEventListener('wheel', onWheel, { passive: false });
+
+    // Touch events for mobile
+    container.addEventListener('touchstart', (e) => {
+        if (e.touches.length === 1) {
+            onMouseDown(e.touches[0]);
+        }
+    });
+    
+    container.addEventListener('touchmove', (e) => {
+        if (e.touches.length === 1) {
+            onMouseMove(e.touches[0]);
+        }
+    });
+    
+    container.addEventListener('touchend', onMouseUp);
+
+    // Add keyboard controls
+    document.addEventListener('keydown', (e) => {
+        if (e.code === 'Space') {
+            e.preventDefault();
+            document.getElementById('btn-play').click();
+        } else if (e.code === 'ArrowRight') {
+            document.getElementById('btn-step').click();
+        } else if (e.code === 'ArrowLeft') {
+            document.getElementById('btn-back').click();
+        } else if (e.code === 'Home') {
+            centerView();
+        }
+    });
+
+    // Add ARIA labels for accessibility
+    document.getElementById('btn-play').setAttribute('aria-label', 'Play or pause animation');
+    document.getElementById('btn-reset').setAttribute('aria-label', 'Reset animation');
+    document.getElementById('btn-step').setAttribute('aria-label', 'Step forward one circle');
+    document.getElementById('btn-back').setAttribute('aria-label', 'Step backward one circle');
+    document.getElementById('btn-center').setAttribute('aria-label', 'Center camera view');
+    document.getElementById('zoom-slider').setAttribute('aria-label', 'Adjust zoom level');
+    document.getElementById('speed-slider').setAttribute('aria-label', 'Adjust animation speed');
+
+    // Window Resize
+    window.addEventListener('resize', () => {
+        const aspect = window.innerWidth / window.innerHeight;
+        camera.left = -viewSize * aspect;
+        camera.right = viewSize * aspect;
+        camera.top = viewSize;
+        camera.bottom = -viewSize;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+
+    // Error handling for WebGL context loss
+    renderer.domElement.addEventListener('webglcontextlost', (event) => {
+        event.preventDefault();
+        console.warn('WebGL context lost. Attempting to restore...');
+    });
+
+    renderer.domElement.addEventListener('webglcontextrestored', () => {
+        console.log('WebGL context restored. Reinitializing...');
+        // In a production app, you would reinitialize the scene here
+    });
+
+    // =========================================================================
+    // 8. RENDER LOOP
+    // =========================================================================
+    function animate() {
+        requestAnimationFrame(animate);
+        updateCamera(); // Enhanced camera controls
+        renderer.render(scene, camera);
+    }
+    animate();
+
+    // Initial Fade In
+    gsap.from("h1", { y: -20, opacity: 0, stagger: 0.1, duration: 1 });
+
+</script>
+</body>
+</html>
