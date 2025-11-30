@@ -1,0 +1,931 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Birth of Complex Numbers</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background-color: #000;
+            font-family: 'Arial', sans-serif;
+        }
+        
+        #canvas-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+        
+        #ui {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.7);
+            border-radius: 10px;
+            padding: 15px;
+            color: white;
+            z-index: 100;
+            backdrop-filter: blur(5px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: transform 0.3s ease;
+        }
+        
+        #ui.hidden {
+            transform: translateX(calc(100% + 20px));
+        }
+        
+        .control-group {
+            margin-bottom: 15px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-size: 14px;
+        }
+        
+        button {
+            background: linear-gradient(45deg, #4a00e0, #8e2de2);
+            border: none;
+            color: white;
+            padding: 8px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s;
+            margin-top: 5px;
+            width: 100%;
+        }
+        
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(142, 45, 226, 0.4);
+        }
+        
+        .checkbox {
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        
+        .checkbox input {
+            margin-right: 8px;
+        }
+        
+        #title {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: white;
+            font-size: 24px;
+            z-index: 100;
+            text-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+        }
+        
+        .annotation {
+            position: absolute;
+            color: white;
+            font-size: 16px;
+            z-index: 100;
+            text-shadow: 0 0 5px rgba(0, 0, 0, 0.8);
+            background: rgba(0, 0, 0, 0.5);
+            padding: 5px 10px;
+            border-radius: 5px;
+            pointer-events: none;
+            transition: opacity 0.5s;
+        }
+        
+        #ui-toggle {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            background: linear-gradient(45deg, #4a00e0, #8e2de2);
+            border: none;
+            color: white;
+            padding: 8px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s;
+            z-index: 101;
+        }
+        
+        #ui-toggle:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(142, 45, 226, 0.4);
+        }
+        
+        .button-row {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .button-row button {
+            flex: 1;
+        }
+        
+        .conjugate-line {
+            stroke-dasharray: 5, 5;
+        }
+    </style>
+</head>
+<body>
+    <div id="canvas-container"></div>
+    <div id="title">The Birth of Complex Numbers</div>
+    
+    <div id="ui">
+        <div class="control-group">
+            <h3>Controls</h3>
+            <div class="checkbox">
+                <input type="checkbox" id="showGrid" checked>
+                <label for="showGrid">Show Grid</label>
+            </div>
+            <div class="checkbox">
+                <input type="checkbox" id="showLabels" checked>
+                <label for="showLabels">Show Labels</label>
+            </div>
+            <button id="randomNumber">Generate Random Complex Number</button>
+            <div class="button-row">
+                <button id="multiplyI">Multiply by i (rotate 90°)</button>
+                <button id="multiplyMinusI">Multiply by -i (rotate -90°)</button>
+            </div>
+            <button id="showConjugate">Show Conjugate</button>
+        </div>
+        
+        <div class="control-group">
+            <h3>Animation</h3>
+            <button id="restart">Restart Animation</button>
+        </div>
+    </div>
+    
+    <button id="ui-toggle">Hide Controls</button>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/libs/stats.min.js"></script>
+    
+    <script>
+        // Main Three.js scene setup
+        let scene, camera, renderer, controls;
+        let realAxis, imaginaryAxis, complexPlane, particles = [];
+        let complexNumberSphere, realLine, imaginaryLine;
+        let modulusCircle;
+        let zMarkers = [];
+        let zMarkerLabels = [];
+        let animationStage = 0;
+        let animationProgress = 0;
+        let clock = new THREE.Clock();
+
+        // rotate-by-i animation state
+        let rotateIAnimating = false;
+        let rotateIStartTime = 0;
+        let rotateIDuration = 1.0;
+        let rotateIFrom, rotateITo;
+        
+        // rotate-by-minus-i animation state
+        let rotateMinusIAnimating = false;
+        let rotateMinusIStartTime = 0;
+        let rotateMinusIFrom, rotateMinusITo;
+        
+        // conjugate visualization
+        let conjugateSphere = null;
+        let conjugateLine = null;
+        let conjugateShowing = false;
+
+        // UI elements
+        let showGrid = true;
+        let showLabels = true;
+        
+        // Initialize the scene
+        function init() {
+            // Create scene
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x000010);
+            scene.fog = new THREE.Fog(0x000010, 15, 30);
+            
+            // Create camera
+            camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.set(0, 5, 10);
+            
+            // Create renderer
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+            
+            document.getElementById('canvas-container').appendChild(renderer.domElement);
+            
+            // Add orbit controls
+            controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.05;
+            controls.minDistance = 5;
+            controls.maxDistance = 50;
+            
+            // Add lighting
+            setupLighting();
+            
+            // Create the scene elements
+            createRealAxis();
+            createFloor();
+            createBackgroundParticles();
+            
+            // Handle window resize
+            window.addEventListener('resize', onWindowResize);
+            
+            // Setup UI event listeners
+            document.getElementById('showGrid').addEventListener('change', function(e) {
+                showGrid = e.target.checked;
+                if (complexPlane) complexPlane.visible = showGrid;
+                if (modulusCircle) modulusCircle.visible = showGrid;
+            });
+            
+            document.getElementById('showLabels').addEventListener('change', function(e) {
+                showLabels = e.target.checked;
+                updateLabelVisibility();
+            });
+            
+            document.getElementById('randomNumber').addEventListener('click', generateRandomComplexNumber);
+            document.getElementById('restart').addEventListener('click', restartAnimation);
+            document.getElementById('multiplyI').addEventListener('click', () => {
+                if (!complexNumberSphere) return;
+                startRotateByIAnimation();
+            });
+            
+            document.getElementById('multiplyMinusI').addEventListener('click', () => {
+                if (!complexNumberSphere) return;
+                startRotateByMinusIAnimation();
+            });
+            
+            document.getElementById('showConjugate').addEventListener('click', toggleConjugate);
+            
+            document.getElementById('ui-toggle').addEventListener('click', toggleUI);
+            
+            // Start animation loop
+            animate();
+        }
+        
+        function setupLighting() {
+            const ambientLight = new THREE.AmbientLight(0x333333);
+            scene.add(ambientLight);
+            
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
+            directionalLight.position.set(5, 10, 7);
+            directionalLight.castShadow = true;
+            directionalLight.shadow.mapSize.width = 2048;
+            directionalLight.shadow.mapSize.height = 2048;
+            scene.add(directionalLight);
+            
+            const originLight = new THREE.PointLight(0x4a00e0, 2, 10);
+            originLight.position.set(0, 0.5, 0);
+            scene.add(originLight);
+            
+            const blueLight = new THREE.PointLight(0x0088ff, 3, 15);
+            blueLight.position.set(0, 0, 0);
+            scene.add(blueLight);
+            
+            const pinkLight = new THREE.PointLight(0xff00ff, 3, 15);
+            pinkLight.position.set(0, 0, 0);
+            scene.add(pinkLight);
+        }
+        
+        function createRealAxis() {
+            const realGeometry = new THREE.BufferGeometry();
+            const realPoints = [];
+            for (let i = -10; i <= 10; i += 0.1) {
+                realPoints.push(i, 0, 0);
+            }
+            realGeometry.setAttribute('position', new THREE.Float32BufferAttribute(realPoints, 3));
+            
+            const realMaterial = new THREE.LineBasicMaterial({
+                color: 0x0088ff,
+                linewidth: 2
+            });
+            
+            realAxis = new THREE.Line(realGeometry, realMaterial);
+            scene.add(realAxis);
+            
+            for (let i = -5; i <= 5; i++) {
+                if (i === 0) continue;
+                createNumberLabel(i, 0, 0, i.toString(), 0x0088ff);
+            }
+            
+            for (let i = -8; i <= 8; i++) {
+                createParticle(i, 0, 0, 0x0088ff);
+            }
+        }
+        
+        function createImaginaryAxis() {
+            const imaginaryGeometry = new THREE.BufferGeometry();
+            const imaginaryPoints = [];
+            for (let i = 0; i <= 10; i += 0.1) {
+                imaginaryPoints.push(0, i, 0);
+            }
+            imaginaryGeometry.setAttribute('position', new THREE.Float32BufferAttribute(imaginaryPoints, 3));
+            
+            const imaginaryMaterial = new THREE.LineBasicMaterial({
+                color: 0xff00ff,
+                linewidth: 2
+            });
+            
+            imaginaryAxis = new THREE.Line(imaginaryGeometry, imaginaryMaterial);
+            scene.add(imaginaryAxis);
+            
+            for (let i = 1; i <= 5; i++) {
+                createNumberLabel(0, i, 0, i + "i", 0xff00ff);
+            }
+            
+            for (let i = 1; i <= 8; i++) {
+                createParticle(0, i, 0, 0xff00ff);
+            }
+        }
+        
+        function createComplexPlane() {
+            const gridHelper = new THREE.GridHelper(20, 20, 0x444444, 0x222222);
+            gridHelper.position.y = 0.01;
+            scene.add(gridHelper);
+            complexPlane = gridHelper;
+            
+            createNumberLabel(0, 0, 0, "0", 0xffffff);
+        }
+        
+        function createFloor() {
+            const floorGeometry = new THREE.PlaneGeometry(30, 30);
+            const floorMaterial = new THREE.MeshStandardMaterial({
+                color: 0x111122,
+                roughness: 0.1,
+                metalness: 0.9
+            });
+            
+            const floor = new THREE.Mesh(floorGeometry, floorMaterial);
+            floor.rotation.x = -Math.PI / 2;
+            floor.receiveShadow = true;
+            scene.add(floor);
+        }
+        
+        function createParticle(x, y, z, color) {
+            const particleGeometry = new THREE.SphereGeometry(0.05, 8, 8);
+            const particleMaterial = new THREE.MeshBasicMaterial({ color: color });
+            
+            const particle = new THREE.Mesh(particleGeometry, particleMaterial);
+            particle.position.set(x, y, z);
+            
+            particle.userData = {
+                originalY: y,
+                timeOffset: Math.random() * Math.PI * 2,
+                speed: 0.5 + Math.random() * 1.5
+            };
+            
+            scene.add(particle);
+            particles.push(particle);
+        }
+        
+        function createBackgroundParticles() {
+            for (let i = 0; i < 100; i++) {
+                const particleGeometry = new THREE.SphereGeometry(0.02, 6, 6);
+                const particleMaterial = new THREE.MeshBasicMaterial({ 
+                    color: 0x4444ff,
+                    transparent: true,
+                    opacity: 0.3
+                });
+                
+                const particle = new THREE.Mesh(particleGeometry, particleMaterial);
+                
+                const radius = 15 + Math.random() * 10;
+                const theta = Math.random() * Math.PI * 2;
+                const phi = Math.random() * Math.PI;
+                
+                particle.position.x = radius * Math.sin(phi) * Math.cos(theta);
+                particle.position.y = radius * Math.sin(phi) * Math.sin(theta);
+                particle.position.z = radius * Math.cos(phi);
+                
+                particle.userData = {
+                    originalPosition: particle.position.clone(),
+                    speed: 0.1 + Math.random() * 0.3,
+                    timeOffset: Math.random() * Math.PI * 2
+                };
+                
+                scene.add(particle);
+                particles.push(particle);
+            }
+        }
+        
+        function createNumberLabel(x, y, z, text, color) {
+            const label = document.createElement('div');
+            label.className = 'annotation';
+            label.textContent = text;
+            label.style.color = `rgb(${(color >> 16) & 255}, ${(color >> 8) & 255}, ${color & 255})`;
+            
+            label.userData = { position: new THREE.Vector3(x, y + 0.5, z) };
+            document.body.appendChild(label);
+            
+            return label;
+        }
+
+        function clearZMarkers() {
+            zMarkers.forEach(m => scene.remove(m));
+            zMarkers = [];
+            zMarkerLabels.forEach(l => {
+                if (l && l.parentNode) l.parentNode.removeChild(l);
+            });
+            zMarkerLabels = [];
+        }
+
+        function mulByI(vec3) {
+            return new THREE.Vector3(-vec3.y, vec3.x, 0);
+        }
+        
+        function mulByMinusI(vec3) {
+            return new THREE.Vector3(vec3.y, -vec3.x, 0);
+        }
+
+        function drawModulusCircle(r) {
+            if (modulusCircle) {
+                scene.remove(modulusCircle);
+                modulusCircle = null;
+            }
+            const curve = new THREE.EllipseCurve(
+                0, 0,
+                r, r,
+                0, 2 * Math.PI,
+                false, 0
+            );
+            const pts2D = curve.getPoints(100);
+            const pts3D = pts2D.map(p => new THREE.Vector3(p.x, p.y, 0));
+            const geometry = new THREE.BufferGeometry().setFromPoints(pts3D);
+            const material = new THREE.LineDashedMaterial({
+                color: 0x00ffff,
+                dashSize: 0.3,
+                gapSize: 0.15
+            });
+            modulusCircle = new THREE.Line(geometry, material);
+            modulusCircle.computeLineDistances();
+            modulusCircle.name = 'modulusCircle';
+            modulusCircle.visible = showGrid;
+            scene.add(modulusCircle);
+        }
+
+        function createZMarkers(states) {
+            clearZMarkers();
+            const labels = ['z', 'iz', 'i²z', 'i³z'];
+            for (let i = 0; i < states.length; i++) {
+                const g = new THREE.SphereGeometry(0.1, 12, 12);
+                const m = new THREE.MeshStandardMaterial({
+                    color: 0x00ffff,
+                    emissive: 0x002244,
+                    roughness: 0.4,
+                    metalness: 0.5
+                });
+                const marker = new THREE.Mesh(g, m);
+                marker.position.copy(states[i]);
+                marker.castShadow = true;
+                scene.add(marker);
+                zMarkers.push(marker);
+
+                const lbl = createNumberLabel(states[i].x, states[i].y, 0, labels[i], 0x00ffff);
+                zMarkerLabels.push(lbl);
+            }
+        }
+        
+        function createComplexNumber(a, b) {
+            if (complexNumberSphere) {
+                scene.remove(complexNumberSphere);
+                complexNumberSphere = null;
+            }
+            if (realLine) {
+                scene.remove(realLine);
+                realLine = null;
+            }
+            if (imaginaryLine) {
+                scene.remove(imaginaryLine);
+                imaginaryLine = null;
+            }
+            if (modulusCircle) {
+                scene.remove(modulusCircle);
+                modulusCircle = null;
+            }
+            clearZMarkers();
+            
+            // Remove conjugate if it exists
+            if (conjugateSphere) {
+                scene.remove(conjugateSphere);
+                conjugateSphere = null;
+            }
+            if (conjugateLine) {
+                scene.remove(conjugateLine);
+                conjugateLine = null;
+            }
+            conjugateShowing = false;
+
+            const sphereGeometry = new THREE.SphereGeometry(0.2, 16, 16);
+            const sphereMaterial = new THREE.MeshStandardMaterial({
+                color: 0x00ffff,
+                emissive: 0x0044aa,
+                roughness: 0.1,
+                metalness: 0.9
+            });
+            
+            complexNumberSphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
+            complexNumberSphere.position.set(a, b, 0);
+            complexNumberSphere.castShadow = true;
+            scene.add(complexNumberSphere);
+            
+            const realLineGeometry = new THREE.BufferGeometry();
+            const realLinePoints = [
+                0, 0, 0,
+                a, 0, 0
+            ];
+            realLineGeometry.setAttribute('position', new THREE.Float32BufferAttribute(realLinePoints, 3));
+            
+            const realLineMaterial = new THREE.LineBasicMaterial({
+                color: 0x0088ff,
+                linewidth: 2,
+                transparent: true,
+                opacity: 0.7
+            });
+            
+            realLine = new THREE.Line(realLineGeometry, realLineMaterial);
+            scene.add(realLine);
+            
+            const imaginaryLineGeometry = new THREE.BufferGeometry();
+            const imaginaryLinePoints = [
+                a, 0, 0,
+                a, b, 0
+            ];
+            imaginaryLineGeometry.setAttribute('position', new THREE.Float32BufferAttribute(imaginaryLinePoints, 3));
+            
+            const imaginaryLineMaterial = new THREE.LineBasicMaterial({
+                color: 0xff00ff,
+                linewidth: 2,
+                transparent: true,
+                opacity: 0.7
+            });
+            
+            imaginaryLine = new THREE.Line(imaginaryLineGeometry, imaginaryLineMaterial);
+            scene.add(imaginaryLine);
+            
+            createNumberLabel(a/2, -0.5, 0, `Re = ${a}`, 0x0088ff);
+            createNumberLabel(a, b/2, 0, `Im = ${b}i`, 0xff00ff);
+            createNumberLabel(a, b + 0.5, 0, `z = ${a} + ${b}i`, 0x00ffff);
+            
+            createVaporTrail(a, b);
+
+            const z0 = new THREE.Vector3(a, b, 0);
+            const z1 = mulByI(z0);
+            const z2 = mulByI(z1);
+            const z3 = mulByI(z2);
+
+            complexNumberSphere.userData.rotateByIStates = [z0, z1, z2, z3];
+            complexNumberSphere.userData.rotateByIIndex = 0;
+            
+            // For clockwise rotation
+            const zMinus1 = mulByMinusI(z0);
+            const zMinus2 = mulByMinusI(zMinus1);
+            const zMinus3 = mulByMinusI(zMinus2);
+            complexNumberSphere.userData.rotateByMinusIStates = [z0, zMinus1, zMinus2, zMinus3];
+            complexNumberSphere.userData.rotateByMinusIIndex = 0;
+
+            drawModulusCircle(z0.length());
+            createZMarkers([z0, z1, z2, z3]);
+        }
+        
+        function createVaporTrail(a, b) {
+            const trailGeometry = new THREE.BufferGeometry();
+            const trailPoints = [];
+            for (let t = 0; t <= 1; t += 0.05) {
+                const x = a * t;
+                const y = b * t + Math.sin(t * Math.PI) * 0.5;
+                trailPoints.push(x, y, 0);
+            }
+            trailGeometry.setAttribute('position', new THREE.Float32BufferAttribute(trailPoints, 3));
+            
+            const trailMaterial = new THREE.LineBasicMaterial({
+                color: 0x00ffff,
+                transparent: true,
+                opacity: 0.5,
+                linewidth: 3
+            });
+            
+            const trail = new THREE.Line(trailGeometry, trailMaterial);
+            scene.add(trail);
+            
+            setTimeout(() => {
+                scene.remove(trail);
+            }, 3000);
+        }
+        
+        function generateRandomComplexNumber() {
+            const a = Math.round((Math.random() * 8 - 4) * 10) / 10;
+            const b = Math.round((Math.random() * 8 - 4) * 10) / 10;
+            createComplexNumber(a, b);
+        }
+        
+        function updateLabelVisibility() {
+            const annotations = document.getElementsByClassName('annotation');
+            for (let i = 0; i < annotations.length; i++) {
+                annotations[i].style.display = showLabels ? 'block' : 'none';
+            }
+        }
+
+        function updateComponentLines(a, b) {
+            if (realLine && realLine.geometry && realLine.geometry.attributes.position) {
+                const arr = realLine.geometry.attributes.position.array;
+                arr[3] = a;
+                arr[4] = 0;
+                realLine.geometry.attributes.position.needsUpdate = true;
+            }
+            if (imaginaryLine && imaginaryLine.geometry && imaginaryLine.geometry.attributes.position) {
+                const arr2 = imaginaryLine.geometry.attributes.position.array;
+                arr2[0] = a;
+                arr2[1] = 0;
+                arr2[3] = a;
+                arr2[4] = b;
+                imaginaryLine.geometry.attributes.position.needsUpdate = true;
+            }
+        }
+
+        function startRotateByIAnimation() {
+            if (!complexNumberSphere) return;
+            const data = complexNumberSphere.userData;
+            const states = data.rotateByIStates;
+            if (!states || states.length === 0) return;
+
+            let idx = data.rotateByIIndex || 0;
+            const nextIdx = (idx + 1) % states.length;
+
+            rotateIFrom = states[idx].clone();
+            rotateITo   = states[nextIdx].clone();
+            data.rotateByIIndex = nextIdx;
+
+            rotateIStartTime = clock.getElapsedTime();
+            rotateIAnimating = true;
+        }
+        
+        function startRotateByMinusIAnimation() {
+            if (!complexNumberSphere) return;
+            const data = complexNumberSphere.userData;
+            const states = data.rotateByMinusIStates;
+            if (!states || states.length === 0) return;
+
+            let idx = data.rotateByMinusIIndex || 0;
+            const nextIdx = (idx + 1) % states.length;
+
+            rotateMinusIFrom = states[idx].clone();
+            rotateMinusITo   = states[nextIdx].clone();
+            data.rotateByMinusIIndex = nextIdx;
+
+            rotateMinusIStartTime = clock.getElapsedTime();
+            rotateMinusIAnimating = true;
+        }
+        
+        function toggleConjugate() {
+            if (!complexNumberSphere) return;
+            
+            if (conjugateShowing) {
+                // Hide conjugate
+                if (conjugateSphere) {
+                    scene.remove(conjugateSphere);
+                    conjugateSphere = null;
+                }
+                if (conjugateLine) {
+                    scene.remove(conjugateLine);
+                    conjugateLine = null;
+                }
+                conjugateShowing = false;
+            } else {
+                // Show conjugate
+                const pos = complexNumberSphere.position;
+                const conjugatePos = new THREE.Vector3(pos.x, -pos.y, pos.z);
+                
+                // Create conjugate sphere
+                const sphereGeometry = new THREE.SphereGeometry(0.15, 16, 16);
+                const sphereMaterial = new THREE.MeshStandardMaterial({
+                    color: 0xff9900,
+                    emissive: 0x442200,
+                    roughness: 0.1,
+                    metalness: 0.9
+                });
+                
+                conjugateSphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
+                conjugateSphere.position.copy(conjugatePos);
+                conjugateSphere.castShadow = true;
+                scene.add(conjugateSphere);
+                
+                // Create dashed line between z and its conjugate
+                const lineGeometry = new THREE.BufferGeometry();
+                const linePoints = [
+                    pos.x, pos.y, pos.z,
+                    conjugatePos.x, conjugatePos.y, conjugatePos.z
+                ];
+                lineGeometry.setAttribute('position', new THREE.Float32BufferAttribute(linePoints, 3));
+                
+                const lineMaterial = new THREE.LineDashedMaterial({
+                    color: 0xff9900,
+                    dashSize: 0.2,
+                    gapSize: 0.1,
+                    linewidth: 2
+                });
+                
+                conjugateLine = new THREE.Line(lineGeometry, lineMaterial);
+                conjugateLine.computeLineDistances();
+                scene.add(conjugateLine);
+                
+                // Create label for conjugate
+                createNumberLabel(conjugatePos.x, conjugatePos.y + 0.5, 0, 
+                                 `z̄ = ${pos.x.toFixed(1)} - ${Math.abs(pos.y).toFixed(1)}i`, 0xff9900);
+                
+                conjugateShowing = true;
+            }
+        }
+        
+        function toggleUI() {
+            const ui = document.getElementById('ui');
+            const toggleBtn = document.getElementById('ui-toggle');
+            
+            if (ui.classList.contains('hidden')) {
+                ui.classList.remove('hidden');
+                toggleBtn.textContent = 'Hide Controls';
+            } else {
+                ui.classList.add('hidden');
+                toggleBtn.textContent = 'Show Controls';
+            }
+        }
+        
+        function restartAnimation() {
+            animationStage = 0;
+            animationProgress = 0;
+            
+            if (imaginaryAxis) {
+                scene.remove(imaginaryAxis);
+                imaginaryAxis = null;
+            }
+            
+            if (complexPlane) {
+                scene.remove(complexPlane);
+                complexPlane = null;
+            }
+            
+            if (complexNumberSphere) {
+                scene.remove(complexNumberSphere);
+                complexNumberSphere = null;
+            }
+            
+            if (realLine) {
+                scene.remove(realLine);
+                realLine = null;
+            }
+            
+            if (imaginaryLine) {
+                scene.remove(imaginaryLine);
+                imaginaryLine = null;
+            }
+
+            if (modulusCircle) {
+                scene.remove(modulusCircle);
+                modulusCircle = null;
+            }
+            
+            if (conjugateSphere) {
+                scene.remove(conjugateSphere);
+                conjugateSphere = null;
+            }
+            
+            if (conjugateLine) {
+                scene.remove(conjugateLine);
+                conjugateLine = null;
+            }
+            
+            conjugateShowing = false;
+
+            clearZMarkers();
+
+            const annotations = document.getElementsByClassName('annotation');
+            while (annotations.length > 0) {
+                annotations[0].parentNode.removeChild(annotations[0]);
+            }
+            
+            for (let i = -5; i <= 5; i++) {
+                if (i === 0) continue;
+                createNumberLabel(i, 0, 0, i.toString(), 0x0088ff);
+            }
+
+            rotateIAnimating = false;
+            rotateMinusIAnimating = false;
+        }
+        
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+        
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            const delta = clock.getDelta();
+            animationProgress += delta * 0.5;
+            
+            particles.forEach(particle => {
+                if (particle.userData.originalY !== undefined) {
+                    particle.position.y = particle.userData.originalY + Math.sin(particle.userData.timeOffset + Date.now() * 0.001 * particle.userData.speed) * 0.1;
+                } else if (particle.userData.originalPosition) {
+                    const time = Date.now() * 0.001 * particle.userData.speed + particle.userData.timeOffset;
+                    particle.position.x = particle.userData.originalPosition.x + Math.sin(time) * 0.5;
+                    particle.position.y = particle.userData.originalPosition.y + Math.cos(time * 0.7) * 0.5;
+                    particle.position.z = particle.userData.originalPosition.z + Math.sin(time * 0.3) * 0.5;
+                }
+            });
+            
+            if (animationStage === 0) {
+                if (animationProgress > 2) {
+                    animationStage = 1;
+                    animationProgress = 0;
+                }
+            } else if (animationStage === 1) {
+                if (!imaginaryAxis) {
+                    createImaginaryAxis();
+                    imaginaryAxis.scale.y = 0;
+                }
+                imaginaryAxis.scale.y = Math.min(animationProgress * 2, 1);
+                
+                if (animationProgress > 1.5) {
+                    animationStage = 2;
+                    animationProgress = 0;
+                    createNumberLabel(0, 1, 0, "i", 0xff00ff);
+                }
+            } else if (animationStage === 2) {
+                if (!complexPlane) {
+                    createComplexPlane();
+                }
+                
+                if (animationProgress > 1) {
+                    animationStage = 3;
+                    animationProgress = 0;
+                }
+            } else if (animationStage === 3) {
+                if (!complexNumberSphere) {
+                    createComplexNumber(2, 3);
+                }
+                
+                if (animationProgress > 3) {
+                    animationStage = 4;
+                }
+            }
+
+            // rotate-by-i animation
+            if (rotateIAnimating && complexNumberSphere) {
+                const t = (clock.getElapsedTime() - rotateIStartTime) / rotateIDuration;
+                const clamped = Math.max(0, Math.min(1, t));
+                const ease = (1 - Math.cos(Math.PI * clamped)) / 2;
+
+                const current = new THREE.Vector3().lerpVectors(rotateIFrom, rotateITo, ease);
+                complexNumberSphere.position.copy(current);
+                updateComponentLines(current.x, current.y);
+
+                if (t >= 1) {
+                    rotateIAnimating = false;
+                }
+            }
+            
+            // rotate-by-minus-i animation
+            if (rotateMinusIAnimating && complexNumberSphere) {
+                const t = (clock.getElapsedTime() - rotateMinusIStartTime) / rotateIDuration;
+                const clamped = Math.max(0, Math.min(1, t));
+                const ease = (1 - Math.cos(Math.PI * clamped)) / 2;
+
+                const current = new THREE.Vector3().lerpVectors(rotateMinusIFrom, rotateMinusITo, ease);
+                complexNumberSphere.position.copy(current);
+                updateComponentLines(current.x, current.y);
+
+                if (t >= 1) {
+                    rotateMinusIAnimating = false;
+                }
+            }
+            
+            const annotations = document.getElementsByClassName('annotation');
+            for (let i = 0; i < annotations.length; i++) {
+                const annotation = annotations[i];
+                if (annotation.userData && annotation.userData.position) {
+                    const vector = annotation.userData.position.clone();
+                    vector.project(camera);
+                    const x = (vector.x * 0.5 + 0.5) * window.innerWidth;
+                    const y = (-vector.y * 0.5 + 0.5) * window.innerHeight;
+                    annotation.style.left = x + 'px';
+                    annotation.style.top = y + 'px';
+                }
+            }
+            
+            controls.update();
+            renderer.render(scene, camera);
+        }
+        
+        init();
+    </script>
+</body>
+</html>
