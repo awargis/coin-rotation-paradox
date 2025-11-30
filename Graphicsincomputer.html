@@ -1,0 +1,770 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Complex Number Rotation Visualizer</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background: linear-gradient(135deg, #0c0c2e 0%, #1a1a3e 100%);
+            color: #e0e0ff;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow-x: hidden;
+        }
+
+        header {
+            text-align: center;
+            padding: 2rem 1rem;
+            background: rgba(10, 10, 40, 0.7);
+            border-bottom: 1px solid rgba(100, 150, 255, 0.3);
+            box-shadow: 0 0 20px rgba(0, 100, 255, 0.2);
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 0.5rem;
+            background: linear-gradient(90deg, #4fc3f7, #2979ff);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            text-shadow: 0 0 15px rgba(79, 195, 247, 0.5);
+        }
+
+        .subtitle {
+            font-size: 1.2rem;
+            opacity: 0.8;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .container {
+            display: flex;
+            flex: 1;
+            padding: 1rem;
+            gap: 2rem;
+            max-width: 1400px;
+            margin: 0 auto;
+            width: 100%;
+        }
+
+        .visualization-panel {
+            flex: 3;
+            position: relative;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 0 30px rgba(0, 80, 255, 0.2);
+            background: rgba(5, 10, 30, 0.7);
+            border: 1px solid rgba(100, 150, 255, 0.2);
+        }
+
+        .controls-panel {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+            min-width: 300px;
+        }
+
+        .control-group {
+            background: rgba(10, 15, 40, 0.7);
+            border-radius: 10px;
+            padding: 1.5rem;
+            border: 1px solid rgba(100, 150, 255, 0.2);
+            box-shadow: 0 0 15px rgba(0, 50, 150, 0.2);
+        }
+
+        h2 {
+            font-size: 1.4rem;
+            margin-bottom: 1rem;
+            color: #4fc3f7;
+            border-bottom: 1px solid rgba(100, 150, 255, 0.3);
+            padding-bottom: 0.5rem;
+        }
+
+        .slider-container {
+            margin-bottom: 1.5rem;
+        }
+
+        .slider-label {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 0.5rem;
+        }
+
+        .slider {
+            width: 100%;
+            height: 8px;
+            -webkit-appearance: none;
+            background: rgba(30, 50, 100, 0.5);
+            border-radius: 4px;
+            outline: none;
+        }
+
+        .slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #2979ff;
+            cursor: pointer;
+            box-shadow: 0 0 10px rgba(41, 121, 255, 0.8);
+            transition: all 0.2s;
+        }
+
+        .slider::-webkit-slider-thumb:hover {
+            background: #4fc3f7;
+            transform: scale(1.2);
+        }
+
+        .button-group {
+            display: flex;
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+
+        button {
+            flex: 1;
+            padding: 0.8rem 1rem;
+            background: linear-gradient(135deg, #2979ff, #2962ff);
+            border: none;
+            border-radius: 6px;
+            color: white;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 4px 10px rgba(0, 80, 255, 0.3);
+        }
+
+        button:hover {
+            background: linear-gradient(135deg, #4fc3f7, #2979ff);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 15px rgba(0, 100, 255, 0.4);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        .view-toggle {
+            display: flex;
+            background: rgba(20, 30, 70, 0.5);
+            border-radius: 6px;
+            overflow: hidden;
+            margin-top: 1rem;
+        }
+
+        .view-option {
+            flex: 1;
+            padding: 0.7rem;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .view-option.active {
+            background: rgba(41, 121, 255, 0.3);
+            box-shadow: inset 0 0 10px rgba(41, 121, 255, 0.5);
+        }
+
+        .math-display {
+            background: rgba(10, 20, 50, 0.7);
+            border-radius: 8px;
+            padding: 1.2rem;
+            font-family: 'Courier New', monospace;
+            border: 1px solid rgba(100, 150, 255, 0.2);
+            margin-top: 1rem;
+        }
+
+        .math-equation {
+            margin-bottom: 0.8rem;
+            font-size: 1.1rem;
+        }
+
+        .math-value {
+            color: #4fc3f7;
+            font-weight: bold;
+        }
+
+        .tooltip {
+            position: absolute;
+            background: rgba(10, 20, 40, 0.9);
+            border: 1px solid rgba(100, 150, 255, 0.5);
+            border-radius: 6px;
+            padding: 0.8rem;
+            font-size: 0.9rem;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.3s;
+            box-shadow: 0 0 15px rgba(0, 100, 255, 0.3);
+            z-index: 100;
+            max-width: 250px;
+        }
+
+        .educational-overlay {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            right: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        .educational-text {
+            background: rgba(10, 20, 40, 0.85);
+            border: 1px solid rgba(100, 150, 255, 0.5);
+            border-radius: 8px;
+            padding: 1rem 1.5rem;
+            margin-bottom: 1rem;
+            max-width: 600px;
+            text-align: center;
+            font-size: 1.1rem;
+            opacity: 0;
+            transform: translateY(20px);
+            transition: all 0.5s;
+            box-shadow: 0 0 20px rgba(0, 100, 255, 0.3);
+        }
+
+        .educational-text.active {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        footer {
+            text-align: center;
+            padding: 1.5rem;
+            margin-top: 2rem;
+            background: rgba(10, 10, 40, 0.7);
+            border-top: 1px solid rgba(100, 150, 255, 0.3);
+            font-size: 0.9rem;
+            opacity: 0.8;
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+
+        @media (max-width: 900px) {
+            .container {
+                flex-direction: column;
+            }
+            
+            .controls-panel {
+                min-width: auto;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Complex Number Rotation Visualizer</h1>
+        <p class="subtitle">See how multiplying by e<sup>iθ</sup> rotates 2D shapes in the complex plane</p>
+    </header>
+
+    <div class="container">
+        <div class="visualization-panel">
+            <canvas id="complexCanvas"></canvas>
+            <div class="educational-overlay" id="educationalOverlay">
+                <!-- Educational text will be inserted here by JavaScript -->
+            </div>
+            <div class="tooltip" id="tooltip"></div>
+        </div>
+
+        <div class="controls-panel">
+            <div class="control-group">
+                <h2>Rotation Controls</h2>
+                <div class="slider-container">
+                    <div class="slider-label">
+                        <span>Rotation Angle θ</span>
+                        <span id="angleValue">0.00 radians</span>
+                    </div>
+                    <input type="range" min="0" max="628" value="0" class="slider" id="angleSlider">
+                </div>
+                <div class="button-group">
+                    <button id="playPauseBtn">Pause Rotation</button>
+                    <button id="resetBtn">Reset</button>
+                </div>
+            </div>
+
+            <div class="control-group">
+                <h2>Visualization View</h2>
+                <div class="view-toggle">
+                    <div class="view-option active" data-view="algebraic">Algebraic</div>
+                    <div class="view-option" data-view="geometric">Geometric</div>
+                    <div class="view-option" data-view="matrix">Matrix</div>
+                </div>
+                <div class="math-display" id="mathDisplay">
+                    <!-- Math content will be updated by JavaScript -->
+                </div>
+            </div>
+
+            <div class="control-group">
+                <h2>About This Visualization</h2>
+                <p>This demonstration shows how complex multiplication rotates points in the 2D plane. Each point z = x + iy is multiplied by e<sup>iθ</sup> = cosθ + i sinθ, resulting in a rotation by angle θ.</p>
+                <p>Hover over any point to see its complex coordinates. Use the controls to adjust the rotation and explore different visualization modes.</p>
+            </div>
+        </div>
+    </div>
+
+    <footer>
+        <p>Complex Number Rotation Visualizer | Demonstrating the real-world application of complex numbers in 2D graphics</p>
+    </footer>
+
+    <script>
+        // Canvas setup
+        const canvas = document.getElementById('complexCanvas');
+        const ctx = canvas.getContext('2d');
+        const tooltip = document.getElementById('tooltip');
+        const educationalOverlay = document.getElementById('educationalOverlay');
+        const angleSlider = document.getElementById('angleSlider');
+        const angleValue = document.getElementById('angleValue');
+        const playPauseBtn = document.getElementById('playPauseBtn');
+        const resetBtn = document.getElementById('resetBtn');
+        const viewOptions = document.querySelectorAll('.view-option');
+        const mathDisplay = document.getElementById('mathDisplay');
+
+        // Set canvas size
+        function resizeCanvas() {
+            canvas.width = canvas.offsetWidth;
+            canvas.height = canvas.offsetHeight;
+        }
+
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        // Complex plane parameters
+        const gridSize = 50;
+        const origin = { x: canvas.width / 2, y: canvas.height / 2 };
+        const scale = 40;
+
+        // Shape parameters
+        let points = [];
+        let rotatedPoints = [];
+        let angle = 0;
+        let isRotating = true;
+        let animationId;
+        let hoveredPoint = null;
+        let currentView = 'algebraic';
+
+        // Educational messages
+        const educationalMessages = [
+            "This is a 2D image represented using complex numbers.",
+            "Each dot is a complex number z = x + iy.",
+            "Multiplying by e^{iθ} rotates the point by θ degrees.",
+            "This is how graphics software rotates images.",
+            "Complex numbers = rotation + scaling."
+        ];
+
+        let currentMessageIndex = 0;
+
+        // Initialize the shape (a stylized butterfly)
+        function initializeShape() {
+            points = [];
+            const numPoints = 200;
+            
+            // Create a butterfly shape using parametric equations
+            for (let i = 0; i < numPoints; i++) {
+                const t = (i / numPoints) * Math.PI * 2;
+                
+                // Butterfly parametric equations
+                const x = 3 * Math.sin(t) * (Math.exp(Math.cos(t)) - 2 * Math.cos(4*t) - Math.pow(Math.sin(t/12), 5));
+                const y = 3 * Math.cos(t) * (Math.exp(Math.cos(t)) - 2 * Math.cos(4*t) - Math.pow(Math.sin(t/12), 5));
+                
+                // Add some random variation for a more organic look
+                const variation = 0.1;
+                const finalX = x + (Math.random() - 0.5) * variation;
+                const finalY = y + (Math.random() - 0.5) * variation;
+                
+                points.push({ x: finalX, y: finalY });
+            }
+            
+            // Initialize rotated points
+            rotatedPoints = [...points];
+        }
+
+        // Rotate points using complex multiplication
+        function rotatePoints(angle) {
+            const cosTheta = Math.cos(angle);
+            const sinTheta = Math.sin(angle);
+            
+            rotatedPoints = points.map(point => {
+                // Complex multiplication: z_new = z * (cosθ + i sinθ)
+                return {
+                    x: point.x * cosTheta - point.y * sinTheta,
+                    y: point.x * sinTheta + point.y * cosTheta
+                };
+            });
+        }
+
+        // Draw the complex plane grid
+        function drawGrid() {
+            ctx.strokeStyle = 'rgba(100, 150, 255, 0.2)';
+            ctx.lineWidth = 1;
+            
+            // Vertical lines (real axis)
+            for (let x = -gridSize; x <= gridSize; x++) {
+                ctx.beginPath();
+                ctx.moveTo(origin.x + x * scale, 0);
+                ctx.lineTo(origin.x + x * scale, canvas.height);
+                ctx.stroke();
+            }
+            
+            // Horizontal lines (imaginary axis)
+            for (let y = -gridSize; y <= gridSize; y++) {
+                ctx.beginPath();
+                ctx.moveTo(0, origin.y + y * scale);
+                ctx.lineTo(canvas.width, origin.y + y * scale);
+                ctx.stroke();
+            }
+            
+            // Draw axes
+            ctx.strokeStyle = 'rgba(100, 150, 255, 0.6)';
+            ctx.lineWidth = 2;
+            
+            // Real axis
+            ctx.beginPath();
+            ctx.moveTo(0, origin.y);
+            ctx.lineTo(canvas.width, origin.y);
+            ctx.stroke();
+            
+            // Imaginary axis
+            ctx.beginPath();
+            ctx.moveTo(origin.x, 0);
+            ctx.lineTo(origin.x, canvas.height);
+            ctx.stroke();
+            
+            // Axis labels
+            ctx.fillStyle = 'rgba(200, 220, 255, 0.8)';
+            ctx.font = '14px Arial';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            
+            // Real axis labels
+            for (let x = -4; x <= 4; x++) {
+                if (x === 0) continue;
+                ctx.fillText(x.toString(), origin.x + x * scale, origin.y + 15);
+            }
+            
+            // Imaginary axis labels
+            for (let y = -3; y <= 3; y++) {
+                if (y === 0) continue;
+                ctx.fillText(y + 'i', origin.x - 15, origin.y - y * scale);
+            }
+            
+            // Axis titles
+            ctx.fillText('Re', canvas.width - 20, origin.y - 15);
+            ctx.fillText('Im', origin.x + 15, 20);
+        }
+
+        // Draw the shape
+        function drawShape() {
+            // Draw connecting lines for shape definition
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            
+            for (let i = 0; i < rotatedPoints.length; i++) {
+                const point = rotatedPoints[i];
+                const screenX = origin.x + point.x * scale;
+                const screenY = origin.y - point.y * scale; // Invert Y for Cartesian coordinates
+                
+                if (i === 0) {
+                    ctx.moveTo(screenX, screenY);
+                } else {
+                    ctx.lineTo(screenX, screenY);
+                }
+            }
+            
+            ctx.closePath();
+            ctx.stroke();
+            
+            // Draw points with glow effect
+            for (let i = 0; i < rotatedPoints.length; i++) {
+                const point = rotatedPoints[i];
+                const screenX = origin.x + point.x * scale;
+                const screenY = origin.y - point.y * scale;
+                
+                // Glow effect
+                const gradient = ctx.createRadialGradient(
+                    screenX, screenY, 0,
+                    screenX, screenY, 8
+                );
+                
+                gradient.addColorStop(0, 'rgba(255, 255, 255, 0.9)');
+                gradient.addColorStop(0.5, 'rgba(200, 230, 255, 0.5)');
+                gradient.addColorStop(1, 'rgba(100, 150, 255, 0)');
+                
+                ctx.beginPath();
+                ctx.arc(screenX, screenY, 8, 0, Math.PI * 2);
+                ctx.fillStyle = gradient;
+                ctx.fill();
+                
+                // Central point
+                ctx.beginPath();
+                ctx.arc(screenX, screenY, 2, 0, Math.PI * 2);
+                ctx.fillStyle = 'white';
+                ctx.fill();
+                
+                // Store screen coordinates for hover detection
+                rotatedPoints[i].screenX = screenX;
+                rotatedPoints[i].screenY = screenY;
+            }
+            
+            // Highlight hovered point
+            if (hoveredPoint !== null) {
+                const point = rotatedPoints[hoveredPoint];
+                
+                // Highlight circle
+                ctx.beginPath();
+                ctx.arc(point.screenX, point.screenY, 12, 0, Math.PI * 2);
+                ctx.strokeStyle = 'rgba(79, 195, 247, 0.8)';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+                
+                // Draw line to origin
+                ctx.beginPath();
+                ctx.moveTo(origin.x, origin.y);
+                ctx.lineTo(point.screenX, point.screenY);
+                ctx.strokeStyle = 'rgba(79, 195, 247, 0.5)';
+                ctx.lineWidth = 1;
+                ctx.stroke();
+            }
+        }
+
+        // Draw rotation vectors
+        function drawVectors() {
+            if (currentView !== 'geometric' || hoveredPoint === null) return;
+            
+            const point = points[hoveredPoint];
+            const rotatedPoint = rotatedPoints[hoveredPoint];
+            
+            // Original vector
+            ctx.beginPath();
+            ctx.moveTo(origin.x, origin.y);
+            ctx.lineTo(origin.x + point.x * scale, origin.y - point.y * scale);
+            ctx.strokeStyle = 'rgba(255, 100, 100, 0.7)';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+            
+            // Rotated vector
+            ctx.beginPath();
+            ctx.moveTo(origin.x, origin.y);
+            ctx.lineTo(origin.x + rotatedPoint.x * scale, origin.y - rotatedPoint.y * scale);
+            ctx.strokeStyle = 'rgba(100, 255, 100, 0.7)';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+            
+            // Angle arc
+            const radius = Math.min(
+                Math.sqrt(point.x * point.x + point.y * point.y) * scale * 0.3,
+                50
+            );
+            
+            ctx.beginPath();
+            ctx.arc(origin.x, origin.y, radius, -Math.PI/2, -Math.PI/2 + angle, angle < 0);
+            ctx.strokeStyle = 'rgba(79, 195, 247, 0.8)';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+            
+            // Angle label
+            ctx.fillStyle = 'rgba(79, 195, 247, 0.9)';
+            ctx.font = '14px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText(
+                `θ = ${angle.toFixed(2)}`,
+                origin.x + Math.cos(-Math.PI/2 + angle/2) * (radius + 15),
+                origin.y + Math.sin(-Math.PI/2 + angle/2) * (radius + 15)
+            );
+        }
+
+        // Update math display based on current view
+        function updateMathDisplay() {
+            let content = '';
+            
+            switch(currentView) {
+                case 'algebraic':
+                    content = `
+                        <div class="math-equation">z = x + iy</div>
+                        <div class="math-equation">e<sup>iθ</sup> = cosθ + i sinθ</div>
+                        <div class="math-equation">z<sub>new</sub> = z × e<sup>iθ</sup></div>
+                        <div class="math-equation">= (x + iy)(cosθ + i sinθ)</div>
+                        <div class="math-equation">= (x cosθ - y sinθ) + i(x sinθ + y cosθ)</div>
+                    `;
+                    break;
+                    
+                case 'geometric':
+                    content = `
+                        <div class="math-equation">Each point z is a vector from origin</div>
+                        <div class="math-equation">Multiplying by e<sup>iθ</sup> rotates this vector</div>
+                        <div class="math-equation">Rotation preserves distance |z|</div>
+                        <div class="math-equation">Angle between vectors: ${angle.toFixed(2)} radians</div>
+                    `;
+                    break;
+                    
+                case 'matrix':
+                    content = `
+                        <div class="math-equation">Rotation as matrix multiplication:</div>
+                        <div class="math-equation">[x<sub>new</sub>]   [cosθ  -sinθ] [x]</div>
+                        <div class="math-equation">[y<sub>new</sub>] = [sinθ   cosθ] [y]</div>
+                        <div class="math-equation">Current matrix:</div>
+                        <div class="math-equation">[${Math.cos(angle).toFixed(2)}  ${-Math.sin(angle).toFixed(2)}]</div>
+                        <div class="math-equation">[${Math.sin(angle).toFixed(2)}  ${Math.cos(angle).toFixed(2)}]</div>
+                    `;
+                    break;
+            }
+            
+            mathDisplay.innerHTML = content;
+        }
+
+        // Show educational messages
+        function showEducationalMessage() {
+            // Clear existing messages
+            educationalOverlay.innerHTML = '';
+            
+            // Create new message element
+            const messageElement = document.createElement('div');
+            messageElement.className = 'educational-text active';
+            messageElement.textContent = educationalMessages[currentMessageIndex];
+            
+            educationalOverlay.appendChild(messageElement);
+            
+            // Cycle to next message
+            currentMessageIndex = (currentMessageIndex + 1) % educationalMessages.length;
+            
+            // Remove message after delay
+            setTimeout(() => {
+                if (messageElement.parentNode) {
+                    messageElement.classList.remove('active');
+                    setTimeout(() => {
+                        if (messageElement.parentNode) {
+                            educationalOverlay.removeChild(messageElement);
+                        }
+                    }, 500);
+                }
+            }, 4000);
+        }
+
+        // Animation loop
+        function animate() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // Update angle if rotating
+            if (isRotating) {
+                angle += 0.01;
+                if (angle > Math.PI * 2) angle -= Math.PI * 2;
+                angleSlider.value = angle * 100;
+                angleValue.textContent = angle.toFixed(2) + ' radians';
+            }
+            
+            // Rotate points
+            rotatePoints(angle);
+            
+            // Draw everything
+            drawGrid();
+            drawShape();
+            drawVectors();
+            
+            // Update math display
+            updateMathDisplay();
+            
+            // Continue animation
+            animationId = requestAnimationFrame(animate);
+        }
+
+        // Initialize and start animation
+        function init() {
+            initializeShape();
+            animate();
+            
+            // Start showing educational messages
+            setInterval(showEducationalMessage, 5000);
+            showEducationalMessage(); // Show first message immediately
+        }
+
+        // Event listeners
+        angleSlider.addEventListener('input', function() {
+            angle = this.value / 100;
+            angleValue.textContent = angle.toFixed(2) + ' radians';
+            rotatePoints(angle);
+        });
+
+        playPauseBtn.addEventListener('click', function() {
+            isRotating = !isRotating;
+            this.textContent = isRotating ? 'Pause Rotation' : 'Resume Rotation';
+        });
+
+        resetBtn.addEventListener('click', function() {
+            angle = 0;
+            angleSlider.value = 0;
+            angleValue.textContent = '0.00 radians';
+            rotatePoints(angle);
+        });
+
+        canvas.addEventListener('mousemove', function(event) {
+            const rect = canvas.getBoundingClientRect();
+            const mouseX = event.clientX - rect.left;
+            const mouseY = event.clientY - rect.top;
+            
+            // Check if mouse is over any point
+            hoveredPoint = null;
+            for (let i = 0; i < rotatedPoints.length; i++) {
+                const point = rotatedPoints[i];
+                const distance = Math.sqrt(
+                    Math.pow(mouseX - point.screenX, 2) + 
+                    Math.pow(mouseY - point.screenY, 2)
+                );
+                
+                if (distance < 10) {
+                    hoveredPoint = i;
+                    
+                    // Update tooltip
+                    tooltip.style.left = (event.clientX + 10) + 'px';
+                    tooltip.style.top = (event.clientY + 10) + 'px';
+                    tooltip.style.opacity = '1';
+                    tooltip.innerHTML = `
+                        <strong>Point ${i}</strong><br>
+                        Original: z = ${points[i].x.toFixed(2)} + ${points[i].y.toFixed(2)}i<br>
+                        Rotated: z = ${point.x.toFixed(2)} + ${point.y.toFixed(2)}i<br>
+                        Distance: ${Math.sqrt(point.x*point.x + point.y*point.y).toFixed(2)}
+                    `;
+                    break;
+                }
+            }
+            
+            if (hoveredPoint === null) {
+                tooltip.style.opacity = '0';
+            }
+        });
+
+        canvas.addEventListener('mouseleave', function() {
+            tooltip.style.opacity = '0';
+            hoveredPoint = null;
+        });
+
+        viewOptions.forEach(option => {
+            option.addEventListener('click', function() {
+                viewOptions.forEach(opt => opt.classList.remove('active'));
+                this.classList.add('active');
+                currentView = this.getAttribute('data-view');
+                updateMathDisplay();
+            });
+        });
+
+        // Start the visualization
+        init();
+    </script>
+</body>
+</html>
