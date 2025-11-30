@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Complex Function Visualizer</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { overflow: hidden; background-color: #000; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; color: white; }
+        
+        #container { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; }
+        
+        #ui {
+            position: fixed; top: 20px; left: 20px; z-index: 10;
+            background: rgba(0, 0, 0, 0.7); padding: 20px;
+            border-radius: 10px; backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1); max-width: 350px;
+        }
+        
+        h1 { font-size: 1.5rem; margin-bottom: 15px; color: #4cc9f0; text-shadow: 0 0 10px rgba(76, 201, 240, 0.5); }
+        .control-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; font-size: 0.9rem; color: #aaa; }
+        
+        button {
+            background: rgba(76, 201, 240, 0.2); border: 1px solid #4cc9f0; color: white;
+            padding: 8px 15px; margin: 5px 5px 5px 0; border-radius: 5px; cursor: pointer;
+            transition: all 0.3s ease; font-size: 0.9rem;
+        }
+        button:hover { background: rgba(76, 201, 240, 0.4); box-shadow: 0 0 10px rgba(76, 201, 240, 0.5); }
+        button.active { background: rgba(76, 201, 240, 0.6); box-shadow: 0 0 15px rgba(76, 201, 240, 0.7); }
+        
+        .slider-container { display: flex; align-items: center; }
+        input[type="range"] {
+            flex: 1; height: 5px; background: rgba(255, 255, 255, 0.1);
+            border-radius: 5px; outline: none; -webkit-appearance: none;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none; width: 15px; height: 15px; border-radius: 50%;
+            background: #4cc9f0; cursor: pointer; box-shadow: 0 0 10px rgba(76, 201, 240, 0.7);
+        }
+        
+        .value-display { margin-left: 10px; min-width: 40px; text-align: center; font-size: 0.9rem; }
+        .checkbox-group { display: flex; align-items: center; margin-bottom: 10px; }
+        input[type="checkbox"] { margin-right: 8px; transform: scale(1.2); }
+        
+        #info-panel {
+            position: fixed; bottom: 20px; right: 20px; z-index: 10;
+            background: rgba(0, 0, 0, 0.7); padding: 15px; border-radius: 10px;
+            backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.1);
+            max-width: 300px; font-size: 0.9rem; line-height: 1.4;
+        }
+        #info-panel h3 { color: #4cc9f0; margin-bottom: 8px; font-size: 1rem; }
+        
+        #loading {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: #000; display: flex; justify-content: center;
+            align-items: center; z-index: 100; flex-direction: column; transition: opacity 0.5s;
+        }
+        .spinner {
+            width: 50px; height: 50px; border: 5px solid rgba(76, 201, 240, 0.3);
+            border-radius: 50%; border-top-color: #4cc9f0;
+            animation: spin 1s ease-in-out infinite; margin-bottom: 20px;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        #loading p { color: #4cc9f0; font-size: 1.2rem; }
+    </style>
+    
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+                "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+            }
+        }
+    </script>
+</head>
+<body>
+    <div id="loading">
+        <div class="spinner"></div>
+        <p>Initializing Complex Visualizer...</p>
+    </div>
+    
+    <div id="container"></div>
+    
+    <div id="ui">
+        <h1>Complex Function Visualizer</h1>
+        
+        <div class="control-group">
+            <label>Select Function:</label>
+            <div>
+                <button id="btn-iz" class="active">f(z) = i·z</button>
+                <button id="btn-neg-iz">f(z) = -i·z</button>
+                <button id="btn-z2">f(z) = z²</button>
+                <button id="btn-1z">f(z) = 1/z</button>
+                <button id="btn-ez">f(z) = e^z</button>
+            </div>
+        </div>
+        
+        <div class="control-group">
+            <label>Transformation Progress:</label>
+            <div class="slider-container">
+                <input type="range" id="progress-slider" min="0" max="100" value="0">
+                <div class="value-display" id="progress-value">0%</div>
+            </div>
+        </div>
+        
+        <div class="control-group">
+            <label>Visualization Options:</label>
+            <div class="checkbox-group">
+                <input type="checkbox" id="show-trails" checked>
+                <label for="show-trails">Show Particle Trails</label>
+            </div>
+        </div>
+    </div>
+    
+    <div id="info-panel">
+        <h3>About This Visualization</h3>
+        <p>This animation shows how complex functions transform each point on the complex plane. Each glowing particle represents a complex number z, and its movement shows the transformation to f(z).</p>
+    </div>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+        import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+        import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+        import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+
+        // Complex number operations
+        const ComplexMath = {
+            multiply: (a, b) => ({
+                re: a.re * b.re - a.im * b.im,
+                im: a.re * b.im + a.im * b.re
+            }),
+            square: (z) => ({
+                re: z.re * z.re - z.im * z.im,
+                im: 2 * z.re * z.im
+            }),
+            reciprocal: (z) => {
+                const denom = z.re * z.re + z.im * z.im;
+                if (denom === 0) return { re: 0, im: 0 }; // Avoid Infinity
+                return {
+                    re: z.re / denom,
+                    im: -z.im / denom
+                };
+            },
+            exponential: (z) => {
+                const expRe = Math.exp(z.re);
+                return {
+                    re: expRe * Math.cos(z.im),
+                    im: expRe * Math.sin(z.im)
+                };
+            }
+        };
+
+        // Initialize Three.js scene
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x000011);
+        scene.fog = new THREE.FogExp2(0x000022, 0.02);
+
+        const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.set(5, 5, 10);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        renderer.toneMapping = THREE.ACESFilmicToneMapping;
+        renderer.toneMappingExposure = 1.2;
+
+        const container = document.getElementById('container');
+        container.appendChild(renderer.domElement);
+
+        const controls = new OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.05;
+
+        // Create particle system
+        const particleCount = 1600; // 40x40 grid
+        const gridSize = 8;
+        const particles = new THREE.BufferGeometry();
+        const positions = new Float32Array(particleCount * 3);
+        const colors = new Float32Array(particleCount * 3);
+        const sizes = new Float32Array(particleCount);
+        const originalPositions = [];
+        const targetPositions = [];
+        const trailHistory = [];
+        const trailSystems = [];
+
+        // Initialize particle positions and colors
+        let index = 0;
+        const gridRes = Math.sqrt(particleCount);
+        
+        for (let i = 0; i < gridRes; i++) {
+            for (let j = 0; j < gridRes; j++) {
+                const x = (i / gridRes - 0.5) * gridSize;
+                const y = (j / gridRes - 0.5) * gridSize;
+                
+                positions[index * 3] = x;
+                positions[index * 3 + 1] = y;
+                positions[index * 3 + 2] = 0;
+                
+                // Color based on angle (Hue)
+                const hue = (Math.atan2(y, x) + Math.PI) / (2 * Math.PI);
+                const color = new THREE.Color().setHSL(hue, 0.8, 0.6);
+                
+                colors[index * 3] = color.r;
+                colors[index * 3 + 1] = color.g;
+                colors[index * 3 + 2] = color.b;
+                
+                sizes[index] = 0.15;
+                
+                originalPositions.push(new THREE.Vector3(x, y, 0));
+                targetPositions.push(new THREE.Vector3(x, y, 0));
+                trailHistory.push([]);
+                
+                index++;
+            }
+        }
+
+        particles.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+        particles.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+        particles.setAttribute('size', new THREE.BufferAttribute(sizes, 1));
+
+        // Create Particle Material
+        const particleMaterial = new THREE.ShaderMaterial({
+            uniforms: {
+                pointTexture: { value: new THREE.TextureLoader().load("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==") }
+            },
+            vertexShader: `
+                attribute float size;
+                attribute vec3 color;
+                varying vec3 vColor;
+                void main() {
+                    vColor = color;
+                    vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
+                    gl_PointSize = size * (300.0 / -mvPosition.z);
+                    gl_Position = projectionMatrix * mvPosition;
+                }
+            `,
+            fragmentShader: `
+                varying vec3 vColor;
+                void main() {
+                    float d = distance(gl_PointCoord, vec2(0.5));
+                    if(d > 0.5) discard;
+                    gl_FragColor = vec4(vColor, 1.0 - (d * 2.0));
+                }
+            `,
+            transparent: true,
+            blending: THREE.AdditiveBlending,
+            depthWrite: false
+        });
+
+        const particleSystem = new THREE.Points(particles, particleMaterial);
+        scene.add(particleSystem);
+
+        // Create INDIVIDUAL trails for each particle
+        const trailMaterial = new THREE.LineBasicMaterial({
+            color: 0xffffff,
+            transparent: true,
+            opacity: 0.2,
+            blending: THREE.AdditiveBlending,
+            vertexColors: true
+        });
+
+        for (let i = 0; i < particleCount; i++) {
+            const geometry = new THREE.BufferGeometry();
+            const posArray = new Float32Array(30); // 10 points * 3 coords
+            const colArray = new Float32Array(30);
+            
+            // Initialize with current color
+            const r = colors[i*3];
+            const g = colors[i*3+1];
+            const b = colors[i*3+2];
+            
+            for(let k=0; k<30; k+=3) {
+                colArray[k] = r;
+                colArray[k+1] = g;
+                colArray[k+2] = b;
+            }
+
+            geometry.setAttribute('position', new THREE.BufferAttribute(posArray, 3));
+            geometry.setAttribute('color', new THREE.BufferAttribute(colArray, 3));
+            
+            // Set draw range to 0 initially
+            geometry.setDrawRange(0, 0);
+
+            const trail = new THREE.Line(geometry, trailMaterial);
+            trail.frustumCulled = false; // Optimization
+            scene.add(trail);
+            trailSystems.push(trail);
+        }
+
+        // Floor
+        const floorGeometry = new THREE.PlaneGeometry(30, 30, 20, 20);
+        const floorMaterial = new THREE.MeshBasicMaterial({ 
+            color: 0x4cc9f0, 
+            wireframe: true,
+            transparent: true, 
+            opacity: 0.05 
+        });
+        const floor = new THREE.Mesh(floorGeometry, floorMaterial);
+        floor.rotation.x = -Math.PI / 2;
+        floor.position.y = -5;
+        scene.add(floor);
+
+        // Lighting
+        const ambientLight = new THREE.AmbientLight(0x222244, 0.4);
+        scene.add(ambientLight);
+        const directionalLight = new THREE.DirectionalLight(0x4cc9f0, 1);
+        directionalLight.position.set(5, 10, 7);
+        scene.add(directionalLight);
+
+        // Post-processing
+        const composer = new EffectComposer(renderer);
+        const renderPass = new RenderPass(scene, camera);
+        composer.addPass(renderPass);
+        const bloomPass = new UnrealBloomPass(
+            new THREE.Vector2(window.innerWidth, window.innerHeight),
+            1.5, 0.4, 0.85
+        );
+        composer.addPass(bloomPass);
+
+        // State
+        let currentFunction = 'iz';
+        let progress = 0;
+        let animationFrameId;
+
+        function updateParticlePositions() {
+            const positions = particles.attributes.position.array;
+            
+            for (let i = 0; i < particleCount; i++) {
+                const originalPos = originalPositions[i];
+                const targetPos = targetPositions[i];
+                
+                // Interpolate
+                const cx = originalPos.x + (targetPos.x - originalPos.x) * progress;
+                const cy = originalPos.y + (targetPos.y - originalPos.y) * progress;
+                const cz = originalPos.z + (targetPos.z - originalPos.z) * progress;
+
+                positions[i * 3] = cx;
+                positions[i * 3 + 1] = cy;
+                positions[i * 3 + 2] = cz;
+                
+                // Trail logic
+                if (progress > 0.01) {
+                    const currentVec = new THREE.Vector3(cx, cy, cz);
+                    const history = trailHistory[i];
+                    
+                    // Add point if moved enough
+                    if(history.length === 0 || currentVec.distanceTo(history[history.length-1]) > 0.05) {
+                        history.push(currentVec);
+                        if (history.length > 10) history.shift();
+
+                        const trail = trailSystems[i];
+                        const trailPos = trail.geometry.attributes.position.array;
+                        
+                        for (let j = 0; j < history.length; j++) {
+                            trailPos[j*3] = history[j].x;
+                            trailPos[j*3+1] = history[j].y;
+                            trailPos[j*3+2] = history[j].z;
+                        }
+                        
+                        trail.geometry.setDrawRange(0, history.length);
+                        trail.geometry.attributes.position.needsUpdate = true;
+                    }
+                } else {
+                    // Reset trails when progress is 0
+                    trailHistory[i] = [];
+                    trailSystems[i].geometry.setDrawRange(0, 0);
+                }
+            }
+            particles.attributes.position.needsUpdate = true;
+        }
+
+        function calculateTargetPositions() {
+            for (let i = 0; i < particleCount; i++) {
+                const originalPos = originalPositions[i];
+                const z = { re: originalPos.x, im: originalPos.y };
+                let fz;
+                
+                switch (currentFunction) {
+                    case 'iz': fz = ComplexMath.multiply(z, { re: 0, im: 1 }); break;
+                    case '-iz': fz = ComplexMath.multiply(z, { re: 0, im: -1 }); break;
+                    case 'z2': fz = ComplexMath.square(z); break;
+                    case '1z': fz = ComplexMath.reciprocal(z); break;
+                    case 'ez': fz = ComplexMath.exponential(z); break;
+                    default: fz = z;
+                }
+                
+                targetPositions[i].set(fz.re, fz.im, 0);
+            }
+        }
+
+        // Initialize
+        calculateTargetPositions();
+
+        // UI Listeners
+        document.getElementById('progress-slider').addEventListener('input', function(e) {
+            progress = parseInt(e.target.value) / 100;
+            document.getElementById('progress-value').textContent = e.target.value + '%';
+            updateParticlePositions();
+        });
+
+        window.setActiveFunction = function(buttonId, functionName) {
+            document.querySelectorAll('button').forEach(btn => btn.classList.remove('active'));
+            document.getElementById(buttonId).classList.add('active');
+            
+            // Reset animation
+            progress = 0;
+            document.getElementById('progress-slider').value = 0;
+            document.getElementById('progress-value').textContent = '0%';
+            
+            // Clear trails
+            for(let i=0; i<particleCount; i++) {
+                trailHistory[i] = [];
+                trailSystems[i].geometry.setDrawRange(0, 0);
+            }
+
+            currentFunction = functionName;
+            calculateTargetPositions();
+            updateParticlePositions();
+        };
+
+        // Attach clicks
+        document.getElementById('btn-iz').onclick = () => setActiveFunction('btn-iz', 'iz');
+        document.getElementById('btn-neg-iz').onclick = () => setActiveFunction('btn-neg-iz', '-iz');
+        document.getElementById('btn-z2').onclick = () => setActiveFunction('btn-z2', 'z2');
+        document.getElementById('btn-1z').onclick = () => setActiveFunction('btn-1z', '1z');
+        document.getElementById('btn-ez').onclick = () => setActiveFunction('btn-ez', 'ez');
+
+        document.getElementById('show-trails').addEventListener('change', function(e) {
+            trailSystems.forEach(trail => trail.visible = e.target.checked);
+        });
+
+        function animate() {
+            requestAnimationFrame(animate);
+            controls.update();
+            
+            const time = Date.now() * 0.001;
+            
+            // Gentle idle animation
+            const sizes = particles.attributes.size.array;
+            for (let i = 0; i < particleCount; i++) {
+                sizes[i] = 0.15 + Math.sin(time * 2 + i * 0.05) * 0.05;
+            }
+            particles.attributes.size.needsUpdate = true;
+            
+            composer.render();
+        }
+
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            composer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        // Hide loader
+        document.getElementById('loading').style.opacity = 0;
+        setTimeout(() => {
+            document.getElementById('loading').style.display = 'none';
+        }, 500);
+        
+        animate();
+    </script>
+</body>
+</html>
