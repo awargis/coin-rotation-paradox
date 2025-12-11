@@ -1,0 +1,1730 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Weighted & Combined Mean 3D Visualizer</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', 'Arial', sans-serif;
+        }
+        
+        body {
+            overflow: hidden;
+            background: linear-gradient(135deg, #0a0a1a 0%, #1a1a2e 50%, #16213e 100%);
+            color: #e0e0ff;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        #header {
+            padding: 15px 20px;
+            background: rgba(10, 10, 30, 0.7);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid rgba(100, 150, 255, 0.2);
+            z-index: 100;
+        }
+        
+        h1 {
+            font-size: 24px;
+            font-weight: 700;
+            background: linear-gradient(90deg, #4facfe, #00f2fe);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            margin-bottom: 5px;
+        }
+        
+        .subtitle {
+            font-size: 14px;
+            opacity: 0.8;
+            max-width: 800px;
+            line-height: 1.5;
+        }
+        
+        #container {
+            display: flex;
+            flex: 1;
+            position: relative;
+        }
+        
+        #canvas-container {
+            flex: 1;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        #canvas-container canvas {
+            display: block;
+            outline: none;
+        }
+        
+        #ui-container {
+            width: 350px;
+            background: rgba(15, 15, 35, 0.85);
+            backdrop-filter: blur(10px);
+            border-left: 1px solid rgba(100, 150, 255, 0.2);
+            padding: 20px;
+            overflow-y: auto;
+            z-index: 10;
+        }
+        
+        .ui-section {
+            margin-bottom: 25px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid rgba(100, 150, 255, 0.2);
+        }
+        
+        .ui-section h2 {
+            font-size: 18px;
+            margin-bottom: 15px;
+            color: #4facfe;
+            font-weight: 600;
+        }
+        
+        .control-group {
+            margin-bottom: 15px;
+        }
+        
+        .control-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-size: 14px;
+            color: #a0b0ff;
+        }
+        
+        .slider-container {
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        
+        .slider-container label {
+            min-width: 100px;
+            margin-right: 10px;
+            margin-bottom: 0;
+        }
+        
+        .slider-container input[type="range"] {
+            flex: 1;
+            height: 6px;
+            border-radius: 3px;
+            background: rgba(50, 80, 180, 0.3);
+            outline: none;
+            -webkit-appearance: none;
+        }
+        
+        .slider-container input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #4facfe;
+            cursor: pointer;
+            border: 2px solid #e0e0ff;
+        }
+        
+        .slider-value {
+            min-width: 40px;
+            text-align: right;
+            font-family: monospace;
+            font-weight: bold;
+            color: #00f2fe;
+        }
+        
+        .button {
+            display: inline-block;
+            padding: 10px 15px;
+            background: linear-gradient(90deg, #4facfe, #00f2fe);
+            color: #0a0a1a;
+            border: none;
+            border-radius: 5px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            margin-right: 10px;
+            margin-bottom: 10px;
+            font-size: 14px;
+        }
+        
+        .button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(79, 172, 254, 0.4);
+        }
+        
+        .button.secondary {
+            background: linear-gradient(90deg, #fe4f7c, #fea34f);
+        }
+        
+        .button.toggle {
+            background: rgba(50, 80, 180, 0.3);
+            color: #e0e0ff;
+        }
+        
+        .button.toggle.active {
+            background: linear-gradient(90deg, #4facfe, #00f2fe);
+            color: #0a0a1a;
+        }
+        
+        .toggle-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        
+        .toggle-group .button {
+            margin-right: 0;
+        }
+        
+        .info-box {
+            background: rgba(20, 40, 100, 0.3);
+            border-left: 4px solid #4facfe;
+            padding: 12px;
+            margin-bottom: 15px;
+            border-radius: 0 5px 5px 0;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+        
+        .formula {
+            font-family: 'Courier New', monospace;
+            background: rgba(0, 0, 0, 0.3);
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+            text-align: center;
+            color: #ffdd00;
+            font-size: 16px;
+            font-weight: bold;
+        }
+        
+        .mean-display {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            padding: 8px 10px;
+            border-radius: 5px;
+            background: rgba(0, 0, 0, 0.2);
+        }
+        
+        .mean-display.group-a {
+            border-left: 3px solid #4facfe;
+        }
+        
+        .mean-display.group-b {
+            border-left: 3px solid #fe4f7c;
+        }
+        
+        .mean-display.combined {
+            border-left: 3px solid #ffdd00;
+            font-weight: bold;
+            background: rgba(255, 221, 0, 0.1);
+        }
+        
+        .mean-label {
+            font-weight: 600;
+        }
+        
+        .mean-value {
+            font-family: monospace;
+            font-weight: bold;
+            font-size: 16px;
+        }
+        
+        .color-swatch {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+            vertical-align: middle;
+        }
+        
+        .color-swatch.group-a {
+            background: #4facfe;
+            box-shadow: 0 0 8px #4facfe;
+        }
+        
+        .color-swatch.group-b {
+            background: #fe4f7c;
+            box-shadow: 0 0 8px #fe4f7c;
+        }
+        
+        .color-swatch.combined {
+            background: #ffdd00;
+            box-shadow: 0 0 8px #ffdd00;
+        }
+        
+        #narration {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            right: 370px;
+            background: rgba(10, 10, 30, 0.85);
+            backdrop-filter: blur(10px);
+            padding: 15px 20px;
+            border-radius: 10px;
+            border: 1px solid rgba(100, 150, 255, 0.2);
+            max-width: 800px;
+            z-index: 50;
+            box-shadow: 0 5px 25px rgba(0, 0, 0, 0.5);
+        }
+        
+        #narration h3 {
+            color: #00f2fe;
+            margin-bottom: 8px;
+            font-size: 16px;
+        }
+        
+        #narration p {
+            font-size: 14px;
+            line-height: 1.5;
+        }
+        
+        .view-toggle {
+            position: absolute;
+            top: 20px;
+            right: 390px;
+            z-index: 50;
+        }
+        
+        @media (max-width: 1200px) {
+            #ui-container {
+                width: 320px;
+            }
+            
+            #narration {
+                right: 340px;
+            }
+            
+            .view-toggle {
+                right: 360px;
+            }
+        }
+        
+        @media (max-height: 700px) {
+            #header {
+                padding: 10px 20px;
+            }
+            
+            h1 {
+                font-size: 20px;
+            }
+            
+            .subtitle {
+                font-size: 12px;
+            }
+            
+            #ui-container {
+                padding: 15px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="header">
+        <h1>Weighted & Combined Mean 3D Visualizer</h1>
+        <div class="subtitle">
+            Interactive visualization of weighted mean and combined mean concepts. Drag data points, adjust group sizes and means, and observe how the combined mean responds.
+        </div>
+    </div>
+    
+    <div id="container">
+        <div id="canvas-container">
+            <div class="view-toggle">
+                <button id="toggle-2d" class="button toggle">2D View</button>
+            </div>
+        </div>
+        
+        <div id="ui-container">
+            <div class="ui-section">
+                <h2>Group Controls</h2>
+                
+                <div class="control-group">
+                    <label>Group Visibility</label>
+                    <div class="toggle-group">
+                        <button id="toggle-group-a" class="button toggle active">Group A</button>
+                        <button id="toggle-group-b" class="button toggle active">Group B</button>
+                        <button id="toggle-combined" class="button toggle active">Combined</button>
+                    </div>
+                </div>
+                
+                <div class="control-group">
+                    <label>Group A (Men)</label>
+                    <div class="slider-container">
+                        <label>Size (n₁):</label>
+                        <input type="range" id="size-a" min="3" max="30" step="1" value="10">
+                        <span id="size-a-value" class="slider-value">10</span>
+                    </div>
+                    
+                    <div class="slider-container">
+                        <label>Mean (m₁):</label>
+                        <input type="range" id="mean-a" min="-8" max="8" step="0.1" value="2.5">
+                        <span id="mean-a-value" class="slider-value">2.5</span>
+                    </div>
+                    
+                    <div class="slider-container">
+                        <label>Spread:</label>
+                        <input type="range" id="spread-a" min="0.5" max="5" step="0.1" value="1.5">
+                        <span id="spread-a-value" class="slider-value">1.5</span>
+                    </div>
+                </div>
+                
+                <div class="control-group">
+                    <label>Group B (Women)</label>
+                    <div class="slider-container">
+                        <label>Size (n₂):</label>
+                        <input type="range" id="size-b" min="3" max="30" step="1" value="15">
+                        <span id="size-b-value" class="slider-value">15</span>
+                    </div>
+                    
+                    <div class="slider-container">
+                        <label>Mean (m₂):</label>
+                        <input type="range" id="mean-b" min="-8" max="8" step="0.1" value="-2.0">
+                        <span id="mean-b-value" class="slider-value">-2.0</span>
+                    </div>
+                    
+                    <div class="slider-container">
+                        <label>Spread:</label>
+                        <input type="range" id="spread-b" min="0.5" max="5" step="0.1" value="1.8">
+                        <span id="spread-b-value" class="slider-value">1.8</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="ui-section">
+                <h2>Mean Values</h2>
+                
+                <div class="mean-display group-a">
+                    <span class="mean-label"><span class="color-swatch group-a"></span>Group A Mean:</span>
+                    <span id="mean-a-display" class="mean-value">2.50</span>
+                </div>
+                
+                <div class="mean-display group-b">
+                    <span class="mean-label"><span class="color-swatch group-b"></span>Group B Mean:</span>
+                    <span id="mean-b-display" class="mean-value">-2.00</span>
+                </div>
+                
+                <div class="mean-display combined">
+                    <span class="mean-label"><span class="color-swatch combined"></span>Combined Mean:</span>
+                    <span id="combined-mean-display" class="mean-value">-0.20</span>
+                </div>
+                
+                <div class="formula" id="formula-display">
+                    (10×2.5 + 15×-2.0) / (10+15) = -0.20
+                </div>
+            </div>
+            
+            <div class="ui-section">
+                <h2>JEE Ratio Problem</h2>
+                
+                <div class="info-box">
+                    <strong>JEE Problem Example:</strong> "Mean income of men = ₹430, women = ₹380. Combined mean = ₹400. Find the ratio of men to women."
+                </div>
+                
+                <button id="jee-problem-mode" class="button secondary">Load JEE Problem</button>
+                <button id="solve-ratio" class="button">Solve for Ratio</button>
+                
+                <div class="control-group" style="margin-top: 15px;">
+                    <label>Target Combined Mean:</label>
+                    <div class="slider-container">
+                        <input type="range" id="target-combined" min="-8" max="8" step="0.1" value="-0.2">
+                        <span id="target-combined-value" class="slider-value">-0.2</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="ui-section">
+                <h2>Scene Controls</h2>
+                
+                <button id="combine-groups" class="button">Combine Groups</button>
+                <button id="separate-groups" class="button secondary">Separate Groups</button>
+                <button id="randomize-groups" class="button">Randomize Data</button>
+                <button id="reset-scene" class="button">Reset Scene</button>
+                
+                <div class="toggle-group" style="margin-top: 15px;">
+                    <button id="toggle-bloom" class="button toggle active">Bloom Effect</button>
+                    <button id="toggle-fog" class="button toggle">Fog Effect</button>
+                    <button id="toggle-grid" class="button toggle active">Show Grid</button>
+                </div>
+            </div>
+            
+            <div class="ui-section">
+                <h2>Preset Scenarios</h2>
+                
+                <div class="toggle-group">
+                    <button id="preset-equal" class="button toggle">Equal Groups</button>
+                    <button id="preset-large-small" class="button toggle">Large + Small</button>
+                    <button id="preset-outlier" class="button toggle">Extreme Outlier</button>
+                    <button id="preset-same-mean" class="button toggle">Same Mean</button>
+                    <button id="preset-same-size" class="button toggle">Same Size</button>
+                </div>
+            </div>
+        </div>
+        
+        <div id="narration">
+            <h3>Understanding Weighted Mean</h3>
+            <p id="narration-text">The combined mean (weighted mean) is calculated as (n₁·m₁ + n₂·m₂) / (n₁ + n₂). Notice how the larger group (Group B with 15 points) pulls the combined mean toward its own mean value. Drag individual points to see how the means update in real time.</p>
+        </div>
+    </div>
+
+    <!-- Import Three.js and other libraries as ES modules -->
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://unpkg.com/three@0.162.0/build/three.module.js",
+            "three/addons/": "https://unpkg.com/three@0.162.0/examples/jsm/",
+            "gsap": "https://unpkg.com/gsap@3.12.5/index.js",
+            "tweakpane": "https://unpkg.com/tweakpane@4.0.3/dist/tweakpane.js"
+        }
+    }
+    </script>
+
+    <script type="module">
+        // Import required modules
+        import * as THREE from 'three';
+        import { OrbitControls } from 'https://unpkg.com/three@0.162.0/examples/jsm/controls/OrbitControls.js';
+        import { EffectComposer } from 'https://unpkg.com/three@0.162.0/examples/jsm/postprocessing/EffectComposer.js';
+        import { RenderPass } from 'https://unpkg.com/three@0.162.0/examples/jsm/postprocessing/RenderPass.js';
+        import { UnrealBloomPass } from 'https://unpkg.com/three@0.162.0/examples/jsm/postprocessing/UnrealBloomPass.js';
+        import { OutputPass } from 'https://unpkg.com/three@0.162.0/examples/jsm/postprocessing/OutputPass.js';
+        import { FXAAShader } from 'https://unpkg.com/three@0.162.0/examples/jsm/shaders/FXAAShader.js';
+        import { ShaderPass } from 'https://unpkg.com/three@0.162.0/examples/jsm/postprocessing/ShaderPass.js';
+        import gsap from 'gsap';
+        
+        // Main application class
+        class WeightedMeanVisualizer {
+            constructor() {
+                // Scene properties
+                this.scene = null;
+                this.camera = null;
+                this.renderer = null;
+                this.controls = null;
+                this.composer = null;
+                
+                // Animation properties
+                this.clock = new THREE.Clock();
+                this.mixer = null;
+                
+                // Group properties
+                this.groupA = {
+                    points: [],
+                    mean: 2.5,
+                    size: 10,
+                    spread: 1.5,
+                    color: 0x4facfe, // Neon blue
+                    visible: true,
+                    meanRod: null,
+                    meanLabel: null,
+                    cloud: null
+                };
+                
+                this.groupB = {
+                    points: [],
+                    mean: -2.0,
+                    size: 15,
+                    spread: 1.8,
+                    color: 0xfe4f7c, // Neon magenta
+                    visible: true,
+                    meanRod: null,
+                    meanLabel: null,
+                    cloud: null
+                };
+                
+                this.combinedMean = {
+                    value: -0.2,
+                    rod: null,
+                    label: null,
+                    visible: true,
+                    color: 0xffdd00 // Golden
+                };
+                
+                // Scene objects
+                this.numberLine = null;
+                this.grid = null;
+                this.beams = [];
+                
+                // UI state
+                this.is2DView = false;
+                this.isCombined = false;
+                this.isDragging = false;
+                this.draggedPoint = null;
+                this.originalPointPosition = null;
+                
+                // Initialize the application
+                this.init();
+            }
+            
+            init() {
+                // Create the scene
+                this.createScene();
+                
+                // Create the 3D objects
+                this.createNumberLine();
+                this.createGrid();
+                this.createClusters();
+                this.createMeanRods();
+                this.createBeams();
+                
+                // Set up event listeners
+                this.setupEventListeners();
+                
+                // Update the UI with initial values
+                this.updateUI();
+                
+                // Start the animation loop
+                this.animate();
+            }
+            
+            createScene() {
+                // Create scene with fog
+                this.scene = new THREE.Scene();
+                this.scene.fog = new THREE.Fog(0x0a0a1a, 15, 50);
+                
+                // Create camera
+                this.camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+                this.camera.position.set(0, 10, 15);
+                this.camera.lookAt(0, 0, 0);
+                
+                // Create renderer
+                this.renderer = new THREE.WebGLRenderer({ 
+                    antialias: true,
+                    alpha: true,
+                    powerPreference: "high-performance"
+                });
+                this.renderer.setSize(window.innerWidth - 350, window.innerHeight - 60);
+                this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+                this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
+                this.renderer.toneMappingExposure = 1.2;
+                this.renderer.shadowMap.enabled = true;
+                this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+                
+                // Add renderer to DOM
+                const canvasContainer = document.getElementById('canvas-container');
+                canvasContainer.appendChild(this.renderer.domElement);
+                
+                // Create orbit controls
+                this.controls = new OrbitControls(this.camera, this.renderer.domElement);
+                this.controls.enableDamping = true;
+                this.controls.dampingFactor = 0.05;
+                this.controls.minDistance = 5;
+                this.controls.maxDistance = 50;
+                this.controls.maxPolarAngle = Math.PI / 2 - 0.1;
+                
+                // Setup post-processing
+                this.setupPostProcessing();
+                
+                // Add ambient light
+                const ambientLight = new THREE.AmbientLight(0x404040, 0.6);
+                this.scene.add(ambientLight);
+                
+                // Add directional light
+                const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
+                directionalLight.position.set(10, 20, 15);
+                directionalLight.castShadow = true;
+                directionalLight.shadow.mapSize.width = 2048;
+                directionalLight.shadow.mapSize.height = 2048;
+                this.scene.add(directionalLight);
+                
+                // Add volumetric light effect
+                this.createVolumetricLight();
+                
+                // Handle window resize
+                window.addEventListener('resize', () => this.onWindowResize());
+            }
+            
+            setupPostProcessing() {
+                // Create composer
+                this.composer = new EffectComposer(this.renderer);
+                
+                // Add render pass
+                const renderPass = new RenderPass(this.scene, this.camera);
+                this.composer.addPass(renderPass);
+                
+                // Add bloom pass
+                this.bloomPass = new UnrealBloomPass(
+                    new THREE.Vector2(window.innerWidth, window.innerHeight),
+                    1.5, // strength
+                    0.4, // radius
+                    0.9  // threshold
+                );
+                this.composer.addPass(this.bloomPass);
+                
+                // Add FXAA pass
+                const fxaaPass = new ShaderPass(FXAAShader);
+                const pixelRatio = this.renderer.getPixelRatio();
+                fxaaPass.material.uniforms['resolution'].value.x = 1 / (window.innerWidth * pixelRatio);
+                fxaaPass.material.uniforms['resolution'].value.y = 1 / (window.innerHeight * pixelRatio);
+                this.composer.addPass(fxaaPass);
+                
+                // Add output pass
+                const outputPass = new OutputPass();
+                this.composer.addPass(outputPass);
+            }
+            
+            createVolumetricLight() {
+                // Create a subtle volumetric light effect
+                const lightGeometry = new THREE.ConeGeometry(3, 15, 32);
+                const lightMaterial = new THREE.MeshBasicMaterial({
+                    color: 0x4facfe,
+                    transparent: true,
+                    opacity: 0.05,
+                    side: THREE.DoubleSide
+                });
+                
+                const volumetricLight = new THREE.Mesh(lightGeometry, lightMaterial);
+                volumetricLight.position.set(0, 10, -10);
+                volumetricLight.rotation.x = Math.PI / 2;
+                this.scene.add(volumetricLight);
+                
+                // Add second light from opposite direction
+                const lightGeometry2 = lightGeometry.clone();
+                const lightMaterial2 = lightMaterial.clone();
+                lightMaterial2.color = new THREE.Color(0xfe4f7c);
+                
+                const volumetricLight2 = new THREE.Mesh(lightGeometry2, lightMaterial2);
+                volumetricLight2.position.set(0, 10, 10);
+                volumetricLight2.rotation.x = -Math.PI / 2;
+                this.scene.add(volumetricLight2);
+            }
+            
+            createNumberLine() {
+                // Create number line from -10 to 10
+                const numberLineGeometry = new THREE.BoxGeometry(20, 0.1, 0.5);
+                const numberLineMaterial = new THREE.MeshPhysicalMaterial({
+                    color: 0xffffff,
+                    transmission: 0.9,
+                    roughness: 0.1,
+                    thickness: 0.5,
+                    opacity: 0.7,
+                    transparent: true,
+                    side: THREE.DoubleSide,
+                    envMapIntensity: 1
+                });
+                
+                this.numberLine = new THREE.Mesh(numberLineGeometry, numberLineMaterial);
+                this.numberLine.position.y = 0.05;
+                this.scene.add(this.numberLine);
+                
+                // Add number line ticks and labels
+                for (let i = -10; i <= 10; i++) {
+                    // Create tick marks
+                    const tickGeometry = new THREE.BoxGeometry(0.1, 0.2, 0.1);
+                    const tickMaterial = new THREE.MeshStandardMaterial({
+                        color: 0x4facfe,
+                        emissive: 0x4facfe,
+                        emissiveIntensity: 0.5,
+                        metalness: 0.9,
+                        roughness: 0.1
+                    });
+                    
+                    const tick = new THREE.Mesh(tickGeometry, tickMaterial);
+                    tick.position.set(i, 0.15, 0);
+                    this.scene.add(tick);
+                    
+                    // Add number labels (every 2 units)
+                    if (i % 2 === 0) {
+                        this.createNumberLabel(i, i, 0.3, 0);
+                    }
+                }
+                
+                // Add axis label
+                this.createNumberLabel("Number Line", 0, 0.5, 1.5);
+            }
+            
+            createNumberLabel(text, x, y, z) {
+                // Create canvas for text
+                const canvas = document.createElement('canvas');
+                const context = canvas.getContext('2d');
+                canvas.width = 256;
+                canvas.height = 128;
+                
+                // Draw text
+                context.fillStyle = 'rgba(0, 0, 0, 0)';
+                context.fillRect(0, 0, canvas.width, canvas.height);
+                
+                context.font = 'bold 40px Arial';
+                context.fillStyle = '#ffffff';
+                context.textAlign = 'center';
+                context.textBaseline = 'middle';
+                context.fillText(text, canvas.width / 2, canvas.height / 2);
+                
+                // Create texture from canvas
+                const texture = new THREE.CanvasTexture(canvas);
+                
+                // Create sprite material
+                const spriteMaterial = new THREE.SpriteMaterial({
+                    map: texture,
+                    transparent: true,
+                    depthTest: false
+                });
+                
+                // Create sprite
+                const sprite = new THREE.Sprite(spriteMaterial);
+                sprite.position.set(x, y, z);
+                sprite.scale.set(2, 1, 1);
+                
+                this.scene.add(sprite);
+                return sprite;
+            }
+            
+            createGrid() {
+                // Create a reflective ground plane
+                const groundGeometry = new THREE.PlaneGeometry(40, 40);
+                const groundMaterial = new THREE.MeshStandardMaterial({
+                    color: 0x0a0a1a,
+                    roughness: 0.1,
+                    metalness: 0.5,
+                    side: THREE.DoubleSide
+                });
+                
+                const ground = new THREE.Mesh(groundGeometry, groundMaterial);
+                ground.rotation.x = -Math.PI / 2;
+                ground.position.y = -0.5;
+                ground.receiveShadow = true;
+                this.scene.add(ground);
+                
+                // Create a grid helper
+                this.grid = new THREE.GridHelper(40, 40, 0x4facfe, 0x4facfe);
+                this.grid.material.opacity = 0.2;
+                this.grid.material.transparent = true;
+                this.grid.position.y = -0.49;
+                this.scene.add(this.grid);
+            }
+            
+            createClusters() {
+                // Create Group A cluster
+                this.createCluster(this.groupA, -5);
+                
+                // Create Group B cluster
+                this.createCluster(this.groupB, 5);
+                
+                // Create clouds for each group
+                this.createCloud(this.groupA, -5);
+                this.createCloud(this.groupB, 5);
+            }
+            
+            createCluster(group, xOffset) {
+                // Clear existing points
+                group.points = [];
+                
+                // Create points for the group
+                for (let i = 0; i < group.size; i++) {
+                    // Calculate position with normal distribution around mean
+                    const x = gaussianRandom(group.mean, group.spread);
+                    const y = Math.random() * 2 + 2; // Random height between 2 and 4
+                    const z = (Math.random() - 0.5) * 2; // Random z offset
+                    
+                    // Create sphere geometry
+                    const geometry = new THREE.SphereGeometry(0.2, 16, 16);
+                    const material = new THREE.MeshStandardMaterial({
+                        color: group.color,
+                        emissive: group.color,
+                        emissiveIntensity: 0.5,
+                        metalness: 0.7,
+                        roughness: 0.2
+                    });
+                    
+                    const sphere = new THREE.Mesh(geometry, material);
+                    sphere.position.set(x + xOffset, y, z);
+                    sphere.castShadow = true;
+                    sphere.receiveShadow = true;
+                    
+                    // Store reference to group
+                    sphere.userData = { group: group, originalX: x };
+                    
+                    this.scene.add(sphere);
+                    group.points.push(sphere);
+                }
+                
+                // Update group mean
+                this.updateGroupMean(group);
+            }
+            
+            createCloud(group, xOffset) {
+                // Create a cloud-like formation for the group
+                const cloudGeometry = new THREE.SphereGeometry(3, 8, 6);
+                const cloudMaterial = new THREE.MeshBasicMaterial({
+                    color: group.color,
+                    transparent: true,
+                    opacity: 0.1,
+                    wireframe: true
+                });
+                
+                const cloud = new THREE.Mesh(cloudGeometry, cloudMaterial);
+                cloud.position.set(xOffset, 3, 0);
+                group.cloud = cloud;
+                
+                this.scene.add(cloud);
+            }
+            
+            createMeanRods() {
+                // Create mean rod for Group A
+                this.groupA.meanRod = this.createMeanRod(this.groupA.color, this.groupA.mean, -5, 'Group A Mean');
+                
+                // Create mean rod for Group B
+                this.groupB.meanRod = this.createMeanRod(this.groupB.color, this.groupB.mean, 5, 'Group B Mean');
+                
+                // Create combined mean rod
+                this.combinedMean.rod = this.createMeanRod(
+                    this.combinedMean.color, 
+                    this.combinedMean.value, 
+                    0, 
+                    'Combined Mean',
+                    true
+                );
+            }
+            
+            createMeanRod(color, xPosition, xOffset, labelText, isCombined = false) {
+                // Create rod geometry
+                const rodGeometry = new THREE.CylinderGeometry(0.1, 0.1, 6, 16);
+                const rodMaterial = new THREE.MeshStandardMaterial({
+                    color: color,
+                    emissive: color,
+                    emissiveIntensity: 0.7,
+                    metalness: 0.8,
+                    roughness: 0.2,
+                    transparent: true,
+                    opacity: 0.9
+                });
+                
+                const rod = new THREE.Mesh(rodGeometry, rodMaterial);
+                rod.position.set(xPosition + xOffset, 3, 0);
+                rod.castShadow = true;
+                
+                // Add glow effect
+                const glowGeometry = new THREE.CylinderGeometry(0.15, 0.15, 6.2, 16);
+                const glowMaterial = new THREE.MeshBasicMaterial({
+                    color: color,
+                    transparent: true,
+                    opacity: 0.3,
+                    side: THREE.DoubleSide
+                });
+                
+                const glow = new THREE.Mesh(glowGeometry, glowMaterial);
+                glow.position.set(0, 0, 0);
+                rod.add(glow);
+                
+                // Add label
+                const label = this.createNumberLabel(labelText, 0, 4, 0);
+                label.scale.set(1.5, 0.75, 1);
+                rod.add(label);
+                rod.userData.label = label;
+                
+                this.scene.add(rod);
+                return rod;
+            }
+            
+            createBeams() {
+                // Clear existing beams
+                this.beams.forEach(beam => this.scene.remove(beam));
+                this.beams = [];
+                
+                // Create beam from Group A mean to combined mean
+                if (this.groupA.meanRod && this.combinedMean.rod) {
+                    const beamA = this.createBeam(
+                        this.groupA.meanRod.position,
+                        this.combinedMean.rod.position,
+                        this.groupA.color
+                    );
+                    this.beams.push(beamA);
+                }
+                
+                // Create beam from Group B mean to combined mean
+                if (this.groupB.meanRod && this.combinedMean.rod) {
+                    const beamB = this.createBeam(
+                        this.groupB.meanRod.position,
+                        this.combinedMean.rod.position,
+                        this.groupB.color
+                    );
+                    this.beams.push(beamB);
+                }
+            }
+            
+            createBeam(start, end, color) {
+                // Calculate distance and direction
+                const distance = start.distanceTo(end);
+                const direction = new THREE.Vector3().subVectors(end, start).normalize();
+                
+                // Create cylinder for beam
+                const beamGeometry = new THREE.CylinderGeometry(0.05, 0.05, distance, 8);
+                const beamMaterial = new THREE.MeshBasicMaterial({
+                    color: color,
+                    transparent: true,
+                    opacity: 0.5,
+                    side: THREE.DoubleSide
+                });
+                
+                const beam = new THREE.Mesh(beamGeometry, beamMaterial);
+                
+                // Position and rotate beam
+                const midpoint = new THREE.Vector3().addVectors(start, end).multiplyScalar(0.5);
+                beam.position.copy(midpoint);
+                
+                // Rotate to point from start to end
+                beam.lookAt(end);
+                beam.rotateX(Math.PI / 2);
+                
+                this.scene.add(beam);
+                return beam;
+            }
+            
+            updateGroupMean(group) {
+                if (group.points.length === 0) return;
+                
+                // Calculate mean of group
+                let sum = 0;
+                group.points.forEach(point => {
+                    sum += point.position.x - (group === this.groupA ? -5 : 5);
+                });
+                
+                group.mean = sum / group.points.length;
+                
+                // Update mean rod position with animation
+                if (group.meanRod) {
+                    const targetX = group.mean + (group === this.groupA ? -5 : 5);
+                    gsap.to(group.meanRod.position, {
+                        x: targetX,
+                        duration: 1,
+                        ease: "power2.out"
+                    });
+                    
+                    // Update label
+                    if (group.meanRod.userData.label) {
+                        group.meanRod.remove(group.meanRod.userData.label);
+                        const labelText = group === this.groupA ? 
+                            `Men: ${group.mean.toFixed(2)}` : 
+                            `Women: ${group.mean.toFixed(2)}`;
+                        group.meanRod.userData.label = this.createNumberLabel(labelText, 0, 4, 0);
+                        group.meanRod.userData.label.scale.set(1.5, 0.75, 1);
+                        group.meanRod.add(group.meanRod.userData.label);
+                    }
+                }
+                
+                // Update combined mean
+                this.updateCombinedMean();
+            }
+            
+            updateCombinedMean() {
+                // Calculate weighted mean
+                const n1 = this.groupA.size;
+                const n2 = this.groupB.size;
+                const m1 = this.groupA.mean;
+                const m2 = this.groupB.mean;
+                
+                this.combinedMean.value = (n1 * m1 + n2 * m2) / (n1 + n2);
+                
+                // Update combined mean rod position with animation
+                if (this.combinedMean.rod) {
+                    gsap.to(this.combinedMean.rod.position, {
+                        x: this.combinedMean.value,
+                        duration: 1.5,
+                        ease: "elastic.out(1, 0.5)"
+                    });
+                    
+                    // Update label
+                    if (this.combinedMean.rod.userData.label) {
+                        this.combinedMean.rod.remove(this.combinedMean.rod.userData.label);
+                        const labelText = `Combined: ${this.combinedMean.value.toFixed(2)}`;
+                        this.combinedMean.rod.userData.label = this.createNumberLabel(labelText, 0, 4, 0);
+                        this.combinedMean.rod.userData.label.scale.set(1.5, 0.75, 1);
+                        this.combinedMean.rod.add(this.combinedMean.rod.userData.label);
+                    }
+                }
+                
+                // Update beams
+                this.createBeams();
+                
+                // Update UI
+                this.updateUI();
+            }
+            
+            updateUI() {
+                // Update slider values
+                document.getElementById('size-a-value').textContent = this.groupA.size;
+                document.getElementById('mean-a-value').textContent = this.groupA.mean.toFixed(1);
+                document.getElementById('spread-a-value').textContent = this.groupA.spread.toFixed(1);
+                
+                document.getElementById('size-b-value').textContent = this.groupB.size;
+                document.getElementById('mean-b-value').textContent = this.groupB.mean.toFixed(1);
+                document.getElementById('spread-b-value').textContent = this.groupB.spread.toFixed(1);
+                
+                // Update mean displays
+                document.getElementById('mean-a-display').textContent = this.groupA.mean.toFixed(2);
+                document.getElementById('mean-b-display').textContent = this.groupB.mean.toFixed(2);
+                document.getElementById('combined-mean-display').textContent = this.combinedMean.value.toFixed(2);
+                
+                // Update formula
+                const formula = `(${this.groupA.size}×${this.groupA.mean.toFixed(2)} + ${this.groupB.size}×${this.groupB.mean.toFixed(2)}) / (${this.groupA.size}+${this.groupB.size}) = ${this.combinedMean.value.toFixed(2)}`;
+                document.getElementById('formula-display').textContent = formula;
+                
+                // Update narration
+                this.updateNarration();
+            }
+            
+            updateNarration() {
+                const narration = document.getElementById('narration-text');
+                let text = "";
+                
+                if (this.isCombined) {
+                    text = `The combined mean is ${this.combinedMean.value.toFixed(2)}, calculated as (n₁·m₁ + n₂·m₂) / (n₁ + n₂). `;
+                    
+                    if (Math.abs(this.combinedMean.value - this.groupA.mean) < Math.abs(this.combinedMean.value - this.groupB.mean)) {
+                        text += `The combined mean is closer to Group A's mean because Group A has larger influence (size: ${this.groupA.size}).`;
+                    } else {
+                        text += `The combined mean is closer to Group B's mean because Group B has larger influence (size: ${this.groupB.size}).`;
+                    }
+                } else {
+                    text = `Group A (Men) has mean ${this.groupA.mean.toFixed(2)} with ${this.groupA.size} data points. Group B (Women) has mean ${this.groupB.mean.toFixed(2)} with ${this.groupB.size} data points. `;
+                    text += `Drag points to change values or adjust sliders to see how the combined mean responds.`;
+                }
+                
+                narration.textContent = text;
+            }
+            
+            combineGroups() {
+                this.isCombined = true;
+                
+                // Animate clouds merging
+                gsap.to(this.groupA.cloud.position, {
+                    x: 0,
+                    duration: 2,
+                    ease: "power2.inOut"
+                });
+                
+                gsap.to(this.groupB.cloud.position, {
+                    x: 0,
+                    duration: 2,
+                    ease: "power2.inOut"
+                });
+                
+                // Animate points moving to center
+                this.groupA.points.forEach((point, i) => {
+                    const delay = i * 0.05;
+                    const targetX = point.userData.originalX;
+                    
+                    gsap.to(point.position, {
+                        x: targetX,
+                        duration: 1.5,
+                        delay: delay,
+                        ease: "power2.out"
+                    });
+                });
+                
+                this.groupB.points.forEach((point, i) => {
+                    const delay = i * 0.05;
+                    const targetX = point.userData.originalX;
+                    
+                    gsap.to(point.position, {
+                        x: targetX,
+                        duration: 1.5,
+                        delay: delay,
+                        ease: "power2.out"
+                    });
+                });
+                
+                // Update narration
+                this.updateNarration();
+            }
+            
+            separateGroups() {
+                this.isCombined = false;
+                
+                // Animate clouds separating
+                gsap.to(this.groupA.cloud.position, {
+                    x: -5,
+                    duration: 2,
+                    ease: "power2.inOut"
+                });
+                
+                gsap.to(this.groupB.cloud.position, {
+                    x: 5,
+                    duration: 2,
+                    ease: "power2.inOut"
+                });
+                
+                // Animate points moving back to groups
+                this.groupA.points.forEach((point, i) => {
+                    const delay = i * 0.05;
+                    const targetX = point.userData.originalX - 5;
+                    
+                    gsap.to(point.position, {
+                        x: targetX,
+                        duration: 1.5,
+                        delay: delay,
+                        ease: "power2.out"
+                    });
+                });
+                
+                this.groupB.points.forEach((point, i) => {
+                    const delay = i * 0.05;
+                    const targetX = point.userData.originalX + 5;
+                    
+                    gsap.to(point.position, {
+                        x: targetX,
+                        duration: 1.5,
+                        delay: delay,
+                        ease: "power2.out"
+                    });
+                });
+                
+                // Update narration
+                this.updateNarration();
+            }
+            
+            randomizeData() {
+                // Randomize Group A
+                this.groupA.mean = (Math.random() * 16 - 8); // Between -8 and 8
+                this.groupA.spread = Math.random() * 3 + 0.5; // Between 0.5 and 3.5
+                
+                // Randomize Group B
+                this.groupB.mean = (Math.random() * 16 - 8); // Between -8 and 8
+                this.groupB.spread = Math.random() * 3 + 0.5; // Between 0.5 and 3.5
+                
+                // Regenerate clusters
+                this.regenerateClusters();
+                
+                // Update UI
+                this.updateUI();
+            }
+            
+            regenerateClusters() {
+                // Remove old points
+                this.groupA.points.forEach(point => this.scene.remove(point));
+                this.groupB.points.forEach(point => this.scene.remove(point));
+                
+                // Create new clusters
+                this.createCluster(this.groupA, -5);
+                this.createCluster(this.groupB, 5);
+                
+                // Update mean rods
+                this.updateGroupMean(this.groupA);
+                this.updateGroupMean(this.groupB);
+            }
+            
+            setupEventListeners() {
+                // UI controls
+                document.getElementById('size-a').addEventListener('input', (e) => {
+                    this.groupA.size = parseInt(e.target.value);
+                    this.regenerateClusters();
+                });
+                
+                document.getElementById('mean-a').addEventListener('input', (e) => {
+                    this.groupA.mean = parseFloat(e.target.value);
+                    this.regenerateClusters();
+                });
+                
+                document.getElementById('spread-a').addEventListener('input', (e) => {
+                    this.groupA.spread = parseFloat(e.target.value);
+                    this.regenerateClusters();
+                });
+                
+                document.getElementById('size-b').addEventListener('input', (e) => {
+                    this.groupB.size = parseInt(e.target.value);
+                    this.regenerateClusters();
+                });
+                
+                document.getElementById('mean-b').addEventListener('input', (e) => {
+                    this.groupB.mean = parseFloat(e.target.value);
+                    this.regenerateClusters();
+                });
+                
+                document.getElementById('spread-b').addEventListener('input', (e) => {
+                    this.groupB.spread = parseFloat(e.target.value);
+                    this.regenerateClusters();
+                });
+                
+                // Button controls
+                document.getElementById('combine-groups').addEventListener('click', () => this.combineGroups());
+                document.getElementById('separate-groups').addEventListener('click', () => this.separateGroups());
+                document.getElementById('randomize-groups').addEventListener('click', () => this.randomizeData());
+                document.getElementById('reset-scene').addEventListener('click', () => this.resetScene());
+                
+                // Toggle buttons
+                document.getElementById('toggle-group-a').addEventListener('click', (e) => {
+                    this.toggleGroupVisibility(this.groupA, e.target);
+                });
+                
+                document.getElementById('toggle-group-b').addEventListener('click', (e) => {
+                    this.toggleGroupVisibility(this.groupB, e.target);
+                });
+                
+                document.getElementById('toggle-combined').addEventListener('click', (e) => {
+                    this.toggleCombinedVisibility(e.target);
+                });
+                
+                document.getElementById('toggle-bloom').addEventListener('click', (e) => {
+                    this.toggleBloom(e.target);
+                });
+                
+                document.getElementById('toggle-fog').addEventListener('click', (e) => {
+                    this.toggleFog(e.target);
+                });
+                
+                document.getElementById('toggle-grid').addEventListener('click', (e) => {
+                    this.toggleGrid(e.target);
+                });
+                
+                document.getElementById('toggle-2d').addEventListener('click', (e) => {
+                    this.toggle2DView(e.target);
+                });
+                
+                // Preset buttons
+                document.getElementById('preset-equal').addEventListener('click', () => this.loadPreset('equal'));
+                document.getElementById('preset-large-small').addEventListener('click', () => this.loadPreset('large-small'));
+                document.getElementById('preset-outlier').addEventListener('click', () => this.loadPreset('outlier'));
+                document.getElementById('preset-same-mean').addEventListener('click', () => this.loadPreset('same-mean'));
+                document.getElementById('preset-same-size').addEventListener('click', () => this.loadPreset('same-size'));
+                
+                // JEE problem buttons
+                document.getElementById('jee-problem-mode').addEventListener('click', () => this.loadJEEProblem());
+                document.getElementById('solve-ratio').addEventListener('click', () => this.solveForRatio());
+                
+                document.getElementById('target-combined').addEventListener('input', (e) => {
+                    const value = parseFloat(e.target.value);
+                    document.getElementById('target-combined-value').textContent = value.toFixed(1);
+                    // In a full implementation, this would adjust group sizes to achieve target mean
+                });
+                
+                // Mouse events for dragging points
+                this.renderer.domElement.addEventListener('mousedown', (e) => this.onMouseDown(e));
+                this.renderer.domElement.addEventListener('mousemove', (e) => this.onMouseMove(e));
+                this.renderer.domElement.addEventListener('mouseup', () => this.onMouseUp());
+                this.renderer.domElement.addEventListener('mouseleave', () => this.onMouseUp());
+                
+                // Prevent right-click menu
+                this.renderer.domElement.addEventListener('contextmenu', (e) => e.preventDefault());
+            }
+            
+            toggleGroupVisibility(group, button) {
+                group.visible = !group.visible;
+                button.classList.toggle('active', group.visible);
+                
+                // Toggle visibility of points
+                group.points.forEach(point => {
+                    point.visible = group.visible;
+                });
+                
+                // Toggle visibility of mean rod
+                if (group.meanRod) {
+                    group.meanRod.visible = group.visible;
+                }
+                
+                // Toggle visibility of cloud
+                if (group.cloud) {
+                    group.cloud.visible = group.visible;
+                }
+                
+                // Update beams if combined mean is visible
+                if (this.combinedMean.visible) {
+                    this.createBeams();
+                }
+            }
+            
+            toggleCombinedVisibility(button) {
+                this.combinedMean.visible = !this.combinedMean.visible;
+                button.classList.toggle('active', this.combinedMean.visible);
+                
+                if (this.combinedMean.rod) {
+                    this.combinedMean.rod.visible = this.combinedMean.visible;
+                }
+                
+                // Update beams
+                this.createBeams();
+            }
+            
+            toggleBloom(button) {
+                const isActive = button.classList.toggle('active');
+                this.bloomPass.enabled = isActive;
+            }
+            
+            toggleFog(button) {
+                const isActive = button.classList.toggle('active');
+                this.scene.fog = isActive ? new THREE.Fog(0x0a0a1a, 15, 50) : null;
+            }
+            
+            toggleGrid(button) {
+                const isActive = button.classList.toggle('active');
+                if (this.grid) {
+                    this.grid.visible = isActive;
+                }
+            }
+            
+            toggle2DView(button) {
+                this.is2DView = !this.is2DView;
+                button.textContent = this.is2DView ? '3D View' : '2D View';
+                
+                if (this.is2DView) {
+                    // Switch to orthographic camera for 2D view
+                    const width = window.innerWidth - 350;
+                    const height = window.innerHeight - 60;
+                    this.camera = new THREE.OrthographicCamera(
+                        width / -100, width / 100, height / 100, height / -100, 0.1, 1000
+                    );
+                    this.camera.position.set(0, 10, 0);
+                    this.camera.lookAt(0, 0, 0);
+                    
+                    // Update controls
+                    this.controls.object = this.camera;
+                    this.controls.update();
+                    
+                    // Hide clouds and adjust point positions for 2D
+                    if (this.groupA.cloud) this.groupA.cloud.visible = false;
+                    if (this.groupB.cloud) this.groupB.cloud.visible = false;
+                    
+                    // Move points to same plane
+                    this.groupA.points.forEach(point => {
+                        point.position.y = 0.5;
+                        point.position.z = 0;
+                    });
+                    
+                    this.groupB.points.forEach(point => {
+                        point.position.y = 0.5;
+                        point.position.z = 0;
+                    });
+                } else {
+                    // Switch back to perspective camera for 3D view
+                    const aspect = (window.innerWidth - 350) / (window.innerHeight - 60);
+                    this.camera = new THREE.PerspectiveCamera(60, aspect, 0.1, 1000);
+                    this.camera.position.set(0, 10, 15);
+                    this.camera.lookAt(0, 0, 0);
+                    
+                    // Update controls
+                    this.controls.object = this.camera;
+                    this.controls.update();
+                    
+                    // Show clouds and restore 3D positions
+                    if (this.groupA.cloud) this.groupA.cloud.visible = this.groupA.visible;
+                    if (this.groupB.cloud) this.groupB.cloud.visible = this.groupB.visible;
+                    
+                    // Restore point positions
+                    this.regenerateClusters();
+                }
+            }
+            
+            loadPreset(presetName) {
+                switch(presetName) {
+                    case 'equal':
+                        this.groupA.size = 15;
+                        this.groupB.size = 15;
+                        this.groupA.mean = 3.0;
+                        this.groupB.mean = -3.0;
+                        this.groupA.spread = 1.2;
+                        this.groupB.spread = 1.2;
+                        break;
+                        
+                    case 'large-small':
+                        this.groupA.size = 25;
+                        this.groupB.size = 5;
+                        this.groupA.mean = 1.0;
+                        this.groupB.mean = 6.0;
+                        this.groupA.spread = 1.0;
+                        this.groupB.spread = 0.8;
+                        break;
+                        
+                    case 'outlier':
+                        this.groupA.size = 10;
+                        this.groupB.size = 10;
+                        this.groupA.mean = 0.0;
+                        this.groupB.mean = 7.5;
+                        this.groupA.spread = 1.0;
+                        this.groupB.spread = 0.5;
+                        break;
+                        
+                    case 'same-mean':
+                        this.groupA.size = 20;
+                        this.groupB.size = 10;
+                        this.groupA.mean = 2.0;
+                        this.groupB.mean = 2.0;
+                        this.groupA.spread = 1.5;
+                        this.groupB.spread = 1.5;
+                        break;
+                        
+                    case 'same-size':
+                        this.groupA.size = 15;
+                        this.groupB.size = 15;
+                        this.groupA.mean = -4.0;
+                        this.groupB.mean = 4.0;
+                        this.groupA.spread = 1.3;
+                        this.groupB.spread = 1.3;
+                        break;
+                }
+                
+                // Update sliders
+                document.getElementById('size-a').value = this.groupA.size;
+                document.getElementById('mean-a').value = this.groupA.mean;
+                document.getElementById('spread-a').value = this.groupA.spread;
+                
+                document.getElementById('size-b').value = this.groupB.size;
+                document.getElementById('mean-b').value = this.groupB.mean;
+                document.getElementById('spread-b').value = this.groupB.spread;
+                
+                // Regenerate clusters
+                this.regenerateClusters();
+                
+                // Update UI
+                this.updateUI();
+            }
+            
+            loadJEEProblem() {
+                // Load a typical JEE problem
+                this.groupA.mean = 430 / 100; // Scale down for visualization
+                this.groupB.mean = 380 / 100;
+                
+                // Set reasonable group sizes for visualization
+                this.groupA.size = 12;
+                this.groupB.size = 8;
+                
+                this.groupA.spread = 1.0;
+                this.groupB.spread = 1.0;
+                
+                // Update sliders
+                document.getElementById('mean-a').value = this.groupA.mean;
+                document.getElementById('size-a').value = this.groupA.size;
+                document.getElementById('spread-a').value = this.groupA.spread;
+                
+                document.getElementById('mean-b').value = this.groupB.mean;
+                document.getElementById('size-b').value = this.groupB.size;
+                document.getElementById('spread-b').value = this.groupB.spread;
+                
+                // Set target combined mean
+                const targetMean = 400 / 100; // Scale down
+                document.getElementById('target-combined').value = targetMean;
+                document.getElementById('target-combined-value').textContent = targetMean.toFixed(1);
+                
+                // Regenerate clusters
+                this.regenerateClusters();
+                
+                // Update UI
+                this.updateUI();
+                
+                // Update narration
+                document.getElementById('narration-text').textContent = 
+                    "JEE Problem: Mean income of men = ₹430, women = ₹380. Combined mean = ₹400. " +
+                    "The ratio of men to women can be found by solving: (n₁·430 + n₂·380) / (n₁ + n₂) = 400. " +
+                    "Adjust group sizes to achieve the target combined mean of 4.0 (scaled down from ₹400).";
+            }
+            
+            solveForRatio() {
+                // For demonstration, calculate the ratio needed to achieve target combined mean
+                const targetMean = parseFloat(document.getElementById('target-combined').value);
+                const m1 = this.groupA.mean;
+                const m2 = this.groupB.mean;
+                
+                // Solve for ratio n1/n2 using weighted mean formula
+                // (n1*m1 + n2*m2) / (n1 + n2) = targetMean
+                // n1*m1 + n2*m2 = targetMean*(n1 + n2)
+                // n1*m1 - n1*targetMean = n2*targetMean - n2*m2
+                // n1*(m1 - targetMean) = n2*(targetMean - m2)
+                // n1/n2 = (targetMean - m2) / (m1 - targetMean)
+                
+                const ratio = (targetMean - m2) / (m1 - targetMean);
+                
+                alert(`To achieve a combined mean of ${targetMean.toFixed(2)}:\n` +
+                      `Group A mean: ${m1.toFixed(2)}\n` +
+                      `Group B mean: ${m2.toFixed(2)}\n` +
+                      `Required ratio (Group A : Group B) = ${ratio.toFixed(2)} : 1\n` +
+                      `or approximately ${(ratio*100).toFixed(0)} : 100`);
+            }
+            
+            resetScene() {
+                // Reset to initial values
+                this.groupA.size = 10;
+                this.groupA.mean = 2.5;
+                this.groupA.spread = 1.5;
+                
+                this.groupB.size = 15;
+                this.groupB.mean = -2.0;
+                this.groupB.spread = 1.8;
+                
+                // Reset sliders
+                document.getElementById('size-a').value = this.groupA.size;
+                document.getElementById('mean-a').value = this.groupA.mean;
+                document.getElementById('spread-a').value = this.groupA.spread;
+                
+                document.getElementById('size-b').value = this.groupB.size;
+                document.getElementById('mean-b').value = this.groupB.mean;
+                document.getElementById('spread-b').value = this.groupB.spread;
+                
+                // Reset combined mean target
+                document.getElementById('target-combined').value = -0.2;
+                document.getElementById('target-combined-value').textContent = "-0.2";
+                
+                // Regenerate clusters
+                this.regenerateClusters();
+                
+                // Separate groups if combined
+                if (this.isCombined) {
+                    this.separateGroups();
+                    this.isCombined = false;
+                }
+                
+                // Update UI
+                this.updateUI();
+            }
+            
+            onMouseDown(event) {
+                // Calculate mouse position in normalized device coordinates
+                const mouse = new THREE.Vector2();
+                const rect = this.renderer.domElement.getBoundingClientRect();
+                
+                mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+                mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+                
+                // Create raycaster
+                const raycaster = new THREE.Raycaster();
+                raycaster.setFromCamera(mouse, this.camera);
+                
+                // Check for intersection with data points
+                const allPoints = [...this.groupA.points, ...this.groupB.points];
+                const intersects = raycaster.intersectObjects(allPoints);
+                
+                if (intersects.length > 0) {
+                    this.isDragging = true;
+                    this.draggedPoint = intersects[0].object;
+                    this.originalPointPosition = this.draggedPoint.position.clone();
+                    
+                    // Highlight the dragged point
+                    this.draggedPoint.material.emissive.setHex(0xffffff);
+                    this.draggedPoint.scale.set(1.5, 1.5, 1.5);
+                }
+            }
+            
+            onMouseMove(event) {
+                if (!this.isDragging || !this.draggedPoint) return;
+                
+                // Calculate mouse position in normalized device coordinates
+                const mouse = new THREE.Vector2();
+                const rect = this.renderer.domElement.getBoundingClientRect();
+                
+                mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+                mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+                
+                // Create raycaster
+                const raycaster = new THREE.Raycaster();
+                raycaster.setFromCamera(mouse, this.camera);
+                
+                // Create a plane at the point's original height
+                const plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), -this.originalPointPosition.y);
+                const intersectionPoint = new THREE.Vector3();
+                raycaster.ray.intersectPlane(plane, intersectionPoint);
+                
+                // Constrain movement to x-axis (along number line)
+                // Keep y and z at original values
+                this.draggedPoint.position.x = THREE.MathUtils.clamp(intersectionPoint.x, -10, 10);
+                this.draggedPoint.position.y = this.originalPointPosition.y;
+                this.draggedPoint.position.z = this.originalPointPosition.z;
+                
+                // Update the group mean
+                const group = this.draggedPoint.userData.group;
+                this.updateGroupMean(group);
+            }
+            
+            onMouseUp() {
+                if (this.isDragging && this.draggedPoint) {
+                    // Restore point's appearance
+                    const group = this.draggedPoint.userData.group;
+                    this.draggedPoint.material.emissive.setHex(group.color);
+                    this.draggedPoint.scale.set(1, 1, 1);
+                    
+                    this.isDragging = false;
+                    this.draggedPoint = null;
+                    this.originalPointPosition = null;
+                }
+            }
+            
+            onWindowResize() {
+                const canvasContainer = document.getElementById('canvas-container');
+                const width = canvasContainer.clientWidth;
+                const height = canvasContainer.clientHeight;
+                
+                // Update camera
+                if (this.is2DView) {
+                    this.camera.left = width / -100;
+                    this.camera.right = width / 100;
+                    this.camera.top = height / 100;
+                    this.camera.bottom = height / -100;
+                    this.camera.updateProjectionMatrix();
+                } else {
+                    this.camera.aspect = width / height;
+                    this.camera.updateProjectionMatrix();
+                }
+                
+                // Update renderer
+                this.renderer.setSize(width, height);
+                
+                // Update post-processing
+                this.composer.setSize(width, height);
+                
+                // Update FXAA pass
+                const pixelRatio = this.renderer.getPixelRatio();
+                const fxaaPass = this.composer.passes.find(pass => pass instanceof ShaderPass && pass.uniforms['resolution']);
+                if (fxaaPass) {
+                    fxaaPass.material.uniforms['resolution'].value.x = 1 / (width * pixelRatio);
+                    fxaaPass.material.uniforms['resolution'].value.y = 1 / (height * pixelRatio);
+                }
+            }
+            
+            animate() {
+                requestAnimationFrame(() => this.animate());
+                
+                // Update controls
+                this.controls.update();
+                
+                // Animate clouds
+                const time = this.clock.getElapsedTime();
+                
+                if (this.groupA.cloud && this.groupA.visible) {
+                    this.groupA.cloud.position.y = 3 + Math.sin(time * 0.5) * 0.2;
+                    this.groupA.cloud.rotation.y = time * 0.1;
+                }
+                
+                if (this.groupB.cloud && this.groupB.visible) {
+                    this.groupB.cloud.position.y = 3 + Math.sin(time * 0.5 + 1) * 0.2;
+                    this.groupB.cloud.rotation.y = -time * 0.1;
+                }
+                
+                // Animate points (subtle breathing motion)
+                if (!this.isDragging) {
+                    this.groupA.points.forEach((point, i) => {
+                        if (point === this.draggedPoint) return;
+                        
+                        const offset = i * 0.3;
+                        point.position.y = this.originalPointPosition ? this.originalPointPosition.y : (2 + Math.sin(time * 0.5 + offset) * 0.1 + 2);
+                        point.position.z = (Math.sin(time * 0.3 + offset) * 0.2);
+                    });
+                    
+                    this.groupB.points.forEach((point, i) => {
+                        if (point === this.draggedPoint) return;
+                        
+                        const offset = i * 0.3 + 2;
+                        point.position.y = this.originalPointPosition ? this.originalPointPosition.y : (2 + Math.sin(time * 0.5 + offset) * 0.1 + 2);
+                        point.position.z = (Math.sin(time * 0.3 + offset) * 0.2);
+                    });
+                }
+                
+                // Render scene
+                this.composer.render();
+            }
+        }
+        
+        // Helper function for Gaussian random numbers
+        function gaussianRandom(mean, stdDev) {
+            let u = 0, v = 0;
+            while (u === 0) u = Math.random();
+            while (v === 0) v = Math.random();
+            const num = Math.sqrt(-2.0 * Math.log(u)) * Math.cos(2.0 * Math.PI * v);
+            return num * stdDev + mean;
+        }
+        
+        // Initialize the application when the page loads
+        window.addEventListener('load', () => {
+            new WeightedMeanVisualizer();
+        });
+    </script>
+</body>
+</html>
