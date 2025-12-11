@@ -1,0 +1,671 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cinematic Standard Deviation & Variance Explorer</title>
+    <style>
+        :root {
+            --font-main: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            --glass-bg: rgba(20, 20, 30, 0.7);
+            --glass-border: 1px solid rgba(255, 255, 255, 0.1);
+            --highlight: #00d2ff;
+        }
+
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #050505;
+            font-family: var(--font-main);
+            color: #ffffff;
+        }
+
+        #canvas-container {
+            width: 100vw;
+            height: 100vh;
+            display: block;
+        }
+
+        /* UI Overlays */
+        #ui-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none; /* Let clicks pass through to 3D */
+        }
+
+        .hud-panel {
+            position: absolute;
+            background: var(--glass-bg);
+            backdrop-filter: blur(10px);
+            border: var(--glass-border);
+            border-radius: 8px;
+            padding: 20px;
+            pointer-events: auto;
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.5);
+            transition: all 0.3s ease;
+        }
+
+        /* Top Center: Teaching Text */
+        #info-panel {
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 600px;
+            text-align: center;
+        }
+
+        #info-title {
+            font-size: 1.2rem;
+            font-weight: 700;
+            color: var(--highlight);
+            margin-bottom: 5px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        #info-desc {
+            font-size: 0.95rem;
+            color: #ccc;
+            line-height: 1.4;
+        }
+
+        /* Bottom Left: Stats */
+        #stats-panel {
+            bottom: 20px;
+            left: 20px;
+            min-width: 250px;
+        }
+
+        .stat-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 1rem;
+        }
+
+        .stat-label { color: #888; }
+        .stat-val { font-weight: bold; color: white; }
+        .stat-val.mean { color: #ff00ff; }
+        .stat-val.sd { color: #00d2ff; }
+        .stat-val.var { color: #ffaa00; }
+
+        /* Bottom Right: Step Controls */
+        #controls-panel {
+            bottom: 20px;
+            right: 20px;
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .btn {
+            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.2);
+            color: white;
+            padding: 10px 20px;
+            cursor: pointer;
+            border-radius: 4px;
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: 0.8rem;
+            transition: background 0.2s, transform 0.1s;
+        }
+
+        .btn:hover { background: rgba(255,255,255,0.2); }
+        .btn:active { transform: scale(0.95); }
+        .btn-primary { background: var(--highlight); color: #000; border: none; }
+        .btn-primary:hover { background: #66e0ff; }
+
+        /* Step Indicator */
+        #step-indicator {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+        .step-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #333;
+            border: 1px solid #555;
+        }
+        .step-dot.active {
+            background: var(--highlight);
+            box-shadow: 0 0 10px var(--highlight);
+        }
+
+        /* Loading */
+        #loader {
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 1.5rem;
+            color: var(--highlight);
+        }
+    </style>
+    
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+                "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/",
+                "gsap": "https://unpkg.com/gsap@3.12.5/index.js",
+                "tweakpane": "https://unpkg.com/tweakpane@4.0.1/dist/tweakpane.js"
+            }
+        }
+    </script>
+</head>
+<body>
+
+    <div id="loader">Initializing 3D Environment...</div>
+    <div id="canvas-container"></div>
+
+    <div id="ui-layer">
+        
+        <div id="info-panel" class="hud-panel">
+            <div id="info-title">Standard Deviation Explorer</div>
+            <div id="info-desc">Welcome. Use the controls to explore how data spread affects Standard Deviation.</div>
+        </div>
+
+        <div id="stats-panel" class="hud-panel">
+            <div class="stat-row">
+                <span class="stat-label">Count (n)</span>
+                <span class="stat-val" id="val-n">0</span>
+            </div>
+            <div class="stat-row">
+                <span class="stat-label">Mean (μ)</span>
+                <span class="stat-val mean" id="val-mean">0.00</span>
+            </div>
+            <div class="stat-row">
+                <span class="stat-label">Variance (σ²)</span>
+                <span class="stat-val var" id="val-var">0.00</span>
+            </div>
+            <div class="stat-row" style="border-top: 1px solid #444; padding-top:5px; margin-top:5px;">
+                <span class="stat-label">SD (σ)</span>
+                <span class="stat-val sd" id="val-sd" style="font-size: 1.2rem;">0.00</span>
+            </div>
+        </div>
+
+        <div id="step-indicator">
+            <div class="step-dot active" title="Data"></div>
+            <div class="step-dot" title="Mean"></div>
+            <div class="step-dot" title="Deviation"></div>
+            <div class="step-dot" title="Variance"></div>
+            <div class="step-dot" title="Standard Deviation"></div>
+        </div>
+
+        <div id="controls-panel" class="hud-panel">
+            <button class="btn" id="btn-prev">Back</button>
+            <span id="step-text" style="font-family:monospace; min-width: 80px; text-align:center;">STEP 1/5</span>
+            <button class="btn btn-primary" id="btn-next">Next</button>
+        </div>
+
+    </div>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+        import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+        import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+        import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+        import gsap from 'gsap';
+        import { Pane } from 'tweakpane';
+
+        // --- GLOBAL CONFIGURATION & STATE ---
+        const config = {
+            dataCount: 20,
+            spread: 15,
+            meanPos: 0,
+            isPopulation: false, // Divide by N or N-1
+            outlierActive: false,
+            mode2D: false,
+            step: 0, // 0: Points, 1: Mean, 2: Deviations, 3: Variance, 4: SD
+            moveMeanOnly: false,
+            moveSpreadOnly: false
+        };
+
+        const state = {
+            points: [], // Array of objects { x, mesh, line, bar }
+            mean: 0,
+            variance: 0,
+            sd: 0
+        };
+
+        // --- SCENE SETUP ---
+        const container = document.getElementById('canvas-container');
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x050505);
+        scene.fog = new THREE.FogExp2(0x050505, 0.015);
+
+        const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.set(0, 30, 60);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        renderer.toneMapping = THREE.ReinhardToneMapping;
+        container.appendChild(renderer.domElement);
+
+        // --- POST PROCESSING (BLOOM) ---
+        const renderScene = new RenderPass(scene, camera);
+        const bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 1.5, 0.4, 0.85);
+        bloomPass.threshold = 0;
+        bloomPass.strength = 1.2; // Glow intensity
+        bloomPass.radius = 0.5;
+
+        const composer = new EffectComposer(renderer);
+        composer.addPass(renderScene);
+        composer.addPass(bloomPass);
+
+        // --- LIGHTING ---
+        const ambientLight = new THREE.AmbientLight(0x404040, 2);
+        scene.add(ambientLight);
+
+        const dirLight = new THREE.DirectionalLight(0xffffff, 1);
+        dirLight.position.set(10, 20, 10);
+        scene.add(dirLight);
+
+        // --- ENVIRONMENT OBJECTS ---
+        
+        // 1. Glass Coordinate Plane
+        const planeGeo = new THREE.PlaneGeometry(200, 100);
+        const planeMat = new THREE.MeshPhysicalMaterial({
+            color: 0x111111,
+            metalness: 0.1,
+            roughness: 0.1,
+            transmission: 0.5,
+            transparent: true,
+            opacity: 0.3,
+            side: THREE.DoubleSide
+        });
+        const groundPlane = new THREE.Mesh(planeGeo, planeMat);
+        groundPlane.rotation.x = -Math.PI / 2;
+        groundPlane.position.y = -0.1;
+        scene.add(groundPlane);
+
+        // 2. Axes
+        const axisGroup = new THREE.Group();
+        scene.add(axisGroup);
+        
+        // X Axis
+        const xAxisGeo = new THREE.CylinderGeometry(0.1, 0.1, 150, 32);
+        const chromeMat = new THREE.MeshStandardMaterial({ 
+            color: 0xffffff, metalness: 1.0, roughness: 0.2 
+        });
+        const xAxis = new THREE.Mesh(xAxisGeo, chromeMat);
+        xAxis.rotation.z = Math.PI / 2;
+        axisGroup.add(xAxis);
+
+        // Ticks
+        for(let i = -70; i <= 70; i+=10) {
+            const tick = new THREE.Mesh(new THREE.BoxGeometry(0.2, 2, 0.2), chromeMat);
+            tick.position.x = i;
+            axisGroup.add(tick);
+        }
+
+        // --- DATA VISUALIZATION OBJECTS ---
+        
+        const dataGroup = new THREE.Group();
+        scene.add(dataGroup);
+
+        // Materials
+        const sphereMat = new THREE.MeshPhysicalMaterial({
+            color: 0x00d2ff,
+            emissive: 0x0044aa,
+            emissiveIntensity: 0.5,
+            roughness: 0.1,
+            metalness: 0.5,
+            clearcoat: 1.0
+        });
+
+        const meanMat = new THREE.MeshPhysicalMaterial({
+            color: 0xff00ff,
+            emissive: 0xff00ff,
+            emissiveIntensity: 0.8,
+            transmission: 0.9,
+            opacity: 0.8,
+            transparent: true
+        });
+
+        const lineMatBlue = new THREE.MeshBasicMaterial({ color: 0x00d2ff, transparent: true, opacity: 0.0 });
+        const lineMatRed = new THREE.MeshBasicMaterial({ color: 0xff3333, transparent: true, opacity: 0.0 });
+        
+        const varMat = new THREE.MeshBasicMaterial({ color: 0xffaa00, transparent: true, opacity: 0.0, side: THREE.DoubleSide });
+
+        // Mean Rod
+        const meanRod = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 40, 16), meanMat);
+        meanRod.position.y = 20;
+        meanRod.visible = false;
+        scene.add(meanRod);
+
+        // --- CORE FUNCTIONS ---
+
+        function createDataPoints() {
+            // Clear old
+            while(dataGroup.children.length > 0){ 
+                const obj = dataGroup.children[0];
+                obj.geometry.dispose();
+                dataGroup.remove(obj); 
+            }
+            state.points = [];
+
+            // Generate new
+            for (let i = 0; i < config.dataCount; i++) {
+                // Initial distribution logic
+                let xVal = (Math.random() - 0.5) * config.spread * 2 + config.meanPos;
+                
+                // Visual Mesh
+                const geometry = new THREE.SphereGeometry(0.8, 32, 32);
+                const mesh = new THREE.Mesh(geometry, sphereMat.clone());
+                
+                // 3D Offset
+                const zOffset = (Math.random() - 0.5) * 15;
+                const yOffset = 2 + Math.random() * 2;
+                
+                mesh.position.set(xVal, yOffset, zOffset);
+                
+                // Deviation Line (Cylinder initialized flat)
+                const lineGeo = new THREE.CylinderGeometry(0.1, 0.1, 1, 8);
+                lineGeo.translate(0, 0.5, 0); // Pivot at bottom
+                lineGeo.rotateZ(-Math.PI/2); // Point along X
+                const lineMesh = new THREE.Mesh(lineGeo, lineMatBlue.clone());
+                lineMesh.position.set(0,0,0);
+                
+                // Variance Bar (Plane)
+                const barGeo = new THREE.PlaneGeometry(1, 1);
+                barGeo.translate(0, 0.5, 0); // Pivot bottom
+                const barMesh = new THREE.Mesh(barGeo, varMat.clone());
+                barMesh.position.set(0,0,0);
+
+                dataGroup.add(mesh);
+                scene.add(lineMesh); // Add direct to scene for easier coord management
+                scene.add(barMesh);
+
+                state.points.push({
+                    val: xVal,
+                    initialZ: zOffset,
+                    mesh: mesh,
+                    line: lineMesh,
+                    bar: barMesh
+                });
+            }
+            calculateStats();
+            updateVisuals(false); // Snap to start
+        }
+
+        function calculateStats() {
+            // Extract X values from current visual positions (allows for dragging/animation logic later if needed)
+            // But here we drive visuals from data.
+            
+            const values = state.points.map(p => p.val);
+            const sum = values.reduce((a, b) => a + b, 0);
+            state.mean = sum / values.length;
+
+            const squaredDiffs = values.map(v => Math.pow(v - state.mean, 2));
+            const sumSqDiff = squaredDiffs.reduce((a, b) => a + b, 0);
+            
+            const divisor = config.isPopulation ? values.length : (values.length - 1 || 1);
+            state.variance = sumSqDiff / divisor;
+            state.sd = Math.sqrt(state.variance);
+
+            // Update DOM text
+            document.getElementById('val-n').innerText = values.length;
+            document.getElementById('val-mean').innerText = state.mean.toFixed(2);
+            document.getElementById('val-var').innerText = state.variance.toFixed(2);
+            document.getElementById('val-sd').innerText = state.sd.toFixed(2);
+        }
+
+        function updateVisuals(animate = true) {
+            const duration = animate ? 0.8 : 0;
+            const ease = "power2.out";
+
+            // 1. Animate Mean Rod
+            const meanVis = config.step >= 1;
+            meanRod.visible = meanVis;
+            gsap.to(meanRod.position, { x: state.mean, duration: duration, ease: ease });
+            
+            // Fade effect for mean rod
+            gsap.to(meanMat, { opacity: meanVis ? 0.8 : 0, duration: 0.5 });
+
+            // 2. Update Points and derived visuals
+            state.points.forEach((pt, i) => {
+                
+                // -- Position --
+                let targetX = pt.val;
+                let targetZ = config.mode2D ? 0 : pt.initialZ;
+                let targetY = pt.mesh.position.y; // Keep current random Y
+
+                // Apply logic for Move Mean vs Spread controls
+                // (Handled by regenerating data in generate function usually, 
+                // but here we might manipulate positions directly for the sliders)
+
+                gsap.to(pt.mesh.position, { x: targetX, z: targetZ, duration: duration, ease: ease });
+
+                const diff = pt.val - state.mean;
+                const dist = Math.abs(diff);
+
+                // -- Deviation Lines (Step 2+) --
+                const showLines = config.step >= 2;
+                const lineColor = diff > 0 ? 0x00d2ff : 0xff3333;
+                
+                pt.line.material.color.setHex(lineColor);
+                gsap.to(pt.line.material, { opacity: showLines ? 0.8 : 0, duration: 0.5 });
+                
+                // Position line at Mean, stretch to Point
+                // We need to calculate start and end points in world space
+                // Start: Mean Rod (at point's Y)
+                // End: Point Mesh
+                
+                if(showLines) {
+                    gsap.to(pt.line.position, { 
+                        x: state.mean, 
+                        y: pt.mesh.position.y, 
+                        z: targetZ, 
+                        duration: duration 
+                    });
+                    
+                    // Scale X is length. Direction handled by sign of scale or rotation.
+                    // Cylinder is rotated -90deg Z, so local Y is world X.
+                    // Actually, we set it up to point +X.
+                    const len = showLines ? diff : 0; // Signed length
+                    
+                    gsap.to(pt.line.scale, { x: len, y: 1, z: 1, duration: duration });
+                } else {
+                    gsap.to(pt.line.scale, { x: 0, duration: duration });
+                }
+
+                // -- Variance Bars (Step 3+) --
+                const showVar = config.step >= 3;
+                
+                if(showVar) {
+                    // Position at the data point
+                    gsap.to(pt.bar.position, { x: pt.val, y: 0.1, z: targetZ, duration: duration });
+                    
+                    // Height represents squared deviation
+                    // Visual scaling: Actual squared value might be huge (e.g. 10^2 = 100)
+                    // We need a visual clamp or log scale for display if spread is large
+                    let visualHeight = Math.pow(dist, 2) * 0.2; // Scaling factor for aesthetics
+                    
+                    gsap.to(pt.bar.scale, { x: 2, y: visualHeight, duration: duration });
+                    gsap.to(pt.bar.material, { opacity: 0.4, duration: 0.5 });
+                } else {
+                    gsap.to(pt.bar.scale, { y: 0, duration: duration });
+                    gsap.to(pt.bar.material, { opacity: 0, duration: 0.5 });
+                }
+            });
+
+            // Update Teacher Text based on Step
+            updateInfoText();
+        }
+
+        function updateInfoText() {
+            const title = document.getElementById('info-title');
+            const desc = document.getElementById('info-desc');
+            const stepTxt = document.getElementById('step-text');
+            
+            stepTxt.innerText = `STEP ${config.step + 1}/5`;
+
+            // Update step dots
+            document.querySelectorAll('.step-dot').forEach((d, i) => {
+                d.classList.toggle('active', i === config.step);
+            });
+
+            switch(config.step) {
+                case 0:
+                    title.innerText = "The Dataset";
+                    desc.innerText = "Here are random data points floating in space. Without measurement, we just see chaos.";
+                    break;
+                case 1:
+                    title.innerText = "The Mean (μ)";
+                    desc.innerText = "The vertical purple line is the center of gravity (Average). It balances all values.";
+                    break;
+                case 2:
+                    title.innerText = "Deviation (x - μ)";
+                    desc.innerText = "We measure how far each point is from the Mean. Blue is positive, Red is negative. Adding these directly would equal zero.";
+                    break;
+                case 3:
+                    title.innerText = "Variance (Squaring)";
+                    desc.innerText = "To measure 'spread' without negatives canceling out, we square the distances. Notice how far points create HUGE yellow bars? Outliers are punished heavily!";
+                    break;
+                case 4:
+                    title.innerText = "Standard Deviation (σ)";
+                    desc.innerText = "Variance is in 'squared units' (hard to read). We take the square root to get Standard Deviation. This value (shown in stats) represents the 'average' distance from the center.";
+                    break;
+            }
+        }
+
+        // --- INTERACTION HANDLERS ---
+
+        function addOutlier() {
+            if(state.points.length === 0) return;
+            
+            // Pick a point and shoot it far away
+            const outlierIdx = state.points.length - 1;
+            const pt = state.points[outlierIdx];
+            
+            // Move it to Mean + 4*SD (or fixed large amount)
+            const targetVal = state.mean + 50; 
+            pt.val = targetVal;
+            
+            config.outlierActive = true;
+            calculateStats();
+            updateVisuals();
+            
+            // Flash message
+            const desc = document.getElementById('info-desc');
+            desc.innerHTML = "<span style='color: #ffaa00'>OUTLIER ADDED!</span> Notice how the Mean shifts slightly, but the SD explodes? Squared distance makes the outlier dominant.";
+        }
+
+        function randomizeData() {
+            config.outlierActive = false;
+            createDataPoints();
+        }
+
+        function set2DMode(is2D) {
+            config.mode2D = is2D;
+            if(is2D) {
+                // Animate Camera to ortho-like position
+                gsap.to(camera.position, { x: 0, y: 100, z: 0, duration: 1.5 });
+                gsap.to(camera, { fov: 20, duration: 1.5, onUpdate: () => camera.updateProjectionMatrix() });
+                // Rotate camera to look down
+                // Controlled by OrbitControls usually, so we force lookAt
+                controls.target.set(0,0,0);
+            } else {
+                gsap.to(camera.position, { x: 0, y: 30, z: 60, duration: 1.5 });
+                gsap.to(camera, { fov: 45, duration: 1.5, onUpdate: () => camera.updateProjectionMatrix() });
+            }
+            updateVisuals();
+        }
+
+        // --- GUI SETUP (TWEAKPANE) ---
+        
+        const pane = new Pane({ title: "Simulation Controls" });
+        pane.element.parentElement.style.zIndex = 1000; // Ensure on top
+
+        const tabData = pane.addTab({ pages: [{ title: 'Data' }, { title: 'View' }] });
+
+        // Data Controls
+        tabData.pages[0].addBinding(config, 'dataCount', { min: 5, max: 200, step: 1, label: 'N Points' })
+            .on('change', () => createDataPoints());
+
+        tabData.pages[0].addBinding(config, 'spread', { min: 1, max: 60, label: 'Spread' })
+            .on('change', (ev) => {
+                // Re-distribute logic while keeping relative structure if possible
+                // For simplicity, we just regenerate purely random based on spread
+                createDataPoints();
+            });
+            
+        tabData.pages[0].addBinding(config, 'meanPos', { min: -50, max: 50, label: 'Mean Shift' })
+            .on('change', () => createDataPoints());
+
+        tabData.pages[0].addButton({ title: 'Randomize' }).on('click', randomizeData);
+        
+        const btnOutlier = tabData.pages[0].addButton({ title: 'Add Outlier !!!' });
+        btnOutlier.on('click', addOutlier);
+
+        // View Controls
+        tabData.pages[1].addBinding(config, 'mode2D', { label: '2D Mode' })
+            .on('change', (ev) => set2DMode(ev.value));
+        
+        tabData.pages[1].addBinding(config, 'isPopulation', { label: 'Population (÷N)' })
+            .on('change', () => { calculateStats(); updateVisuals(false); });
+
+
+        // --- HTML BUTTON HANDLERS ---
+        document.getElementById('btn-next').addEventListener('click', () => {
+            if(config.step < 4) {
+                config.step++;
+                updateVisuals();
+            }
+        });
+        document.getElementById('btn-prev').addEventListener('click', () => {
+            if(config.step > 0) {
+                config.step--;
+                updateVisuals();
+            }
+        });
+
+        // --- INITIALIZATION ---
+        const controls = new OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.05;
+        controls.maxPolarAngle = Math.PI / 2; // Don't go below ground
+
+        document.getElementById('loader').style.display = 'none';
+        createDataPoints();
+        updateInfoText();
+
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            composer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        // --- ANIMATION LOOP ---
+        function animate() {
+            requestAnimationFrame(animate);
+            controls.update();
+            
+            // Subtle pulse for spheres
+            const time = performance.now() * 0.001;
+            state.points.forEach((p, i) => {
+                p.mesh.material.emissiveIntensity = 0.3 + Math.sin(time * 2 + i) * 0.1;
+            });
+
+            // Use composer for bloom
+            composer.render();
+        }
+
+        animate();
+
+    </script>
+</body>
+</html>
