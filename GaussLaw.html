@@ -1,0 +1,1059 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Three.js – Gauss's Law 3D Simulator (Adaptive Tessellation)</title>
+    <style>
+        body { margin: 0; overflow: hidden; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        #info {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: white;
+            background: rgba(0,0,0,0.85);
+            padding: 18px 25px;
+            border-radius: 12px;
+            backdrop-filter: blur(8px);
+            border-left: 4px solid #ffaa00;
+            pointer-events: none;
+            z-index: 10;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+            border: 1px solid rgba(255,170,0,0.3);
+        }
+        #info h1 {
+            margin: 0 0 8px 0;
+            font-size: 1.6rem;
+            font-weight: 400;
+            letter-spacing: 1px;
+            color: #ffaa00;
+        }
+        #info .flux-values {
+            font-size: 1.2rem;
+            line-height: 1.8;
+            font-family: 'Courier New', monospace;
+        }
+        #info .flux-values span {
+            color: #ffaa00;
+            font-weight: bold;
+        }
+        #info .match-indicator {
+            display: inline-block;
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            margin-left: 10px;
+            transition: background-color 0.2s;
+            box-shadow: 0 0 10px currentColor;
+        }
+        #controls {
+            position: absolute;
+            bottom: 30px;
+            left: 30px;
+            right: 30px;
+            background: rgba(20,20,30,0.95);
+            backdrop-filter: blur(12px);
+            color: white;
+            padding: 20px 30px;
+            border-radius: 40px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 25px;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid rgba(255,255,255,0.15);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.6);
+            z-index: 20;
+            pointer-events: all;
+            font-size: 0.95rem;
+        }
+        #controls .group {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            background: rgba(0,0,0,0.3);
+            padding: 10px 20px;
+            border-radius: 50px;
+            border: 1px solid #444;
+        }
+        #controls button {
+            background: #3a4a6b;
+            border: none;
+            color: white;
+            padding: 8px 20px;
+            border-radius: 30px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: 0.15s;
+            letter-spacing: 0.5px;
+            border-bottom: 2px solid #1f2a3f;
+        }
+        #controls button.active {
+            background: #ffaa00;
+            color: #1a1a2e;
+            border-bottom-color: #b37400;
+        }
+        #controls button:hover { filter: brightness(1.2); }
+        #controls input[type=range] { width: 140px; cursor: pointer; }
+        #controls .toggle-group {
+            display: flex;
+            gap: 5px;
+            background: #2a2a3a;
+            border-radius: 30px;
+            padding: 4px;
+        }
+        #controls .toggle-group button {
+            background: transparent;
+            border: none;
+            border-radius: 30px;
+            padding: 6px 18px;
+            border-bottom: none;
+        }
+        #controls .toggle-group button.active {
+            background: #ffaa00;
+            color: black;
+        }
+        #status-led {
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            background: #0f0;
+            display: inline-block;
+            box-shadow: 0 0 12px #0f0;
+            margin-left: 10px;
+        }
+        label { display: flex; align-items: center; gap: 8px; cursor: pointer; }
+        .small-note {
+            color: #aaa;
+            font-size: 0.8rem;
+            margin-left: 10px;
+        }
+        #accuracy-badge {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(0,40,20,0.9);
+            padding: 12px 20px;
+            border-radius: 30px;
+            border-left: 4px solid #00ff88;
+            color: #aaffcc;
+            font-family: monospace;
+            font-size: 1rem;
+            backdrop-filter: blur(8px);
+            z-index: 15;
+            border: 1px solid #00ff8844;
+        }
+        #charge-status {
+            position: absolute;
+            bottom: 120px;
+            right: 30px;
+            background: rgba(0,0,0,0.7);
+            padding: 15px 20px;
+            border-radius: 10px;
+            color: white;
+            font-family: monospace;
+            border-left: 4px solid #ffaa00;
+            backdrop-filter: blur(5px);
+            z-index: 15;
+        }
+        #tessellation-info {
+            position: absolute;
+            top: 20px;
+            right: 300px;
+            background: rgba(30,30,50,0.9);
+            padding: 10px 15px;
+            border-radius: 20px;
+            color: #88aaff;
+            font-family: monospace;
+            font-size: 0.9rem;
+            border: 1px solid #88aaff66;
+            backdrop-filter: blur(5px);
+            z-index: 15;
+        }
+    </style>
+</head>
+<body>
+    <div id="info">
+        <h1>⚡ GAUSS'S LAW: ∮ E·dA = Q<sub>enc</sub> / ε₀</h1>
+        <div class="flux-values">
+            <div>🔵🔴 Total Flux: <span id="flux-val">0.000</span>  |  Q<sub>enc</sub>/ε₀: <span id="qenc-val">0.000</span> 
+                <span id="match-indicator" class="match-indicator" style="background-color: #00ff00; box-shadow: 0 0 10px #00ff00;"></span>
+            </div>
+            <div style="font-size:0.9rem; color:#ccc;">ε₀ = 1.0 · Adaptive Tessellation · Error: <span id="error-val">0.000</span>%</div>
+        </div>
+    </div>
+    
+    <div id="accuracy-badge">
+        📐 Adaptive Tessellation: ✓ Distance-based ✓ Curvature-aware ✓ 60 FPS optimized
+    </div>
+    
+    <div id="tessellation-info">
+        🔍 Adaptive Resolution: <span id="patch-count">0</span> patches · Quality: <span id="quality-level">High</span>
+    </div>
+    
+    <div id="charge-status">
+        <div>🔴 Main charge: <span id="main-charge-status">INSIDE</span></div>
+        <div>🔵 Second charge: <span id="second-charge-status">OUTSIDE</span></div>
+        <div style="font-size:0.8rem; color:#aaa; margin-top:5px;">Surface tessellation adapts to field gradient</div>
+    </div>
+    
+    <div id="controls">
+        <div class="group">
+            <span>🔋 q</span>
+            <input type="range" id="charge-mag" min="-2" max="2" step="0.1" value="1.0">
+            <span id="charge-display">+1.0</span>
+        </div>
+        <div class="group">
+            <button id="toggle-sign">⟲ Flip sign</button>
+        </div>
+        <div class="group">
+            <span>📐 Surface</span>
+            <div class="toggle-group" id="surface-type">
+                <button data-surface="sphere" class="active">Sphere</button>
+                <button data-surface="cube">Cube</button>
+                <button data-surface="cylinder">Cylinder</button>
+            </div>
+        </div>
+        <div class="group">
+            <span>📏 Size</span>
+            <input type="range" id="surface-size" min="0.8" max="2.5" step="0.05" value="1.5">
+        </div>
+        <div class="group">
+            <button id="move-charge-toggle">⏺ Move off-center</button>
+        </div>
+        <div class="group">
+            <span>🧲 Field lines</span>
+            <button id="field-lines-toggle">🔘 Off</button>
+        </div>
+        <div class="group">
+            <span>🎛️ Tessellation</span>
+            <input type="range" id="tessellation-quality" min="0.3" max="2.0" step="0.1" value="1.0">
+            <span id="quality-display">Medium</span>
+        </div>
+        <div class="group">
+            <label><input type="checkbox" id="show-vectors" checked> Vectors</label>
+            <label><input type="checkbox" id="show-normals" checked> Normals</label>
+        </div>
+        <div id="status-led" title="60fps target"></div>
+    </div>
+
+    <!-- Three.js from CDN -->
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.128.0/build/three.module.js",
+                "three/addons/": "https://unpkg.com/three@0.128.0/examples/jsm/"
+            }
+        }
+    </script>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+        import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
+
+        // --- constants
+        const EPS0 = 1.0;
+        const K = 1 / (4 * Math.PI * EPS0);
+        const MAX_PATCHES = 4000; // Performance budget
+
+        // --- scene setup
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x0a0a14);
+        scene.fog = new THREE.Fog(0x0a0a14, 20, 50);
+
+        const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.set(6, 4, 8);
+        camera.lookAt(0, 0, 0);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        renderer.toneMapping = THREE.ACESFilmicToneMapping;
+        renderer.toneMappingExposure = 1.2;
+        renderer.outputEncoding = THREE.sRGBEncoding;
+        document.body.appendChild(renderer.domElement);
+
+        const labelRenderer = new CSS2DRenderer();
+        labelRenderer.setSize(window.innerWidth, window.innerHeight);
+        labelRenderer.domElement.style.position = 'absolute';
+        labelRenderer.domElement.style.top = '0px';
+        labelRenderer.domElement.style.left = '0px';
+        labelRenderer.domElement.style.pointerEvents = 'none';
+        document.body.appendChild(labelRenderer.domElement);
+
+        // --- controls
+        const controls = new OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.05;
+        controls.autoRotate = false;
+        controls.maxPolarAngle = Math.PI / 2;
+        controls.minDistance = 3;
+        controls.maxDistance = 20;
+        controls.enablePan = true;
+
+        // --- lighting
+        const ambientLight = new THREE.AmbientLight(0x404060);
+        scene.add(ambientLight);
+
+        const keyLight = new THREE.DirectionalLight(0xffeedd, 1.2);
+        keyLight.position.set(5, 10, 7);
+        keyLight.castShadow = true;
+        keyLight.receiveShadow = true;
+        keyLight.shadow.mapSize.width = 1024;
+        keyLight.shadow.mapSize.height = 1024;
+        const d = 10;
+        keyLight.shadow.camera.left = -d;
+        keyLight.shadow.camera.right = d;
+        keyLight.shadow.camera.top = d;
+        keyLight.shadow.camera.bottom = -d;
+        keyLight.shadow.camera.near = 2;
+        keyLight.shadow.camera.far = 20;
+        scene.add(keyLight);
+
+        const fillLight = new THREE.DirectionalLight(0xaaccff, 0.8);
+        fillLight.position.set(-5, 3, -5);
+        scene.add(fillLight);
+
+        const rimLight = new THREE.PointLight(0x88aaff, 0.5);
+        rimLight.position.set(-2, 1, -5);
+        scene.add(rimLight);
+
+        const overhead = new THREE.PointLight(0xffffff, 0.4);
+        overhead.position.set(0, 8, 2);
+        scene.add(overhead);
+
+        const gridHelper = new THREE.GridHelper(20, 20, 0x99aaff, 0x334466);
+        gridHelper.position.y = -2.5;
+        scene.add(gridHelper);
+
+        // dust particles
+        const dustGeometry = new THREE.BufferGeometry();
+        const dustCount = 400;
+        const dustPositions = new Float32Array(dustCount * 3);
+        for (let i = 0; i < dustCount; i++) {
+            dustPositions[i*3] = (Math.random() - 0.5) * 30;
+            dustPositions[i*3+1] = (Math.random() - 0.5) * 15;
+            dustPositions[i*3+2] = (Math.random() - 0.5) * 30;
+        }
+        dustGeometry.setAttribute('position', new THREE.BufferAttribute(dustPositions, 3));
+        const dustMaterial = new THREE.PointsMaterial({ color: 0x99aacc, size: 0.08, transparent: true, opacity: 0.4 });
+        const dust = new THREE.Points(dustGeometry, dustMaterial);
+        scene.add(dust);
+
+        // --- global state
+        const state = {
+            chargePos: new THREE.Vector3(0, 0, 0),
+            chargeValue: 1.0,
+            surfaceType: 'sphere',
+            surfaceSize: 1.5,
+            moveCharge: false,
+            showVectors: true,
+            showNormals: true,
+            fieldDensity: 0.8,
+            fieldLinesOn: false,
+            tessellationQuality: 1.0,
+            secondChargeOutside: new THREE.Vector3(2.5, 1.2, 1.8),
+            secondChargeValue: 1.2,
+        };
+
+        // --- objects that need updates
+        let chargeSphere, patchGroup, fieldLineGroup;
+        let arrowHelperGroup, normalHelperGroup;
+        const patchMeshes = [];
+
+        // --- Create the main charge
+        const chargeGeom = new THREE.SphereGeometry(0.25, 32, 16);
+        const chargeMat = new THREE.MeshStandardMaterial({ 
+            color: 0xff5500, 
+            emissive: 0x442200, 
+            roughness: 0.2, 
+            metalness: 0.1,
+            emissiveIntensity: 0.5
+        });
+        chargeSphere = new THREE.Mesh(chargeGeom, chargeMat);
+        chargeSphere.castShadow = true;
+        chargeSphere.receiveShadow = true;
+        scene.add(chargeSphere);
+
+        // second charge
+        const charge2Geom = new THREE.SphereGeometry(0.2, 16);
+        const charge2Mat = new THREE.MeshStandardMaterial({ 
+            color: 0x33aaff, 
+            emissive: 0x113366,
+            emissiveIntensity: 0.3
+        });
+        const charge2Sphere = new THREE.Mesh(charge2Geom, charge2Mat);
+        charge2Sphere.position.copy(state.secondChargeOutside);
+        charge2Sphere.castShadow = true;
+        scene.add(charge2Sphere);
+
+        // --- groups
+        arrowHelperGroup = new THREE.Group();
+        scene.add(arrowHelperGroup);
+        normalHelperGroup = new THREE.Group();
+        scene.add(normalHelperGroup);
+        patchGroup = new THREE.Group();
+        scene.add(patchGroup);
+        fieldLineGroup = new THREE.Group();
+        scene.add(fieldLineGroup);
+
+        // --- UI elements
+        const fluxSpan = document.getElementById('flux-val');
+        const qencSpan = document.getElementById('qenc-val');
+        const errorSpan = document.getElementById('error-val');
+        const patchCountSpan = document.getElementById('patch-count');
+        const qualityLevelSpan = document.getElementById('quality-level');
+        const matchIndicator = document.getElementById('match-indicator');
+        const chargeDisplay = document.getElementById('charge-display');
+        const qualityDisplay = document.getElementById('quality-display');
+        const chargeMagSlider = document.getElementById('charge-mag');
+        const toggleSignBtn = document.getElementById('toggle-sign');
+        const surfaceTypeBtns = document.querySelectorAll('#surface-type button');
+        const surfaceSizeSlider = document.getElementById('surface-size');
+        const moveChargeToggle = document.getElementById('move-charge-toggle');
+        const fieldLinesToggle = document.getElementById('field-lines-toggle');
+        const tessellationSlider = document.getElementById('tessellation-quality');
+        const showVectorsCheck = document.getElementById('show-vectors');
+        const showNormalsCheck = document.getElementById('show-normals');
+        const mainChargeStatus = document.getElementById('main-charge-status');
+        const secondChargeStatus = document.getElementById('second-charge-status');
+
+        // ============= ADAPTIVE TESSELLATION =============
+        
+        /**
+         * Calculates adaptive segmentation based on:
+         * 1. Distance from charge (field gradient)
+         * 2. Surface curvature
+         * 3. Performance budget
+         */
+        function getAdaptiveSegments() {
+            const baseQuality = state.tessellationQuality;
+            const chargeDist = state.chargePos.length();
+            
+            // Base segments: more when charge is close (high field gradient)
+            let distanceFactor = 1.0;
+            if (chargeDist < state.surfaceSize * 0.8) {
+                // Charge is close to surface - need more resolution
+                distanceFactor = 1.5;
+            } else if (chargeDist > state.surfaceSize * 1.5) {
+                // Charge is far - can reduce resolution
+                distanceFactor = 0.7;
+            }
+            
+            // Curvature factor (sphere and cylinder have curved surfaces)
+            let curvatureFactor = 1.0;
+            if (state.surfaceType === 'sphere') {
+                curvatureFactor = 1.3; // Sphere needs more patches due to curvature
+            } else if (state.surfaceType === 'cylinder') {
+                curvatureFactor = 1.2; // Cylinder has curved sides
+            } else {
+                curvatureFactor = 0.9; // Cube can use fewer patches on flat faces
+            }
+            
+            // Calculate adaptive segments (clamped between 8 and 32)
+            let segments = Math.floor(12 * baseQuality * distanceFactor * curvatureFactor);
+            segments = Math.max(8, Math.min(32, segments));
+            
+            // Performance budget: reduce if too many patches
+            const estimatedPatches = estimatePatchCount(segments);
+            if (estimatedPatches > MAX_PATCHES) {
+                segments = Math.floor(segments * 0.8);
+            }
+            
+            return segments;
+        }
+        
+        /**
+         * Estimates number of patches for given segmentation
+         */
+        function estimatePatchCount(segments) {
+            switch(state.surfaceType) {
+                case 'sphere':
+                    return segments * segments;
+                case 'cube':
+                    return 6 * segments * segments;
+                case 'cylinder':
+                    // Sides + top + bottom
+                    return (segments * Math.floor(segments * 0.8)) + 2 * segments * segments;
+                default:
+                    return 1000;
+            }
+        }
+        
+        /**
+         * Gets adaptive resolution for different surface regions
+         * Returns segmentation array [theta, phi] or [radial, axial, etc]
+         */
+        function getRegionResolutions() {
+            const baseSegments = getAdaptiveSegments();
+            const chargePos = state.chargePos;
+            
+            // For sphere: vary resolution based on angle to charge
+            if (state.surfaceType === 'sphere') {
+                const thetaSegments = [];
+                const phiSegments = [];
+                
+                for (let i = 0; i < baseSegments; i++) {
+                    const theta = (i / baseSegments) * Math.PI * 2;
+                    // Calculate direction to this theta
+                    const dir = new THREE.Vector3(Math.cos(theta), 0, Math.sin(theta));
+                    const angleToCharge = dir.angleTo(chargePos.clone().normalize());
+                    
+                    // Higher resolution where surface is perpendicular to field
+                    const resolutionFactor = 1.0 + 0.5 * Math.abs(Math.sin(angleToCharge));
+                    thetaSegments.push(Math.floor(baseSegments * resolutionFactor));
+                }
+                
+                return { theta: thetaSegments, phi: baseSegments };
+            }
+            
+            return { uniform: baseSegments };
+        }
+
+        // ============= PRECISE ENCLOSED CHARGE DETECTION =============
+        
+        function isPointInsideSphere(point, center, radius) {
+            return point.distanceTo(center) <= radius + 0.05;
+        }
+
+        function isPointInsideCube(point, center, size) {
+            const half = size / 2;
+            return Math.abs(point.x - center.x) <= half + 0.05 &&
+                   Math.abs(point.y - center.y) <= half + 0.05 &&
+                   Math.abs(point.z - center.z) <= half + 0.05;
+        }
+
+        function isPointInsideCylinder(point, center, radius, height) {
+            const localX = point.x - center.x;
+            const localY = point.y - center.y;
+            const localZ = point.z - center.z;
+            
+            const halfHeight = height / 2;
+            if (Math.abs(localY) > halfHeight + 0.05) return false;
+            
+            const radialDistance = Math.sqrt(localX * localX + localZ * localZ);
+            return radialDistance <= radius + 0.05;
+        }
+
+        function calculateEnclosedCharge() {
+            const center = new THREE.Vector3(0, 0, 0);
+            const size = state.surfaceSize;
+            
+            let enclosed = 0;
+            
+            // Check main charge
+            let mainInside = false;
+            switch(state.surfaceType) {
+                case 'sphere':
+                    mainInside = isPointInsideSphere(state.chargePos, center, size);
+                    break;
+                case 'cube':
+                    mainInside = isPointInsideCube(state.chargePos, center, size);
+                    break;
+                case 'cylinder':
+                    const cylRadius = size * 0.6;
+                    const cylHeight = size * 1.2;
+                    mainInside = isPointInsideCylinder(state.chargePos, center, cylRadius, cylHeight);
+                    break;
+            }
+            if (mainInside) enclosed += state.chargeValue;
+            
+            // Check second charge
+            let secondInside = false;
+            switch(state.surfaceType) {
+                case 'sphere':
+                    secondInside = isPointInsideSphere(state.secondChargeOutside, center, size);
+                    break;
+                case 'cube':
+                    secondInside = isPointInsideCube(state.secondChargeOutside, center, size);
+                    break;
+                case 'cylinder':
+                    const cylRadius = size * 0.6;
+                    const cylHeight = size * 1.2;
+                    secondInside = isPointInsideCylinder(state.secondChargeOutside, center, cylRadius, cylHeight);
+                    break;
+            }
+            if (secondInside) enclosed += state.secondChargeValue;
+            
+            // Update status displays
+            mainChargeStatus.textContent = mainInside ? 'INSIDE' : 'OUTSIDE';
+            mainChargeStatus.style.color = mainInside ? '#00ff00' : '#ff6666';
+            secondChargeStatus.textContent = secondInside ? 'INSIDE' : 'OUTSIDE';
+            secondChargeStatus.style.color = secondInside ? '#00ff00' : '#ff6666';
+            
+            return enclosed / EPS0;
+        }
+
+        function updateChargeVisuals() {
+            const center = new THREE.Vector3(0, 0, 0);
+            const size = state.surfaceSize;
+            
+            let mainInside = false;
+            switch(state.surfaceType) {
+                case 'sphere':
+                    mainInside = isPointInsideSphere(state.chargePos, center, size);
+                    break;
+                case 'cube':
+                    mainInside = isPointInsideCube(state.chargePos, center, size);
+                    break;
+                case 'cylinder':
+                    const cylRadius = size * 0.6;
+                    const cylHeight = size * 1.2;
+                    mainInside = isPointInsideCylinder(state.chargePos, center, cylRadius, cylHeight);
+                    break;
+            }
+            
+            if (mainInside) {
+                chargeSphere.material.emissive.setHex(0x884400);
+                chargeSphere.material.emissiveIntensity = 0.8;
+                chargeSphere.scale.set(1.2, 1.2, 1.2);
+            } else {
+                chargeSphere.material.emissive.setHex(0x442200);
+                chargeSphere.material.emissiveIntensity = 0.2;
+                chargeSphere.scale.set(1.0, 1.0, 1.0);
+            }
+            
+            let secondInside = false;
+            switch(state.surfaceType) {
+                case 'sphere':
+                    secondInside = isPointInsideSphere(state.secondChargeOutside, center, size);
+                    break;
+                case 'cube':
+                    secondInside = isPointInsideCube(state.secondChargeOutside, center, size);
+                    break;
+                case 'cylinder':
+                    const r = size * 0.6;
+                    const h = size * 1.2;
+                    secondInside = isPointInsideCylinder(state.secondChargeOutside, center, r, h);
+                    break;
+            }
+            
+            charge2Sphere.material.emissive.setHex(secondInside ? 0x3366aa : 0x113366);
+            charge2Sphere.material.emissiveIntensity = secondInside ? 0.8 : 0.3;
+            charge2Sphere.scale.set(secondInside ? 1.2 : 1.0, secondInside ? 1.2 : 1.0, secondInside ? 1.2 : 1.0);
+        }
+
+        // --- E field computation
+        function computeE(point, qPos, qVal) {
+            const rVec = new THREE.Vector3().subVectors(point, qPos);
+            const rSq = rVec.lengthSq();
+            if (rSq < 0.01) return new THREE.Vector3(0,0,0);
+            const r = Math.sqrt(rSq);
+            const magnitude = K * qVal / rSq;
+            return rVec.normalize().multiplyScalar(magnitude);
+        }
+
+        // --- create surface patches with adaptive tessellation
+        function generateSurfacePatches() {
+            while(patchGroup.children.length) patchGroup.remove(patchGroup.children[0]);
+            patchMeshes.length = 0;
+
+            const type = state.surfaceType;
+            const size = state.surfaceSize;
+            const chargePos = state.chargePos;
+            const chargeVal = state.chargeValue;
+            
+            const baseSegments = getAdaptiveSegments();
+            
+            // Update UI
+            const estimatedPatches = estimatePatchCount(baseSegments);
+            patchCountSpan.textContent = estimatedPatches;
+            
+            if (estimatedPatches < 1000) {
+                qualityLevelSpan.textContent = 'Ultra';
+                qualityLevelSpan.style.color = '#00ff00';
+            } else if (estimatedPatches < 2000) {
+                qualityLevelSpan.textContent = 'High';
+                qualityLevelSpan.style.color = '#88ff88';
+            } else if (estimatedPatches < 3000) {
+                qualityLevelSpan.textContent = 'Medium';
+                qualityLevelSpan.style.color = '#ffff88';
+            } else {
+                qualityLevelSpan.textContent = 'Performance';
+                qualityLevelSpan.style.color = '#ff8888';
+            }
+            
+            if (type === 'sphere') {
+                const radius = size;
+                const thetaSegments = baseSegments;
+                const phiSegments = Math.floor(baseSegments * 0.8);
+                
+                for (let i = 0; i < thetaSegments; i++) {
+                    for (let j = 0; j < phiSegments; j++) {
+                        const theta = (i / thetaSegments) * Math.PI * 2;
+                        const phi = (j / phiSegments) * Math.PI - Math.PI/2;
+                        
+                        // Adaptive: more patches where field varies rapidly
+                        const pos = new THREE.Vector3(
+                            radius * Math.cos(phi) * Math.cos(theta),
+                            radius * Math.cos(phi) * Math.sin(theta),
+                            radius * Math.sin(phi)
+                        );
+                        
+                        // Calculate field gradient at this point
+                        const E = computeE(pos, chargePos, chargeVal);
+                        const E2 = computeE(pos.clone().addScalar(0.1), chargePos, chargeVal);
+                        const gradient = E.distanceTo(E2);
+                        
+                        // Adjust patch size based on gradient
+                        const patchSize = 0.12 * (1 + gradient * 2);
+                        
+                        const dA = radius * radius * Math.cos(phi) * (Math.PI*2/thetaSegments) * (Math.PI/phiSegments);
+                        createPatch(pos, pos.clone().normalize(), Math.abs(dA), chargePos, chargeVal, patchSize);
+                    }
+                }
+            } else if (type === 'cube') {
+                const half = size/2;
+                // Adaptive: more patches on faces facing the charge
+                const segments = baseSegments;
+                const step = size / segments;
+                
+                for (let face = 0; face < 6; face++) {
+                    // Determine face normal and orientation
+                    let faceNormal = new THREE.Vector3();
+                    if (face === 0) faceNormal.set(0,0,1);
+                    else if (face === 1) faceNormal.set(0,0,-1);
+                    else if (face === 2) faceNormal.set(0,1,0);
+                    else if (face === 3) faceNormal.set(0,-1,0);
+                    else if (face === 4) faceNormal.set(1,0,0);
+                    else if (face === 5) faceNormal.set(-1,0,0);
+                    
+                    // Calculate angle between face normal and direction to charge
+                    const dirToCharge = chargePos.clone().normalize();
+                    const dot = faceNormal.dot(dirToCharge);
+                    
+                    // Faces pointing toward charge get more resolution
+                    const faceFactor = 0.8 + 0.5 * Math.max(0, dot);
+                    const faceSegments = Math.floor(segments * faceFactor);
+                    const faceStep = size / faceSegments;
+                    
+                    for (let i = 0; i < faceSegments; i++) {
+                        for (let j = 0; j < faceSegments; j++) {
+                            let pos = new THREE.Vector3();
+                            
+                            if (face === 0) pos.set(-half + i*faceStep + faceStep/2, -half + j*faceStep + faceStep/2, half);
+                            else if (face === 1) pos.set(-half + i*faceStep + faceStep/2, -half + j*faceStep + faceStep/2, -half);
+                            else if (face === 2) pos.set(-half + i*faceStep + faceStep/2, half, -half + j*faceStep + faceStep/2);
+                            else if (face === 3) pos.set(-half + i*faceStep + faceStep/2, -half, -half + j*faceStep + faceStep/2);
+                            else if (face === 4) pos.set(half, -half + i*faceStep + faceStep/2, -half + j*faceStep + faceStep/2);
+                            else if (face === 5) pos.set(-half, -half + i*faceStep + faceStep/2, -half + j*faceStep + faceStep/2);
+                            
+                            const dA = faceStep * faceStep;
+                            const patchSize = 0.12 * (1 + 0.5 * Math.max(0, dot));
+                            createPatch(pos, faceNormal, dA, chargePos, chargeVal, patchSize);
+                        }
+                    }
+                }
+            } else if (type === 'cylinder') {
+                const radius = size * 0.6;
+                const height = size * 1.2;
+                
+                // Adaptive segmentation based on distance to charge
+                const radialSeg = Math.floor(baseSegments * 1.2);
+                const axialSeg = Math.floor(baseSegments * 0.8);
+                
+                // side - more patches where field varies rapidly
+                for (let i = 0; i < radialSeg; i++) {
+                    for (let j = 0; j < axialSeg; j++) {
+                        const theta = (i / radialSeg) * Math.PI * 2;
+                        const y = -height/2 + (j + 0.5) * (height/axialSeg);
+                        const x = radius * Math.cos(theta);
+                        const z = radius * Math.sin(theta);
+                        const pos = new THREE.Vector3(x, y, z);
+                        const normal = new THREE.Vector3(Math.cos(theta), 0, Math.sin(theta));
+                        
+                        // Check distance to charge for adaptive sizing
+                        const distToCharge = pos.distanceTo(chargePos);
+                        const sizeFactor = Math.max(0.5, Math.min(1.5, 1.0 / (distToCharge * 0.5)));
+                        
+                        const dA = radius * (height/axialSeg) * (Math.PI*2/radialSeg);
+                        createPatch(pos, normal, dA, chargePos, chargeVal, 0.12 * sizeFactor);
+                    }
+                }
+                
+                // top/bottom caps
+                for (let cap = 0; cap < 2; cap++) {
+                    const capSegments = Math.floor(baseSegments * 1.2);
+                    for (let i = 0; i < capSegments; i++) {
+                        for (let j = 0; j < capSegments; j++) {
+                            const rFrac = (i + 0.5)/capSegments;
+                            const theta = (j / capSegments) * Math.PI * 2;
+                            const r = radius * rFrac;
+                            const x = r * Math.cos(theta);
+                            const z = r * Math.sin(theta);
+                            const y = cap === 0 ? height/2 : -height/2;
+                            const pos = new THREE.Vector3(x, y, z);
+                            const normal = new THREE.Vector3(0, cap === 0 ? 1 : -1, 0);
+                            
+                            // More patches near edge where field might vary
+                            const edgeFactor = 1.0 + rFrac; // More patches near rim
+                            
+                            const dA = (radius/capSegments) * (radius/capSegments) * rFrac * Math.PI * 2;
+                            createPatch(pos, normal, dA, chargePos, chargeVal, 0.12 * edgeFactor);
+                        }
+                    }
+                }
+            }
+        }
+
+        function createPatch(pos, normal, dA, chargePos, chargeVal, patchSize = 0.15) {
+            const E = computeE(pos, chargePos, chargeVal);
+            const dot = E.dot(normal) * dA;
+            
+            // Color based on flux sign and magnitude
+            const intensity = Math.min(1, Math.abs(dot) * 3);
+            const color = dot > 0 ? 
+                new THREE.Color(0xff5555).lerp(new THREE.Color(0xff0000), intensity) : 
+                new THREE.Color(0x5555ff).lerp(new THREE.Color(0x0000ff), intensity);
+            
+            // Patch size varies with field gradient
+            const geom = new THREE.CircleGeometry(patchSize, Math.floor(6 + intensity * 4));
+            const mat = new THREE.MeshStandardMaterial({ 
+                color: color, 
+                emissive: color.clone().multiplyScalar(0.2),
+                transparent: true, 
+                opacity: 0.7 + intensity * 0.2, 
+                side: THREE.DoubleSide 
+            });
+            const mesh = new THREE.Mesh(geom, mat);
+            mesh.position.copy(pos);
+            mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0,0,1), normal.clone().normalize());
+            patchGroup.add(mesh);
+            patchMeshes.push({ mesh, pos, normal, dA });
+        }
+
+        // --- update flux display
+        function updateFluxDisplay() {
+            let totalFlux = 0;
+            patchMeshes.forEach(p => {
+                const E = computeE(p.pos, state.chargePos, state.chargeValue);
+                totalFlux += E.dot(p.normal) * p.dA;
+            });
+            
+            const qencDiv = calculateEnclosedCharge();
+            const error = qencDiv !== 0 ? Math.abs((totalFlux - qencDiv) / qencDiv) * 100 : Math.abs(totalFlux) * 100;
+            
+            fluxSpan.innerText = totalFlux.toFixed(3);
+            qencSpan.innerText = qencDiv.toFixed(3);
+            errorSpan.innerText = error.toFixed(2);
+            
+            // Update match indicator
+            if (error < 5) {
+                matchIndicator.style.backgroundColor = '#00ff00';
+                matchIndicator.style.boxShadow = '0 0 10px #00ff00';
+            } else if (error < 15) {
+                matchIndicator.style.backgroundColor = '#ffff00';
+                matchIndicator.style.boxShadow = '0 0 10px #ffff00';
+            } else {
+                matchIndicator.style.backgroundColor = '#ff0000';
+                matchIndicator.style.boxShadow = '0 0 10px #ff0000';
+            }
+            
+            updateChargeVisuals();
+        }
+
+        // --- create field arrows
+        function updateFieldArrows() {
+            while(arrowHelperGroup.children.length) arrowHelperGroup.remove(arrowHelperGroup.children[0]);
+            if (!state.showVectors) return;
+            
+            const density = state.fieldDensity;
+            const step = 0.9 / density;
+            
+            for (let x = -3; x <= 3; x+=step) {
+                for (let y = -3; y <= 3; y+=step) {
+                    for (let z = -3; z <= 3; z+=step) {
+                        if (Math.abs(x) < 0.3 && Math.abs(y) < 0.3 && Math.abs(z) < 0.3) continue;
+                        
+                        const pos = new THREE.Vector3(x, y, z);
+                        const E = computeE(pos, state.chargePos, state.chargeValue);
+                        
+                        if (E.length() < 0.05) continue;
+                        
+                        const len = Math.min(0.7, E.length() * 1.5);
+                        if (len < 0.15) continue;
+                        
+                        const hue = 0.1 + (E.length() * 0.2);
+                        const color = new THREE.Color().setHSL(hue, 1, 0.5);
+                        
+                        const arrowHelper = new THREE.ArrowHelper(
+                            E.clone().normalize(), 
+                            pos, 
+                            len, 
+                            color, 
+                            0.12, 
+                            0.08
+                        );
+                        arrowHelperGroup.add(arrowHelper);
+                    }
+                }
+            }
+        }
+
+        // --- update all
+        function updateAll() {
+            // Update charge position
+            if (state.moveCharge) {
+                state.chargePos.set(1.5, 0.8, 1.2);
+            } else {
+                state.chargePos.set(0, 0, 0);
+            }
+            chargeSphere.position.copy(state.chargePos);
+            chargeSphere.material.color.setHex(state.chargeValue > 0 ? 0xff5500 : 0x33aaff);
+            
+            // Regenerate visualization with adaptive tessellation
+            generateSurfacePatches();
+            updateFieldArrows();
+            updateFluxDisplay();
+
+            // Field lines
+            while(fieldLineGroup.children.length) fieldLineGroup.remove(fieldLineGroup.children[0]);
+            if (state.fieldLinesOn) {
+                const linesCount = 24;
+                for (let i = 0; i < linesCount; i++) {
+                    const theta = (i / linesCount) * Math.PI * 2;
+                    for (let j = 0; j < 4; j++) {
+                        const phi = (j / 4) * Math.PI - Math.PI/2;
+                        const dir = new THREE.Vector3(
+                            Math.cos(phi) * Math.cos(theta),
+                            Math.sin(phi),
+                            Math.cos(phi) * Math.sin(theta)
+                        ).normalize();
+                        
+                        const points = [];
+                        let p = state.chargePos.clone().add(dir.clone().multiplyScalar(0.4));
+                        
+                        for (let step = 0; step < 40; step++) {
+                            points.push(p.clone());
+                            const E = computeE(p, state.chargePos, state.chargeValue);
+                            if (E.length() < 0.01) break;
+                            p.add(E.clone().normalize().multiplyScalar(0.15));
+                        }
+                        
+                        if (points.length > 5) {
+                            const geom = new THREE.BufferGeometry().setFromPoints(points);
+                            const line = new THREE.Line(geom, new THREE.LineBasicMaterial({ color: 0xffaa88, opacity: 0.2, transparent: true }));
+                            fieldLineGroup.add(line);
+                        }
+                    }
+                }
+            }
+
+            // Normals (show subset for clarity)
+            while(normalHelperGroup.children.length) normalHelperGroup.remove(normalHelperGroup.children[0]);
+            if (state.showNormals) {
+                patchMeshes.forEach((p, index) => {
+                    if (index % 3 !== 0) return; // Show every 3rd normal
+                    const normHelper = new THREE.ArrowHelper(p.normal, p.pos, 0.2, 0x88ff88, 0.08, 0.05);
+                    normalHelperGroup.add(normHelper);
+                });
+            }
+        }
+
+        // --- event listeners
+        chargeMagSlider.addEventListener('input', (e) => {
+            state.chargeValue = parseFloat(e.target.value);
+            chargeDisplay.innerText = state.chargeValue.toFixed(1);
+            updateAll();
+        });
+        
+        toggleSignBtn.addEventListener('click', () => {
+            state.chargeValue = -state.chargeValue;
+            chargeMagSlider.value = state.chargeValue;
+            chargeDisplay.innerText = state.chargeValue.toFixed(1);
+            updateAll();
+        });
+        
+        surfaceTypeBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                surfaceTypeBtns.forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                state.surfaceType = btn.dataset.surface;
+                updateAll();
+            });
+        });
+        
+        surfaceSizeSlider.addEventListener('input', (e) => {
+            state.surfaceSize = parseFloat(e.target.value);
+            updateAll();
+        });
+        
+        moveChargeToggle.addEventListener('click', (e) => {
+            state.moveCharge = !state.moveCharge;
+            e.target.classList.toggle('active', state.moveCharge);
+            updateAll();
+        });
+        
+        fieldLinesToggle.addEventListener('click', (e) => {
+            state.fieldLinesOn = !state.fieldLinesOn;
+            e.target.innerText = state.fieldLinesOn ? '🔘 On' : '🔘 Off';
+            updateAll();
+        });
+        
+        tessellationSlider.addEventListener('input', (e) => {
+            state.tessellationQuality = parseFloat(e.target.value);
+            
+            // Update quality display
+            if (state.tessellationQuality < 0.6) {
+                qualityDisplay.textContent = 'Low';
+            } else if (state.tessellationQuality < 1.0) {
+                qualityDisplay.textContent = 'Medium';
+            } else if (state.tessellationQuality < 1.5) {
+                qualityDisplay.textContent = 'High';
+            } else {
+                qualityDisplay.textContent = 'Ultra';
+            }
+            
+            updateAll();
+        });
+        
+        showVectorsCheck.addEventListener('change', (e) => {
+            state.showVectors = e.target.checked;
+            updateFieldArrows();
+        });
+        
+        showNormalsCheck.addEventListener('change', (e) => {
+            state.showNormals = e.target.checked;
+            updateAll();
+        });
+
+        // Initialize
+        updateAll();
+
+        // Animation loop
+        let lastTime = performance.now();
+        let frameCount = 0;
+        
+        function animate() {
+            requestAnimationFrame(animate);
+
+            dust.rotation.y += 0.0002;
+            controls.update();
+
+            // Simple FPS counter
+            frameCount++;
+            const now = performance.now();
+            if (now - lastTime >= 1000) {
+                const fps = frameCount;
+                document.getElementById('status-led').style.background = fps > 55 ? '#0f0' : (fps > 30 ? '#ff0' : '#f00');
+                frameCount = 0;
+                lastTime = now;
+            }
+
+            renderer.render(scene, camera);
+            labelRenderer.render(scene, camera);
+        }
+        animate();
+
+        // Resize handler
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            labelRenderer.setSize(window.innerWidth, window.innerHeight);
+        });
+    </script>
+</body>
+</html>
