@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rank in 3D: Clean Visual Explorer</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        /* UI panel - clean, left side */
+        #ui-panel {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(10, 10, 20, 0.85);
+            backdrop-filter: blur(12px);
+            color: white;
+            padding: 25px;
+            border-radius: 24px;
+            border-left: 6px solid #ffaa00;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.6);
+            z-index: 20;
+            width: 300px;
+            border: 1px solid rgba(255,215,0,0.3);
+            pointer-events: auto;
+        }
+        #ui-panel h1 {
+            margin: 0 0 8px 0;
+            font-size: 1.9rem;
+            color: #ffaa00;
+            font-weight: 600;
+            letter-spacing: 1px;
+        }
+        #ui-panel h2 {
+            margin: 20px 0 12px 0;
+            font-size: 1.2rem;
+            color: #ccc;
+            border-bottom: 1px solid #444;
+            padding-bottom: 5px;
+        }
+        .selector {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin: 20px 0;
+        }
+        .case-btn {
+            background: rgba(30,30,50,0.8);
+            border: 2px solid #3a3a5a;
+            color: #ddd;
+            padding: 16px 20px;
+            border-radius: 40px;
+            font-size: 1.3rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            backdrop-filter: blur(4px);
+            letter-spacing: 0.5px;
+        }
+        .case-btn:hover {
+            transform: scale(1.02);
+            border-color: #ffaa00;
+            background: rgba(50,50,80,0.9);
+        }
+        .case-btn.active {
+            background: #ffaa00;
+            color: #111;
+            border-color: #ffffff;
+            box-shadow: 0 0 30px #ffaa00;
+        }
+        .case-btn .icon {
+            font-size: 2rem;
+        }
+        .indicator {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            margin-left: auto;
+        }
+        .inf { background: #44ff44; box-shadow: 0 0 15px #44ff44; }
+        .uni { background: #4488ff; box-shadow: 0 0 15px #4488ff; }
+        .no { background: #ff4444; box-shadow: 0 0 15px #ff4444; }
+        
+        #status-card {
+            position: absolute;
+            bottom: 30px;
+            right: 30px;
+            background: rgba(0,0,0,0.7);
+            backdrop-filter: blur(8px);
+            color: white;
+            padding: 15px 25px;
+            border-radius: 60px;
+            border: 1px solid #ffaa00;
+            box-shadow: 0 0 30px rgba(255,170,0,0.5);
+            z-index: 15;
+            font-size: 1.3rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            pointer-events: none;
+        }
+        #status-symbol {
+            font-size: 2rem;
+        }
+        #status-text {
+            color: #ffaa00;
+        }
+        .explanation {
+            background: rgba(255,255,255,0.08);
+            border-radius: 20px;
+            padding: 16px;
+            margin-top: 20px;
+            border-left: 4px solid #ffaa00;
+            font-size: 1rem;
+            line-height: 1.6;
+        }
+        .explanation .eq {
+            font-family: 'Courier New', monospace;
+            color: #ffaa00;
+            font-size: 1.1rem;
+        }
+        .note {
+            font-size: 0.9rem;
+            color: #aaa;
+            margin-top: 15px;
+            font-style: italic;
+        }
+        /* No floating text in 3D scene – all text is in UI */
+    </style>
+</head>
+<body>
+    <div id="ui-panel">
+        <h1>🔟 Rank Matters</h1>
+        <p style="margin-bottom:20px;">Select a case to inspect:</p>
+        
+        <div class="selector">
+            <div id="btn-infinite" class="case-btn active">
+                <span class="icon">♾️</span>
+                <span>Infinite Solutions</span>
+                <span class="indicator inf"></span>
+            </div>
+            <div id="btn-unique" class="case-btn">
+                <span class="icon">🔴</span>
+                <span>Unique Solution</span>
+                <span class="indicator uni"></span>
+            </div>
+            <div id="btn-nosolution" class="case-btn">
+                <span class="icon">🚫</span>
+                <span>No Solution</span>
+                <span class="indicator no"></span>
+            </div>
+        </div>
+
+        <div class="explanation" id="explanation">
+            <strong>♾️ Infinite Solutions (Rank 2)</strong><br>
+            <span class="eq">x + y + z = 3<br>x - y + z = 1<br>2x + 2z = 4</span><br>
+            <span style="color:#88ff88;">Rank = 2 &lt; 3 variables</span><br>
+            Planes intersect in a <strong style="color:#ffaa00;">common line</strong>.
+        </div>
+        <p class="note">👆 Click buttons — view focuses on the geometry. Drag to explore.</p>
+    </div>
+
+    <div id="status-card">
+        <span id="status-symbol">♾️</span>
+        <span>Current: <span id="status-text">Infinite Solutions</span></span>
+    </div>
+
+    <!-- Import Three.js -->
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.128.0/build/three.module.js",
+                "three/addons/": "https://unpkg.com/three@0.128.0/examples/jsm/"
+            }
+        }
+    </script>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+        
+        // --- Setup ---
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x0a0a14);
+        
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(window.devicePixelRatio);
+        document.body.appendChild(renderer.domElement);
+        
+        const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.set(6, 3, 10);
+        
+        const controls = new OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.05;
+        controls.enableZoom = true;
+        controls.maxPolarAngle = Math.PI / 2;
+        
+        // --- Lighting ---
+        const ambientLight = new THREE.AmbientLight(0x404060);
+        scene.add(ambientLight);
+        
+        const dirLight1 = new THREE.DirectionalLight(0xffffff, 1.2);
+        dirLight1.position.set(2, 5, 5);
+        scene.add(dirLight1);
+        
+        const dirLight2 = new THREE.DirectionalLight(0xffaa88, 0.8);
+        dirLight2.position.set(-3, 2, 4);
+        scene.add(dirLight2);
+        
+        const fillLight = new THREE.PointLight(0x4466ff, 0.5, 20);
+        fillLight.position.set(0, 3, 3);
+        scene.add(fillLight);
+        
+        // --- Helpers (grid, axes) ---
+        const gridHelper = new THREE.GridHelper(12, 20, 0x88aaff, 0x335588);
+        gridHelper.position.y = -0.01;
+        scene.add(gridHelper);
+        
+        const axesHelper = new THREE.AxesHelper(6);
+        scene.add(axesHelper);
+        
+        // --- Materials ---
+        const matRed = new THREE.MeshPhongMaterial({ color: 0xff5555, transparent: true, opacity: 0.35, side: THREE.DoubleSide, emissive: 0x220000 });
+        const matGreen = new THREE.MeshPhongMaterial({ color: 0x55ff55, transparent: true, opacity: 0.35, side: THREE.DoubleSide, emissive: 0x002200 });
+        const matBlue = new THREE.MeshPhongMaterial({ color: 0x5555ff, transparent: true, opacity: 0.35, side: THREE.DoubleSide, emissive: 0x000022 });
+        
+        const matRed2 = new THREE.MeshPhongMaterial({ color: 0xff7777, transparent: true, opacity: 0.35, side: THREE.DoubleSide, emissive: 0x220000 });
+        const matGreen2 = new THREE.MeshPhongMaterial({ color: 0x77ff77, transparent: true, opacity: 0.35, side: THREE.DoubleSide, emissive: 0x002200 });
+        const matBlue2 = new THREE.MeshPhongMaterial({ color: 0x7777ff, transparent: true, opacity: 0.35, side: THREE.DoubleSide, emissive: 0x000022 });
+        
+        // Helper to create plane with wireframe
+        function createPlaneMesh(normal, pointOnPlane, colorMat, size=5.0) {
+            const geometry = new THREE.PlaneGeometry(size, size);
+            const mesh = new THREE.Mesh(geometry, colorMat);
+            
+            const defaultNormal = new THREE.Vector3(0, 0, 1);
+            const targetNormal = new THREE.Vector3(normal[0], normal[1], normal[2]).normalize();
+            const quaternion = new THREE.Quaternion();
+            quaternion.setFromUnitVectors(defaultNormal, targetNormal);
+            mesh.applyQuaternion(quaternion);
+            
+            mesh.position.set(pointOnPlane[0], pointOnPlane[1], pointOnPlane[2]);
+            
+            // White wireframe for edges
+            const wireframe = new THREE.LineSegments(
+                new THREE.EdgesGeometry(geometry),
+                new THREE.LineBasicMaterial({ color: 0xffffff })
+            );
+            mesh.add(wireframe);
+            return mesh;
+        }
+        
+        // --- GROUP A: Infinite Solutions (Rank 2) ---
+        const groupInfinite = new THREE.Group();
+        groupInfinite.visible = true;
+        
+        const p1_inf = createPlaneMesh([1,1,1], [1,1,1], matRed, 5.0);
+        const p2_inf = createPlaneMesh([1,-1,1], [1,1,1], matGreen, 5.0);
+        const p3_inf = createPlaneMesh([1,0,1], [1,1,1], matBlue, 5.0);
+        groupInfinite.add(p1_inf, p2_inf, p3_inf);
+        
+        // Intersection line (glowing yellow)
+        const linePointsInf = [];
+        for (let t = -3.0; t <= 3.0; t+=0.1) {
+            linePointsInf.push(new THREE.Vector3(1 + t, 1, 1 - t));
+        }
+        const lineGeoInf = new THREE.BufferGeometry().setFromPoints(linePointsInf);
+        const lineInf = new THREE.Line(lineGeoInf, new THREE.LineBasicMaterial({ color: 0xffaa00 }));
+        groupInfinite.add(lineInf);
+        
+        // Spheres along line to emphasize
+        for (let t = -2; t <= 2; t+=1) {
+            const sphere = new THREE.Mesh(new THREE.SphereGeometry(0.18, 20), new THREE.MeshStandardMaterial({ color: 0xffaa00, emissive: 0x442200 }));
+            sphere.position.set(1 + t, 1, 1 - t);
+            groupInfinite.add(sphere);
+        }
+        scene.add(groupInfinite);
+        
+        // --- GROUP B: Unique Solution (Rank 3) ---
+        const groupUnique = new THREE.Group();
+        groupUnique.visible = false;
+        
+        const p1_uni = createPlaneMesh([1,1,1], [2,1,2], matRed2, 5.0);
+        const p2_uni = createPlaneMesh([1,-1,1], [2,1,2], matGreen2, 5.0);
+        const p3_uni = createPlaneMesh([1,2,-1], [2,1,2], matBlue2, 5.0);
+        groupUnique.add(p1_uni, p2_uni, p3_uni);
+        
+        // Unique point (big glowing sphere)
+        const pointGlow = new THREE.Mesh(
+            new THREE.SphereGeometry(0.4, 32),
+            new THREE.MeshStandardMaterial({ color: 0xff5500, emissive: 0x552200 })
+        );
+        pointGlow.position.set(2, 1, 2);
+        groupUnique.add(pointGlow);
+        
+        // Small axes at point
+        const axesPoint = new THREE.AxesHelper(1.2);
+        axesPoint.position.set(2, 1, 2);
+        groupUnique.add(axesPoint);
+        
+        scene.add(groupUnique);
+        
+        // --- GROUP C: No Solution (Inconsistent) ---
+        const groupNone = new THREE.Group();
+        groupNone.visible = false;
+        
+        // Red plane: x+y+z=3
+        const p1_none = createPlaneMesh([1,1,1], [1,1,1], new THREE.MeshPhongMaterial({ color: 0xff5555, transparent: true, opacity: 0.3, side: THREE.DoubleSide }), 5.0);
+        // Blue plane (parallel): x+y+z=5 through (1,1,3)
+        const p2_none = createPlaneMesh([1,1,1], [1,1,3], new THREE.MeshPhongMaterial({ color: 0x5555ff, transparent: true, opacity: 0.3, side: THREE.DoubleSide }), 5.0);
+        // Green plane: x-y+z=1
+        const p3_none = createPlaneMesh([1,-1,1], [1,1,1], new THREE.MeshPhongMaterial({ color: 0x55ff55, transparent: true, opacity: 0.3, side: THREE.DoubleSide }), 5.0);
+        groupNone.add(p1_none, p2_none, p3_none);
+        
+        // Draw two intersection lines (red-green and blue-green) to show they are separate
+        const lineL1 = [];
+        for (let t = -2.5; t <= 2.5; t+=0.1) lineL1.push(new THREE.Vector3(1 + t, 1, 1 - t));
+        const lineGeo1 = new THREE.BufferGeometry().setFromPoints(lineL1);
+        const line1 = new THREE.Line(lineGeo1, new THREE.LineBasicMaterial({ color: 0xffaa00 }));
+        groupNone.add(line1);
+        
+        const lineL2 = [];
+        for (let t = -2.5; t <= 2.5; t+=0.1) lineL2.push(new THREE.Vector3(1 + t, 2, 2 - t));
+        const lineGeo2 = new THREE.BufferGeometry().setFromPoints(lineL2);
+        const line2 = new THREE.Line(lineGeo2, new THREE.LineBasicMaterial({ color: 0xffaa00 }));
+        groupNone.add(line2);
+        
+        // Mark points on each line
+        const sphereA = new THREE.Mesh(new THREE.SphereGeometry(0.18, 16), new THREE.MeshStandardMaterial({ color: 0xffaa00 }));
+        sphereA.position.set(1, 1, 1);
+        groupNone.add(sphereA);
+        const sphereB = new THREE.Mesh(new THREE.SphereGeometry(0.18, 16), new THREE.MeshStandardMaterial({ color: 0xffaa00 }));
+        sphereB.position.set(1, 2, 2);
+        groupNone.add(sphereB);
+        
+        scene.add(groupNone);
+        
+        // --- Stars (subtle background) ---
+        const starsGeo = new THREE.BufferGeometry();
+        const starPos = new Float32Array(500 * 3);
+        for (let i = 0; i < 500; i++) {
+            starPos[i*3] = (Math.random() - 0.5) * 40;
+            starPos[i*3+1] = (Math.random() - 0.5) * 30;
+            starPos[i*3+2] = (Math.random() - 0.5) * 40;
+        }
+        starsGeo.setAttribute('position', new THREE.BufferAttribute(starPos, 3));
+        const starsMat = new THREE.PointsMaterial({ color: 0xaaccff, size: 0.07 });
+        const stars = new THREE.Points(starsGeo, starsMat);
+        scene.add(stars);
+        
+        // --- UI Logic (no 3D text, only UI panel) ---
+        const btnInf = document.getElementById('btn-infinite');
+        const btnUni = document.getElementById('btn-unique');
+        const btnNo = document.getElementById('btn-nosolution');
+        const statusSymbol = document.getElementById('status-symbol');
+        const statusText = document.getElementById('status-text');
+        const explanationDiv = document.getElementById('explanation');
+        
+        function setActive(activeBtn) {
+            [btnInf, btnUni, btnNo].forEach(btn => btn.classList.remove('active'));
+            activeBtn.classList.add('active');
+        }
+        
+        function updateUIAndCamera(targetGroup, symbol, text, explHTML) {
+            // Hide all groups
+            groupInfinite.visible = false;
+            groupUnique.visible = false;
+            groupNone.visible = false;
+            targetGroup.visible = true;
+            
+            statusSymbol.textContent = symbol;
+            statusText.textContent = text;
+            explanationDiv.innerHTML = explHTML;
+            
+            // Position camera for best view of each case
+            if (targetGroup === groupInfinite) {
+                camera.position.set(4, 2.5, 8);
+                controls.target.set(1, 1, 1);
+            } else if (targetGroup === groupUnique) {
+                camera.position.set(5, 2.5, 8);
+                controls.target.set(2, 1, 2);
+            } else {
+                camera.position.set(5, 2.5, 9);
+                controls.target.set(1, 1.5, 2);
+            }
+            controls.update();
+        }
+        
+        btnInf.addEventListener('click', () => {
+            setActive(btnInf);
+            updateUIAndCamera(groupInfinite, '♾️', 'Infinite Solutions',
+                `<strong>♾️ Infinite Solutions (Rank 2)</strong><br>
+                <span class="eq">x + y + z = 3<br>x - y + z = 1<br>2x + 2z = 4</span><br>
+                <span style="color:#88ff88;">Rank = 2 &lt; 3 variables</span><br>
+                Planes intersect in a <strong style="color:#ffaa00;">common line</strong>.`
+            );
+        });
+        
+        btnUni.addEventListener('click', () => {
+            setActive(btnUni);
+            updateUIAndCamera(groupUnique, '🔴', 'Unique Solution',
+                `<strong>🔴 Unique Solution (Rank 3)</strong><br>
+                <span class="eq">x + y + z = 5<br>x - y + z = 3<br>x + 2y - z = 2</span><br>
+                <span style="color:#88aaff;">Rank = 3 = 3 variables</span><br>
+                Planes meet at the <strong style="color:#ff8844;">orange point</strong> (2,1,2).`
+            );
+        });
+        
+        btnNo.addEventListener('click', () => {
+            setActive(btnNo);
+            updateUIAndCamera(groupNone, '🚫', 'No Solution',
+                `<strong>🚫 No Solution (Inconsistent)</strong><br>
+                <span class="eq">x + y + z = 3<br>x + y + z = 5 (parallel)<br>x - y + z = 1</span><br>
+                <span style="color:#ff6666;">Red and blue planes are parallel</span>. No common intersection point.`
+            );
+        });
+        
+        // Initial update
+        updateUIAndCamera(groupInfinite, '♾️', 'Infinite Solutions',
+            `<strong>♾️ Infinite Solutions (Rank 2)</strong><br>
+            <span class="eq">x + y + z = 3<br>x - y + z = 1<br>2x + 2z = 4</span><br>
+            <span style="color:#88ff88;">Rank = 2 &lt; 3 variables</span><br>
+            Planes intersect in a <strong style="color:#ffaa00;">common line</strong>.`
+        );
+        
+        // --- Animation loop ---
+        function animate() {
+            requestAnimationFrame(animate);
+            controls.update();
+            renderer.render(scene, camera);
+        }
+        animate();
+        
+        // --- Resize handler ---
+        window.addEventListener('resize', onWindowResize);
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+    </script>
+</body>
+</html>
