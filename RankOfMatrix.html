@@ -1,0 +1,769 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Determinant Collapse · Fixed Scene Buttons</title>
+    <!-- Three.js core and addons -->
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.128.0/build/three.module.js",
+                "three/addons/": "https://unpkg.com/three@0.128.0/examples/jsm/",
+                "three/orbitcontrols": "https://unpkg.com/three@0.128.0/examples/jsm/controls/OrbitControls.js",
+                "three/css2drenderer": "https://unpkg.com/three@0.128.0/examples/jsm/renderers/CSS2DRenderer.js",
+                "three/css2dobject": "https://unpkg.com/three@0.128.0/examples/jsm/renderers/CSS2DObject.js"
+            }
+        }
+    </script>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            font-family: 'Segoe UI', 'Arial', sans-serif;
+            background-color: black;
+            color: white;
+        }
+
+        .text-toggle {
+            transition: opacity 0.3s ease, visibility 0.3s ease;
+        }
+        .text-hidden {
+            opacity: 0 !important;
+            visibility: hidden !important;
+            pointer-events: none !important;
+        }
+
+        #info-panel {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(10, 10, 20, 0.75);
+            backdrop-filter: blur(5px);
+            border-left: 6px solid #00ffff;
+            border-radius: 0 12px 12px 0;
+            padding: 22px 28px;
+            pointer-events: none;
+            z-index: 100;
+            box-shadow: 0 0 35px rgba(0, 255, 255, 0.2);
+            border: 1px solid rgba(0, 255, 255, 0.3);
+            max-width: 300px;
+        }
+        h1 {
+            margin: 0;
+            font-size: 1.7rem;
+            font-weight: 400;
+            letter-spacing: 3px;
+            color: #aaffff;
+            text-shadow: 0 0 15px cyan;
+        }
+        .math-overlay {
+            font-size: 1.2rem;
+            line-height: 1.7;
+            color: #ddd;
+        }
+
+        #status-tag {
+            position: absolute;
+            top: 20px;
+            right: 30px;
+            background: rgba(0,0,0,0.7);
+            padding: 18px 28px;
+            border-radius: 12px;
+            border-top: 4px solid #ffaa33;
+            color: #ffd966;
+            font-size: 1.2rem;
+            font-weight: 600;
+            backdrop-filter: blur(4px);
+            pointer-events: none;
+            z-index: 150;
+            box-shadow: 0 0 30px rgba(255,170,0,0.3);
+            text-align: right;
+        }
+        #determinant-value {
+            color: #88ddff;
+            font-size: 1.8rem;
+            font-family: 'Courier New', monospace;
+            text-shadow: 0 0 20px cyan;
+        }
+
+        .tooltip {
+            position: absolute;
+            bottom: 160px;
+            right: 30px;
+            background: rgba(20,20,40,0.9);
+            backdrop-filter: blur(4px);
+            padding: 18px;
+            border-radius: 12px;
+            border-left: 6px solid gold;
+            max-width: 260px;
+            color: #ddd;
+            font-size: 0.95rem;
+            pointer-events: none;
+            z-index: 180;
+        }
+
+        #ui-controls {
+            position: absolute;
+            bottom: 30px;
+            left: 30px;
+            right: 30px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 18px;
+            background: rgba(8, 12, 25, 0.8);
+            backdrop-filter: blur(8px);
+            padding: 20px 30px;
+            border-radius: 50px;
+            border: 1px solid #33aaff;
+            box-shadow: 0 0 40px rgba(0,100,255,0.3);
+            z-index: 200;
+            color: white;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .btn {
+            background: transparent;
+            border: 1.5px solid #00ccff;
+            color: #00ccff;
+            padding: 10px 22px;
+            border-radius: 40px;
+            font-weight: 600;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: 0.3s;
+            letter-spacing: 1.5px;
+            background: rgba(0,200,255,0.05);
+            box-shadow: 0 0 15px rgba(0,200,255,0.2);
+        }
+        .btn:hover {
+            background: #00ccff;
+            color: black;
+            box-shadow: 0 0 30px #00ccff;
+            border-color: white;
+        }
+        .btn.active {
+            background: #00ccff;
+            color: black;
+            border-color: white;
+            box-shadow: 0 0 30px #00ccff;
+        }
+
+        .slider-container {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            color: #bbffff;
+            font-size: 0.95rem;
+        }
+        input[type=range] {
+            width: 160px;
+            height: 8px;
+            background: #224466;
+            border-radius: 10px;
+            -webkit-appearance: none;
+            appearance: none;
+        }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 20px;
+            height: 20px;
+            background: cyan;
+            border-radius: 50%;
+            box-shadow: 0 0 20px cyan;
+            border: 2px solid white;
+            cursor: pointer;
+        }
+
+        .text-toggle-group {
+            display: flex;
+            gap: 12px;
+            background: rgba(0,0,0,0.4);
+            padding: 5px 15px;
+            border-radius: 40px;
+            border: 1px solid #4488aa;
+        }
+        .toggle-btn {
+            background: transparent;
+            border: 1px solid #88aaff;
+            color: #ccffff;
+            padding: 8px 16px;
+            border-radius: 30px;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        .toggle-btn.active {
+            background: #3366cc;
+            border-color: #aaddff;
+            color: white;
+            box-shadow: 0 0 15px #3366cc;
+        }
+
+        .css2d-label {
+            color: #fff;
+            text-shadow: 0 0 10px rgba(0,255,255,0.8);
+            font-weight: 600;
+            font-size: 1.1rem;
+            background: rgba(0,0,0,0.7);
+            padding: 4px 10px;
+            border-radius: 20px;
+            border: 1px solid cyan;
+            white-space: nowrap;
+            transition: opacity 0.2s;
+        }
+        
+        /* Fix for button active states */
+        .scene-btn.active {
+            background: #00ccff !important;
+            color: black !important;
+            border-color: white !important;
+            box-shadow: 0 0 30px #00ccff !important;
+        }
+    </style>
+</head>
+<body>
+    <!-- Text panels -->
+    <div id="info-panel" class="text-toggle math-panel">
+        <h1>⋆ DETERMINANT COLLAPSE ⋆</h1>
+        <div class="math-overlay" id="math-text">
+            <span id="det-symbol">det > 0 · FULL VOLUME</span><br>
+            <span id="rank-text">Rank = 3</span><br>
+            <span id="triple-product" style="font-size:0.9rem; color:#aaddff;">det(A) = A·(B×C)</span>
+        </div>
+    </div>
+
+    <div id="status-tag" class="text-toggle status-panel">
+        <div>STAGE: <span id="stage-name" style="color:white;">3D VOLUME</span></div>
+        <div>det = <span id="determinant-value">1.00</span></div>
+    </div>
+
+    <div class="tooltip text-toggle tooltip-panel" id="floating-tooltip">
+        💡 <strong>Linear independence</strong>: three vectors not in same plane. Volume = |det|. When det=0, collapse.
+    </div>
+
+    <!-- UI Controls -->
+    <div id="ui-controls">
+        <!-- SCENE BUTTONS - with explicit classes and IDs -->
+        <div style="display:flex; gap:20px; flex-wrap:wrap;">
+            <button id="btn-scene1" class="btn scene-btn active" data-scene="vol">🏢 Vol (Rank3)</button>
+            <button id="btn-scene2" class="btn scene-btn" data-scene="plane">📀 Plane (Rank2)</button>
+            <button id="btn-scene3" class="btn scene-btn" data-scene="line">📏 Line (Rank1)</button>
+            <button id="btn-scene4" class="btn scene-btn" data-scene="point">⚫ Point (Rank0)</button>
+        </div>
+        
+        <div style="display:flex; gap:30px; flex-wrap:wrap; align-items:center;">
+            <div class="slider-container">
+                <label style="color:#88ddff;">🎛️ det scalar</label>
+                <input type="range" id="det-slider" min="0" max="1.2" step="0.01" value="1.0">
+            </div>
+            
+            <div class="text-toggle-group">
+                <button id="toggle-math-panel" class="toggle-btn active">📊 Math</button>
+                <button id="toggle-status-panel" class="toggle-btn active">📈 Status</button>
+                <button id="toggle-tooltip" class="toggle-btn active">💬 Tip</button>
+                <button id="toggle-vector-labels" class="toggle-btn active">🔤 Vector</button>
+                <button id="toggle-all-text" class="toggle-btn">👁️ All</button>
+            </div>
+        </div>
+        
+        <div style="display:flex; gap:15px;">
+            <button id="toggle-analogy" class="btn">🌍 Analogy</button>
+            <button id="toggle-axb" class="btn">📐 AX = B</button>
+            <button id="toggle-grid" class="btn">🎯 Grid</button>
+            <button id="reset-btn" class="btn">⟲ Reset</button>
+        </div>
+    </div>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+        import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
+
+        // --- CINEMATIC SETUP ---
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x050510);
+        
+        const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.set(5, 4, 8);
+        camera.lookAt(1, 1, 1);
+        
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.shadowMap.enabled = false;
+        renderer.toneMapping = THREE.ReinhardToneMapping;
+        renderer.toneMappingExposure = 1.2;
+        document.body.appendChild(renderer.domElement);
+        
+        const labelRenderer = new CSS2DRenderer();
+        labelRenderer.setSize(window.innerWidth, window.innerHeight);
+        labelRenderer.domElement.style.position = 'absolute';
+        labelRenderer.domElement.style.top = '0px';
+        labelRenderer.domElement.style.left = '0px';
+        labelRenderer.domElement.style.pointerEvents = 'none';
+        document.body.appendChild(labelRenderer.domElement);
+        
+        // --- CONTROLS ---
+        const controls = new OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.05;
+        controls.rotateSpeed = 0.8;
+        controls.zoomSpeed = 1.2;
+        controls.panSpeed = 0.8;
+        controls.enableZoom = true;
+        controls.enablePan = true;
+        controls.autoRotate = false;
+        controls.target.set(1, 1, 1);
+        
+        // --- LIGHTING ---
+        const ambient = new THREE.AmbientLight(0x404060);
+        scene.add(ambient);
+        const mainLight = new THREE.PointLight(0xffcc88, 1, 30);
+        mainLight.position.set(5, 10, 10);
+        scene.add(mainLight);
+        const cyanLight = new THREE.PointLight(0x22ccff, 1.5);
+        cyanLight.position.set(-3, 5, 8);
+        scene.add(cyanLight);
+        const goldLight = new THREE.PointLight(0xffaa33, 0.8);
+        goldLight.position.set(6, 3, -5);
+        scene.add(goldLight);
+        const backLight = new THREE.PointLight(0x3366aa, 0.5);
+        backLight.position.set(-5, -2, -10);
+        scene.add(backLight);
+        
+        // Stars
+        const starGeometry = new THREE.BufferGeometry();
+        const starCount = 1500;
+        const starPositions = new Float32Array(starCount * 3);
+        for (let i = 0; i < starCount * 3; i+=3) {
+            starPositions[i] = (Math.random() - 0.5) * 200;
+            starPositions[i+1] = (Math.random() - 0.5) * 200;
+            starPositions[i+2] = (Math.random() - 0.5) * 200;
+        }
+        starGeometry.setAttribute('position', new THREE.BufferAttribute(starPositions, 3));
+        const stars = new THREE.Points(starGeometry, new THREE.PointsMaterial({color: 0xffffff, size: 0.2, transparent: true, opacity: 0.7}));
+        scene.add(stars);
+        
+        // Grid & Axes
+        const gridHelper = new THREE.GridHelper(20, 20, 0x00ffff, 0x4488aa);
+        gridHelper.position.y = -0.01;
+        scene.add(gridHelper);
+        const axesHelper = new THREE.AxesHelper(6);
+        scene.add(axesHelper);
+        
+        // Decorative rings
+        const ringMat = new THREE.MeshBasicMaterial({ color: 0x226688, wireframe: true, transparent: true, opacity: 0.15 });
+        const ring1 = new THREE.Mesh(new THREE.TorusGeometry(3, 0.02, 16, 100), ringMat);
+        ring1.rotation.x = Math.PI / 2;
+        ring1.rotation.z = 0.3;
+        scene.add(ring1);
+        const ring2 = new THREE.Mesh(new THREE.TorusGeometry(4.5, 0.02, 16, 100), ringMat);
+        ring2.rotation.x = Math.PI / 2;
+        ring2.rotation.z = -0.2;
+        ring2.rotation.y = 0.5;
+        scene.add(ring2);
+        
+        // --- VECTOR GROUP ---
+        const vectorGroup = new THREE.Group();
+        scene.add(vectorGroup);
+        
+        // Arrows
+        const arrowA = new THREE.ArrowHelper(new THREE.Vector3(1,0,0), new THREE.Vector3(0,0,0), 1, 0xff6666, 0.25, 0.15);
+        const arrowB = new THREE.ArrowHelper(new THREE.Vector3(0,1,0), new THREE.Vector3(0,0,0), 1, 0x66ff66, 0.25, 0.15);
+        const arrowC = new THREE.ArrowHelper(new THREE.Vector3(0,0,1), new THREE.Vector3(0,0,0), 1, 0x66aaff, 0.25, 0.15);
+        vectorGroup.add(arrowA);
+        vectorGroup.add(arrowB);
+        vectorGroup.add(arrowC);
+        
+        // Spheres
+        const sphereA = new THREE.Mesh(new THREE.SphereGeometry(0.08), new THREE.MeshStandardMaterial({ color: 0xff8888, emissive: 0x442222, emissiveIntensity: 0.5 }));
+        sphereA.position.set(1,0,0);
+        vectorGroup.add(sphereA);
+        const sphereB = new THREE.Mesh(new THREE.SphereGeometry(0.08), new THREE.MeshStandardMaterial({ color: 0x88ff88, emissive: 0x224422, emissiveIntensity: 0.5 }));
+        sphereB.position.set(0,1,0);
+        vectorGroup.add(sphereB);
+        const sphereC = new THREE.Mesh(new THREE.SphereGeometry(0.08), new THREE.MeshStandardMaterial({ color: 0x88aaff, emissive: 0x222244, emissiveIntensity: 0.5 }));
+        sphereC.position.set(0,0,1);
+        vectorGroup.add(sphereC);
+        
+        // --- LABELS ---
+        function createLabel(text, position, color = '#88ddff') {
+            const div = document.createElement('div');
+            div.textContent = text;
+            div.style.color = color;
+            div.style.fontSize = '20px';
+            div.style.fontWeight = 'bold';
+            div.style.textShadow = '0 0 20px cyan';
+            div.style.background = 'rgba(0,0,0,0.7)';
+            div.style.padding = '4px 12px';
+            div.style.borderRadius = '20px';
+            div.style.border = '1px solid ' + color;
+            div.classList.add('css2d-label');
+            div.classList.add('text-toggle');
+            div.classList.add('vector-label');
+            const label = new CSS2DObject(div);
+            label.position.copy(position);
+            vectorGroup.add(label);
+            return label;
+        }
+        
+        const labelA = createLabel('A = (1,0,0)', new THREE.Vector3(1.2, -0.2, -0.2), '#ff9999');
+        const labelB = createLabel('B = (0,1,0)', new THREE.Vector3(-0.2, 1.2, -0.2), '#99ff99');
+        const labelC = createLabel('C = (0,0,1)', new THREE.Vector3(-0.2, -0.2, 1.2), '#99ccff');
+        const axisXLabel = createLabel('X', new THREE.Vector3(2.2, -0.3, -0.3), '#ff8888');
+        const axisYLabel = createLabel('Y', new THREE.Vector3(-0.3, 2.2, -0.3), '#88ff88');
+        const axisZLabel = createLabel('Z', new THREE.Vector3(-0.3, -0.3, 2.2), '#8888ff');
+        
+        // --- PARALLELEPIPED ---
+        let boxMesh, boxEdges;
+        function createParallelepiped(A, B, C) {
+            if (boxMesh) vectorGroup.remove(boxMesh);
+            if (boxEdges) vectorGroup.remove(boxEdges);
+            
+            const vertices = [
+                new THREE.Vector3(0,0,0),
+                A.clone(),
+                B.clone(),
+                C.clone(),
+                A.clone().add(B),
+                A.clone().add(C),
+                B.clone().add(C),
+                A.clone().add(B).add(C)
+            ];
+            
+            const points = [
+                vertices[0], vertices[1], vertices[1], vertices[4], vertices[4], vertices[2], vertices[2], vertices[0],
+                vertices[0], vertices[2], vertices[2], vertices[6], vertices[6], vertices[3], vertices[3], vertices[0],
+                vertices[0], vertices[3], vertices[3], vertices[5], vertices[5], vertices[1], vertices[1], vertices[4], 
+                vertices[4], vertices[7], vertices[7], vertices[5], vertices[5], vertices[3], vertices[6], vertices[7], 
+                vertices[7], vertices[6], vertices[6], vertices[2], vertices[1], vertices[5], vertices[4], vertices[7], vertices[7], vertices[6]
+            ];
+            
+            const geometry = new THREE.BufferGeometry().setFromPoints(points);
+            const edges = new THREE.LineSegments(geometry, new THREE.LineBasicMaterial({ color: 0x44ddff, opacity: 0.35, transparent: true }));
+            
+            const hullVertices = [];
+            vertices.forEach(v => hullVertices.push(v.x, v.y, v.z));
+            const hullGeometry = new THREE.BufferGeometry();
+            hullGeometry.setAttribute('position', new THREE.Float32BufferAttribute(hullVertices, 3));
+            hullGeometry.setIndex([
+                0,1,4, 0,4,2, 0,2,6, 0,6,3, 0,3,5, 0,5,1,
+                1,5,7, 1,7,4, 2,4,7, 2,7,6, 3,6,7, 3,7,5
+            ]);
+            hullGeometry.computeVertexNormals();
+            const boxMat = new THREE.MeshPhongMaterial({
+                color: 0x33aaff,
+                transparent: true,
+                opacity: 0.18,
+                wireframe: false,
+                emissive: 0x112233,
+                side: THREE.DoubleSide
+            });
+            const solid = new THREE.Mesh(hullGeometry, boxMat);
+            vectorGroup.add(solid);
+            vectorGroup.add(edges);
+            
+            return { solid, edges };
+        }
+        
+        ({ solid: boxMesh, edges: boxEdges } = createParallelepiped(new THREE.Vector3(1,0,0), new THREE.Vector3(0,1,0), new THREE.Vector3(0,0,1)));
+        
+        // --- SCENE STATE ---
+        const scenes = {
+            vol: { 
+                A: new THREE.Vector3(1,0,0), 
+                B: new THREE.Vector3(0,1,0), 
+                C: new THREE.Vector3(0,0,1), 
+                name: '3D VOLUME', 
+                det: 1.0, 
+                rank: 3 
+            },
+            plane: { 
+                A: new THREE.Vector3(1,0,0), 
+                B: new THREE.Vector3(0,1,0), 
+                C: new THREE.Vector3(1,1,0), 
+                name: 'COLLAPSE TO PLANE', 
+                det: 0.0, 
+                rank: 2 
+            },
+            line: { 
+                A: new THREE.Vector3(1,0,0), 
+                B: new THREE.Vector3(0.8,0,0), 
+                C: new THREE.Vector3(0.5,0,0), 
+                name: 'COLLAPSE TO LINE', 
+                det: 0.0, 
+                rank: 1 
+            },
+            point: { 
+                A: new THREE.Vector3(0.1,0,0), 
+                B: new THREE.Vector3(0,0.05,0), 
+                C: new THREE.Vector3(0,0,0.01), 
+                name: 'COLLAPSE TO POINT', 
+                det: 0.0, 
+                rank: 0 
+            }
+        };
+        
+        let targetA = new THREE.Vector3(1,0,0);
+        let targetB = new THREE.Vector3(0,1,0);
+        let targetC = new THREE.Vector3(0,0,1);
+        let currentSceneKey = 'vol';
+        
+        // --- SET SCENE FUNCTION (fully defined before event listeners) ---
+        window.setScene = function(key) {
+            console.log('Setting scene to:', key); // Debug
+            const s = scenes[key];
+            if (!s) return;
+            
+            currentSceneKey = key;
+            targetA.copy(s.A);
+            targetB.copy(s.B);
+            targetC.copy(s.C);
+            
+            // Update UI
+            document.getElementById('stage-name').innerText = s.name;
+            document.getElementById('rank-text').innerHTML = `Rank = ${s.rank}`;
+            document.getElementById('det-symbol').innerHTML = s.det > 0 ? 'det > 0 · FULL VOLUME' : 'det = 0 · COLLAPSED';
+            
+            // Update button active states
+            document.querySelectorAll('.scene-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            if (key === 'vol') document.getElementById('btn-scene1').classList.add('active');
+            if (key === 'plane') document.getElementById('btn-scene2').classList.add('active');
+            if (key === 'line') document.getElementById('btn-scene3').classList.add('active');
+            if (key === 'point') document.getElementById('btn-scene4').classList.add('active');
+            
+            // Update slider
+            if (key === 'vol') document.getElementById('det-slider').value = 1.0;
+            else if (key === 'plane') document.getElementById('det-slider').value = 0.6;
+            else if (key === 'line') document.getElementById('det-slider').value = 0.25;
+            else if (key === 'point') document.getElementById('det-slider').value = 0.0;
+            
+            // Update analogy
+            if (window.analogyActive) updateAnalogyVisibility(key);
+        };
+        
+        // --- EVENT LISTENERS (now setScene is defined) ---
+        function initEventListeners() {
+            // Scene buttons - direct click handlers
+            document.getElementById('btn-scene1').addEventListener('click', function(e) {
+                e.preventDefault();
+                window.setScene('vol');
+            });
+            document.getElementById('btn-scene2').addEventListener('click', function(e) {
+                e.preventDefault();
+                window.setScene('plane');
+            });
+            document.getElementById('btn-scene3').addEventListener('click', function(e) {
+                e.preventDefault();
+                window.setScene('line');
+            });
+            document.getElementById('btn-scene4').addEventListener('click', function(e) {
+                e.preventDefault();
+                window.setScene('point');
+            });
+            
+            // Slider
+            document.getElementById('det-slider').addEventListener('input', (e) => {
+                const val = parseFloat(e.target.value);
+                if (val > 0.8) window.setScene('vol');
+                else if (val > 0.4) window.setScene('plane');
+                else if (val > 0.1) window.setScene('line');
+                else window.setScene('point');
+            });
+            
+            // Reset
+            document.getElementById('reset-btn').addEventListener('click', () => window.setScene('vol'));
+            
+            // Grid toggle
+            let gridVisible = true;
+            document.getElementById('toggle-grid').addEventListener('click', function() {
+                gridVisible = !gridVisible;
+                gridHelper.visible = gridVisible;
+                axesHelper.visible = gridVisible;
+            });
+        }
+        
+        // --- ANALOGY ---
+        let analogyActive = false;
+        const analogyGroup = new THREE.Group();
+        scene.add(analogyGroup);
+        const cube = new THREE.Mesh(new THREE.BoxGeometry(0.4,0.4,0.4), new THREE.MeshStandardMaterial({ color: 0xffaa33, emissive: 0x553311, transparent: true, opacity: 0.7 }));
+        cube.position.set(2.5, 1.5, 1.5);
+        analogyGroup.add(cube);
+        const pancake = new THREE.Mesh(new THREE.BoxGeometry(0.7,0.05,0.7), new THREE.MeshStandardMaterial({ color: 0x88aaff, emissive: 0x224466, transparent: true }));
+        pancake.position.set(2.5, -0.5, 1.5);
+        pancake.visible = false;
+        analogyGroup.add(pancake);
+        const stick = new THREE.Mesh(new THREE.BoxGeometry(0.8,0.05,0.05), new THREE.MeshStandardMaterial({ color: 0x88ff88, emissive: 0x224422 }));
+        stick.position.set(2.5, -1.5, 1.5);
+        stick.visible = false;
+        analogyGroup.add(stick);
+        const dot = new THREE.Mesh(new THREE.SphereGeometry(0.1), new THREE.MeshStandardMaterial({ color: 0xff88ff, emissive: 0x442244 }));
+        dot.position.set(2.5, -2.5, 1.5);
+        dot.visible = false;
+        analogyGroup.add(dot);
+        
+        window.updateAnalogyVisibility = function(key) {
+            cube.visible = false; pancake.visible = false; stick.visible = false; dot.visible = false;
+            if (key === 'vol') cube.visible = true;
+            else if (key === 'plane') pancake.visible = true;
+            else if (key === 'line') stick.visible = true;
+            else if (key === 'point') dot.visible = true;
+        };
+        
+        document.getElementById('toggle-analogy').addEventListener('click', function() {
+            analogyActive = !analogyActive;
+            window.analogyActive = analogyActive;
+            this.style.background = analogyActive ? '#00ccff' : 'transparent';
+            this.style.color = analogyActive ? 'black' : '#00ccff';
+            if (analogyActive) updateAnalogyVisibility(currentSceneKey);
+            else { cube.visible = false; pancake.visible = false; stick.visible = false; dot.visible = false; }
+        });
+        
+        // --- AX = B ---
+        let axbActive = false;
+        const targetBPoint = new THREE.Mesh(new THREE.SphereGeometry(0.15), new THREE.MeshStandardMaterial({ color: 0xff44aa, emissive: 0x550033 }));
+        targetBPoint.position.set(1.8, 1.2, 0.5);
+        scene.add(targetBPoint);
+        const bDiv = document.createElement('div');
+        bDiv.textContent = 'B (target)';
+        bDiv.style.color = '#ff88cc';
+        bDiv.style.background = 'rgba(0,0,0,0.7)';
+        bDiv.style.border = '1px solid #ff88cc';
+        bDiv.style.padding = '4px 12px';
+        bDiv.style.borderRadius = '20px';
+        bDiv.classList.add('css2d-label', 'text-toggle');
+        const bLabel = new CSS2DObject(bDiv);
+        bLabel.position.copy(new THREE.Vector3(1.8, 1.2, 0.5));
+        scene.add(bLabel);
+        targetBPoint.visible = false;
+        bLabel.visible = false;
+        
+        document.getElementById('toggle-axb').addEventListener('click', function() {
+            axbActive = !axbActive;
+            this.style.background = axbActive ? '#00ccff' : 'transparent';
+            this.style.color = axbActive ? 'black' : '#00ccff';
+            targetBPoint.visible = axbActive;
+            bLabel.visible = axbActive;
+        });
+        
+        // --- TEXT TOGGLE FUNCTIONS ---
+        let mathVisible = true, statusVisible = true, tooltipVisible = true, vectorLabelsVisible = true;
+        
+        function toggleMathPanel(visible) {
+            document.getElementById('info-panel').classList.toggle('text-hidden', !visible);
+            mathVisible = visible;
+        }
+        function toggleStatusPanel(visible) {
+            document.getElementById('status-tag').classList.toggle('text-hidden', !visible);
+            statusVisible = visible;
+        }
+        function toggleTooltipPanel(visible) {
+            document.getElementById('floating-tooltip').classList.toggle('text-hidden', !visible);
+            tooltipVisible = visible;
+        }
+        function toggleVectorLabels(visible) {
+            vectorLabelsVisible = visible;
+            document.querySelectorAll('.vector-label, .css2d-label').forEach(label => {
+                label.classList.toggle('text-hidden', !visible);
+            });
+        }
+        
+        // Text toggle listeners
+        document.getElementById('toggle-math-panel').addEventListener('click', function() {
+            toggleMathPanel(!mathVisible);
+            this.classList.toggle('active', mathVisible);
+        });
+        document.getElementById('toggle-status-panel').addEventListener('click', function() {
+            toggleStatusPanel(!statusVisible);
+            this.classList.toggle('active', statusVisible);
+        });
+        document.getElementById('toggle-tooltip').addEventListener('click', function() {
+            toggleTooltipPanel(!tooltipVisible);
+            this.classList.toggle('active', tooltipVisible);
+        });
+        document.getElementById('toggle-vector-labels').addEventListener('click', function() {
+            toggleVectorLabels(!vectorLabelsVisible);
+            this.classList.toggle('active', vectorLabelsVisible);
+        });
+        document.getElementById('toggle-all-text').addEventListener('click', function() {
+            const anyVisible = !document.getElementById('info-panel').classList.contains('text-hidden');
+            const newState = !anyVisible;
+            
+            toggleMathPanel(newState);
+            toggleStatusPanel(newState);
+            toggleTooltipPanel(newState);
+            toggleVectorLabels(newState);
+            
+            document.getElementById('toggle-math-panel').classList.toggle('active', newState);
+            document.getElementById('toggle-status-panel').classList.toggle('active', newState);
+            document.getElementById('toggle-tooltip').classList.toggle('active', newState);
+            document.getElementById('toggle-vector-labels').classList.toggle('active', newState);
+            
+            this.textContent = newState ? '👁️ All' : '👁️ All (Off)';
+        });
+        
+        // --- ANIMATION LOOP ---
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            // Smooth interpolation
+            arrowA.position.lerp(targetA, 0.15);
+            arrowB.position.lerp(targetB, 0.15);
+            arrowC.position.lerp(targetC, 0.15);
+            
+            arrowA.setDirection(targetA.clone().normalize());
+            arrowB.setDirection(targetB.clone().normalize());
+            arrowC.setDirection(targetC.clone().normalize());
+            arrowA.setLength(targetA.length(), 0.25, 0.15);
+            arrowB.setLength(targetB.length(), 0.25, 0.15);
+            arrowC.setLength(targetC.length(), 0.25, 0.15);
+            
+            sphereA.position.copy(targetA);
+            sphereB.position.copy(targetB);
+            sphereC.position.copy(targetC);
+            
+            // Update labels
+            labelA.position.copy(targetA.clone().multiplyScalar(1.2));
+            labelB.position.copy(targetB.clone().multiplyScalar(1.2));
+            labelC.position.copy(targetC.clone().multiplyScalar(1.2));
+            labelA.element.innerHTML = `A = (${targetA.x.toFixed(2)}, ${targetA.y.toFixed(2)}, ${targetA.z.toFixed(2)})`;
+            labelB.element.innerHTML = `B = (${targetB.x.toFixed(2)}, ${targetB.y.toFixed(2)}, ${targetB.z.toFixed(2)})`;
+            labelC.element.innerHTML = `C = (${targetC.x.toFixed(2)}, ${targetC.y.toFixed(2)}, ${targetC.z.toFixed(2)})`;
+            
+            // Rebuild parallelepiped
+            if (boxMesh) vectorGroup.remove(boxMesh);
+            if (boxEdges) vectorGroup.remove(boxEdges);
+            const newVol = createParallelepiped(targetA, targetB, targetC);
+            boxMesh = newVol.solid;
+            boxEdges = newVol.edges;
+            
+            // Update determinant
+            const detReal = targetA.clone().dot(targetB.clone().cross(targetC));
+            document.getElementById('determinant-value').innerHTML = detReal.toFixed(3);
+            document.getElementById('triple-product').innerHTML = `det(A) = A·(B×C) = ${detReal.toFixed(3)}`;
+            
+            controls.update();
+            renderer.render(scene, camera);
+            labelRenderer.render(scene, camera);
+        }
+        animate();
+        
+        // Window resize
+        window.addEventListener('resize', onWindowResize, false);
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            labelRenderer.setSize(window.innerWidth, window.innerHeight);
+        }
+        
+        // Initialize everything
+        initEventListeners();
+        window.setScene('vol'); // Start with volume scene
+    </script>
+</body>
+</html>
