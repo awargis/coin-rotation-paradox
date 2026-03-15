@@ -1,0 +1,608 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Determinant Collapse — Aditya Wargis</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #00ffcc;
+            --accent: #ff3366;
+            --bg: #050505;
+            --panel-bg: rgba(10, 15, 25, 0.85);
+            --text: #ffffff;
+        }
+
+        body, html {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: var(--bg);
+            font-family: 'Segoe UI', 'Inter', system-ui, sans-serif;
+            color: var(--text);
+            touch-action: none; /* prevent pull-to-refresh on mobile */
+        }
+
+        #canvas-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+        }
+
+        /* UI overlay – all pointer-events none except interactive areas */
+        #ui-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 2;
+            pointer-events: none;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        .header {
+            padding: 20px 24px;
+            background: linear-gradient(to bottom, rgba(0,0,0,0.9) 0%, transparent 100%);
+            pointer-events: none;
+        }
+
+        .header h1 {
+            margin: 0;
+            font-size: clamp(1.4rem, 5vw, 2rem);
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            color: var(--primary);
+            text-shadow: 0 0 15px rgba(0, 255, 200, 0.3);
+        }
+
+        .header p {
+            margin: 4px 0 0;
+            opacity: 0.7;
+            font-size: 0.9rem;
+        }
+
+        /* Math panel – fully interactive */
+        .math-panel {
+            position: absolute;
+            right: 20px;
+            top: 90px;
+            background: var(--panel-bg);
+            border: 1px solid rgba(255,255,255,0.08);
+            padding: 18px 22px;
+            border-radius: 24px;
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            pointer-events: auto;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.02);
+            transition: transform 0.2s ease;
+        }
+
+        .matrix-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+        }
+
+        .matrix {
+            position: relative;
+            font-family: 'JetBrains Mono', 'Fira Code', 'Courier New', monospace;
+            font-size: 1.2rem;
+            padding: 0 6px;
+        }
+
+        .matrix table {
+            border-collapse: separate;
+            border-spacing: 8px 4px;
+        }
+
+        .matrix td {
+            padding: 4px 10px;
+            text-align: center;
+            min-width: 50px;
+            background: rgba(255,255,255,0.03);
+            border-radius: 8px;
+        }
+
+        .v1-text { color: #ff5555; font-weight: 600; }
+        .v2-text { color: #55ff99; font-weight: 600; }
+        .v3-text { color: #5599ff; font-weight: 600; }
+
+        .det-display {
+            margin-top: 16px;
+            text-align: center;
+            border-top: 1px solid rgba(255,255,255,0.1);
+            padding-top: 12px;
+        }
+
+        .det-label {
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            color: #aaa;
+        }
+
+        .det-value {
+            font-size: 2.6rem;
+            font-weight: 800;
+            color: var(--primary);
+            line-height: 1.2;
+            text-shadow: 0 0 20px currentColor;
+            transition: color 0.2s;
+        }
+
+        /* bottom controls */
+        .controls-area {
+            padding: 30px 20px 40px;
+            text-align: center;
+            background: linear-gradient(to top, rgba(0,0,0,0.9) 20%, transparent 100%);
+            pointer-events: none;
+        }
+
+        .subtitle {
+            font-size: 1.5rem;
+            max-width: 800px;
+            margin: 0 auto 25px;
+            min-height: 4rem;
+            line-height: 1.4;
+            font-weight: 300;
+            text-shadow: 0 2px 5px black;
+            color: rgba(255,255,255,0.9);
+            pointer-events: none;
+        }
+
+        .button-group {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            flex-wrap: wrap;
+            pointer-events: auto;
+        }
+
+        .btn {
+            padding: 14px 34px;
+            font-size: 1rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            border: 2px solid var(--primary);
+            background: transparent;
+            color: white;
+            border-radius: 60px;
+            cursor: pointer;
+            transition: 0.25s ease;
+            box-shadow: 0 0 15px transparent;
+            backdrop-filter: blur(4px);
+        }
+
+        .btn:hover {
+            background: var(--primary);
+            color: #000;
+            box-shadow: 0 0 30px var(--primary);
+            transform: scale(1.02);
+        }
+
+        .btn:active {
+            transform: scale(0.96);
+        }
+
+        .btn-stop {
+            border-color: #ff9900;
+        }
+        .btn-stop:hover {
+            background: #ff9900;
+            box-shadow: 0 0 30px #ff9900;
+        }
+
+        .btn-reset {
+            border-color: #8a8a8a;
+        }
+        .btn-reset:hover {
+            background: #8a8a8a;
+            color: black;
+            box-shadow: 0 0 25px #aaa;
+        }
+
+        #flash {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: white;
+            z-index: 10;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.08s;
+        }
+
+        /* mobile adjustments */
+        @media (max-width: 700px) {
+            .math-panel {
+                right: 10px;
+                top: auto;
+                bottom: 140px;
+                padding: 14px 16px;
+                transform: scale(0.85);
+                transform-origin: right bottom;
+            }
+            .subtitle {
+                font-size: 1.1rem;
+                min-height: 3.2rem;
+            }
+            .btn {
+                padding: 12px 24px;
+                font-size: 0.9rem;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="flash"></div>
+    <div id="canvas-container"></div>
+
+    <div id="ui-layer">
+        <div class="header">
+            <h1>✦ THE COLLAPSING DIMENSION ✦</h1>
+            <p>determinant = volume scaling factor</p>
+        </div>
+
+        <div class="math-panel">
+            <div class="matrix-container">
+                <span style="font-size:1.4rem; opacity:0.7;">[A] =</span>
+                <div class="matrix">
+                    <table>
+                        <tr class="v1-text"><td id="m00">2.0</td><td id="m01">0.0</td><td id="m02">0.0</td></tr>
+                        <tr class="v2-text"><td id="m10">0.5</td><td id="m11">2.0</td><td id="m12">0.0</td></tr>
+                        <tr class="v3-text"><td id="m20">1.0</td><td id="m21">1.0</td><td id="m22">2.0</td></tr>
+                    </table>
+                </div>
+            </div>
+            <div class="det-display">
+                <div class="det-label">determinant (volume)</div>
+                <div class="det-value" id="det-value">8.00</div>
+            </div>
+        </div>
+
+        <div class="controls-area">
+            <div class="subtitle" id="narrative">
+                ❝ Determinant is the scaling factor of space. Rotate to explore. ❞
+            </div>
+            <div class="button-group">
+                <button class="btn" id="start-btn">Initiate Collapse</button>
+                <button class="btn btn-reset" id="reset-btn">Reset Universe</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- three.js and orbitcontrols from CDN (r128 stable) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+
+    <script>
+        (function() {
+            // --- configuration & state ---
+            const scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x050505);
+            scene.fog = new THREE.FogExp2(0x050505, 0.045);
+
+            const camera = new THREE.PerspectiveCamera(48, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.set(6, 3, 8);
+            camera.lookAt(1, 0.5, 1);
+
+            const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2)); // cap for performance
+            renderer.shadowMap.enabled = false; // not needed
+            renderer.toneMapping = THREE.ReinhardToneMapping;
+            renderer.toneMappingExposure = 1.2;
+            document.getElementById('canvas-container').appendChild(renderer.domElement);
+
+            // controls
+            const controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.05;
+            controls.autoRotate = true;
+            controls.autoRotateSpeed = 0.8;
+            controls.enableZoom = true;
+            controls.maxPolarAngle = Math.PI / 2; // keep above ground
+            controls.target.set(1, 0.8, 1);
+
+            // --- lights ---
+            const ambient = new THREE.AmbientLight(0x404060);
+            scene.add(ambient);
+
+            const keyLight = new THREE.DirectionalLight(0xffffff, 1.2);
+            keyLight.position.set(3, 8, 5);
+            scene.add(keyLight);
+
+            const fillLight = new THREE.DirectionalLight(0x446688, 0.8);
+            fillLight.position.set(-4, 2, 6);
+            scene.add(fillLight);
+
+            const backLight = new THREE.PointLight(0x3366aa, 0.5);
+            backLight.position.set(-2, 1, -4);
+            scene.add(backLight);
+
+            // accent rim
+            const rim = new THREE.PointLight(0x44ccff, 0.6);
+            rim.position.set(2, 3, -3);
+            scene.add(rim);
+
+            // --- helpers & ground ---
+            const gridHelper = new THREE.GridHelper(16, 24, 0x337788, 0x223344);
+            gridHelper.position.y = -0.01;
+            scene.add(gridHelper);
+
+            // faint axis lines
+            const axesHelper = new THREE.AxesHelper(5);
+            scene.add(axesHelper); // subtle
+
+            // --- core data: vectors ---
+            const v1 = new THREE.Vector3(2.0, 0.0, 0.0);
+            const v2 = new THREE.Vector3(0.5, 2.0, 0.0);
+            const v3_initial = new THREE.Vector3(1.0, 1.0, 2.0);
+            const v3_target = new THREE.Vector3(1.0, 1.0, 0.0); // collapsed on z=0
+
+            let v3_current = v3_initial.clone();
+
+            // --- volume mesh (parallelepiped) ---
+            let volumeMesh = null;
+            const geometry = new THREE.BufferGeometry();
+
+            const material = new THREE.MeshPhysicalMaterial({
+                color: 0x00ffcc,
+                emissive: 0x112233,
+                metalness: 0.1,
+                roughness: 0.2,
+                transparent: true,
+                opacity: 0.6,
+                side: THREE.DoubleSide,
+                transmission: 0.5,
+                thickness: 2,
+                envMapIntensity: 1
+            });
+
+            volumeMesh = new THREE.Mesh(geometry, material);
+            volumeMesh.castShadow = false;
+            volumeMesh.receiveShadow = false;
+            scene.add(volumeMesh);
+
+            // --- arrows (with better visuals) ---
+            const origin = new THREE.Vector3(0, 0, 0);
+            const arrowLength = (vec) => Math.max(0.2, vec.length());
+
+            const arrowV1 = new THREE.ArrowHelper(v1.clone().normalize(), origin, arrowLength(v1), 0xff5555, 0.3, 0.15);
+            const arrowV2 = new THREE.ArrowHelper(v2.clone().normalize(), origin, arrowLength(v2), 0x55ff99, 0.3, 0.15);
+            const arrowV3 = new THREE.ArrowHelper(v3_current.clone().normalize(), origin, arrowLength(v3_current), 0x5599ff, 0.3, 0.15);
+
+            scene.add(arrowV1, arrowV2, arrowV3);
+
+            // small spheres at tips
+            const sphereGeom = new THREE.SphereGeometry(0.1, 16);
+            const sphereMat = new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0x335577 });
+            const tipSphere = new THREE.Mesh(sphereGeom, sphereMat);
+            tipSphere.position.copy(v3_initial);
+            scene.add(tipSphere); // we'll update position later
+
+            // additional floating points for style
+            const dotsGeom = new THREE.BufferGeometry();
+            const dotPositions = new Float32Array([
+                0,0,0, v1.x,v1.y,v1.z, v2.x,v2.y,v2.z, v3_initial.x,v3_initial.y,v3_initial.z,
+                v1.x+v2.x, v1.y+v2.y, v1.z+v2.z
+            ]);
+            dotsGeom.setAttribute('position', new THREE.BufferAttribute(dotPositions, 3));
+            const dotsMat = new THREE.PointsMaterial({ color: 0x88aaff, size: 0.1, sizeAttenuation: true });
+            const dots = new THREE.Points(dotsGeom, dotsMat);
+            scene.add(dots);
+
+            // --- animation state ---
+            let isAnimating = false;
+            let progress = 0;                // 0..1
+            let shakeIntensity = 0;
+            const startBtn = document.getElementById('start-btn');
+            const resetBtn = document.getElementById('reset-btn');
+            const narrativeDiv = document.getElementById('narrative');
+            const detSpan = document.getElementById('det-value');
+            const flashDiv = document.getElementById('flash');
+
+            // matrix display cells
+            const m00 = document.getElementById('m00');
+            const m01 = document.getElementById('m01');
+            const m02 = document.getElementById('m02');
+            const m10 = document.getElementById('m10');
+            const m11 = document.getElementById('m11');
+            const m12 = document.getElementById('m12');
+            const m20 = document.getElementById('m20');
+            const m21 = document.getElementById('m21');
+            const m22 = document.getElementById('m22');
+
+            // initial matrix display
+            function updateMatrixUI() {
+                m00.innerText = v1.x.toFixed(1); m01.innerText = v1.y.toFixed(1); m02.innerText = v1.z.toFixed(1);
+                m10.innerText = v2.x.toFixed(1); m11.innerText = v2.y.toFixed(1); m12.innerText = v2.z.toFixed(1);
+                m20.innerText = v3_current.x.toFixed(1); m21.innerText = v3_current.y.toFixed(1); m22.innerText = v3_current.z.toFixed(1);
+            }
+            updateMatrixUI();
+
+            // --- volume update function (recomputes mesh, arrows, det) ---
+            function updateVolume() {
+                // compute 8 corners of parallelepiped
+                const p0 = new THREE.Vector3(0, 0, 0);
+                const p1 = v1.clone();
+                const p2 = v2.clone();
+                const p3 = v1.clone().add(v2);
+                const p4 = v3_current.clone();
+                const p5 = v1.clone().add(v3_current);
+                const p6 = v2.clone().add(v3_current);
+                const p7 = v1.clone().add(v2).add(v3_current);
+
+                const points = [p0, p1, p2, p3, p4, p5, p6, p7];
+
+                // build triangles (12 faces, 36 vertices)
+                // order: bottom (0-1-3-2), top (4-5-7-6), front (0-4-5-1), back (2-3-7-6), left (0-2-6-4), right (1-5-7-3)
+                const indices = [
+                    0,1,3,  0,3,2,    // bottom
+                    4,7,5,  4,6,7,    // top (winding reversed for correct normals)
+                    0,4,1,  1,4,5,    // front
+                    2,3,7,  2,7,6,    // back
+                    0,2,6,  0,6,4,    // left
+                    1,5,7,  1,7,3     // right
+                ];
+
+                const vertexArray = [];
+                indices.forEach(idx => {
+                    vertexArray.push(points[idx].x, points[idx].y, points[idx].z);
+                });
+
+                geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertexArray, 3));
+                geometry.computeVertexNormals();
+
+                // update v3 arrow
+                arrowV3.setDirection(v3_current.clone().normalize());
+                const len = v3_current.length();
+                arrowV3.setLength(len > 0.1 ? len : 0.1, 0.25, 0.12);
+
+                // update tip sphere
+                tipSphere.position.copy(v3_current);
+
+                // update matrix display
+                updateMatrixUI();
+
+                // compute determinant of matrix [v1, v2, v3_current] as columns
+                const det = v1.x * (v2.y * v3_current.z - v2.z * v3_current.y)
+                          - v1.y * (v2.x * v3_current.z - v2.z * v3_current.x)
+                          + v1.z * (v2.x * v3_current.y - v2.y * v3_current.x);
+
+                const absDet = Math.abs(det);
+                detSpan.innerText = absDet.toFixed(2);
+                if (absDet < 0.15) {
+                    detSpan.style.color = '#ff3366';
+                } else {
+                    detSpan.style.color = '#00ffcc';
+                }
+
+                // return det for logic
+                return absDet;
+            }
+
+            // --- reset function ---
+            function resetUniverse() {
+                isAnimating = false;
+                progress = 0;
+                v3_current.copy(v3_initial);
+                updateVolume();
+
+                startBtn.innerText = 'Initiate Collapse';
+                startBtn.classList.remove('btn-stop');
+                narrativeDiv.innerHTML = '❝ Determinant is the scaling factor of space. Rotate to explore. ❞';
+                controls.autoRotate = true;
+                volumeMesh.material.color.setHex(0x00ffcc);
+                flashDiv.style.opacity = 0;
+                shakeIntensity = 0;
+            }
+
+            // --- impact flash and narrative update (determinant collapse) ---
+            function triggerCollapseEffect() {
+                shakeIntensity = 0.6;
+                flashDiv.style.opacity = 1;
+                setTimeout(() => { flashDiv.style.opacity = 0; }, 150);
+
+                volumeMesh.material.color.setHex(0xff3366);
+                narrativeDiv.innerHTML = '<span style="color:#ff3366; font-weight:bold;">⧫ DIMENSION COLLAPSED ⧫</span><br>Determinant ≈ 0 — volume vanished into 2D plane.';
+                startBtn.style.display = 'none';  // hide collapse button after finish
+            }
+
+            // --- event listeners ---
+            startBtn.addEventListener('click', function() {
+                if (!isAnimating && progress >= 1) {
+                    // if already collapsed, maybe restart? but we have reset. we can re-init
+                    resetUniverse();
+                }
+                isAnimating = !isAnimating;
+                if (isAnimating) {
+                    startBtn.innerText = 'Stop Collapse';
+                    startBtn.classList.add('btn-stop');
+                    controls.autoRotate = false;
+                    narrativeDiv.innerHTML = '⚡ v₃ slides toward the plane of v₁ and v₂ ... determinant shrinking ⚡';
+                    // ensure button visible if it was hidden from previous collapse
+                    startBtn.style.display = 'inline-block';
+                } else {
+                    startBtn.innerText = 'Resume Collapse';
+                    startBtn.classList.remove('btn-stop');
+                }
+            });
+
+            resetBtn.addEventListener('click', function() {
+                resetUniverse();
+                startBtn.style.display = 'inline-block'; // show button again if hidden
+            });
+
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            });
+
+            // initial update
+            updateVolume();
+
+            // --- animation loop ---
+            function animate() {
+                requestAnimationFrame(animate);
+
+                if (isAnimating && progress < 1.0) {
+                    progress += 0.0025; // slow collapse
+                    const t = Math.min(progress, 1.0);
+                    v3_current.lerpVectors(v3_initial, v3_target, t);
+                    const detNow = updateVolume();
+
+                    if (progress >= 1.0) {
+                        isAnimating = false;
+                        triggerCollapseEffect();
+                    } else if (detNow < 0.3) {
+                        // near collapse, add red hint
+                        volumeMesh.material.color.setHex(0xff8866);
+                    }
+                }
+
+                // subtle idle animation
+                if (!isAnimating && progress < 0.01) {
+                    const time = Date.now() * 0.002;
+                    volumeMesh.material.opacity = 0.6 + Math.sin(time) * 0.1;
+                }
+
+                // camera shake
+                if (shakeIntensity > 0.01) {
+                    camera.position.x += (Math.random() - 0.5) * shakeIntensity;
+                    camera.position.y += (Math.random() - 0.5) * shakeIntensity;
+                    camera.position.z += (Math.random() - 0.5) * shakeIntensity;
+                    controls.target.x += (Math.random() - 0.5) * shakeIntensity * 0.3;
+                    shakeIntensity *= 0.9;
+                }
+
+                controls.update();
+                renderer.render(scene, camera);
+            }
+
+            animate();
+
+            // --- minor fix: ensure autoRotate after reset (controls update) ---
+            // expose some variables to console if needed but not necessary
+        })();
+    </script>
+</body>
+</html>
