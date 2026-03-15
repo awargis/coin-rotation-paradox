@@ -1,0 +1,556 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Determinant: Time Machine for Space</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            font-family: 'Inter', 'Segoe UI', sans-serif;
+            background-color: #050510;
+        }
+        /* cinematic typography overlay */
+        .overlay-text {
+            position: absolute;
+            bottom: 15%;
+            left: 0;
+            width: 100%;
+            text-align: center;
+            color: rgba(255, 255, 255, 0.9);
+            font-size: clamp(2rem, 5vw, 4rem);
+            font-weight: 300;
+            letter-spacing: 0.2em;
+            text-transform: uppercase;
+            text-shadow: 0 0 30px rgba(0, 200, 255, 0.5);
+            z-index: 10;
+            pointer-events: none;
+            transition: opacity 1.5s cubic-bezier(0.19, 1, 0.22, 1);
+            opacity: 0;
+            backdrop-filter: blur(4px);
+            padding: 0 20px;
+        }
+        .overlay-text.small {
+            font-size: clamp(1.2rem, 3vw, 2rem);
+            letter-spacing: 0.3em;
+            bottom: 10%;
+            color: rgba(220, 220, 255, 0.8);
+            text-shadow: 0 0 20px rgba(255, 100, 200, 0.4);
+        }
+        .subtitle {
+            position: absolute;
+            top: 5%;
+            right: 5%;
+            color: #aaa;
+            font-size: 0.9rem;
+            letter-spacing: 0.2em;
+            z-index: 10;
+            opacity: 0.5;
+        }
+        .time-dial-caption {
+            position: absolute;
+            bottom: 25%;
+            left: 50%;
+            transform: translateX(-50%);
+            color: #ffaa33;
+            font-size: 1rem;
+            letter-spacing: 0.3em;
+            text-shadow: 0 0 15px #ff9900;
+            opacity: 0;
+            transition: opacity 1s;
+            white-space: nowrap;
+            z-index: 20;
+        }
+        canvas {
+            display: block;
+        }
+    </style>
+    <!-- Google Fonts for clean typography -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="subtitle">DETERMINANT · TIME MACHINE</div>
+    <div id="phase-text" class="overlay-text">Matrices transform space.</div>
+    <div id="phase-text-small" class="overlay-text small"></div>
+    <div id="dial-caption" class="time-dial-caption">⏣ REVERSING TIME ⏣</div>
+
+    <!-- Import Three.js and required libraries -->
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.128.0/build/three.module.js",
+                "three/addons/": "https://unpkg.com/three@0.128.0/examples/jsm/"
+            }
+        }
+    </script>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+        import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+        import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+        import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+        import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
+
+        // --------------------------------------------------------------
+        // 1. Setup scene, cameras, renderers
+        // --------------------------------------------------------------
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x050510);
+        scene.fog = new THREE.FogExp2(0x050510, 0.015);
+
+        const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.set(8, 5, 12);
+        camera.lookAt(0, 0, 0);
+
+        // WebGL Renderer with high quality
+        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false, powerPreference: "high-performance" });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        renderer.toneMapping = THREE.ReinhardToneMapping;
+        renderer.toneMappingExposure = 1.2;
+        document.body.appendChild(renderer.domElement);
+
+        // CSS2 Renderer for vector labels
+        const labelRenderer = new CSS2DRenderer();
+        labelRenderer.setSize(window.innerWidth, window.innerHeight);
+        labelRenderer.domElement.style.position = 'absolute';
+        labelRenderer.domElement.style.top = '0px';
+        labelRenderer.domElement.style.left = '0px';
+        labelRenderer.domElement.style.pointerEvents = 'none';
+        document.body.appendChild(labelRenderer.domElement);
+
+        // Controls for optional manual exploration (but we animate automatically)
+        const controls = new OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.05;
+        controls.autoRotate = false;
+        controls.enableZoom = true;
+        controls.enablePan = true;
+        controls.maxPolarAngle = Math.PI / 2;
+
+        // --------------------------------------------------------------
+        // 2. Post-processing with bloom (glow)
+        // --------------------------------------------------------------
+        const renderScene = new RenderPass(scene, camera);
+        const bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 1.5, 0.4, 0.85);
+        bloomPass.threshold = 0.1;
+        bloomPass.strength = 1.2;
+        bloomPass.radius = 0.5;
+
+        const composer = new EffectComposer(renderer);
+        composer.addPass(renderScene);
+        composer.addPass(bloomPass);
+
+        // --------------------------------------------------------------
+        // 3. Lighting
+        // --------------------------------------------------------------
+        const ambientLight = new THREE.AmbientLight(0x404060);
+        scene.add(ambientLight);
+
+        const pointLight1 = new THREE.PointLight(0x4466ff, 1, 30);
+        pointLight1.position.set(2, 5, 5);
+        scene.add(pointLight1);
+
+        const pointLight2 = new THREE.PointLight(0xff66aa, 0.8, 30);
+        pointLight2.position.set(-3, 2, 5);
+        scene.add(pointLight2);
+
+        const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+        dirLight.position.set(1, 2, 1);
+        scene.add(dirLight);
+
+        // Add floating particles for atmosphere
+        const particleGeo = new THREE.BufferGeometry();
+        const particleCount = 2000;
+        const posArray = new Float32Array(particleCount * 3);
+        for (let i = 0; i < particleCount * 3; i += 3) {
+            posArray[i] = (Math.random() - 0.5) * 40;
+            posArray[i+1] = (Math.random() - 0.5) * 40;
+            posArray[i+2] = (Math.random() - 0.5) * 40;
+        }
+        particleGeo.setAttribute('position', new THREE.BufferAttribute(posArray, 3));
+        const particleMat = new THREE.PointsMaterial({ color: 0xaaccff, size: 0.08, transparent: true, opacity: 0.4, blending: THREE.AdditiveBlending });
+        const particles = new THREE.Points(particleGeo, particleMat);
+        scene.add(particles);
+
+        // --------------------------------------------------------------
+        // 4. Build the glowing 3D grid (lattice)
+        // --------------------------------------------------------------
+        function createGridLines() {
+            const vertices = [];
+            const range = 3;
+            const step = 1;
+
+            // Lines parallel to X axis
+            for (let y = -range; y <= range; y += step) {
+                for (let z = -range; z <= range; z += step) {
+                    for (let x = -range; x < range; x += step) {
+                        vertices.push(x, y, z);
+                        vertices.push(x + step, y, z);
+                    }
+                }
+            }
+            // Lines parallel to Y axis
+            for (let x = -range; x <= range; x += step) {
+                for (let z = -range; z <= range; z += step) {
+                    for (let y = -range; y < range; y += step) {
+                        vertices.push(x, y, z);
+                        vertices.push(x, y + step, z);
+                    }
+                }
+            }
+            // Lines parallel to Z axis
+            for (let x = -range; x <= range; x += step) {
+                for (let y = -range; y <= range; y += step) {
+                    for (let z = -range; z < range; z += step) {
+                        vertices.push(x, y, z);
+                        vertices.push(x, y, z + step);
+                    }
+                }
+            }
+
+            const geometry = new THREE.BufferGeometry();
+            geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+            
+            const material = new THREE.LineBasicMaterial({ color: 0x44ccff, emissive: 0x224466, linewidth: 1 }); // linewidth not supported everywhere, but bloom helps
+            const lines = new THREE.LineSegments(geometry, material);
+            
+            // Store original positions for transformation
+            const positionAttribute = geometry.attributes.position;
+            const originalPositions = [];
+            for (let i = 0; i < positionAttribute.count; i++) {
+                originalPositions.push(new THREE.Vector3(positionAttribute.getX(i), positionAttribute.getY(i), positionAttribute.getZ(i)));
+            }
+            
+            return { lines, originalPositions };
+        }
+
+        const gridData = createGridLines();
+        const grid = gridData.lines;
+        const originalGridPositions = gridData.originalPositions;
+        scene.add(grid);
+
+        // Also add a subtle inner grid with different color
+        const gridData2 = createGridLines(); // second grid slightly offset? no, just add another with different color and blending
+        const grid2 = gridData2.lines;
+        grid2.material = new THREE.LineBasicMaterial({ color: 0xffaa88, transparent: true, opacity: 0.2 });
+        scene.add(grid2);
+
+        // --------------------------------------------------------------
+        // 5. Vector arrows (v1, v2, v3)
+        // --------------------------------------------------------------
+        const arrowLength = 2.0;
+        const arrowHeadLength = 0.5;
+        const arrowHeadWidth = 0.3;
+
+        const arrowV1 = new THREE.ArrowHelper(new THREE.Vector3(1, 0, 0), new THREE.Vector3(0, 0, 0), arrowLength, 0x00ffff, arrowHeadLength, arrowHeadWidth);
+        const arrowV2 = new THREE.ArrowHelper(new THREE.Vector3(0, 1, 0), new THREE.Vector3(0, 0, 0), arrowLength, 0xff44ff, arrowHeadLength, arrowHeadWidth);
+        const arrowV3 = new THREE.ArrowHelper(new THREE.Vector3(0, 0, 1), new THREE.Vector3(0, 0, 0), arrowLength, 0xffaa00, arrowHeadLength, arrowHeadWidth);
+
+        scene.add(arrowV1);
+        scene.add(arrowV2);
+        scene.add(arrowV3);
+
+        // Labels for vectors using CSS2D
+        const labelDiv1 = document.createElement('div');
+        labelDiv1.textContent = 'v₁';
+        labelDiv1.style.color = '#00ffff';
+        labelDiv1.style.fontSize = '24px';
+        labelDiv1.style.fontWeight = '300';
+        labelDiv1.style.textShadow = '0 0 20px cyan';
+        const label1 = new CSS2DObject(labelDiv1);
+        label1.position.set(2.2, 0, 0);
+        scene.add(label1);
+
+        const labelDiv2 = document.createElement('div');
+        labelDiv2.textContent = 'v₂';
+        labelDiv2.style.color = '#ff44ff';
+        labelDiv2.style.fontSize = '24px';
+        labelDiv2.style.fontWeight = '300';
+        labelDiv2.style.textShadow = '0 0 20px magenta';
+        const label2 = new CSS2DObject(labelDiv2);
+        label2.position.set(0, 2.2, 0);
+        scene.add(label2);
+
+        const labelDiv3 = document.createElement('div');
+        labelDiv3.textContent = 'v₃';
+        labelDiv3.style.color = '#ffaa00';
+        labelDiv3.style.fontSize = '24px';
+        labelDiv3.style.fontWeight = '300';
+        labelDiv3.style.textShadow = '0 0 20px gold';
+        const label3 = new CSS2DObject(labelDiv3);
+        label3.position.set(0, 0, 2.2);
+        scene.add(label3);
+
+        // --------------------------------------------------------------
+        // 6. Time Machine Dial (a glowing ring with indicator)
+        // --------------------------------------------------------------
+        const dialGroup = new THREE.Group();
+        const ringGeo = new THREE.TorusGeometry(1.2, 0.05, 32, 100);
+        const ringMat = new THREE.MeshStandardMaterial({ color: 0xffaa33, emissive: 0x442200, transparent: true, opacity: 0.8 });
+        const ring = new THREE.Mesh(ringGeo, ringMat);
+        ring.rotation.x = Math.PI / 2;
+        dialGroup.add(ring);
+
+        const indicatorGeo = new THREE.SphereGeometry(0.15, 16, 16);
+        const indicatorMat = new THREE.MeshStandardMaterial({ color: 0xff6600, emissive: 0x442200 });
+        const indicator = new THREE.Mesh(indicatorGeo, indicatorMat);
+        indicator.position.set(1.2, 0, 0);
+        dialGroup.add(indicator);
+
+        // Add a small inner ring
+        const innerRingGeo = new THREE.TorusGeometry(0.9, 0.03, 16, 64);
+        const innerRingMat = new THREE.MeshStandardMaterial({ color: 0x44aaff, emissive: 0x113355 });
+        const innerRing = new THREE.Mesh(innerRingGeo, innerRingMat);
+        innerRing.rotation.x = Math.PI / 2;
+        dialGroup.add(innerRing);
+
+        dialGroup.position.set(3, 2, 3);
+        scene.add(dialGroup);
+
+        // --------------------------------------------------------------
+        // 7. Animation state & matrices
+        // --------------------------------------------------------------
+        const identityMatrix = new THREE.Matrix4().identity();
+
+        // Non-zero determinant matrix (shear + scale)
+        const M1 = new THREE.Matrix4().set(
+            1.5, 0.4, 0.1, 0,
+            0.2, 1.7, 0.3, 0,
+            0.0, 0.5, 1.4, 0,
+            0, 0, 0, 1
+        );
+
+        // Zero determinant matrix (collapse Z dimension)
+        const M2 = new THREE.Matrix4().set(
+            1.3, 0.6, 0.0, 0,
+            0.3, 1.4, 0.0, 0,
+            0.0, 0.0, 0.0, 0,
+            0, 0, 0, 1
+        );
+
+        let currentMatrix = identityMatrix.clone();
+
+        // For smooth interpolation
+        let targetMatrix = identityMatrix.clone();
+        let mixFactor = 0;
+
+        // Timeline (in seconds, cycle length 24s)
+        const CYCLE = 24;
+        const PHASE1_END = 4;      // normal
+        const PHASE2_END = 8;      // transform to M1
+        const PHASE3_END = 12;     // reverse to identity
+        const PHASE4_END = 16;     // transform to M2
+        const PHASE5_END = 20;     // attempt reverse (stay at M2)
+        // then reset to identity from 20-24
+
+        // Text elements
+        const phaseTextEl = document.getElementById('phase-text');
+        const phaseTextSmallEl = document.getElementById('phase-text-small');
+        const dialCaptionEl = document.getElementById('dial-caption');
+
+        // Store original arrow directions for transformation
+        const v1Dir = new THREE.Vector3(1, 0, 0);
+        const v2Dir = new THREE.Vector3(0, 1, 0);
+        const v3Dir = new THREE.Vector3(0, 0, 1);
+
+        // --------------------------------------------------------------
+        // 8. Helper function to apply matrix to grid and arrows
+        // --------------------------------------------------------------
+        function applyMatrixToGrid(matrix) {
+            const posAttr = grid.geometry.attributes.position;
+            const array = posAttr.array;
+            for (let i = 0; i < originalGridPositions.length; i++) {
+                const orig = originalGridPositions[i];
+                const transformed = orig.clone().applyMatrix4(matrix);
+                array[i*3] = transformed.x;
+                array[i*3+1] = transformed.y;
+                array[i*3+2] = transformed.z;
+            }
+            posAttr.needsUpdate = true;
+            
+            // Also update grid2 (the faint one) with same matrix for consistency
+            const posAttr2 = grid2.geometry.attributes.position;
+            const array2 = posAttr2.array;
+            for (let i = 0; i < originalGridPositions.length; i++) {
+                const orig = originalGridPositions[i];
+                const transformed = orig.clone().applyMatrix4(matrix);
+                array2[i*3] = transformed.x;
+                array2[i*3+1] = transformed.y;
+                array2[i*3+2] = transformed.z;
+            }
+            posAttr2.needsUpdate = true;
+
+            // Update arrows: extract basis vectors from matrix
+            const col1 = new THREE.Vector3(matrix.elements[0], matrix.elements[1], matrix.elements[2]);
+            const col2 = new THREE.Vector3(matrix.elements[4], matrix.elements[5], matrix.elements[6]);
+            const col3 = new THREE.Vector3(matrix.elements[8], matrix.elements[9], matrix.elements[10]);
+
+            // For zero determinant, col3 might be zero, so arrow length zero
+            arrowV1.setDirection(col1.clone().normalize());
+            arrowV1.setLength(col1.length(), 0.5, 0.3);
+            arrowV2.setDirection(col2.clone().normalize());
+            arrowV2.setLength(col2.length(), 0.5, 0.3);
+            arrowV3.setDirection(col3.clone().normalize());
+            arrowV3.setLength(col3.length(), 0.5, 0.3);
+
+            // Update label positions
+            label1.position.copy(col1.clone().multiplyScalar(1.2));
+            label2.position.copy(col2.clone().multiplyScalar(1.2));
+            label3.position.copy(col3.clone().multiplyScalar(1.2));
+        }
+
+        // --------------------------------------------------------------
+        // 9. Animation loop with timeline
+        // --------------------------------------------------------------
+        const clock = new THREE.Clock();
+
+        function animate() {
+            const delta = clock.getDelta();
+            const elapsed = performance.now() / 1000; // seconds
+            const t = (elapsed % CYCLE) / CYCLE; // 0..1 over cycle
+
+            // Determine phase based on time within cycle
+            const cycleTime = (elapsed % CYCLE);
+
+            // Defaults
+            let target = identityMatrix;
+            let mix = 0;
+            let dialRotation = 0;
+            let showDialCaption = false;
+            let textMain = '';
+            let textSmall = '';
+
+            // Phase logic
+            if (cycleTime < PHASE1_END) {
+                // Phase 1: identity
+                target = identityMatrix;
+                mix = 1;
+                textMain = 'Matrices transform space.';
+                textSmall = '';
+                dialRotation = 0;
+            } else if (cycleTime < PHASE2_END) {
+                // Phase 2: transition to M1
+                const p = (cycleTime - PHASE1_END) / (PHASE2_END - PHASE1_END);
+                // ease in-out
+                mix = Math.sin(p * Math.PI / 2);
+                target = M1;
+                textMain = 'Every matrix reshapes reality.';
+                textSmall = '';
+                dialRotation = p * Math.PI * 2;
+            } else if (cycleTime < PHASE3_END) {
+                // Phase 3: reverse back to identity (reversible)
+                const p = (cycleTime - PHASE2_END) / (PHASE3_END - PHASE2_END);
+                mix = 1 - Math.sin(p * Math.PI / 2); // go from M1 to identity
+                target = M1;
+                textMain = 'If the determinant is non-zero,';
+                textSmall = 'the transformation is reversible.';
+                showDialCaption = true;
+                dialRotation = (1 + p) * Math.PI * 2; // dial spins backward
+                // At the end of this phase, we show "Space can return to its past."
+                if (p > 0.8) {
+                    textSmall = 'Space can return to its past.';
+                }
+            } else if (cycleTime < PHASE4_END) {
+                // Phase 4: transform to M2 (zero det)
+                const p = (cycleTime - PHASE3_END) / (PHASE4_END - PHASE3_END);
+                mix = Math.sin(p * Math.PI / 2);
+                target = M2;
+                textMain = 'Determinant = 0';
+                textSmall = 'volume collapses';
+                dialRotation = p * Math.PI * 2;
+            } else if (cycleTime < PHASE5_END) {
+                // Phase 5: attempt reverse, but stuck at M2
+                const p = (cycleTime - PHASE4_END) / (PHASE5_END - PHASE4_END);
+                mix = 1; // stay at M2
+                target = M2;
+                textMain = 'Information was destroyed.';
+                textSmall = 'cannot reverse time';
+                showDialCaption = true;
+                dialRotation = (1 + p) * Math.PI * 4; // dial spins but no effect
+            } else {
+                // Reset to identity
+                const p = (cycleTime - PHASE5_END) / (CYCLE - PHASE5_END);
+                mix = 1 - Math.sin(p * Math.PI / 2); // go back to identity
+                target = M2;
+                textMain = 'Only transformations with';
+                textSmall = 'non-zero determinant can be reversed.';
+                dialRotation = (2 + p) * Math.PI * 2;
+            }
+
+            // Interpolate matrices
+            const invMix = 1 - mix;
+            // Simple linear interpolation of matrix elements (not perfect but okay for visual)
+            const current = new THREE.Matrix4();
+            for (let i = 0; i < 16; i++) {
+                current.elements[i] = identityMatrix.elements[i] * invMix + target.elements[i] * mix;
+            }
+
+            applyMatrixToGrid(current);
+
+            // Update dial rotation
+            dialGroup.rotation.y = dialRotation;
+            // Pulse dial caption
+            dialCaptionEl.style.opacity = showDialCaption ? 1 : 0;
+
+            // Update text overlays with fade
+            phaseTextEl.style.opacity = textMain ? 1 : 0;
+            phaseTextEl.textContent = textMain;
+            phaseTextSmallEl.style.opacity = textSmall ? 1 : 0;
+            phaseTextSmallEl.textContent = textSmall;
+
+            // Camera movement: subtle orbit
+            const camRadius = 12;
+            const camX = Math.sin(elapsed * 0.15) * 5;
+            const camZ = 12 + Math.cos(elapsed * 0.2) * 3;
+            camera.position.x = camX;
+            camera.position.z = camZ;
+            camera.position.y = 5 + Math.sin(elapsed * 0.3) * 1.5;
+            camera.lookAt(0, 0, 0);
+
+            controls.update(); // for damping if user interacts
+
+            // Render via composer for bloom
+            composer.render();
+
+            // Render CSS2D labels separately
+            labelRenderer.render(scene, camera);
+
+            requestAnimationFrame(animate);
+        }
+
+        animate();
+
+        // --------------------------------------------------------------
+        // 10. Resize handler
+        // --------------------------------------------------------------
+        window.addEventListener('resize', onWindowResize, false);
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            labelRenderer.setSize(window.innerWidth, window.innerHeight);
+            composer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        // Add some floating matrix symbols (optional bonus)
+        const symbols = ['det', '⌇', '⌆', '∇', '∑', '∏', '⌊', '⌈'];
+        for (let i = 0; i < 12; i++) {
+            const div = document.createElement('div');
+            div.textContent = symbols[Math.floor(Math.random() * symbols.length)];
+            div.style.position = 'absolute';
+            div.style.color = 'rgba(100, 200, 255, 0.15)';
+            div.style.fontSize = (30 + Math.random() * 40) + 'px';
+            div.style.fontWeight = '100';
+            div.style.left = Math.random() * 100 + '%';
+            div.style.top = Math.random() * 100 + '%';
+            div.style.transform = 'rotate(' + Math.random() * 360 + 'deg)';
+            div.style.pointerEvents = 'none';
+            div.style.zIndex = '5';
+            document.body.appendChild(div);
+        }
+    </script>
+</body>
+</html>
