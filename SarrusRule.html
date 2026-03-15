@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sarrus rule · step by step with arrows</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            user-select: none;
+        }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            background: linear-gradient(145deg, #0b121c 0%, #1a2635 100%);
+            font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 16px;
+        }
+
+        .card {
+            max-width: 900px;
+            width: 100%;
+            background: rgba(18, 28, 40, 0.8);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(90, 140, 255, 0.25);
+            border-radius: 56px;
+            box-shadow: 0 30px 50px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(160, 200, 255, 0.1) inset;
+            padding: 32px 32px 40px;
+            transition: all 0.2s;
+        }
+
+        h2 {
+            text-align: center;
+            font-weight: 400;
+            font-size: 1.8rem;
+            letter-spacing: 1px;
+            margin: 0 0 8px 0;
+            color: #d3e5ff;
+            text-shadow: 0 4px 12px rgba(0,40,120,0.7);
+        }
+
+        .sub {
+            text-align: center;
+            color: #8da4c0;
+            margin-bottom: 28px;
+            font-size: 1.1rem;
+            border-bottom: 1px dashed #2e4a70;
+            padding-bottom: 18px;
+        }
+
+        .matrix-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 40px;
+            flex-wrap: wrap;
+            margin-bottom: 25px;
+        }
+
+        .matrix-box {
+            background: #0f1a29;
+            padding: 24px 28px;
+            border-radius: 48px;
+            border: 1px solid #2e4b70;
+            box-shadow: 0 20px 30px -8px black, 0 0 0 2px #1e3347 inset;
+        }
+
+        .matrix {
+            display: grid;
+            grid-template-columns: repeat(3, 90px);
+            gap: 16px 12px;
+            justify-items: center;
+            align-items: center;
+        }
+
+        .cell {
+            width: 90px;
+            height: 90px;
+            background: #1e2f40;
+            border-radius: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 3.2rem;
+            font-weight: 600;
+            font-family: 'Courier New', monospace;
+            color: #f0f6ff;
+            text-shadow: 0 0 15px #5f9eff;
+            box-shadow: 0 8px 0 #0b131f, 0 10px 20px black;
+            border-bottom: 2px solid #3e5f85;
+            transition: all 0.2s;
+        }
+
+        .cell.highlight-add {
+            box-shadow: 0 0 0 4px #66ff99, 0 8px 0 #0b131f, 0 10px 20px black;
+            background: #2d4f3a;
+            color: #ffffff;
+            text-shadow: 0 0 20px #aaffaa;
+        }
+
+        .cell.highlight-sub {
+            box-shadow: 0 0 0 4px #ff6666, 0 8px 0 #0b131f, 0 10px 20px black;
+            background: #5f3333;
+            color: #ffffff;
+            text-shadow: 0 0 20px #ffaaaa;
+        }
+
+        .arrow-panel {
+            flex: 1;
+            min-width: 200px;
+            background: #0d1622e0;
+            border-radius: 60px;
+            padding: 28px 20px;
+            border: 1px solid #336699;
+            backdrop-filter: blur(8px);
+        }
+
+        .arrow-display {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 28px;
+        }
+
+        .arrow-step {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            font-size: 1.6rem;
+            background: #1a293b;
+            padding: 12px 32px;
+            border-radius: 60px;
+            width: 100%;
+            border: 1px solid #3a5f88;
+            box-shadow: 0 6px 0 #0c141f;
+        }
+
+        .arrow-icon {
+            font-size: 3.2rem;
+            line-height: 1;
+            filter: drop-shadow(0 4px 4px black);
+        }
+
+        .arrow-text {
+            font-weight: 500;
+            letter-spacing: 0.5px;
+        }
+
+        .green-add {
+            color: #b0ffb0;
+            text-shadow: 0 0 15px #00aa50;
+        }
+
+        .red-sub {
+            color: #ffb0b0;
+            text-shadow: 0 0 15px #cc5555;
+        }
+
+        .formula-panel {
+            background: #0a121e;
+            border-radius: 48px;
+            padding: 22px 28px;
+            margin: 30px 0 25px;
+            border: 1px solid #2b5580;
+            box-shadow: inset 0 2px 8px #00000055, 0 10px 20px #00000060;
+        }
+
+        .formula {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 18px;
+            font-size: 2.2rem;
+            font-family: 'Courier New', monospace;
+            flex-wrap: wrap;
+        }
+
+        .term {
+            padding: 8px 24px;
+            border-radius: 50px;
+            background: #162434;
+            border: 1px solid;
+            font-weight: 600;
+        }
+
+        .term.add-term {
+            color: #b0ffb0;
+            border-color: #56aa56;
+            box-shadow: 0 0 12px #33aa3370;
+        }
+
+        .term.sub-term {
+            color: #ffaeae;
+            border-color: #c05a5a;
+            box-shadow: 0 0 12px #aa333370;
+        }
+
+        .operator {
+            font-size: 2.6rem;
+            color: #b4c8e0;
+        }
+
+        .controls {
+            display: flex;
+            justify-content: center;
+            gap: 18px;
+            margin-top: 15px;
+        }
+
+        button {
+            background: #23415c;
+            border: none;
+            border-bottom: 5px solid #0e1f30;
+            color: white;
+            font-size: 1.8rem;
+            font-weight: 500;
+            padding: 18px 48px;
+            border-radius: 60px;
+            letter-spacing: 2px;
+            cursor: pointer;
+            transition: all 0.1s ease;
+            box-shadow: 0 8px 0 #0a121e, 0 10px 20px black;
+            display: inline-flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        button:active {
+            transform: translateY(5px);
+            border-bottom-width: 2px;
+            box-shadow: 0 3px 0 #0a121e, 0 8px 12px black;
+        }
+
+        button:disabled {
+            opacity: 0.4;
+            transform: translateY(0);
+            border-bottom-width: 5px;
+            pointer-events: none;
+            filter: grayscale(0.5);
+        }
+
+        .progress {
+            color: #adc9f0;
+            font-size: 1.2rem;
+            text-align: center;
+            margin-top: 28px;
+            background: #1b3145;
+            padding: 10px 25px;
+            border-radius: 40px;
+            display: inline-block;
+            margin-left: auto;
+            margin-right: auto;
+            width: fit-content;
+            border: 1px solid #3f6190;
+        }
+
+        .legend {
+            display: flex;
+            gap: 30px;
+            justify-content: center;
+            margin-bottom: 15px;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            background: #1d2b3b;
+            padding: 8px 30px;
+            border-radius: 40px;
+            border-left: 6px solid;
+        }
+
+        .legend-add { border-color: #77dd77; }
+        .legend-sub { border-color: #ff7777; }
+    </style>
+</head>
+<body>
+<div class="card">
+    <h2>✦ SARRUS RULE ✦</h2>
+    <div class="sub">3×3 determinant · step by step with coloured arrows</div>
+
+    <!-- Legend -->
+    <div class="legend">
+        <div class="legend-item legend-add"><span style="color:#aaeeaa;">⬇️ downward</span> <span style="color:white;">→ add</span></div>
+        <div class="legend-item legend-sub"><span style="color:#ffaaaa;">⬆️ upward</span> <span style="color:white;">→ subtract</span></div>
+    </div>
+
+    <!-- Matrix + arrow visualization -->
+    <div class="matrix-container">
+        <div class="matrix-box">
+            <div class="matrix" id="matrixGrid">
+                <!-- cells will be filled by js, but static for clarity -->
+                <div class="cell" id="cell-a">a</div>
+                <div class="cell" id="cell-b">b</div>
+                <div class="cell" id="cell-c">c</div>
+                <div class="cell" id="cell-d">d</div>
+                <div class="cell" id="cell-e">e</div>
+                <div class="cell" id="cell-f">f</div>
+                <div class="cell" id="cell-g">g</div>
+                <div class="cell" id="cell-h">h</div>
+                <div class="cell" id="cell-i">i</div>
+            </div>
+        </div>
+
+        <!-- Dynamic arrow panel -->
+        <div class="arrow-panel" id="arrowPanel">
+            <div class="arrow-display" id="arrowDisplay">
+                <!-- filled by js -->
+                <div class="arrow-step" style="opacity:0.7; background:#142433;">👆 click next</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- formula expression -->
+    <div class="formula-panel">
+        <div class="formula" id="formulaTerms">
+            <span class="term add-term" id="termAei">+ aei</span>
+            <span class="term add-term" id="termBfg">+ bfg</span>
+            <span class="term add-term" id="termCdh">+ cdh</span>
+            <span class="operator">−</span>
+            <span class="term sub-term" id="termCeg">− ceg</span>
+            <span class="term sub-term" id="termBdi">− bdi</span>
+            <span class="term sub-term" id="termAfh">− afh</span>
+        </div>
+    </div>
+
+    <!-- progress and controls -->
+    <div class="progress" id="progressDisplay">step 0 / 6</div>
+    <div class="controls">
+        <button id="prevBtn" disabled>← PREV</button>
+        <button id="nextBtn">NEXT →</button>
+    </div>
+</div>
+
+<script>
+    (function() {
+        // ---- steps definitions ----
+        const steps = [
+            { type: 'add', term: 'aei', cells: ['a','e','i'], desc: 'downward diagonal a → e → i', arrow: '⬇️  a ➔ e ➔ i' },
+            { type: 'add', term: 'bfg', cells: ['b','f','g'], desc: 'downward diagonal b → f → g', arrow: '⬇️  b ➔ f ➔ g' },
+            { type: 'add', term: 'cdh', cells: ['c','d','h'], desc: 'downward diagonal c → d → h', arrow: '⬇️  c ➔ d ➔ h' },
+            { type: 'sub', term: 'ceg', cells: ['c','e','g'], desc: 'upward diagonal c → e → g', arrow: '⬆️  c ➔ e ➔ g' },
+            { type: 'sub', term: 'bdi', cells: ['b','d','i'], desc: 'upward diagonal b → d → i', arrow: '⬆️  b ➔ d ➔ i' },
+            { type: 'sub', term: 'afh', cells: ['a','f','h'], desc: 'upward diagonal a → f → h', arrow: '⬆️  a ➔ f ➔ h' }
+        ];
+
+        // get all cell elements
+        const cells = {
+            a: document.getElementById('cell-a'),
+            b: document.getElementById('cell-b'),
+            c: document.getElementById('cell-c'),
+            d: document.getElementById('cell-d'),
+            e: document.getElementById('cell-e'),
+            f: document.getElementById('cell-f'),
+            g: document.getElementById('cell-g'),
+            h: document.getElementById('cell-h'),
+            i: document.getElementById('cell-i')
+        };
+
+        // formula term spans
+        const termElements = {
+            aei: document.getElementById('termAei'),
+            bfg: document.getElementById('termBfg'),
+            cdh: document.getElementById('termCdh'),
+            ceg: document.getElementById('termCeg'),
+            bdi: document.getElementById('termBdi'),
+            afh: document.getElementById('termAfh')
+        };
+
+        const arrowDisplay = document.getElementById('arrowDisplay');
+        const progressDisplay = document.getElementById('progressDisplay');
+        const prevBtn = document.getElementById('prevBtn');
+        const nextBtn = document.getElementById('nextBtn');
+
+        let currentStep = -1;  // -1 means no step, only matrix neutral
+
+        // helper: remove all highlights
+        function clearHighlights() {
+            for (let key in cells) {
+                cells[key].classList.remove('highlight-add', 'highlight-sub');
+            }
+            // reset all term opacity / style (optional: make them all slightly dim)
+            for (let key in termElements) {
+                termElements[key].style.opacity = '0.6';
+                termElements[key].style.boxShadow = 'none';
+            }
+        }
+
+        // apply step highlighting (if step index = -1, only neutral)
+        function applyStep(index) {
+            clearHighlights();
+
+            if (index === -1) {
+                // neutral: no cell highlight, show welcome arrow
+                arrowDisplay.innerHTML = `<div class="arrow-step" style="background:#1d314a; justify-content:center;">
+                    <span style="font-size:2.5rem;">✨</span>
+                    <span class="arrow-text" style="color:#aac9ff;">press NEXT</span>
+                </div>`;
+                progressDisplay.innerText = `step 0 / 6`;
+                return;
+            }
+
+            const step = steps[index];
+            // highlight cells
+            step.cells.forEach(cellId => {
+                if (cells[cellId]) {
+                    cells[cellId].classList.add(step.type === 'add' ? 'highlight-add' : 'highlight-sub');
+                }
+            });
+
+            // highlight corresponding term
+            if (termElements[step.term]) {
+                termElements[step.term].style.opacity = '1';
+                termElements[step.term].style.boxShadow = `0 0 22px ${step.type === 'add' ? '#66ee66' : '#ff6666'}`;
+            }
+
+            // update arrow panel
+            const arrowColor = step.type === 'add' ? '#aaeeaa' : '#ffaaaa';
+            const arrowSymbol = step.type === 'add' ? '⬇️' : '⬆️';
+            arrowDisplay.innerHTML = `
+                <div class="arrow-step" style="border-left: 8px solid ${step.type === 'add' ? '#33dd88' : '#dd6666'}; background:#1f3147;">
+                    <span class="arrow-icon" style="color:${arrowColor};">${arrowSymbol}</span>
+                    <span class="arrow-text" style="color:white; font-size:1.5rem;">${step.desc}</span>
+                </div>
+                <div style="font-size:2rem; margin-top:8px; color:${arrowColor};">${step.arrow}</div>
+            `;
+
+            progressDisplay.innerText = `step ${index+1} / 6 · ${step.term}`;
+        }
+
+        // update button states based on index
+        function updateButtons(index) {
+            if (index <= -1) {
+                prevBtn.disabled = true;
+            } else {
+                prevBtn.disabled = false;
+            }
+
+            if (index >= steps.length - 1) {
+                nextBtn.disabled = true;
+            } else {
+                nextBtn.disabled = false;
+            }
+        }
+
+        // go to next step
+        function nextStep() {
+            if (currentStep < steps.length - 1) {
+                currentStep++;
+            } else {
+                // if at end, do nothing (button disabled anyway)
+                return;
+            }
+            applyStep(currentStep);
+            updateButtons(currentStep);
+        }
+
+        // go to previous step
+        function prevStep() {
+            if (currentStep > -1) {
+                currentStep--;
+            }
+            // if currentStep becomes -1, neutral state
+            applyStep(currentStep);
+            updateButtons(currentStep);
+        }
+
+        // event listeners
+        nextBtn.addEventListener('click', nextStep);
+        prevBtn.addEventListener('click', prevStep);
+
+        // initialize neutral state (no step)
+        applyStep(-1);
+        updateButtons(-1);
+
+        // optional: add slight permanent style to formula terms background
+        // make all terms visible with low opacity initially
+        for (let key in termElements) {
+            termElements[key].style.transition = 'opacity 0.2s, box-shadow 0.2s';
+            termElements[key].style.opacity = '0.5';
+        }
+        // but set add/sub colors clearly
+        // already done by class
+
+        // pre-highlight all add terms slightly?
+        // not needed.
+    })();
+</script>
+</body>
+</html>
