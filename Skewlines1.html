@@ -1,0 +1,690 @@
+<!doctype html>
+<html lang="en" class="h-full">
+ <head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Skew Lines 3D Explorer</title>
+  <script src="/_sdk/element_sdk.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&amp;family=JetBrains+Mono:wght@400;600&amp;display=swap" rel="stylesheet">
+  <style>
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{height:100%;overflow:hidden;background:#000;font-family:'Outfit',sans-serif}
+#canvas-container{width:100%;height:100%;position:relative}
+canvas{display:block;width:100%;height:100%}
+
+#ui-overlay{position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:10}
+
+#stage-label{
+  position:absolute;top:20px;left:50%;transform:translateX(-50%);
+  background:rgba(0,0,0,0.7);backdrop-filter:blur(12px);
+  border:1px solid rgba(0,200,255,0.3);border-radius:12px;
+  padding:12px 28px;color:#fff;font-size:16px;font-weight:600;
+  text-align:center;max-width:90%;transition:all 0.6s ease;
+  text-shadow:0 0 20px rgba(0,200,255,0.4);
+  letter-spacing:0.5px;
+}
+#stage-label .stage-num{color:#00d4ff;font-family:'JetBrains Mono',monospace;font-size:13px;display:block;margin-bottom:2px;opacity:0.7}
+
+#nav-bar{
+  position:absolute;bottom:20px;left:50%;transform:translateX(-50%);
+  display:flex;gap:6px;pointer-events:all;
+  background:rgba(0,0,0,0.6);backdrop-filter:blur(10px);
+  border:1px solid rgba(255,255,255,0.1);border-radius:40px;padding:6px 12px;
+}
+.nav-btn{
+  width:36px;height:36px;border-radius:50%;border:2px solid rgba(255,255,255,0.2);
+  background:transparent;color:#fff;font-family:'JetBrains Mono',monospace;font-size:13px;
+  cursor:pointer;transition:all 0.3s;display:flex;align-items:center;justify-content:center;
+  font-weight:600;
+}
+.nav-btn:hover{border-color:#00d4ff;color:#00d4ff;background:rgba(0,212,255,0.1)}
+.nav-btn.active{background:#00d4ff;color:#000;border-color:#00d4ff;box-shadow:0 0 16px rgba(0,212,255,0.5)}
+
+#controls-hint{
+  position:absolute;bottom:75px;left:50%;transform:translateX(-50%);
+  color:rgba(255,255,255,0.4);font-size:12px;
+  text-align:center;transition:opacity 1s;
+}
+
+#auto-btn{
+  position:absolute;top:20px;right:20px;pointer-events:all;
+  background:rgba(0,0,0,0.6);backdrop-filter:blur(10px);
+  border:1px solid rgba(0,212,255,0.3);border-radius:8px;
+  padding:8px 16px;color:#00d4ff;font-family:'Outfit',sans-serif;font-size:13px;
+  cursor:pointer;transition:all 0.3s;font-weight:600;
+}
+#auto-btn:hover{background:rgba(0,212,255,0.15)}
+#auto-btn.playing{border-color:#ff6b35;color:#ff6b35}
+
+.label-3d{
+  position:absolute;pointer-events:none;
+  font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:600;
+  color:#fff;padding:4px 10px;border-radius:6px;
+  background:rgba(0,0,0,0.6);backdrop-filter:blur(6px);
+  border:1px solid rgba(0,200,255,0.3);white-space:nowrap;
+  transition:opacity 0.5s;text-shadow:0 0 8px rgba(0,200,255,0.4);
+}
+</style>
+  <style>body { box-sizing: border-box; }</style>
+  <script src="https://cdn.jsdelivr.net/npm/lucide@0.263.0/dist/umd/lucide.min.js" type="text/javascript"></script>
+  <script src="https://cdn.tailwindcss.com/3.4.17" type="text/javascript"></script>
+  <script src="/_sdk/data_sdk.js" type="text/javascript"></script>
+ </head>
+ <body class="h-full">
+  <div id="canvas-container">
+   <div id="ui-overlay">
+    <div id="stage-label">
+     <span class="stage-num">STAGE 1 / 9</span>2D Misconception
+    </div><button id="auto-btn">▶ Auto Play</button>
+    <nav id="nav-bar"></nav>
+    <div id="controls-hint">
+     Drag to rotate · Scroll to zoom · Keys 1–9 for stages
+    </div>
+   </div>
+  </div>
+  <script>
+// ============ CONFIG & SDK ============
+const defaultConfig = {
+  main_title: 'Skew Lines & Shortest Distance',
+  background_color: '#050a18',
+  accent_color: '#00d4ff',
+  line_color: '#00d4ff',
+  aircraft_color: '#ff6b35',
+  text_color: '#ffffff',
+  font_family: 'Outfit',
+  font_size: 16
+};
+
+const stages = [
+  {num:1, title:'2D Misconception (The Trap)'},
+  {num:2, title:'Transition to 3D Space'},
+  {num:3, title:'Real-Life Analogy — Aeroplanes'},
+  {num:4, title:'Skew Lines Concept'},
+  {num:5, title:'Parallel Planes Insight'},
+  {num:6, title:'Shortest Distance — Common Perpendicular'},
+  {num:7, title:'Vector Cross Product'},
+  {num:8, title:'Projection vs Slanted Distance'},
+  {num:9, title:'Final Geometric Insight'}
+];
+
+let currentStage = 0;
+let autoPlay = false;
+let autoTimer = null;
+let stageProgress = 0;
+let labels3D = [];
+let config = {...defaultConfig};
+
+// ============ THREE.JS SETUP ============
+const container = document.getElementById('canvas-container');
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(55, container.clientWidth / container.clientHeight, 0.1, 2000);
+camera.position.set(0, 8, 20);
+
+const renderer = new THREE.WebGLRenderer({antialias:true, alpha:false});
+renderer.setSize(container.clientWidth, container.clientHeight);
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.2;
+container.insertBefore(renderer.domElement, container.firstChild);
+
+const controls = new THREE.OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.dampingFactor = 0.05;
+controls.minDistance = 5;
+controls.maxDistance = 80;
+controls.target.set(0, 3, 0);
+
+// ============ LIGHTING ============
+const ambientLight = new THREE.AmbientLight(0x1a2a4a, 0.6);
+scene.add(ambientLight);
+
+const dirLight = new THREE.DirectionalLight(0x4488cc, 0.8);
+dirLight.position.set(10, 20, 10);
+scene.add(dirLight);
+
+const pointLight1 = new THREE.PointLight(0x00d4ff, 1.5, 50);
+pointLight1.position.set(-5, 10, 5);
+scene.add(pointLight1);
+
+const pointLight2 = new THREE.PointLight(0xff6b35, 1, 40);
+pointLight2.position.set(5, 6, -5);
+scene.add(pointLight2);
+
+// ============ SCENE OBJECTS ============
+scene.fog = new THREE.FogExp2(0x050a18, 0.008);
+
+// Starfield
+function createStarfield() {
+  const geo = new THREE.BufferGeometry();
+  const count = 3000;
+  const positions = new Float32Array(count * 3);
+  const sizes = new Float32Array(count);
+  for (let i = 0; i < count; i++) {
+    const r = 200 + Math.random() * 600;
+    const theta = Math.random() * Math.PI * 2;
+    const phi = Math.random() * Math.PI;
+    positions[i*3] = r * Math.sin(phi) * Math.cos(theta);
+    positions[i*3+1] = r * Math.cos(phi) * 0.6 + 50;
+    positions[i*3+2] = r * Math.sin(phi) * Math.sin(theta);
+    sizes[i] = 0.5 + Math.random() * 2;
+  }
+  geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+  geo.setAttribute('size', new THREE.BufferAttribute(sizes, 1));
+  const mat = new THREE.PointsMaterial({color:0xaaccff, size:0.8, sizeAttenuation:true, transparent:true, opacity:0.7});
+  return new THREE.Points(geo, mat);
+}
+scene.add(createStarfield());
+
+// Horizon glow
+const horizonGeo = new THREE.PlaneGeometry(400, 400);
+const horizonMat = new THREE.MeshBasicMaterial({
+  color: 0x0a1530,
+  transparent: true,
+  opacity: 0.5,
+  side: THREE.DoubleSide
+});
+const horizonPlane = new THREE.Mesh(horizonGeo, horizonMat);
+horizonPlane.rotation.x = -Math.PI/2;
+horizonPlane.position.y = -2;
+scene.add(horizonPlane);
+
+// Cloud particles
+function createClouds() {
+  const group = new THREE.Group();
+  for (let i = 0; i < 30; i++) {
+    const geo = new THREE.SphereGeometry(1 + Math.random()*3, 8, 6);
+    const mat = new THREE.MeshBasicMaterial({color:0x1a2a4a, transparent:true, opacity:0.08 + Math.random()*0.06});
+    const mesh = new THREE.Mesh(geo, mat);
+    mesh.position.set((Math.random()-0.5)*80, 8 + Math.random()*15, (Math.random()-0.5)*80);
+    mesh.scale.set(1 + Math.random()*3, 0.3 + Math.random()*0.5, 1 + Math.random()*2);
+    group.add(mesh);
+  }
+  return group;
+}
+scene.add(createClouds());
+
+// Grid
+const gridHelper = new THREE.GridHelper(40, 40, 0x0a2040, 0x081830);
+gridHelper.position.y = -2;
+scene.add(gridHelper);
+
+// ============ GEOMETRY OBJECTS ============
+const allObjects = new THREE.Group();
+scene.add(allObjects);
+
+// Line materials
+const lineMat1 = new THREE.LineBasicMaterial({color:0x00d4ff, linewidth:2, transparent:true, opacity:0});
+const lineMat2 = new THREE.LineBasicMaterial({color:0x00ff88, linewidth:2, transparent:true, opacity:0});
+const perpMat = new THREE.LineBasicMaterial({color:0xffcc00, linewidth:3, transparent:true, opacity:0});
+const slantMat = new THREE.LineBasicMaterial({color:0xff4444, linewidth:2, transparent:true, opacity:0});
+const crossMat = new THREE.LineBasicMaterial({color:0xff00ff, linewidth:2, transparent:true, opacity:0});
+
+// 2D lines (flat, intersecting appearance)
+const line2D_1_pts = [new THREE.Vector3(-8, 0, -3), new THREE.Vector3(8, 0, 3)];
+const line2D_2_pts = [new THREE.Vector3(-6, 0, 4), new THREE.Vector3(6, 0, -4)];
+const line2D_1_geo = new THREE.BufferGeometry().setFromPoints(line2D_1_pts);
+const line2D_2_geo = new THREE.BufferGeometry().setFromPoints(line2D_2_pts);
+const line2D_1 = new THREE.Line(line2D_1_geo, lineMat1.clone());
+const line2D_2 = new THREE.Line(line2D_2_geo, lineMat2.clone());
+allObjects.add(line2D_1, line2D_2);
+
+// 3D skew lines
+const skewLine1_pts = [new THREE.Vector3(-10, 0, 0), new THREE.Vector3(10, 0, 0)];
+const skewLine2_pts = [new THREE.Vector3(0, 6, -10), new THREE.Vector3(0, 6, 10)];
+const skewLine1_geo = new THREE.BufferGeometry().setFromPoints(skewLine1_pts);
+const skewLine2_geo = new THREE.BufferGeometry().setFromPoints(skewLine2_pts);
+const skewLine1 = new THREE.Line(skewLine1_geo, lineMat1.clone());
+const skewLine2 = new THREE.Line(skewLine2_geo, lineMat2.clone());
+skewLine1.visible = false;
+skewLine2.visible = false;
+allObjects.add(skewLine1, skewLine2);
+
+// Common perpendicular
+const perpPts = [new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, 6, 0)];
+const perpGeo = new THREE.BufferGeometry().setFromPoints(perpPts);
+const perpLine = new THREE.Line(perpGeo, perpMat.clone());
+perpLine.visible = false;
+allObjects.add(perpLine);
+
+// Slant connector (A1 to A2)
+const slantPts = [new THREE.Vector3(-5, 0, 0), new THREE.Vector3(0, 6, 4)];
+const slantGeo = new THREE.BufferGeometry().setFromPoints(slantPts);
+const slantLine = new THREE.Line(slantGeo, slantMat.clone());
+slantLine.visible = false;
+allObjects.add(slantLine);
+
+// Cross product vector
+const crossPts = [new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, 8, 0)];
+const crossGeo = new THREE.BufferGeometry().setFromPoints(crossPts);
+const crossLine = new THREE.Line(crossGeo, crossMat.clone());
+crossLine.visible = false;
+allObjects.add(crossLine);
+
+// Direction vector arrows (B1, B2)
+function makeArrow(dir, origin, len, color) {
+  const arrow = new THREE.ArrowHelper(dir.normalize(), origin, len, color, 0.6, 0.3);
+  arrow.visible = false;
+  allObjects.add(arrow);
+  return arrow;
+}
+const arrowB1 = makeArrow(new THREE.Vector3(1,0,0), new THREE.Vector3(2,0,0), 4, 0x00d4ff);
+const arrowB2 = makeArrow(new THREE.Vector3(0,0,1), new THREE.Vector3(0,6,2), 4, 0x00ff88);
+const arrowCross = makeArrow(new THREE.Vector3(0,1,0), new THREE.Vector3(0,1,0), 5, 0xff00ff);
+
+// Parallel planes
+function makePlane(y, color) {
+  const geo = new THREE.PlaneGeometry(18, 18);
+  const mat = new THREE.MeshBasicMaterial({color, transparent:true, opacity:0, side:THREE.DoubleSide, depthWrite:false});
+  const mesh = new THREE.Mesh(geo, mat);
+  mesh.rotation.x = -Math.PI / 2;
+  mesh.position.y = y;
+  mesh.visible = false;
+  allObjects.add(mesh);
+  return mesh;
+}
+const plane1 = makePlane(0, 0x00d4ff);
+const plane2 = makePlane(6, 0x00ff88);
+
+// Aircraft
+function createAircraft(color) {
+  const group = new THREE.Group();
+  // Fuselage
+  const fuselageGeo = new THREE.CylinderGeometry(0.15, 0.1, 2, 8);
+  fuselageGeo.rotateZ(Math.PI/2);
+  const fuselageMat = new THREE.MeshPhongMaterial({color, emissive:color, emissiveIntensity:0.3});
+  group.add(new THREE.Mesh(fuselageGeo, fuselageMat));
+  // Wings
+  const wingGeo = new THREE.BoxGeometry(0.8, 0.03, 1.6);
+  const wingMat = new THREE.MeshPhongMaterial({color:0xcccccc, emissive:color, emissiveIntensity:0.1});
+  group.add(new THREE.Mesh(wingGeo, wingMat));
+  // Tail
+  const tailGeo = new THREE.BoxGeometry(0.1, 0.5, 0.4);
+  const tailMesh = new THREE.Mesh(tailGeo, wingMat);
+  tailMesh.position.set(-0.9, 0.2, 0);
+  group.add(tailMesh);
+  // Nav lights
+  const navGeo = new THREE.SphereGeometry(0.06, 6, 6);
+  const navL = new THREE.Mesh(navGeo, new THREE.MeshBasicMaterial({color:0xff0000}));
+  navL.position.set(0, 0, -0.8);
+  const navR = new THREE.Mesh(navGeo, new THREE.MeshBasicMaterial({color:0x00ff00}));
+  navR.position.set(0, 0, 0.8);
+  group.add(navL, navR);
+  group.userData.navL = navL;
+  group.userData.navR = navR;
+  // Engine glow
+  const glowGeo = new THREE.SphereGeometry(0.12, 8, 8);
+  const glowMat = new THREE.MeshBasicMaterial({color, transparent:true, opacity:0.6});
+  const glow = new THREE.Mesh(glowGeo, glowMat);
+  glow.position.set(-1.1, 0, 0);
+  group.add(glow);
+  group.userData.glow = glow;
+  group.visible = false;
+  group.scale.set(0.8, 0.8, 0.8);
+  allObjects.add(group);
+  return group;
+}
+const aircraft1 = createAircraft(0xff6b35);
+const aircraft2 = createAircraft(0x00d4ff);
+
+// Trails
+function createTrail(color) {
+  const maxPts = 120;
+  const positions = new Float32Array(maxPts * 3);
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+  geo.setDrawRange(0, 0);
+  const mat = new THREE.LineBasicMaterial({color, transparent:true, opacity:0.4});
+  const line = new THREE.Line(geo, mat);
+  line.visible = false;
+  line.userData.positions = [];
+  line.userData.maxPts = maxPts;
+  allObjects.add(line);
+  return line;
+}
+const trail1 = createTrail(0xff6b35);
+const trail2 = createTrail(0x00d4ff);
+
+function updateTrail(trail, pos) {
+  trail.userData.positions.push(pos.x, pos.y, pos.z);
+  if (trail.userData.positions.length > trail.userData.maxPts * 3) {
+    trail.userData.positions.splice(0, 3);
+  }
+  const attr = trail.geometry.getAttribute('position');
+  for (let i = 0; i < trail.userData.positions.length; i++) {
+    attr.array[i] = trail.userData.positions[i];
+  }
+  attr.needsUpdate = true;
+  trail.geometry.setDrawRange(0, trail.userData.positions.length / 3);
+}
+
+// Glow spheres at key points
+function makeGlowSphere(pos, color, size) {
+  const geo = new THREE.SphereGeometry(size || 0.2, 16, 16);
+  const mat = new THREE.MeshBasicMaterial({color, transparent:true, opacity:0});
+  const mesh = new THREE.Mesh(geo, mat);
+  mesh.position.copy(pos);
+  mesh.visible = false;
+  allObjects.add(mesh);
+  return mesh;
+}
+const dotA1 = makeGlowSphere(new THREE.Vector3(-5, 0, 0), 0x00d4ff, 0.2);
+const dotA2 = makeGlowSphere(new THREE.Vector3(0, 6, 4), 0x00ff88, 0.2);
+const dotPerpTop = makeGlowSphere(new THREE.Vector3(0, 6, 0), 0xffcc00, 0.15);
+const dotPerpBot = makeGlowSphere(new THREE.Vector3(0, 0, 0), 0xffcc00, 0.15);
+
+// ============ LABEL SYSTEM ============
+function addLabel(text, worldPos, color) {
+  const div = document.createElement('div');
+  div.className = 'label-3d';
+  div.textContent = text;
+  div.style.opacity = '0';
+  if (color) div.style.borderColor = color;
+  document.getElementById('ui-overlay').appendChild(div);
+  const label = {el:div, pos:worldPos.clone(), visible:false};
+  labels3D.push(label);
+  return label;
+}
+function showLabel(label, show) {
+  label.visible = show;
+  label.el.style.opacity = show ? '1' : '0';
+}
+function updateLabels() {
+  labels3D.forEach(l => {
+    if (!l.visible) return;
+    const v = l.pos.clone().project(camera);
+    const hw = container.clientWidth / 2;
+    const hh = container.clientHeight / 2;
+    l.el.style.left = (v.x * hw + hw) + 'px';
+    l.el.style.top = (-v.y * hh + hh) + 'px';
+  });
+}
+
+const lblSkew = addLabel('Skew Lines', new THREE.Vector3(6, 3, 0), 'rgba(0,212,255,0.6)');
+const lblPlane1 = addLabel('Plane π₁ (Desk)', new THREE.Vector3(8, 0.3, 6), 'rgba(0,212,255,0.4)');
+const lblPlane2 = addLabel('Plane π₂ (Glass Shelf)', new THREE.Vector3(8, 6.3, 6), 'rgba(0,255,136,0.4)');
+const lblPerp = addLabel('Common Perpendicular', new THREE.Vector3(1.5, 3, 0), 'rgba(255,204,0,0.6)');
+const lblB1 = addLabel('B₁', new THREE.Vector3(5, 0.5, 0), 'rgba(0,212,255,0.6)');
+const lblB2 = addLabel('B₂', new THREE.Vector3(0, 6.5, 5), 'rgba(0,255,136,0.6)');
+const lblCross = addLabel('B₁ × B₂', new THREE.Vector3(1, 5, 0), 'rgba(255,0,255,0.6)');
+const lblSlant = addLabel('NOT shortest (slanted)', new THREE.Vector3(-2, 3, 3), 'rgba(255,68,68,0.6)');
+const lblProj = addLabel('Projection = d', new THREE.Vector3(1.5, 3, 0.5), 'rgba(255,204,0,0.6)');
+const lblLine1 = addLabel('Line ℓ₁ (30,000 ft)', new THREE.Vector3(7, 0.5, 0), 'rgba(0,212,255,0.5)');
+const lblLine2 = addLabel('Line ℓ₂ (35,000 ft)', new THREE.Vector3(0, 6.5, 7), 'rgba(0,255,136,0.5)');
+const lbl2D = addLabel('Lines appear to intersect!', new THREE.Vector3(0, 1.5, 0), 'rgba(255,100,100,0.6)');
+const lblFinal = addLabel('d = |( A₁A₂ · (B₁×B₂) )| / |B₁×B₂|', new THREE.Vector3(0, 9, 0), 'rgba(255,204,0,0.7)');
+
+// ============ STAGE MANAGEMENT ============
+function hideAll() {
+  [line2D_1, line2D_2].forEach(l => {l.material.opacity = 0;});
+  [skewLine1, skewLine2].forEach(l => {l.visible = false; l.material.opacity = 0;});
+  perpLine.visible = false; perpLine.material.opacity = 0;
+  slantLine.visible = false; slantLine.material.opacity = 0;
+  crossLine.visible = false; crossLine.material.opacity = 0;
+  [arrowB1, arrowB2, arrowCross].forEach(a => a.visible = false);
+  [plane1, plane2].forEach(p => {p.visible = false; p.material.opacity = 0;});
+  [aircraft1, aircraft2, trail1, trail2].forEach(a => a.visible = false);
+  [dotA1, dotA2, dotPerpTop, dotPerpBot].forEach(d => {d.visible = false; d.material.opacity = 0;});
+  labels3D.forEach(l => showLabel(l, false));
+  trail1.userData.positions = [];
+  trail2.userData.positions = [];
+}
+
+function lerp(a, b, t) { return a + (b - a) * Math.min(1, Math.max(0, t)); }
+
+function setStage(idx) {
+  if (idx < 0 || idx >= stages.length) return;
+  currentStage = idx;
+  stageProgress = 0;
+  hideAll();
+  updateStageUI();
+}
+
+function updateStageUI() {
+  const s = stages[currentStage];
+  document.getElementById('stage-label').innerHTML =
+    `<span class="stage-num">STAGE ${s.num} / 9</span>${s.title}`;
+  document.querySelectorAll('.nav-btn').forEach((btn, i) => {
+    btn.classList.toggle('active', i === currentStage);
+  });
+}
+
+// ============ ANIMATION PER STAGE ============
+let clock = new THREE.Clock();
+let elapsedTotal = 0;
+
+function animateStage(dt) {
+  stageProgress += dt;
+  const t = stageProgress;
+  const blink = Math.sin(elapsedTotal * 6) > 0.3 ? 1 : 0.1;
+
+  switch(currentStage) {
+    case 0: { // 2D Misconception
+      camera.position.lerp(new THREE.Vector3(0, 18, 0.1), 0.02);
+      controls.target.lerp(new THREE.Vector3(0, 0, 0), 0.02);
+      const op = lerp(0, 1, t * 0.8);
+      line2D_1.material.opacity = op;
+      line2D_2.material.opacity = op;
+      if (t > 1) showLabel(lbl2D, true);
+      break;
+    }
+    case 1: { // 3D transition
+      const op = lerp(0, 1, t * 0.5);
+      line2D_1.material.opacity = Math.max(0, 1 - t * 0.5);
+      line2D_2.material.opacity = Math.max(0, 1 - t * 0.5);
+      skewLine1.visible = true;
+      skewLine2.visible = true;
+      skewLine1.material.opacity = op;
+      skewLine2.material.opacity = op;
+      camera.position.lerp(new THREE.Vector3(14, 10, 14), 0.025);
+      controls.target.lerp(new THREE.Vector3(0, 3, 0), 0.025);
+      break;
+    }
+    case 2: { // Aeroplanes
+      skewLine1.visible = true; skewLine2.visible = true;
+      skewLine1.material.opacity = 0.3; skewLine2.material.opacity = 0.3;
+      aircraft1.visible = true; aircraft2.visible = true;
+      trail1.visible = true; trail2.visible = true;
+      const pos1 = new THREE.Vector3(-10 + (t * 2.5) % 20, 0, 0);
+      const pos2 = new THREE.Vector3(0, 6, -10 + (t * 2) % 20);
+      aircraft1.position.copy(pos1);
+      aircraft1.rotation.y = 0;
+      aircraft2.position.copy(pos2);
+      aircraft2.rotation.y = Math.PI / 2;
+      updateTrail(trail1, pos1);
+      updateTrail(trail2, pos2);
+      aircraft1.userData.navL.material.opacity = blink;
+      aircraft1.userData.navR.material.opacity = blink;
+      aircraft2.userData.navL.material.opacity = blink;
+      aircraft2.userData.navR.material.opacity = blink;
+      aircraft1.userData.glow.material.opacity = 0.3 + Math.sin(elapsedTotal * 4) * 0.2;
+      aircraft2.userData.glow.material.opacity = 0.3 + Math.sin(elapsedTotal * 4) * 0.2;
+      if (t > 0.5) { showLabel(lblLine1, true); showLabel(lblLine2, true); }
+      camera.position.lerp(new THREE.Vector3(16, 10, 16), 0.015);
+      break;
+    }
+    case 3: { // Skew Lines concept
+      skewLine1.visible = true; skewLine2.visible = true;
+      const op = lerp(0, 1, t * 0.6);
+      skewLine1.material.opacity = op;
+      skewLine2.material.opacity = op;
+      if (t > 0.8) showLabel(lblSkew, true);
+      camera.position.lerp(new THREE.Vector3(12, 8, 12), 0.02);
+      controls.target.lerp(new THREE.Vector3(0, 3, 0), 0.02);
+      break;
+    }
+    case 4: { // Parallel planes
+      skewLine1.visible = true; skewLine2.visible = true;
+      skewLine1.material.opacity = 1; skewLine2.material.opacity = 1;
+      plane1.visible = true; plane2.visible = true;
+      const popacity = lerp(0, 0.12, t * 0.3);
+      plane1.material.opacity = popacity;
+      plane2.material.opacity = popacity;
+      showLabel(lblSkew, true);
+      if (t > 0.5) { showLabel(lblPlane1, true); showLabel(lblPlane2, true); }
+      camera.position.lerp(new THREE.Vector3(15, 7, 12), 0.02);
+      break;
+    }
+    case 5: { // Common perpendicular
+      skewLine1.visible = true; skewLine2.visible = true;
+      skewLine1.material.opacity = 1; skewLine2.material.opacity = 1;
+      plane1.visible = true; plane2.visible = true;
+      plane1.material.opacity = 0.08; plane2.material.opacity = 0.08;
+      perpLine.visible = true;
+      perpLine.material.opacity = lerp(0, 1, t * 0.5);
+      dotPerpBot.visible = true; dotPerpTop.visible = true;
+      dotPerpBot.material.opacity = lerp(0, 1, t * 0.5);
+      dotPerpTop.material.opacity = lerp(0, 1, t * 0.5);
+      const pulse = 0.15 + Math.sin(elapsedTotal * 3) * 0.05;
+      dotPerpBot.scale.setScalar(1 + Math.sin(elapsedTotal * 3) * 0.3);
+      dotPerpTop.scale.setScalar(1 + Math.sin(elapsedTotal * 3) * 0.3);
+      if (t > 0.8) showLabel(lblPerp, true);
+      showLabel(lblSkew, true);
+      camera.position.lerp(new THREE.Vector3(10, 6, 12), 0.02);
+      break;
+    }
+    case 6: { // Vectors
+      skewLine1.visible = true; skewLine2.visible = true;
+      skewLine1.material.opacity = 0.6; skewLine2.material.opacity = 0.6;
+      perpLine.visible = true; perpLine.material.opacity = 0.4;
+      arrowB1.visible = true; arrowB2.visible = true;
+      if (t > 1.5) { arrowCross.visible = true; showLabel(lblCross, true); }
+      if (t > 0.3) { showLabel(lblB1, true); showLabel(lblB2, true); }
+      camera.position.lerp(new THREE.Vector3(12, 9, 10), 0.02);
+      break;
+    }
+    case 7: { // Slant vs projection
+      skewLine1.visible = true; skewLine2.visible = true;
+      skewLine1.material.opacity = 0.6; skewLine2.material.opacity = 0.6;
+      perpLine.visible = true; perpLine.material.opacity = lerp(0, 1, Math.max(0, t - 2) * 0.5);
+      slantLine.visible = true;
+      slantLine.material.opacity = lerp(0, 1, t * 0.5);
+      dotA1.visible = true; dotA2.visible = true;
+      dotA1.material.opacity = lerp(0, 1, t * 0.5);
+      dotA2.material.opacity = lerp(0, 1, t * 0.5);
+      if (t > 0.5) showLabel(lblSlant, true);
+      if (t > 2) { showLabel(lblProj, true); showLabel(lblPerp, true); }
+      dotPerpBot.visible = t > 2; dotPerpTop.visible = t > 2;
+      dotPerpBot.material.opacity = lerp(0, 1, Math.max(0, t - 2));
+      dotPerpTop.material.opacity = lerp(0, 1, Math.max(0, t - 2));
+      camera.position.lerp(new THREE.Vector3(10, 7, 14), 0.02);
+      break;
+    }
+    case 8: { // Final
+      skewLine1.visible = true; skewLine2.visible = true;
+      skewLine1.material.opacity = 1; skewLine2.material.opacity = 1;
+      perpLine.visible = true;
+      perpLine.material.opacity = 1;
+      dotPerpBot.visible = true; dotPerpTop.visible = true;
+      dotPerpBot.material.opacity = 1; dotPerpTop.material.opacity = 1;
+      const pulse = 1 + Math.sin(elapsedTotal * 2) * 0.3;
+      dotPerpBot.scale.setScalar(pulse);
+      dotPerpTop.scale.setScalar(pulse);
+      plane1.visible = true; plane2.visible = true;
+      plane1.material.opacity = 0.06; plane2.material.opacity = 0.06;
+      arrowB1.visible = true; arrowB2.visible = true;
+      arrowCross.visible = true;
+      showLabel(lblSkew, true); showLabel(lblPerp, true); showLabel(lblFinal, true);
+      showLabel(lblB1, true); showLabel(lblB2, true); showLabel(lblCross, true);
+      camera.position.lerp(new THREE.Vector3(14, 10, 14), 0.015);
+      controls.target.lerp(new THREE.Vector3(0, 3, 0), 0.015);
+      break;
+    }
+  }
+}
+
+// ============ MAIN LOOP ============
+function animate() {
+  requestAnimationFrame(animate);
+  const dt = clock.getDelta();
+  elapsedTotal += dt;
+  controls.update();
+  animateStage(dt);
+  updateLabels();
+  renderer.render(scene, camera);
+}
+animate();
+
+// ============ AUTO PLAY ============
+function toggleAutoPlay() {
+  autoPlay = !autoPlay;
+  const btn = document.getElementById('auto-btn');
+  if (autoPlay) {
+    btn.textContent = '⏸ Pause';
+    btn.classList.add('playing');
+    autoTimer = setInterval(() => {
+      if (currentStage < stages.length - 1) setStage(currentStage + 1);
+      else { toggleAutoPlay(); }
+    }, 5000);
+  } else {
+    btn.textContent = '▶ Auto Play';
+    btn.classList.remove('playing');
+    clearInterval(autoTimer);
+  }
+}
+
+// ============ UI SETUP ============
+const navBar = document.getElementById('nav-bar');
+stages.forEach((s, i) => {
+  const btn = document.createElement('button');
+  btn.className = 'nav-btn' + (i === 0 ? ' active' : '');
+  btn.textContent = s.num;
+  btn.setAttribute('aria-label', `Stage ${s.num}: ${s.title}`);
+  btn.addEventListener('click', () => setStage(i));
+  navBar.appendChild(btn);
+});
+
+document.getElementById('auto-btn').addEventListener('click', toggleAutoPlay);
+
+document.addEventListener('keydown', e => {
+  const num = parseInt(e.key);
+  if (num >= 1 && num <= 9) setStage(num - 1);
+});
+
+window.addEventListener('resize', () => {
+  camera.aspect = container.clientWidth / container.clientHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(container.clientWidth, container.clientHeight);
+});
+
+// Hide hint after interaction
+container.addEventListener('pointerdown', () => {
+  document.getElementById('controls-hint').style.opacity = '0';
+}, {once: true});
+
+// Start stage 1
+setStage(0);
+
+// ============ ELEMENT SDK ============
+window.elementSdk.init({
+  defaultConfig,
+  onConfigChange: async (cfg) => {
+    config = {...defaultConfig, ...cfg};
+    const font = config.font_family || defaultConfig.font_family;
+    const base = config.font_size || defaultConfig.font_size;
+    document.getElementById('stage-label').style.fontFamily = `${font}, sans-serif`;
+    document.getElementById('stage-label').style.fontSize = base + 'px';
+    document.body.style.background = config.background_color;
+    scene.fog.color.set(config.background_color);
+    horizonMat.color.set(config.background_color);
+  },
+  mapToCapabilities: (cfg) => ({
+    recolorables: [
+      {get:()=>cfg.background_color||defaultConfig.background_color,set:v=>{cfg.background_color=v;window.elementSdk.setConfig({background_color:v})}},
+      {get:()=>cfg.accent_color||defaultConfig.accent_color,set:v=>{cfg.accent_color=v;window.elementSdk.setConfig({accent_color:v})}},
+      {get:()=>cfg.text_color||defaultConfig.text_color,set:v=>{cfg.text_color=v;window.elementSdk.setConfig({text_color:v})}},
+      {get:()=>cfg.aircraft_color||defaultConfig.aircraft_color,set:v=>{cfg.aircraft_color=v;window.elementSdk.setConfig({aircraft_color:v})}},
+      {get:()=>cfg.line_color||defaultConfig.line_color,set:v=>{cfg.line_color=v;window.elementSdk.setConfig({line_color:v})}}
+    ],
+    borderables: [],
+    fontEditable: {get:()=>cfg.font_family||defaultConfig.font_family,set:v=>{cfg.font_family=v;window.elementSdk.setConfig({font_family:v})}},
+    fontSizeable: {get:()=>cfg.font_size||defaultConfig.font_size,set:v=>{cfg.font_size=v;window.elementSdk.setConfig({font_size:v})}}
+  }),
+  mapToEditPanelValues: (cfg) => new Map([
+    ['main_title', cfg.main_title || defaultConfig.main_title]
+  ])
+});
+</script>
+ <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9e05c9e3576f5483',t:'MTc3NDE4ODcxOS4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</html>
