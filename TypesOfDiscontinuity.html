@@ -1,0 +1,674 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cinematic Continuity & Discontinuity Simulation</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #020205;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            color: #ffffff;
+            user-select: none;
+        }
+        #canvas-container {
+            width: 100vw;
+            height: 100vh;
+            display: block;
+            position: absolute;
+            z-index: 1;
+        }
+        #ui-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 40px;
+            box-sizing: border-box;
+            z-index: 10;
+        }
+        .header {
+            text-align: left;
+            text-shadow: 0 4px 15px rgba(0, 0, 0, 0.9);
+            max-width: 600px;
+        }
+        h1 {
+            margin: 0;
+            font-size: 3rem;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            background: linear-gradient(90deg, #ffffff, #8fa3c1);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-weight: 800;
+        }
+        h2 {
+            margin: 5px 0 0 0;
+            font-size: 1.4rem;
+            color: #00d2ff;
+            font-weight: 300;
+            letter-spacing: 1px;
+        }
+        .controls {
+            align-self: flex-end;
+            background: rgba(10, 15, 25, 0.6);
+            padding: 25px;
+            border-radius: 16px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(15px);
+            -webkit-backdrop-filter: blur(15px);
+            pointer-events: auto;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            width: 300px;
+        }
+        .controls p { margin: 0 0 15px 0; font-weight: 600; color: #b3c6e6; text-transform: uppercase; font-size: 0.85rem; letter-spacing: 1px;}
+        .btn {
+            display: block;
+            width: 100%;
+            background: rgba(255,255,255,0.03);
+            color: #e0eaff;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 12px 15px;
+            margin-bottom: 10px;
+            border-radius: 8px;
+            cursor: pointer;
+            text-align: left;
+            transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
+            font-size: 0.95rem;
+            position: relative;
+            overflow: hidden;
+        }
+        .btn:hover { 
+            background: rgba(0, 210, 255, 0.1); 
+            border-color: rgba(0, 210, 255, 0.5); 
+            transform: translateX(-5px);
+        }
+        .btn.active { 
+            background: linear-gradient(90deg, rgba(0, 210, 255, 0.2), transparent); 
+            color: #fff; 
+            font-weight: 600; 
+            border-left: 4px solid #00d2ff;
+            border-top: 1px solid transparent;
+            border-right: 1px solid transparent;
+            border-bottom: 1px solid transparent;
+        }
+        .label {
+            position: absolute;
+            background: rgba(5, 10, 15, 0.85);
+            border: 1px solid;
+            padding: 6px 14px;
+            border-radius: 6px;
+            font-weight: bold;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 1.1rem;
+            transform: translate(-50%, -50%);
+            opacity: 0;
+            transition: opacity 0.4s;
+            pointer-events: none;
+            box-shadow: 0 0 20px rgba(0,0,0,0.8);
+            z-index: 5;
+            backdrop-filter: blur(5px);
+        }
+        #lbl-lhl { border-color: #00ff88; color: #00ff88; text-shadow: 0 0 8px rgba(0,255,136,0.6); }
+        #lbl-rhl { border-color: #ff3366; color: #ff3366; text-shadow: 0 0 8px rgba(255,51,102,0.6); }
+        #lbl-fa { border-color: #ffcc00; color: #ffcc00; text-shadow: 0 0 8px rgba(255,204,0,0.6); }
+        .instructions {
+            position: absolute;
+            bottom: 40px;
+            left: 40px;
+            color: #6a7b96;
+            font-size: 0.85rem;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+        .vignette {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            box-shadow: inset 0 0 150px rgba(0,0,0,0.9);
+            pointer-events: none;
+            z-index: 2;
+        }
+    </style>
+</head>
+<body>
+    <div id="canvas-container"></div>
+    <div class="vignette"></div>
+    
+    <div id="ui-layer">
+        <div class="header">
+            <h1>Continuity Simulation</h1>
+            <h2 id="stage-title">1. Discontinuous Function</h2>
+        </div>
+        
+        <div class="controls">
+            <p>Cinematic Stages (1-6)</p>
+            <button class="btn active" onclick="setStage(1)">1. Broken Gap</button>
+            <button class="btn" onclick="setStage(2)">2. Jump Discontinuity</button>
+            <button class="btn" onclick="setStage(3)">3. Limit Exists</button>
+            <button class="btn" onclick="setStage(4)">4. Removable Discontinuity</button>
+            <button class="btn" onclick="setStage(5)">5. Infinite/Asymptote</button>
+            <button class="btn" onclick="setStage(6)">6. Smoothness vs Continuity</button>
+        </div>
+
+        <div class="instructions">
+            Simulation Autoplaying | Drag to Override Camera
+        </div>
+    </div>
+
+    <div id="lbl-lhl" class="label">LHL</div>
+    <div id="lbl-rhl" class="label">RHL</div>
+    <div id="lbl-fa" class="label">f(a)</div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+
+    <script>
+        // --- PROCEDURAL TEXTURES (No External Images Needed) ---
+        function createNoiseTexture(size, intensity) {
+            const canvas = document.createElement('canvas');
+            canvas.width = size; canvas.height = size;
+            const ctx = canvas.getContext('2d');
+            const imgData = ctx.createImageData(size, size);
+            for (let i = 0; i < imgData.data.length; i += 4) {
+                const val = 128 + (Math.random() - 0.5) * intensity;
+                imgData.data[i] = val; imgData.data[i+1] = val; imgData.data[i+2] = val; imgData.data[i+3] = 255;
+            }
+            ctx.putImageData(imgData, 0, 0);
+            const tex = new THREE.CanvasTexture(canvas);
+            tex.wrapS = THREE.RepeatWrapping; tex.wrapT = THREE.RepeatWrapping;
+            return tex;
+        }
+
+        function createRoadTexture() {
+            const canvas = document.createElement('canvas');
+            canvas.width = 1024; canvas.height = 512;
+            const ctx = canvas.getContext('2d');
+            
+            // Base asphalt
+            ctx.fillStyle = '#151517';
+            ctx.fillRect(0, 0, 1024, 512);
+            
+            // Noise/Grit
+            for(let i=0; i<40000; i++) {
+                ctx.fillStyle = Math.random() > 0.5 ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.06)';
+                ctx.fillRect(Math.random()*1024, Math.random()*512, 2, 2);
+            }
+
+            // Yellow center dashed line
+            ctx.strokeStyle = '#e6a800';
+            ctx.lineWidth = 14;
+            ctx.setLineDash([80, 60]);
+            ctx.beginPath();
+            ctx.moveTo(0, 256);
+            ctx.lineTo(1024, 256);
+            ctx.stroke();
+
+            // White solid edge lines
+            ctx.strokeStyle = '#ffffff';
+            ctx.setLineDash([]);
+            ctx.lineWidth = 8;
+            ctx.beginPath();
+            ctx.moveTo(0, 40); ctx.lineTo(1024, 40);
+            ctx.moveTo(0, 472); ctx.lineTo(1024, 472);
+            ctx.stroke();
+
+            const tex = new THREE.CanvasTexture(canvas);
+            tex.wrapS = THREE.RepeatWrapping; tex.wrapT = THREE.RepeatWrapping;
+            tex.repeat.set(2, 1);
+            return tex;
+        }
+
+        const noiseBumpMap = createNoiseTexture(512, 40);
+        const roadColorMap = createRoadTexture();
+
+        // --- SCENE SETUP ---
+        const scene = new THREE.Scene();
+        scene.fog = new THREE.FogExp2(0x020308, 0.005);
+
+        const camera = new THREE.PerspectiveCamera(35, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false, powerPreference: "high-performance" });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap; 
+        renderer.outputEncoding = THREE.sRGBEncoding;
+        renderer.toneMapping = THREE.ACESFilmicToneMapping;
+        renderer.toneMappingExposure = 1.2;
+        document.getElementById('canvas-container').appendChild(renderer.domElement);
+
+        const controls = new THREE.OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.04;
+        controls.maxPolarAngle = Math.PI / 2 - 0.02; 
+        controls.minDistance = 30;
+        controls.maxDistance = 250;
+
+        // --- CINEMATIC LIGHTING ---
+        const ambientLight = new THREE.AmbientLight(0x0a101e, 1.0);
+        scene.add(ambientLight);
+
+        const moonLight = new THREE.DirectionalLight(0x8cb0ff, 1.5);
+        moonLight.position.set(-80, 100, -60);
+        moonLight.castShadow = true;
+        moonLight.shadow.camera.left = -60; moonLight.shadow.camera.right = 60;
+        moonLight.shadow.camera.top = 60; moonLight.shadow.camera.bottom = -60;
+        moonLight.shadow.bias = -0.0005;
+        moonLight.shadow.mapSize.width = 2048; moonLight.shadow.mapSize.height = 2048;
+        scene.add(moonLight);
+
+        const cityLight = new THREE.DirectionalLight(0xffaa55, 0.4);
+        cityLight.position.set(80, 20, 60);
+        scene.add(cityLight);
+
+        const centerLight = new THREE.PointLight(0x00d2ff, 0, 50);
+        centerLight.position.set(0, -5, 0);
+        scene.add(centerLight);
+
+        // --- MATERIALS (Physical / Photorealistic) ---
+        const roadMat = new THREE.MeshPhysicalMaterial({ 
+            map: roadColorMap, bumpMap: noiseBumpMap, bumpScale: 0.02,
+            roughness: 0.8, metalness: 0.1, clearcoat: 0.1
+        });
+        const stoneMat = new THREE.MeshPhysicalMaterial({ 
+            color: 0x4a4e59, bumpMap: noiseBumpMap, bumpScale: 0.1,
+            roughness: 0.9, metalness: 0.1
+        });
+        const archMat = new THREE.MeshPhysicalMaterial({ 
+            color: 0x2a303a, roughness: 0.5, metalness: 0.7, side: THREE.DoubleSide 
+        });
+        const metalMat = new THREE.MeshPhysicalMaterial({ 
+            color: 0x1f232b, roughness: 0.4, metalness: 0.9, clearcoat: 0.2
+        });
+        const cableMat = new THREE.MeshPhysicalMaterial({ 
+            color: 0xaaaaaa, roughness: 0.3, metalness: 1.0 
+        });
+        const goldMat = new THREE.MeshPhysicalMaterial({ 
+            color: 0xffb700, roughness: 0.2, metalness: 1.0, clearcoat: 0.8
+        });
+
+        const glowLHL = new THREE.MeshBasicMaterial({ color: 0x00ff88 });
+        const glowRHL = new THREE.MeshBasicMaterial({ color: 0xff3366 });
+        const glowFA = new THREE.MeshBasicMaterial({ color: 0xffcc00 });
+
+        // --- WATER ---
+        const waterGeo = new THREE.PlaneGeometry(800, 800, 64, 64);
+        const waterMat = new THREE.MeshPhysicalMaterial({
+            color: 0x01030a, roughness: 0.05, metalness: 1.0,
+            transparent: true, opacity: 0.96, clearcoat: 1.0, clearcoatRoughness: 0.05
+        });
+        const water = new THREE.Mesh(waterGeo, waterMat);
+        water.rotation.x = -Math.PI / 2;
+        water.position.y = -15;
+        water.receiveShadow = true;
+        scene.add(water);
+
+        // --- BRIDGE CONSTRUCTION (Tower Bridge Architecture) ---
+        const bridgeGroup = new THREE.Group();
+        scene.add(bridgeGroup);
+        const leftSide = new THREE.Group();
+        const rightSide = new THREE.Group();
+        bridgeGroup.add(leftSide);
+        bridgeGroup.add(rightSide);
+
+        function createBridgeSegment(isLeft) {
+            const segment = new THREE.Group();
+            const sign = isLeft ? -1 : 1;
+            
+            // Main Road Deck
+            const deckGeo = new THREE.BoxGeometry(40, 2.5, 14);
+            const deck = new THREE.Mesh(deckGeo, roadMat);
+            deck.position.set(sign * 20, 0, 0);
+            deck.castShadow = true; deck.receiveShadow = true;
+            segment.add(deck);
+
+            // Under-Deck Supports (Girders)
+            const girderGeo = new THREE.BoxGeometry(40, 1.5, 0.8);
+            for (let z of [-6.5, 0, 6.5]) {
+                const girder = new THREE.Mesh(girderGeo, metalMat);
+                girder.position.set(sign * 20, -2, z);
+                girder.castShadow = true;
+                segment.add(girder);
+            }
+
+            // Twin Gothic Pillars
+            const pillarGeo = new THREE.BoxGeometry(7, 48, 5);
+            const pillarL = new THREE.Mesh(pillarGeo, stoneMat);
+            pillarL.position.set(sign * 32, 18, 7.5);
+            pillarL.castShadow = true; pillarL.receiveShadow = true;
+            segment.add(pillarL);
+
+            const pillarR = new THREE.Mesh(pillarGeo, stoneMat);
+            pillarR.position.set(sign * 32, 18, -7.5);
+            pillarR.castShadow = true; pillarR.receiveShadow = true;
+            segment.add(pillarR);
+
+            // Top Cross Walkway & Arch
+            const walkwayGeo = new THREE.BoxGeometry(7, 4, 15);
+            const walkway = new THREE.Mesh(walkwayGeo, stoneMat);
+            walkway.position.set(sign * 32, 40, 0);
+            walkway.castShadow = true;
+            segment.add(walkway);
+
+            const archGeo = new THREE.CylinderGeometry(5.5, 5.5, 7, 32, 1, true, 0, Math.PI);
+            const topArch = new THREE.Mesh(archGeo, archMat);
+            topArch.rotation.x = Math.PI / 2;
+            topArch.position.set(sign * 32, 36, 0);
+            segment.add(topArch);
+
+            // Ornate Roof Peaks
+            const peakGeo = new THREE.ConeGeometry(4.5, 10, 4);
+            const peakL = new THREE.Mesh(peakGeo, metalMat);
+            peakL.position.set(sign * 32, 47, 7.5);
+            peakL.rotation.y = Math.PI / 4;
+            segment.add(peakL);
+            const peakR = new THREE.Mesh(peakGeo, metalMat);
+            peakR.position.set(sign * 32, 47, -7.5);
+            peakR.rotation.y = Math.PI / 4;
+            segment.add(peakR);
+
+            // Suspension Cables (Catenary Draping)
+            const createCableSystem = (zOffset) => {
+                // Main swooping cable towards the gap
+                const curveCenter = new THREE.QuadraticBezierCurve3(
+                    new THREE.Vector3(sign * 32, 40, zOffset),
+                    new THREE.Vector3(sign * 12, 3, zOffset),
+                    new THREE.Vector3(0, 3, zOffset)
+                );
+                const tubeGeoCenter = new THREE.TubeGeometry(curveCenter, 32, 0.45, 8, false);
+                const cableCenter = new THREE.Mesh(tubeGeoCenter, cableMat);
+                cableCenter.castShadow = true;
+                segment.add(cableCenter);
+
+                // Main swooping cable away from the gap
+                const curveOuter = new THREE.QuadraticBezierCurve3(
+                    new THREE.Vector3(sign * 32, 40, zOffset),
+                    new THREE.Vector3(sign * 52, 3, zOffset),
+                    new THREE.Vector3(sign * 65, 3, zOffset)
+                );
+                const cableOuter = new THREE.Mesh(new THREE.TubeGeometry(curveOuter, 32, 0.45, 8, false), cableMat);
+                segment.add(cableOuter);
+
+                // Vertical Dropper Lines
+                for(let i=1; i<=9; i++) {
+                    const t = i / 10;
+                    const ptCenter = curveCenter.getPoint(t);
+                    const heightC = ptCenter.y - 1.25;
+                    if (heightC > 0) {
+                        const dropC = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, heightC), cableMat);
+                        dropC.position.set(ptCenter.x, 1.25 + heightC/2, zOffset);
+                        dropC.castShadow = true;
+                        segment.add(dropC);
+                    }
+
+                    const ptOuter = curveOuter.getPoint(t);
+                    const heightO = ptOuter.y - 1.25;
+                    if (heightO > 0) {
+                        const dropO = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, heightO), cableMat);
+                        dropO.position.set(ptOuter.x, 1.25 + heightO/2, zOffset);
+                        dropO.castShadow = true;
+                        segment.add(dropO);
+                    }
+                }
+            };
+            createCableSystem(7.2);
+            createCableSystem(-7.2);
+
+            // Realistic Railings
+            for (let z of [6.8, -6.8]) {
+                const railTop = new THREE.Mesh(new THREE.BoxGeometry(40, 0.25, 0.25), metalMat);
+                railTop.position.set(sign * 20, 2.8, z);
+                segment.add(railTop);
+
+                for (let i = 0; i < 20; i++) {
+                    const post = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 1.5), metalMat);
+                    post.position.set(sign * (i * 2 + 1), 2.05, z);
+                    post.castShadow = true;
+                    segment.add(post);
+                }
+            }
+
+            return segment;
+        }
+
+        leftSide.add(createBridgeSegment(true));
+        rightSide.add(createBridgeSegment(false));
+
+        // Center Fill Piece (For smooth continuity)
+        const centerFillGeo = new THREE.BoxGeometry(2.4, 2.5, 14);
+        const centerFill = new THREE.Mesh(centerFillGeo, roadMat);
+        centerFill.position.set(0, -15, 0); 
+        centerFill.castShadow = true;
+        scene.add(centerFill);
+
+        // Bump for "Continuous but not smooth"
+        const bumpGeo = new THREE.CylinderGeometry(1.5, 1.5, 14, 32);
+        const bump = new THREE.Mesh(bumpGeo, roadMat);
+        bump.rotation.x = Math.PI / 2;
+        bump.position.set(0, 0.5, 0);
+        bump.visible = false;
+        scene.add(bump);
+
+        // --- MATH VISUALS (TRACERS) ---
+        const tracerGeo = new THREE.SphereGeometry(0.8, 32, 32);
+        
+        const lhlTracer = new THREE.Mesh(tracerGeo, glowLHL);
+        const lhlLight = new THREE.PointLight(0x00ff88, 0, 20);
+        lhlTracer.add(lhlLight);
+        scene.add(lhlTracer);
+
+        const rhlTracer = new THREE.Mesh(tracerGeo, glowRHL);
+        const rhlLight = new THREE.PointLight(0xff3366, 0, 20);
+        rhlTracer.add(rhlLight);
+        scene.add(rhlTracer);
+
+        const faPoint = new THREE.Mesh(tracerGeo, glowFA);
+        const faLight = new THREE.PointLight(0xffcc00, 0, 20);
+        faPoint.add(faLight);
+        scene.add(faPoint);
+
+        // --- REALISTIC CAR MODEL ---
+        const carGroup = new THREE.Group();
+        const carBodyMat = new THREE.MeshPhysicalMaterial({ color: 0x050505, metalness: 0.9, roughness: 0.1, clearcoat: 1.0 });
+        const carBody = new THREE.Mesh(new THREE.BoxGeometry(4.8, 0.9, 2.2), carBodyMat);
+        carBody.position.y = 1.6; carBody.castShadow = true;
+        carGroup.add(carBody);
+
+        const cabin = new THREE.Mesh(new THREE.CylinderGeometry(1.2, 1.8, 2.0, 4), new THREE.MeshPhysicalMaterial({ color: 0x000000, metalness: 1.0, roughness: 0.0, transmission: 0.5 }));
+        cabin.rotation.y = Math.PI / 4; cabin.rotation.z = Math.PI / 2;
+        cabin.scale.set(1, 0.6, 1); cabin.position.set(-0.5, 2.3, 0);
+        carGroup.add(cabin);
+
+        const wheelGeo = new THREE.CylinderGeometry(0.6, 0.6, 0.4, 32);
+        const wheelMat = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.9 });
+        const rimMat = new THREE.MeshStandardMaterial({ color: 0xdddddd, metalness: 0.9, roughness: 0.2 });
+        const positions = [[1.5, 1.1, 1.2], [1.5, 1.1, -1.2], [-1.5, 1.1, 1.2], [-1.5, 1.1, -1.2]];
+        
+        const wheels = [];
+        positions.forEach(pos => {
+            const wGroup = new THREE.Group(); wGroup.position.set(...pos);
+            const tire = new THREE.Mesh(wheelGeo, wheelMat); tire.rotation.x = Math.PI / 2; tire.castShadow = true;
+            const rim = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.4, 0.42, 16), rimMat); rim.rotation.x = Math.PI / 2;
+            wGroup.add(tire); wGroup.add(rim);
+            carGroup.add(wGroup); wheels.push(wGroup);
+        });
+
+        const hlTarget = new THREE.Object3D(); hlTarget.position.set(15, 0, 0); carGroup.add(hlTarget);
+        const createHeadlight = (zPos) => {
+            const lightMesh = new THREE.Mesh(new THREE.PlaneGeometry(0.3, 0.5), new THREE.MeshBasicMaterial({ color: 0xffffff }));
+            lightMesh.position.set(2.41, 1.6, zPos); lightMesh.rotation.y = Math.PI / 2; carGroup.add(lightMesh);
+            const spot = new THREE.SpotLight(0xfff5e6, 4, 80, Math.PI / 7, 0.8, 1);
+            spot.position.set(2.4, 1.6, zPos); spot.target = hlTarget; spot.castShadow = true; carGroup.add(spot);
+        };
+        createHeadlight(0.8); createHeadlight(-0.8);
+
+        const tailGeo = new THREE.PlaneGeometry(0.3, 0.5);
+        const tailMat = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+        const tlL = new THREE.Mesh(tailGeo, tailMat); tlL.position.set(-2.41, 1.6, 0.8); tlL.rotation.y = -Math.PI / 2; carGroup.add(tlL);
+        const tlR = new THREE.Mesh(tailGeo, tailMat); tlR.position.set(-2.41, 1.6, -0.8); tlR.rotation.y = -Math.PI / 2; carGroup.add(tlR);
+
+        scene.add(carGroup); carGroup.visible = false;
+
+        // --- STATE & CAMERA MANAGEMENT ---
+        let currentState = 1; let animProgress = 0; let isUserControlling = false;
+        controls.addEventListener('start', () => isUserControlling = true);
+
+        const camStages = {
+            1: { p: new THREE.Vector3(0, 25, 60), t: new THREE.Vector3(0, 0, 0) },
+            2: { p: new THREE.Vector3(0, 15, 50), t: new THREE.Vector3(0, 4, 0) },
+            3: { p: new THREE.Vector3(-10, 8, 30), t: new THREE.Vector3(0, 2, 0) },
+            4: { p: new THREE.Vector3(0, 20, 45), t: new THREE.Vector3(0, 5, 0) },
+            5: { p: new THREE.Vector3(0, 5, 70), t: new THREE.Vector3(0, 5, 0) },
+            6: { p: new THREE.Vector3(20, 15, 50), t: new THREE.Vector3(0, 0, 0) },
+        };
+
+        const stateTargets = {
+            leftX: 0, leftY: 0, leftRotZ: 0, rightX: 0, rightY: 0, rightRotZ: 0, centerFillY: -15,
+            lhlPos: new THREE.Vector3(-15, 3, 0), rhlPos: new THREE.Vector3(15, 3, 0), faPos: new THREE.Vector3(0, 20, 0), 
+            lhlOpacity: 0, rhlOpacity: 0, faOpacity: 0, carX: -60, carVisible: false, bumpVisible: false, centerLightIntensity: 0
+        };
+
+        const titles = [
+            "1. Discontinuous Function (Broken)", "2. Jump Discontinuity (Mismatch)",
+            "3. Limit Exists (Alignment)", "4. Removable Discontinuity (Gap & Fill)",
+            "5. Infinite / Non-Removable", "6. Smoothness vs Continuity"
+        ];
+
+        function setStage(stageIndex) {
+            currentState = stageIndex;
+            document.getElementById('stage-title').innerText = titles[stageIndex - 1];
+            document.querySelectorAll('.btn').forEach((btn, idx) => btn.classList.toggle('active', idx === stageIndex - 1));
+
+            animProgress = 0; stateTargets.carVisible = false; stateTargets.bumpVisible = false; isUserControlling = false;
+
+            switch(stageIndex) {
+                case 1:
+                    stateTargets.leftX = -6; stateTargets.leftY = 0; stateTargets.leftRotZ = 0;
+                    stateTargets.rightX = 6; stateTargets.rightY = 0; stateTargets.rightRotZ = 0;
+                    stateTargets.centerFillY = -15; stateTargets.lhlOpacity = 0; stateTargets.rhlOpacity = 0; stateTargets.faOpacity = 0; stateTargets.centerLightIntensity = 0; break;
+                case 2:
+                    stateTargets.leftX = 0; stateTargets.leftY = 8; stateTargets.leftRotZ = 0;
+                    stateTargets.rightX = 0; stateTargets.rightY = -5; stateTargets.rightRotZ = 0;
+                    stateTargets.centerFillY = -15; stateTargets.lhlPos.set(-2, 10.5, 0); stateTargets.rhlPos.set(2, -2.5, 0);
+                    stateTargets.lhlOpacity = 1; stateTargets.rhlOpacity = 1; stateTargets.faOpacity = 0; stateTargets.centerLightIntensity = 0; break;
+                case 3:
+                    stateTargets.leftX = -1.2; stateTargets.leftY = 0; stateTargets.leftRotZ = 0;
+                    stateTargets.rightX = 1.2; stateTargets.rightY = 0; stateTargets.rightRotZ = 0;
+                    stateTargets.centerFillY = -15; stateTargets.lhlPos.set(-1.6, 3, 0); stateTargets.rhlPos.set(1.6, 3, 0);
+                    stateTargets.lhlOpacity = 1; stateTargets.rhlOpacity = 1; stateTargets.faOpacity = 0; stateTargets.centerLightIntensity = 3; break;
+                case 4:
+                    stateTargets.leftX = -1.2; stateTargets.leftY = 0; stateTargets.leftRotZ = 0;
+                    stateTargets.rightX = 1.2; stateTargets.rightY = 0; stateTargets.rightRotZ = 0;
+                    stateTargets.centerFillY = 0; stateTargets.lhlPos.set(-1.6, 3, 0); stateTargets.rhlPos.set(1.6, 3, 0); stateTargets.faPos.set(0, 15, 0); 
+                    stateTargets.lhlOpacity = 0; stateTargets.rhlOpacity = 0; stateTargets.faOpacity = 1; stateTargets.centerLightIntensity = 5; break;
+                case 5:
+                    stateTargets.leftX = -2; stateTargets.leftY = -25; stateTargets.leftRotZ = -0.4;
+                    stateTargets.rightX = 2; stateTargets.rightY = 25; stateTargets.rightRotZ = 0.4;
+                    stateTargets.centerFillY = -15; stateTargets.lhlOpacity = 0; stateTargets.rhlOpacity = 0; stateTargets.faOpacity = 0; stateTargets.centerLightIntensity = 0; break;
+                case 6:
+                    stateTargets.leftX = 0; stateTargets.leftY = 0; stateTargets.leftRotZ = 0;
+                    stateTargets.rightX = 0; stateTargets.rightY = 0; stateTargets.rightRotZ = 0;
+                    stateTargets.centerFillY = 0; stateTargets.lhlOpacity = 0; stateTargets.rhlOpacity = 0; stateTargets.faOpacity = 0;
+                    stateTargets.carVisible = true; stateTargets.carX = -60; stateTargets.bumpVisible = true; stateTargets.centerLightIntensity = 1; break;
+            }
+        }
+
+        // --- RENDER & ANIMATION LOOP ---
+        const clock = new THREE.Clock();
+        function lerp(start, end, factor) { return start + (end - start) * factor; }
+
+        function updateLabels() {
+            const tempV = new THREE.Vector3();
+            const updatePos = (mesh, id, opacityTarget) => {
+                const el = document.getElementById(id);
+                tempV.copy(mesh.position).project(camera);
+                el.style.left = `${(tempV.x * 0.5 + 0.5) * window.innerWidth}px`;
+                el.style.top = `${-(tempV.y * 0.5 - 0.5) * window.innerHeight - 50}px`;
+                el.style.opacity = opacityTarget > 0 ? (mesh.scale.x > 0.1 ? 1 : 0) : 0;
+            };
+            updatePos(lhlTracer, 'lbl-lhl', stateTargets.lhlOpacity);
+            updatePos(rhlTracer, 'lbl-rhl', stateTargets.rhlOpacity);
+            updatePos(faPoint, 'lbl-fa', stateTargets.faOpacity);
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            const delta = clock.getDelta(); const time = clock.getElapsedTime(); const lerpSpeed = 4 * delta;
+
+            if (!isUserControlling) {
+                const targetCam = camStages[currentState];
+                const breathY = Math.sin(time * 0.5) * 2; const breathX = Math.cos(time * 0.3) * 2;
+                camera.position.lerp(new THREE.Vector3(targetCam.p.x + breathX, targetCam.p.y + breathY, targetCam.p.z), lerpSpeed * 0.5);
+                controls.target.lerp(targetCam.t, lerpSpeed * 0.5);
+            }
+
+            leftSide.position.lerp(new THREE.Vector3(stateTargets.leftX, stateTargets.leftY, 0), lerpSpeed);
+            leftSide.rotation.z = lerp(leftSide.rotation.z, stateTargets.leftRotZ, lerpSpeed);
+            rightSide.position.lerp(new THREE.Vector3(stateTargets.rightX, stateTargets.rightY, 0), lerpSpeed);
+            rightSide.rotation.z = lerp(rightSide.rotation.z, stateTargets.rightRotZ, lerpSpeed);
+
+            centerLight.intensity = lerp(centerLight.intensity, stateTargets.centerLightIntensity, lerpSpeed);
+
+            const positions = water.geometry.attributes.position;
+            for (let i = 0; i < positions.count; i++) {
+                const x = positions.getX(i); const y = positions.getY(i);
+                positions.setZ(i, Math.sin(x * 0.05 + time) * 0.5 + Math.cos(y * 0.05 + time * 0.8) * 0.5);
+            }
+            positions.needsUpdate = true; water.geometry.computeVertexNormals();
+
+            if (currentState === 4) {
+                animProgress += delta * 0.6;
+                if (animProgress > 1) { stateTargets.faPos.y = 3; stateTargets.centerFillY = 0; } 
+                else { stateTargets.faPos.y = lerp(15, 3, animProgress); stateTargets.centerFillY = -15; }
+            } else if (currentState === 6) {
+                carGroup.visible = true; bump.visible = true;
+                stateTargets.carX += 25 * delta; if (stateTargets.carX > 60) stateTargets.carX = -60; 
+                carGroup.position.x = stateTargets.carX;
+                wheels.forEach(w => w.children[0].rotation.y -= 25 * delta / 0.6);
+                wheels.forEach(w => w.children[1].rotation.y -= 25 * delta / 0.6);
+                
+                if (Math.abs(stateTargets.carX) < 1.8) {
+                    carGroup.position.y = Math.sin((1.8 - Math.abs(stateTargets.carX)) * Math.PI) * 1.5;
+                    carGroup.rotation.z = (stateTargets.carX > 0 ? -1 : 1) * 0.25; 
+                    if(!isUserControlling) camera.position.y += Math.random() * 0.2 - 0.1;
+                } else {
+                    carGroup.position.y = lerp(carGroup.position.y, 0, 0.2);
+                    carGroup.rotation.z = lerp(carGroup.rotation.z, 0, 0.2);
+                }
+            } else {
+                carGroup.visible = false; bump.visible = false;
+            }
+
+            centerFill.position.y = lerp(centerFill.position.y, stateTargets.centerFillY, lerpSpeed);
+            lhlTracer.position.lerp(stateTargets.lhlPos, lerpSpeed);
+            rhlTracer.position.lerp(stateTargets.rhlPos, lerpSpeed);
+            faPoint.position.lerp(stateTargets.faPos, lerpSpeed);
+
+            const lhlScale = lerp(lhlTracer.scale.x, stateTargets.lhlOpacity, lerpSpeed);
+            lhlTracer.scale.set(lhlScale, lhlScale, lhlScale); lhlLight.intensity = lhlScale * 3;
+            const rhlScale = lerp(rhlTracer.scale.x, stateTargets.rhlOpacity, lerpSpeed);
+            rhlTracer.scale.set(rhlScale, rhlScale, rhlScale); rhlLight.intensity = rhlScale * 3;
+            const faScale = lerp(faPoint.scale.x, stateTargets.faOpacity, lerpSpeed);
+            faPoint.scale.set(faScale, faScale, faScale); faLight.intensity = faScale * 3;
+
+            if(stateTargets.lhlOpacity > 0) lhlTracer.position.y += Math.sin(time * 4) * 0.03;
+            if(stateTargets.rhlOpacity > 0) rhlTracer.position.y += Math.cos(time * 4) * 0.03;
+
+            updateLabels(); controls.update(); renderer.render(scene, camera);
+        }
+
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight; camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        setStage(1); animate();
+    </script>
+</body>
+</html>
