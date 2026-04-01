@@ -1,496 +1,451 @@
-<!DOCTYPE html>
-<html lang="en">
+<!doctype html>
+<html lang="en" class="h-full">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sarrus rule · step by step with arrows</title>
+    <title>Sci-Fi Determinant HUD - Cinematic Edition</title>
+    <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+    <script src="/_sdk/element_sdk.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap" rel="stylesheet">
     <style>
-        * {
-            box-sizing: border-box;
-            user-select: none;
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html, body { height: 100%; width: 100%; overflow: hidden; background: #020202; font-family: 'Share Tech Mono', monospace; }
+
+        /* Environmental Effects */
+        .vignette {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: radial-gradient(circle at center, transparent 30%, #000000 100%);
+            pointer-events: none; z-index: 80;
         }
 
-        body {
-            margin: 0;
-            min-height: 100vh;
-            background: linear-gradient(145deg, #0b121c 0%, #1a2635 100%);
-            font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            padding: 16px;
+        .grid-bg {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background-image: 
+                linear-gradient(rgba(0, 255, 255, 0.05) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 255, 255, 0.05) 1px, transparent 1px);
+            background-size: 40px 40px;
+            opacity: 0.3; pointer-events: none; z-index: 1;
+            transform: perspective(500px) rotateX(20deg) scale(1.5);
+            animation: gridMove 20s linear infinite;
         }
 
-        .card {
-            max-width: 900px;
-            width: 100%;
-            background: rgba(18, 28, 40, 0.8);
-            backdrop-filter: blur(16px);
-            -webkit-backdrop-filter: blur(16px);
-            border: 1px solid rgba(90, 140, 255, 0.25);
-            border-radius: 56px;
-            box-shadow: 0 30px 50px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(160, 200, 255, 0.1) inset;
-            padding: 32px 32px 40px;
-            transition: all 0.2s;
+        @keyframes gridMove {
+            0% { background-position: 0 0; }
+            100% { background-position: 0 40px; }
         }
 
-        h2 {
-            text-align: center;
-            font-weight: 400;
-            font-size: 1.8rem;
-            letter-spacing: 1px;
-            margin: 0 0 8px 0;
-            color: #d3e5ff;
-            text-shadow: 0 4px 12px rgba(0,40,120,0.7);
+        .hud-container {
+            width: 100%; height: 100%; display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
+            position: relative; cursor: crosshair; user-select: none; z-index: 10;
         }
 
-        .sub {
-            text-align: center;
-            color: #8da4c0;
-            margin-bottom: 28px;
-            font-size: 1.1rem;
-            border-bottom: 1px dashed #2e4a70;
-            padding-bottom: 18px;
+        .hud-title {
+            color: #00FFFF; font-size: clamp(16px, 3vw, 32px); letter-spacing: 0.6em;
+            text-transform: uppercase; margin-bottom: 2%; opacity: 0.8;
+            text-shadow: 0 0 10px #00FFFF, 0 0 20px #00FFFF, 0 0 40px rgba(0,255,255,0.5);
+            animation: titlePulse 4s ease-in-out infinite; z-index: 20;
         }
 
-        .matrix-container {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            gap: 40px;
-            flex-wrap: wrap;
-            margin-bottom: 25px;
+        @keyframes titlePulse {
+            0%, 100% { opacity: 0.7; filter: drop-shadow(0 0 10px #00FFFF); }
+            50% { opacity: 1; filter: drop-shadow(0 0 25px #00FFFF); }
         }
 
-        .matrix-box {
-            background: #0f1a29;
-            padding: 24px 28px;
-            border-radius: 48px;
-            border: 1px solid #2e4b70;
-            box-shadow: 0 20px 30px -8px black, 0 0 0 2px #1e3347 inset;
+        .matrix-wrapper {
+            position: relative;
+            display: flex; justify-content: center; align-items: center;
+            width: 100%; max-width: 800px; z-index: 20;
         }
 
-        .matrix {
-            display: grid;
-            grid-template-columns: repeat(3, 90px);
-            gap: 16px 12px;
-            justify-items: center;
-            align-items: center;
+        /* Holographic Targeting Rings */
+        .target-ring {
+            position: absolute; border-radius: 50%;
+            border: 1px dashed rgba(0, 255, 255, 0.2);
+            pointer-events: none; z-index: 0;
+        }
+        .ring-1 { width: 500px; height: 500px; animation: spin 20s linear infinite; border-width: 2px; }
+        .ring-2 { width: 350px; height: 350px; animation: spinReverse 15s linear infinite; border: 1px solid rgba(0, 255, 255, 0.1); }
+
+        @keyframes spin { 100% { transform: rotate(360deg); } }
+        @keyframes spinReverse { 100% { transform: rotate(-360deg); } }
+
+        .matrix-svg {
+            filter: drop-shadow(0 0 15px rgba(0, 255, 255, 0.5));
+            width: 100%; height: auto; z-index: 10;
         }
 
-        .cell {
-            width: 90px;
-            height: 90px;
-            background: #1e2f40;
-            border-radius: 32px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 3.2rem;
-            font-weight: 600;
-            font-family: 'Courier New', monospace;
-            color: #f0f6ff;
-            text-shadow: 0 0 15px #5f9eff;
-            box-shadow: 0 8px 0 #0b131f, 0 10px 20px black;
-            border-bottom: 2px solid #3e5f85;
-            transition: all 0.2s;
+        .matrix-cell {
+            font-family: 'Share Tech Mono', monospace;
+            fill: #00FFFF; font-size: 52px; text-anchor: middle;
+            dominant-baseline: central; font-weight: bold;
+            filter: drop-shadow(0 0 8px #00FFFF);
+            transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
         }
 
-        .cell.highlight-add {
-            box-shadow: 0 0 0 4px #66ff99, 0 8px 0 #0b131f, 0 10px 20px black;
-            background: #2d4f3a;
-            color: #ffffff;
-            text-shadow: 0 0 20px #aaffaa;
+        .bracket-line {
+            stroke: #00FFFF; stroke-width: 4; fill: none;
+            opacity: 0.7; filter: drop-shadow(0 0 8px #00FFFF);
         }
 
-        .cell.highlight-sub {
-            box-shadow: 0 0 0 4px #ff6666, 0 8px 0 #0b131f, 0 10px 20px black;
-            background: #5f3333;
-            color: #ffffff;
-            text-shadow: 0 0 20px #ffaaaa;
+        /* Enhanced Lasers */
+        .laser-line {
+            fill: none; stroke-width: 6; stroke-linecap: round;
+            filter: drop-shadow(0 0 15px currentColor) drop-shadow(0 0 30px currentColor);
         }
 
-        .arrow-panel {
-            flex: 1;
-            min-width: 200px;
-            background: #0d1622e0;
-            border-radius: 60px;
-            padding: 28px 20px;
-            border: 1px solid #336699;
-            backdrop-filter: blur(8px);
+        .laser-green { stroke: #39FF14; color: #39FF14; }
+        .laser-red { stroke: #FF4500; color: #FF4500; }
+
+        .cell-green {
+            fill: #FFFFFF !important;
+            filter: drop-shadow(0 0 15px #39FF14) drop-shadow(0 0 35px #39FF14) !important;
+            font-size: 60px;
         }
 
-        .arrow-display {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 28px;
+        .cell-red {
+            fill: #FFFFFF !important;
+            filter: drop-shadow(0 0 15px #FF4500) drop-shadow(0 0 35px #FF4500) !important;
+            font-size: 60px;
         }
 
-        .arrow-step {
-            display: flex;
-            align-items: center;
-            gap: 20px;
-            font-size: 1.6rem;
-            background: #1a293b;
-            padding: 12px 32px;
-            border-radius: 60px;
-            width: 100%;
-            border: 1px solid #3a5f88;
-            box-shadow: 0 6px 0 #0c141f;
+        .cell-dim { fill: rgba(0,255,255,0.1) !important; filter: none !important; font-size: 48px; }
+
+        .step-label {
+            color: #FFFFFF; font-size: clamp(14px, 2vw, 24px); letter-spacing: 0.3em;
+            text-shadow: 0 0 10px #00FFFF, 0 0 20px #00FFFF; margin-top: 4%; opacity: 0;
+            text-align: center; padding: 0 5%; z-index: 20;
+            background: rgba(0, 255, 255, 0.1); border: 1px solid rgba(0, 255, 255, 0.3);
+            padding: 10px 30px; border-radius: 4px; box-shadow: 0 0 15px rgba(0,255,255,0.2);
         }
 
-        .arrow-icon {
-            font-size: 3.2rem;
-            line-height: 1;
-            filter: drop-shadow(0 4px 4px black);
+        .click-hint {
+            position: absolute; bottom: 4%; left: 50%; transform: translateX(-50%);
+            color: #00FFFF; font-size: clamp(12px, 1.5vw, 16px);
+            letter-spacing: 0.5em; animation: hintBlink 1.2s cubic-bezier(0.4, 0, 0.6, 1) infinite; z-index: 20;
         }
 
-        .arrow-text {
-            font-weight: 500;
-            letter-spacing: 0.5px;
+        @keyframes hintBlink { 0%, 100% { opacity: 0.1; } 50% { opacity: 0.8; filter: drop-shadow(0 0 8px #00FFFF); } }
+
+        /* Cinematic Chromatic Glitch */
+        .glitch-layer {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 95; opacity: 0;
+        }
+        .glitch-red { background: rgba(255, 0, 0, 0.1); transform: translateX(-10px); mix-blend-mode: screen; }
+        .glitch-cyan { background: rgba(0, 255, 255, 0.1); transform: translateX(10px); mix-blend-mode: screen; }
+
+        /* Scanline Upgrade */
+        .scanlines {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 90; pointer-events: none;
+            background: linear-gradient(to bottom, rgba(255,255,255,0), rgba(255,255,255,0) 50%, rgba(0,0,0,0.1) 50%, rgba(0,0,0,0.1));
+            background-size: 100% 4px; opacity: 0.6;
         }
 
-        .green-add {
-            color: #b0ffb0;
-            text-shadow: 0 0 15px #00aa50;
+        .scanbar {
+            position: absolute; top: 0; left: 0; width: 100%; height: 8px;
+            background: rgba(0, 255, 255, 0.15); box-shadow: 0 0 20px rgba(0, 255, 255, 0.4);
+            pointer-events: none; z-index: 91; animation: scanMove 6s linear infinite;
         }
 
-        .red-sub {
-            color: #ffb0b0;
-            text-shadow: 0 0 15px #cc5555;
-        }
+        @keyframes scanMove { 0% { top: -10px; } 100% { top: 100%; } }
 
+        /* Formula Panel Enhancement */
         .formula-panel {
-            background: #0a121e;
-            border-radius: 48px;
-            padding: 22px 28px;
-            margin: 30px 0 25px;
-            border: 1px solid #2b5580;
-            box-shadow: inset 0 2px 8px #00000055, 0 10px 20px #00000060;
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            opacity: 0; pointer-events: none; text-align: center; z-index: 100; width: 80%;
         }
 
-        .formula {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            gap: 18px;
-            font-size: 2.2rem;
-            font-family: 'Courier New', monospace;
-            flex-wrap: wrap;
+        .formula-text {
+            color: #fff; font-size: clamp(16px, 2.8vw, 36px); letter-spacing: 0.1em;
+            text-shadow: 0 0 20px #fff, 0 0 40px #00FFFF, 0 0 80px #00FFFF;
+            line-height: 2; white-space: nowrap; font-weight: bold;
         }
 
-        .term {
-            padding: 8px 24px;
-            border-radius: 50px;
-            background: #162434;
-            border: 1px solid;
-            font-weight: 600;
+        .formula-border {
+            border: 2px solid rgba(0,255,255,0.8); padding: 4% 6%;
+            background: rgba(0, 20, 20, 0.85); backdrop-filter: blur(10px);
+            box-shadow: 0 0 50px rgba(0,255,255,0.3), inset 0 0 30px rgba(0,255,255,0.2);
+            position: relative; overflow: hidden;
         }
 
-        .term.add-term {
-            color: #b0ffb0;
-            border-color: #56aa56;
-            box-shadow: 0 0 12px #33aa3370;
+        .formula-border::before {
+            content: ''; position: absolute; top: 0; left: -100%; width: 50%; height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+            transform: skewX(-20deg); animation: shine 3s infinite;
         }
 
-        .term.sub-term {
-            color: #ffaeae;
-            border-color: #c05a5a;
-            box-shadow: 0 0 12px #aa333370;
+        @keyframes shine { 0% { left: -100%; } 20% { left: 200%; } 100% { left: 200%; } }
+
+        /* Flashbang Effect */
+        .flashbang {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: #FFFFFF; z-index: 999; opacity: 0; pointer-events: none;
         }
 
-        .operator {
-            font-size: 2.6rem;
-            color: #b4c8e0;
+        .product-label {
+            font-family: 'Share Tech Mono', monospace; font-weight: bold; letter-spacing: 2px;
+            fill: #FFFFFF; font-size: 24px; text-anchor: middle; dominant-baseline: central; opacity: 0;
+            filter: drop-shadow(0 0 10px currentColor);
         }
-
-        .controls {
-            display: flex;
-            justify-content: center;
-            gap: 18px;
-            margin-top: 15px;
-        }
-
-        button {
-            background: #23415c;
-            border: none;
-            border-bottom: 5px solid #0e1f30;
-            color: white;
-            font-size: 1.8rem;
-            font-weight: 500;
-            padding: 18px 48px;
-            border-radius: 60px;
-            letter-spacing: 2px;
-            cursor: pointer;
-            transition: all 0.1s ease;
-            box-shadow: 0 8px 0 #0a121e, 0 10px 20px black;
-            display: inline-flex;
-            align-items: center;
-            gap: 15px;
-        }
-
-        button:active {
-            transform: translateY(5px);
-            border-bottom-width: 2px;
-            box-shadow: 0 3px 0 #0a121e, 0 8px 12px black;
-        }
-
-        button:disabled {
-            opacity: 0.4;
-            transform: translateY(0);
-            border-bottom-width: 5px;
-            pointer-events: none;
-            filter: grayscale(0.5);
-        }
-
-        .progress {
-            color: #adc9f0;
-            font-size: 1.2rem;
-            text-align: center;
-            margin-top: 28px;
-            background: #1b3145;
-            padding: 10px 25px;
-            border-radius: 40px;
-            display: inline-block;
-            margin-left: auto;
-            margin-right: auto;
-            width: fit-content;
-            border: 1px solid #3f6190;
-        }
-
-        .legend {
-            display: flex;
-            gap: 30px;
-            justify-content: center;
-            margin-bottom: 15px;
-        }
-
-        .legend-item {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            background: #1d2b3b;
-            padding: 8px 30px;
-            border-radius: 40px;
-            border-left: 6px solid;
-        }
-
-        .legend-add { border-color: #77dd77; }
-        .legend-sub { border-color: #ff7777; }
     </style>
 </head>
-<body>
-<div class="card">
-    <h2>✦ SARRUS RULE ✦</h2>
-    <div class="sub">3×3 determinant · step by step with coloured arrows</div>
+<body class="h-full w-full">
+    <div class="grid-bg"></div>
+    <div class="vignette"></div>
+    <div class="scanlines"></div>
+    <div class="scanbar"></div>
+    <div class="flashbang" id="flashbang"></div>
+    
+    <div class="glitch-layer glitch-red" id="glitchRed"></div>
+    <div class="glitch-layer glitch-cyan" id="glitchCyan"></div>
 
-    <!-- Legend -->
-    <div class="legend">
-        <div class="legend-item legend-add"><span style="color:#aaeeaa;">⬇️ downward</span> <span style="color:white;">→ add</span></div>
-        <div class="legend-item legend-sub"><span style="color:#ffaaaa;">⬆️ upward</span> <span style="color:white;">→ subtract</span></div>
-    </div>
+    <div class="hud-container" id="hudContainer">
+        <div class="hud-title" id="hudTitle">DETERMINANT HUD</div>
+        
+        <div class="matrix-wrapper" id="matrixWrapper">
+            <div class="target-ring ring-1"></div>
+            <div class="target-ring ring-2"></div>
 
-    <!-- Matrix + arrow visualization -->
-    <div class="matrix-container">
-        <div class="matrix-box">
-            <div class="matrix" id="matrixGrid">
-                <!-- cells will be filled by js, but static for clarity -->
-                <div class="cell" id="cell-a">a</div>
-                <div class="cell" id="cell-b">b</div>
-                <div class="cell" id="cell-c">c</div>
-                <div class="cell" id="cell-d">d</div>
-                <div class="cell" id="cell-e">e</div>
-                <div class="cell" id="cell-f">f</div>
-                <div class="cell" id="cell-g">g</div>
-                <div class="cell" id="cell-h">h</div>
-                <div class="cell" id="cell-i">i</div>
+            <svg id="matrixSvg" class="matrix-svg" viewBox="0 0 600 400" xmlns="http://www.w3.org/2000/svg">
+                <path class="bracket-line" d="M 120 40 L 90 40 L 90 360 L 120 360" />
+                <path class="bracket-line" d="M 480 40 L 510 40 L 510 360 L 480 360" />
+                
+                <text id="cellA" class="matrix-cell" x="180" y="120">2</text>
+                <text id="cellB" class="matrix-cell" x="300" y="120">1</text>
+                <text id="cellC" class="matrix-cell" x="420" y="120">3</text>
+                
+                <text id="cellD" class="matrix-cell" x="180" y="200">4</text>
+                <text id="cellE" class="matrix-cell" x="300" y="200">5</text>
+                <text id="cellF" class="matrix-cell" x="420" y="200">6</text>
+                
+                <text id="cellG" class="matrix-cell" x="180" y="280">7</text>
+                <text id="cellH" class="matrix-cell" x="300" y="280">8</text>
+                <text id="cellI" class="matrix-cell" x="420" y="280">9</text>
+                
+                <g id="laserGroup"></g>
+                
+                <text id="prodLabel" class="product-label" x="300" y="380"></text>
+            </svg>
+        </div>
+
+        <div class="step-label" id="stepLabel"></div>
+        <div class="click-hint" id="clickHint">[ INITIATE SEQUENCE ]</div>
+
+        <div class="formula-panel" id="formulaPanel">
+            <div class="formula-border">
+                <div class="formula-text">
+                    |A| = (aei + bfg + cdh) − (ceg + bdi + afh)<br>
+                    <span id="formulaCalc" style="color:#39FF14; font-size: 1.1em; filter: drop-shadow(0 0 10px #39FF14);"></span>
+                </div>
             </div>
         </div>
-
-        <!-- Dynamic arrow panel -->
-        <div class="arrow-panel" id="arrowPanel">
-            <div class="arrow-display" id="arrowDisplay">
-                <!-- filled by js -->
-                <div class="arrow-step" style="opacity:0.7; background:#142433;">👆 click next</div>
-            </div>
-        </div>
     </div>
-
-    <!-- formula expression -->
-    <div class="formula-panel">
-        <div class="formula" id="formulaTerms">
-            <span class="term add-term" id="termAei">+ aei</span>
-            <span class="term add-term" id="termBfg">+ bfg</span>
-            <span class="term add-term" id="termCdh">+ cdh</span>
-            <span class="operator">−</span>
-            <span class="term sub-term" id="termCeg">− ceg</span>
-            <span class="term sub-term" id="termBdi">− bdi</span>
-            <span class="term sub-term" id="termAfh">− afh</span>
-        </div>
-    </div>
-
-    <!-- progress and controls -->
-    <div class="progress" id="progressDisplay">step 0 / 6</div>
-    <div class="controls">
-        <button id="prevBtn" disabled>← PREV</button>
-        <button id="nextBtn">NEXT →</button>
-    </div>
-</div>
 
 <script>
-    (function() {
-        // ---- steps definitions ----
-        const steps = [
-            { type: 'add', term: 'aei', cells: ['a','e','i'], desc: 'downward diagonal a → e → i', arrow: '⬇️  a ➔ e ➔ i' },
-            { type: 'add', term: 'bfg', cells: ['b','f','g'], desc: 'downward diagonal b → f → g', arrow: '⬇️  b ➔ f ➔ g' },
-            { type: 'add', term: 'cdh', cells: ['c','d','h'], desc: 'downward diagonal c → d → h', arrow: '⬇️  c ➔ d ➔ h' },
-            { type: 'sub', term: 'ceg', cells: ['c','e','g'], desc: 'upward diagonal c → e → g', arrow: '⬆️  c ➔ e ➔ g' },
-            { type: 'sub', term: 'bdi', cells: ['b','d','i'], desc: 'upward diagonal b → d → i', arrow: '⬆️  b ➔ d ➔ i' },
-            { type: 'sub', term: 'afh', cells: ['a','f','h'], desc: 'upward diagonal a → f → h', arrow: '⬆️  a ➔ f ➔ h' }
-        ];
+const M = { a:2, b:1, c:3, d:4, e:5, f:6, g:7, h:8, i:9 };
+const pos = {
+    a:[180,120], b:[300,120], c:[420,120],
+    d:[180,200], e:[300,200], f:[420,200],
+    g:[180,280], h:[300,280], i:[420,280]
+};
 
-        // get all cell elements
-        const cells = {
-            a: document.getElementById('cell-a'),
-            b: document.getElementById('cell-b'),
-            c: document.getElementById('cell-c'),
-            d: document.getElementById('cell-d'),
-            e: document.getElementById('cell-e'),
-            f: document.getElementById('cell-f'),
-            g: document.getElementById('cell-g'),
-            h: document.getElementById('cell-h'),
-            i: document.getElementById('cell-i')
-        };
+const cells = {};
+let step = -1;
 
-        // formula term spans
-        const termElements = {
-            aei: document.getElementById('termAei'),
-            bfg: document.getElementById('termBfg'),
-            cdh: document.getElementById('termCdh'),
-            ceg: document.getElementById('termCeg'),
-            bdi: document.getElementById('termBdi'),
-            afh: document.getElementById('termAfh')
-        };
+function getCell(id) {
+    if (!cells[id]) cells[id] = document.getElementById('cell' + id.toUpperCase());
+    return cells[id];
+}
 
-        const arrowDisplay = document.getElementById('arrowDisplay');
-        const progressDisplay = document.getElementById('progressDisplay');
-        const prevBtn = document.getElementById('prevBtn');
-        const nextBtn = document.getElementById('nextBtn');
+// Cinematic Hollywood Impact function
+function impactEffect() {
+    // Chromatic Split
+    gsap.to('#glitchRed', { opacity: 1, duration: 0.05, yoyo: true, repeat: 3, onComplete: () => gsap.set('#glitchRed', { opacity: 0 }) });
+    gsap.to('#glitchCyan', { opacity: 1, duration: 0.05, delay: 0.02, yoyo: true, repeat: 3, onComplete: () => gsap.set('#glitchCyan', { opacity: 0 }) });
+    
+    // Camera Shake
+    gsap.fromTo('#hudContainer', 
+        { x: () => gsap.utils.random(-15, 15), y: () => gsap.utils.random(-15, 15), rotation: () => gsap.utils.random(-1, 1) },
+        { x: 0, y: 0, rotation: 0, duration: 0.3, ease: 'elastic.out(1, 0.3)' }
+    );
+}
 
-        let currentStep = -1;  // -1 means no step, only matrix neutral
+function setStepLabel(text) {
+    const el = document.getElementById('stepLabel');
+    gsap.to(el, { opacity: 0, scale: 0.9, duration: 0.15, onComplete: () => {
+        el.textContent = text;
+        gsap.to(el, { opacity: 1, scale: 1, duration: 0.4, ease: 'back.out(1.7)' });
+    }});
+}
 
-        // helper: remove all highlights
-        function clearHighlights() {
-            for (let key in cells) {
-                cells[key].classList.remove('highlight-add', 'highlight-sub');
-            }
-            // reset all term opacity / style (optional: make them all slightly dim)
-            for (let key in termElements) {
-                termElements[key].style.opacity = '0.6';
-                termElements[key].style.boxShadow = 'none';
-            }
-        }
+function colorCells(ids, cls) {
+    ids.forEach((id, index) => {
+        const c = getCell(id);
+        c.classList.remove('cell-green', 'cell-red', 'cell-dim');
+        if (cls) c.classList.add(cls);
+        // Pop animation for cell
+        gsap.fromTo(c, { scale: 1.5 }, { scale: 1, duration: 0.5, ease: 'elastic.out(1, 0.3)', delay: index * 0.05 });
+    });
+}
 
-        // apply step highlighting (if step index = -1, only neutral)
-        function applyStep(index) {
-            clearHighlights();
+function dimAll() {
+    'abcdefghi'.split('').forEach(id => getCell(id).classList.add('cell-dim'));
+}
 
-            if (index === -1) {
-                // neutral: no cell highlight, show welcome arrow
-                arrowDisplay.innerHTML = `<div class="arrow-step" style="background:#1d314a; justify-content:center;">
-                    <span style="font-size:2.5rem;">✨</span>
-                    <span class="arrow-text" style="color:#aac9ff;">press NEXT</span>
-                </div>`;
-                progressDisplay.innerText = `step 0 / 6`;
-                return;
-            }
+function createLaser(points, color, curved) {
+    const g = document.getElementById('laserGroup');
+    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
 
-            const step = steps[index];
-            // highlight cells
-            step.cells.forEach(cellId => {
-                if (cells[cellId]) {
-                    cells[cellId].classList.add(step.type === 'add' ? 'highlight-add' : 'highlight-sub');
-                }
+    let d;
+    if (curved && points.length === 3) {
+        const [p0, p1, p2] = points;
+        const cx1 = (p0[0] + p1[0]) / 2; const cy1 = (p0[1] + p1[1]) / 2 + (p1[1] < p0[1] ? -40 : 40);
+        const cx2 = (p1[0] + p2[0]) / 2; const cy2 = (p1[1] + p2[1]) / 2 + (p2[1] < p1[1] ? -40 : 40);
+        d = `M ${p0[0]} ${p0[1]} Q ${cx1} ${cy1} ${p1[0]} ${p1[1]} Q ${cx2} ${cy2} ${p2[0]} ${p2[1]}`;
+    } else if (points.length === 2) {
+        d = `M ${points[0][0]} ${points[0][1]} L ${points[1][0]} ${points[1][1]}`;
+    } else {
+        d = `M ${points[0][0]} ${points[0][1]} L ${points[1][0]} ${points[1][1]} L ${points[2][0]} ${points[2][1]}`;
+    }
+
+    path.setAttribute('d', d);
+    path.classList.add('laser-line', color === 'green' ? 'laser-green' : 'laser-red');
+
+    const len = 2000;
+    path.style.strokeDasharray = len;
+    path.style.strokeDashoffset = len;
+    g.appendChild(path);
+
+    // High-energy cinematic draw & flicker
+    gsap.to(path, { strokeDashoffset: 0, duration: 0.6, ease: 'power4.out' });
+    gsap.to(path, { opacity: 0.6, duration: 0.05, yoyo: true, repeat: 10, delay: 0.6 });
+
+    return path;
+}
+
+function showProduct(text, color) {
+    const el = document.getElementById('prodLabel');
+    el.textContent = text;
+    el.style.fill = '#FFFFFF';
+    el.style.color = color === 'green' ? '#39FF14' : '#FF4500';
+    gsap.fromTo(el, { opacity: 0, y: 400, scale: 0.5 }, { opacity: 1, y: 380, scale: 1, duration: 0.5, ease: 'back.out(2)' });
+}
+
+function hideProduct() {
+    gsap.to(document.getElementById('prodLabel'), { opacity: 0, y: 360, duration: 0.3 });
+}
+
+const posTerms = [
+    { cells: ['a','e','i'], val: M.a*M.e*M.i, expr: `${M.a}×${M.e}×${M.i}=${M.a*M.e*M.i}` },
+    { cells: ['b','f','g'], val: M.b*M.f*M.g, expr: `${M.b}×${M.f}×${M.g}=${M.b*M.f*M.g}` },
+    { cells: ['c','d','h'], val: M.c*M.d*M.h, expr: `${M.c}×${M.d}×${M.h}=${M.c*M.d*M.h}` }
+];
+const negTerms = [
+    { cells: ['c','e','g'], val: M.c*M.e*M.g, expr: `${M.c}×${M.e}×${M.g}=${M.c*M.e*M.g}` },
+    { cells: ['b','d','i'], val: M.b*M.d*M.i, expr: `${M.b}×${M.d}×${M.i}=${M.b*M.d*M.i}` },
+    { cells: ['a','f','h'], val: M.a*M.f*M.h, expr: `${M.a}×${M.f}×${M.h}=${M.a*M.f*M.h}` }
+];
+
+const posSum = posTerms.reduce((s,t) => s + t.val, 0);
+const negSum = negTerms.reduce((s,t) => s + t.val, 0);
+const det = posSum - negSum;
+
+function resetCells() {
+    'abcdefghi'.split('').forEach(id => {
+        const c = getCell(id);
+        c.classList.remove('cell-green', 'cell-red', 'cell-dim');
+    });
+}
+
+function clearLasers() {
+    document.getElementById('laserGroup').innerHTML = '';
+}
+
+const steps = [
+    () => { impactEffect(); setStepLabel('3×3 MATRIX LOADED — SARRUS METHOD'); document.getElementById('clickHint').textContent = "[ CLICK TO ADVANCE ]"; },
+    () => {
+        impactEffect(); colorCells(['a','e','i'], 'cell-green'); createLaser([pos.a, pos.e, pos.i], 'green');
+        showProduct(`+ ${posTerms[0].expr}`, 'green'); setStepLabel('▶ MAIN DIAGONAL: aei');
+    },
+    () => {
+        impactEffect(); hideProduct(); colorCells(['a','e','i'], 'cell-dim'); colorCells(['b','f','g'], 'cell-green');
+        createLaser([pos.b, pos.f, pos.g], 'green', true); showProduct(`+ ${posTerms[1].expr}`, 'green'); setStepLabel('▶ POSITIVE TRIANGLE: bfg');
+    },
+    () => {
+        impactEffect(); hideProduct(); colorCells(['b','f','g'], 'cell-dim'); colorCells(['c','d','h'], 'cell-green');
+        createLaser([pos.c, pos.d, pos.h], 'green', true); showProduct(`+ ${posTerms[2].expr}`, 'green'); setStepLabel('▶ POSITIVE TRIANGLE: cdh');
+    },
+    () => {
+        impactEffect(); hideProduct(); clearLasers(); dimAll(); colorCells(['c','e','g'], 'cell-red');
+        createLaser([pos.c, pos.e, pos.g], 'red'); showProduct(`− ${negTerms[0].expr}`, 'red'); setStepLabel('◀ ANTI-DIAGONAL: ceg');
+    },
+    () => {
+        impactEffect(); hideProduct(); colorCells(['c','e','g'], 'cell-dim'); colorCells(['b','d','i'], 'cell-red');
+        createLaser([pos.b, pos.d, pos.i], 'red', true); showProduct(`− ${negTerms[1].expr}`, 'red'); setStepLabel('◀ NEGATIVE TRIANGLE: bdi');
+    },
+    () => {
+        impactEffect(); hideProduct(); colorCells(['b','d','i'], 'cell-dim'); colorCells(['a','f','h'], 'cell-red');
+        createLaser([pos.a, pos.f, pos.h], 'red', true); showProduct(`− ${negTerms[2].expr}`, 'red'); setStepLabel('◀ NEGATIVE TRIANGLE: afh');
+    },
+    () => {
+        // Blinding Cinematic Flashbang Reveal
+        gsap.to('#flashbang', { opacity: 1, duration: 0.1, yoyo: true, repeat: 1, ease: 'power4.inOut' });
+        impactEffect(); hideProduct(); clearLasers();
+        
+        // Blast matrix outwards
+        'abcdefghi'.split('').forEach((id, i) => {
+            const c = getCell(id);
+            gsap.to(c, {
+                opacity: 0, x: () => gsap.utils.random(-300, 300), y: () => gsap.utils.random(-300, 300), 
+                rotation: () => gsap.utils.random(-90, 90), duration: 1.5, ease: 'expo.out'
             });
+        });
+        
+        gsap.to('.bracket-line', { opacity: 0, x: (i) => i === 0 ? -100 : 100, duration: 1, ease: 'expo.out' });
+        gsap.to('.target-ring', { scale: 3, opacity: 0, duration: 1.5, ease: 'expo.out' });
+        gsap.to('#stepLabel, #clickHint', { opacity: 0, duration: 0.3 });
 
-            // highlight corresponding term
-            if (termElements[step.term]) {
-                termElements[step.term].style.opacity = '1';
-                termElements[step.term].style.boxShadow = `0 0 22px ${step.type === 'add' ? '#66ee66' : '#ff6666'}`;
-            }
+        // Heavy Hologram Formula pop-in
+        const fp = document.getElementById('formulaPanel');
+        const fc = document.getElementById('formulaCalc');
+        fc.innerHTML = `= (${posTerms.map(t=>t.val).join(' + ')}) − (${negTerms.map(t=>t.val).join(' + ')})<br>= ${posSum} − ${negSum} = <span style="color:#FFF;font-size:1.5em;text-shadow:0 0 20px #FFF,0 0 60px #39FF14">${det}</span>`;
 
-            // update arrow panel
-            const arrowColor = step.type === 'add' ? '#aaeeaa' : '#ffaaaa';
-            const arrowSymbol = step.type === 'add' ? '⬇️' : '⬆️';
-            arrowDisplay.innerHTML = `
-                <div class="arrow-step" style="border-left: 8px solid ${step.type === 'add' ? '#33dd88' : '#dd6666'}; background:#1f3147;">
-                    <span class="arrow-icon" style="color:${arrowColor};">${arrowSymbol}</span>
-                    <span class="arrow-text" style="color:white; font-size:1.5rem;">${step.desc}</span>
-                </div>
-                <div style="font-size:2rem; margin-top:8px; color:${arrowColor};">${step.arrow}</div>
-            `;
+        gsap.to(fp, { opacity: 1, duration: 1.5, delay: 0.2, ease: 'power3.out' });
+        gsap.fromTo(fp, { scale: 0.2, rotationX: 90 }, { scale: 1, rotationX: 0, duration: 1.5, delay: 0.2, ease: 'elastic.out(1,0.5)' });
+    }
+];
 
-            progressDisplay.innerText = `step ${index+1} / 6 · ${step.term}`;
-        }
+document.getElementById('hudContainer').addEventListener('click', () => {
+    step++;
+    if (step < steps.length) {
+        steps[step]();
+    } else {
+        step = -1;
+        document.getElementById('laserGroup').innerHTML = '';
+        gsap.set('#formulaPanel', { opacity: 0 });
+        resetCells();
+        'abcdefghi'.split('').forEach(id => {
+            gsap.set(getCell(id), { opacity: 1, x: 0, y: 0, rotation: 0 });
+        });
+        gsap.to('.target-ring', { scale: 1, opacity: 1, duration: 1 });
+        gsap.set('.bracket-line', { opacity: 0.7, x: 0 });
+        gsap.to('#clickHint', { opacity: 0.8, duration: 0.5 });
+        document.getElementById('clickHint').textContent = "[ INITIATE SEQUENCE ]";
+        setStepLabel('');
+    }
+});
 
-        // update button states based on index
-        function updateButtons(index) {
-            if (index <= -1) {
-                prevBtn.disabled = true;
-            } else {
-                prevBtn.disabled = false;
-            }
-
-            if (index >= steps.length - 1) {
-                nextBtn.disabled = true;
-            } else {
-                nextBtn.disabled = false;
-            }
-        }
-
-        // go to next step
-        function nextStep() {
-            if (currentStep < steps.length - 1) {
-                currentStep++;
-            } else {
-                // if at end, do nothing (button disabled anyway)
-                return;
-            }
-            applyStep(currentStep);
-            updateButtons(currentStep);
-        }
-
-        // go to previous step
-        function prevStep() {
-            if (currentStep > -1) {
-                currentStep--;
-            }
-            // if currentStep becomes -1, neutral state
-            applyStep(currentStep);
-            updateButtons(currentStep);
-        }
-
-        // event listeners
-        nextBtn.addEventListener('click', nextStep);
-        prevBtn.addEventListener('click', prevStep);
-
-        // initialize neutral state (no step)
-        applyStep(-1);
-        updateButtons(-1);
-
-        // optional: add slight permanent style to formula terms background
-        // make all terms visible with low opacity initially
-        for (let key in termElements) {
-            termElements[key].style.transition = 'opacity 0.2s, box-shadow 0.2s';
-            termElements[key].style.opacity = '0.5';
-        }
-        // but set add/sub colors clearly
-        // already done by class
-
-        // pre-highlight all add terms slightly?
-        // not needed.
-    })();
+// Element SDK Passthrough (Maintained)
+const onConfigChange = async (config) => { document.getElementById('hudTitle').textContent = config.matrix_title || 'DETERMINANT HUD'; };
+if(window.elementSdk) {
+    window.elementSdk.init({
+        defaultConfig: { matrix_title: 'DETERMINANT HUD' },
+        onConfigChange,
+        mapToCapabilities: (c) => ({ recolorables: [], borderables: [] }),
+        mapToEditPanelValues: (c) => new Map([['matrix_title', c.matrix_title || 'DETERMINANT HUD']])
+    });
+}
 </script>
 </body>
 </html>
