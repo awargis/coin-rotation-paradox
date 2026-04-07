@@ -1,705 +1,718 @@
-<!DOCTYPE html>
-<html lang="en">
+<!doctype html>
+<html lang="en" class="h-full">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>NUMBERVERSE | JEE Advanced · Hierarchy of Numbers</title>
-    <!-- Google Fonts + Icon Library -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,500;14..32,700;14..32,800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- Three.js & GSAP -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            user-select: none;
-        }
-
-        body {
-            overflow: hidden;
-            font-family: 'Inter', sans-serif;
-            background: #01010c;
-            color: #ffffff;
-        }
-
-        /* 3D canvas container */
-        #canvas-container {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            z-index: 1;
-        }
-
-        /* UI Overlay - premium glassmorphic layers */
-        #ui-layer {
-            position: absolute;
-            inset: 0;
-            pointer-events: none;
-            z-index: 20;
-            display: flex;
-            flex-direction: column;
-            justify-content: space-between;
-            padding: 32px 40px;
-        }
-
-        /* Header with animated gradient */
-        .title-block {
-            pointer-events: auto;
-            background: linear-gradient(135deg, rgba(0,0,0,0.6) 0%, rgba(10,20,30,0.4) 100%);
-            backdrop-filter: blur(12px);
-            border-radius: 32px;
-            padding: 16px 28px;
-            border: 1px solid rgba(0, 242, 255, 0.3);
-            width: fit-content;
-            box-shadow: 0 8px 20px rgba(0,0,0,0.5);
-        }
-        h1 {
-            font-weight: 800;
-            font-size: 2rem;
-            letter-spacing: -0.5px;
-            background: linear-gradient(135deg, #FFFFFF, #88ccff, #ffaa44);
-            -webkit-background-clip: text;
-            background-clip: text;
-            color: transparent;
-            margin-bottom: 4px;
-        }
-        .subtitle {
-            font-size: 0.75rem;
-            font-weight: 500;
-            letter-spacing: 3px;
-            color: #aaf0ff;
-            text-transform: uppercase;
-        }
-
-        /* INFO CARD - sleek animated */
-        .info-card {
-            position: absolute;
-            bottom: 120px;
-            left: 40px;
-            width: 320px;
-            background: rgba(8, 12, 25, 0.75);
-            backdrop-filter: blur(18px);
-            border-radius: 28px;
-            border: 1px solid rgba(0, 242, 255, 0.4);
-            padding: 24px;
-            pointer-events: auto;
-            transform: translateX(-40px) translateY(20px);
-            opacity: 0;
-            transition: all 0.5s cubic-bezier(0.2, 0.9, 0.4, 1.1);
-            box-shadow: 0 20px 35px -12px rgba(0,0,0,0.6), 0 0 0 1px rgba(0,242,255,0.1);
-        }
-        .info-card.visible {
-            opacity: 1;
-            transform: translateX(0) translateY(0);
-        }
-        .node-title {
-            font-size: 1.8rem;
-            font-weight: 800;
-            letter-spacing: -0.02em;
-            margin-bottom: 12px;
-            display: flex;
-            align-items: center;
-            gap: 12px;
-        }
-        .node-title i {
-            font-size: 2rem;
-            filter: drop-shadow(0 0 6px currentColor);
-        }
-        .node-desc {
-            font-size: 0.9rem;
-            line-height: 1.5;
-            color: #d0eaff;
-            margin-bottom: 20px;
-        }
-        .legend {
-            display: flex;
-            gap: 20px;
-            border-top: 1px solid rgba(255,255,255,0.2);
-            padding-top: 16px;
-            margin-top: 4px;
-        }
-        .legend-item {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            font-size: 0.7rem;
-            font-weight: 500;
-        }
-        .dot {
-            width: 10px;
-            height: 10px;
-            border-radius: 10px;
-            box-shadow: 0 0 8px currentColor;
-        }
-        .dot.cyan { background: #00f2ff; box-shadow: 0 0 8px #00f2ff; }
-        .dot.orange { background: #ff8c00; box-shadow: 0 0 8px #ff8c00; }
-        .dot.magenta { background: #ff44dd; box-shadow: 0 0 8px #ff44dd; }
-
-        /* Interactive Number Line - dynamic */
-        .viz-panel {
-            position: absolute;
-            bottom: 32px;
-            left: 50%;
-            transform: translateX(-50%);
-            width: 700px;
-            background: rgba(0, 0, 0, 0.7);
-            backdrop-filter: blur(24px);
-            border-radius: 32px;
-            border: 1px solid rgba(255,255,255,0.2);
-            padding: 16px 24px;
-            pointer-events: auto;
-            display: none;
-            flex-direction: column;
-            transition: 0.3s;
-            z-index: 30;
-            box-shadow: 0 12px 30px rgba(0,0,0,0.6);
-        }
-        .viz-header {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 12px;
-            font-size: 0.75rem;
-            font-weight: 600;
-            letter-spacing: 1px;
-            color: #ccddff;
-        }
-        .zoom-hint {
-            background: rgba(0,242,255,0.2);
-            padding: 4px 12px;
-            border-radius: 40px;
-            font-size: 0.7rem;
-        }
-        canvas#line-canvas {
-            width: 100%;
-            height: 70px;
-            background: rgba(0,0,0,0.4);
-            border-radius: 20px;
-            margin-top: 6px;
-        }
-        .mode-badge {
-            text-align: center;
-            margin-top: 10px;
-            font-size: 0.7rem;
-            font-weight: bold;
-            text-transform: uppercase;
-        }
-
-        /* Buttons with glass neon */
-        .controls {
-            position: absolute;
-            bottom: 32px;
-            right: 32px;
-            display: flex;
-            gap: 16px;
-            pointer-events: auto;
-        }
-        .btn {
-            background: rgba(20, 30, 55, 0.7);
-            backdrop-filter: blur(8px);
-            border: 1px solid rgba(0, 242, 255, 0.4);
-            padding: 12px 28px;
-            border-radius: 60px;
-            color: white;
-            font-weight: 600;
-            font-size: 0.85rem;
-            cursor: pointer;
-            transition: all 0.25s ease;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            letter-spacing: 1px;
-        }
-        .btn i { font-size: 1rem; }
-        .btn:hover {
-            background: #00aaff30;
-            border-color: #00f2ff;
-            transform: translateY(-2px);
-            box-shadow: 0 0 15px rgba(0,242,255,0.4);
-        }
-
-        #tooltip {
-            position: fixed;
-            background: #000000cc;
-            backdrop-filter: blur(8px);
-            padding: 6px 14px;
-            border-radius: 40px;
-            font-size: 0.8rem;
-            font-weight: 500;
-            border-left: 3px solid #00f2ff;
-            pointer-events: none;
-            z-index: 200;
-            font-family: monospace;
-            display: none;
-            white-space: nowrap;
-        }
-        @media (max-width: 800px) {
-            .viz-panel { width: 90%; }
-            .info-card { width: 260px; bottom: 100px; left: 16px; }
-            .btn { padding: 8px 16px; }
-        }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Numberverse: Hierarchy of Numbers | Dynamic 3D Visualization</title>
+  <!-- Core Libraries -->
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://unpkg.com/three@0.128.0/build/three.module.js"
+      }
+    }
+  </script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/lucide@0.263.0/dist/umd/lucide.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700&display=swap" rel="stylesheet">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      user-select: none;
+    }
+    body {
+      font-family: 'Inter', sans-serif;
+      overflow: hidden;
+      background: #05050f;
+      color: #f0f0f0;
+    }
+    #app {
+      position: relative;
+      width: 100vw;
+      height: 100vh;
+      background: radial-gradient(ellipse at 40% 30%, #0c0c1a 0%, #020208 100%);
+    }
+    canvas#three-canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+    }
+    /* UI Overlay - Glassmorphic */
+    .ui-glass {
+      background: rgba(12, 12, 20, 0.7);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 24px;
+      box-shadow: 0 8px 20px rgba(0,0,0,0.3);
+    }
+    #top-bar {
+      position: absolute;
+      top: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      gap: 12px;
+      z-index: 30;
+      background: rgba(10,10,18,0.6);
+      backdrop-filter: blur(16px);
+      padding: 8px 20px;
+      border-radius: 60px;
+      border: 1px solid rgba(255,255,255,0.1);
+    }
+    .glass-btn {
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.15);
+      color: #e0e0e0;
+      padding: 8px 18px;
+      border-radius: 40px;
+      font-family: 'Inter', sans-serif;
+      font-weight: 500;
+      font-size: 13px;
+      cursor: pointer;
+      transition: all 0.25s ease;
+      letter-spacing: 0.3px;
+    }
+    .glass-btn:hover {
+      background: rgba(255,255,255,0.12);
+      border-color: rgba(255,255,255,0.3);
+      transform: scale(1.02);
+    }
+    .glass-btn.active-cyan {
+      background: rgba(0, 229, 255, 0.18);
+      border-color: #00e5ff;
+      color: #00e5ff;
+      box-shadow: 0 0 12px rgba(0,229,255,0.2);
+    }
+    .glass-btn.active-orange {
+      background: rgba(255, 109, 0, 0.18);
+      border-color: #ff6d00;
+      color: #ff6d00;
+      box-shadow: 0 0 12px rgba(255,109,0,0.2);
+    }
+    #main-title {
+      position: absolute;
+      top: 100px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: clamp(20px, 3vw, 32px);
+      font-weight: 500;
+      letter-spacing: 6px;
+      background: linear-gradient(135deg, #ffffff, #a0a0c0);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+      text-shadow: 0 0 20px rgba(0,229,255,0.2);
+      white-space: nowrap;
+      pointer-events: none;
+      z-index: 20;
+    }
+    /* Tooltip Premium */
+    #tooltip {
+      position: absolute;
+      display: none;
+      background: rgba(8, 8, 18, 0.96);
+      backdrop-filter: blur(20px);
+      border-radius: 20px;
+      padding: 14px 20px;
+      max-width: 280px;
+      border-left: 3px solid;
+      z-index: 200;
+      pointer-events: none;
+      font-family: 'Inter', sans-serif;
+      box-shadow: 0 12px 28px rgba(0,0,0,0.5);
+      transition: 0.1s linear;
+    }
+    #tooltip h3 { font-size: 16px; font-weight: 600; margin-bottom: 6px; letter-spacing: -0.2px; }
+    #tooltip p { font-size: 12px; line-height: 1.5; color: #cdcdff; }
+    .tt-cyan { border-left-color: #00e5ff; }
+    .tt-orange { border-left-color: #ff6d00; }
+    /* Number line panel */
+    #numberline-panel {
+      position: absolute;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: min(90%, 720px);
+      background: rgba(10, 10, 20, 0.85);
+      backdrop-filter: blur(20px);
+      border-radius: 28px;
+      padding: 16px 20px;
+      border: 1px solid rgba(255,255,255,0.1);
+      z-index: 25;
+    }
+    #nl-title {
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      font-weight: 500;
+      color: #aaa;
+      margin-bottom: 10px;
+    }
+    #nl-canvas {
+      width: 100%;
+      height: 80px;
+      display: block;
+      border-radius: 12px;
+      background: #03030c;
+    }
+    .nl-btn {
+      background: #1e1e2a;
+      border: none;
+      padding: 6px 14px;
+      border-radius: 40px;
+      color: white;
+      font-size: 12px;
+      margin: 0 6px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .nl-btn:hover { background: #2e2e3e; transform: scale(0.96); }
+    #legend {
+      position: absolute;
+      bottom: 24px;
+      right: 24px;
+      background: rgba(0,0,0,0.6);
+      backdrop-filter: blur(8px);
+      padding: 10px 16px;
+      border-radius: 28px;
+      font-size: 11px;
+      z-index: 20;
+    }
+    .legend-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; margin-right: 8px; }
+    #tour-info {
+      position: absolute;
+      bottom: 140px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0,0,0,0.85);
+      backdrop-filter: blur(16px);
+      padding: 12px 24px;
+      border-radius: 40px;
+      font-size: 14px;
+      max-width: 400px;
+      text-align: center;
+      border: 1px solid #00e5ff40;
+      pointer-events: none;
+      z-index: 30;
+      display: none;
+    }
+    @media (max-width: 700px) {
+      .glass-btn { padding: 6px 12px; font-size: 11px; }
+      #main-title { top: 75px; letter-spacing: 3px; font-size: 18px; white-space: nowrap; }
+    }
+  </style>
 </head>
 <body>
-<div id="canvas-container"></div>
-<div id="ui-layer">
-    <div class="title-block">
-        <h1><i class="fas fa-chalkboard-user"></i> NUMBERVERSE · HIERARCHY</h1>
-        <div class="subtitle">JEE Advanced | Abstract to Concrete · Dense vs Discrete</div>
+<div id="app">
+  <canvas id="three-canvas"></canvas>
+  <div id="ui-overlay">
+    <div id="top-bar">
+      <button class="glass-btn active-cyan" id="btn-dense">🌀 Dense View</button>
+      <button class="glass-btn" id="btn-discrete">🔲 Discrete View</button>
+      <button class="glass-btn" id="btn-tour">✨ Guided Tour</button>
+      <button class="glass-btn" id="btn-reset">🎯 Reset Camera</button>
     </div>
-    <div class="info-card" id="info-card">
-        <div class="node-title" id="panel-title">
-            <i class="fas fa-cube"></i> 
-            <span>Number Realm</span>
-        </div>
-        <div class="node-desc" id="panel-desc">Select any glowing node to explore its mathematical nature & zoom into its number line.</div>
-        <div class="legend">
-            <div class="legend-item"><div class="dot cyan"></div> <span>DENSE (Continuum)</span></div>
-            <div class="legend-item"><div class="dot orange"></div> <span>DISCRETE (Gaps)</span></div>
-            <div class="legend-item"><div class="dot magenta"></div> <span>IMAGINARY · Zoom</span></div>
-        </div>
+    <div id="main-title">⟡ HIERARCHY OF NUMBERS ⟡</div>
+    <div id="tooltip"></div>
+    <div id="tour-info"></div>
+    <div id="numberline-panel">
+      <div id="nl-title">📐 INTERACTIVE NUMBER LINE — ZOOM INTO DENSITY</div>
+      <canvas id="nl-canvas"></canvas>
+      <div style="display: flex; gap: 12px; justify-content: center; margin-top: 12px;">
+        <button class="nl-btn" id="nl-zoomin">➕ Zoom In</button>
+        <button class="nl-btn" id="nl-zoomout">➖ Zoom Out</button>
+        <button class="nl-btn" id="nl-reset">⟳ Reset</button>
+      </div>
     </div>
-    <div class="viz-panel" id="viz-panel">
-        <div class="viz-header">
-            <span><i class="fas fa-chart-line"></i> DENSITY SIMULATION</span>
-            <span class="zoom-hint"><i class="fas fa-mouse-pointer"></i> SCROLL → ZOOM INFINITE</span>
-        </div>
-        <canvas id="line-canvas" width="700" height="70" style="width:100%; height:70px"></canvas>
-        <div class="mode-badge" id="mode-badge">⚡ DENSE MODE (CONTINUUM)</div>
+    <div id="legend">
+      <div style="display: flex; gap: 16px;">
+        <div><span class="legend-dot" style="background: #00e5ff; box-shadow: 0 0 6px cyan;"></span> Dense (ℝ, ℚ, Irrational)</div>
+        <div><span class="legend-dot" style="background: #ff6d00; box-shadow: 0 0 6px orange;"></span> Discrete (ℤ, 𝕎, ℕ)</div>
+      </div>
     </div>
-    <div class="controls">
-        <button class="btn" id="tour-btn"><i class="fas fa-play"></i> GUIDED TOUR</button>
-        <button class="btn" id="reset-btn"><i class="fas fa-globe"></i> RESET VIEW</button>
-    </div>
+  </div>
 </div>
-<div id="tooltip"></div>
 
-<script>
-    // ==========  ENHANCED VISUALS: BOLD, ILLUSTRATIVE, IMAGINARY ZOOM & DENSITY ==========
-    const data = {
-        nodes: [
-            { id: 'complex', label: 'ℂ Complex', pos: [0, 8, 0], color: 0xffffff, type: 'dense', desc: 'Universe of all numbers: a + bi. Contains reals & imaginaries.', icon: 'fa-infinity', glow: 0x88aaff },
-            { id: 'real', label: 'ℝ Real', pos: [-5, 4, 0], color: 0x00f2ff, type: 'dense', desc: 'Continuous line: every point is a real number. Dense & uncountable.', icon: 'fa-chart-line', glow: 0x00f2ff },
-            { id: 'imaginary', label: '𝕚 Imaginary', pos: [5, 4, 0], color: 0xff44dd, type: 'dense', desc: 'Numbers of form bi (b ∈ ℝ). Square gives negative. Dense on imaginary axis!', icon: 'fa-eye', glow: 0xff66ee },
-            { id: 'rational', label: 'ℚ Rational', pos: [-8, 0, 0], color: 0x44ccff, type: 'dense', desc: 'p/q, q≠0. Dense yet countable (infinite points between).', icon: 'fa-fraction', glow: 0x44aaff },
-            { id: 'irrational', label: 'ℙ Irrational', pos: [-2, 0, 0], color: 0x66ccff, type: 'dense', desc: 'π, √2, e ... Non-repeating decimals. Dense but not rational.', icon: 'fa-pi', glow: 0x33bbff },
-            { id: 'integers', label: 'ℤ Integers', pos: [-8, -4, 0], color: 0xff8c00, type: 'discrete', desc: '..., -2, -1, 0, 1, 2,... Discrete gaps of size 1.', icon: 'fa-hashtag', glow: 0xffaa44 },
-            { id: 'whole', label: '𝕎 Whole', pos: [-8, -7, 0], color: 0xffaa33, type: 'discrete', desc: 'Natural numbers with zero: {0,1,2,...}.', icon: 'fa-circle-dot', glow: 0xffaa33 },
-            { id: 'natural', label: 'ℕ Natural', pos: [-8, -10, 0], color: 0xffcc55, type: 'discrete', desc: 'Counting numbers: 1,2,3,...', icon: 'fa-leaf', glow: 0xffcc55 }
-        ],
-        links: [
-            { from: 'complex', to: 'real', type: 'dense' },
-            { from: 'complex', to: 'imaginary', type: 'dense' },
-            { from: 'real', to: 'rational', type: 'dense' },
-            { from: 'real', to: 'irrational', type: 'dense' },
-            { from: 'rational', to: 'integers', type: 'discrete' },
-            { from: 'integers', to: 'whole', type: 'discrete' },
-            { from: 'whole', to: 'natural', type: 'discrete' }
-        ]
-    };
+<script type="module">
+  import * as THREE from 'three';
 
-    let scene, camera, renderer, raycaster, mouse;
-    let nodeMeshes = [];
-    let flowParticles = [];
-    let rotatingRings = [];
-    let currentZoomLevel = 1;
-    let isImaginaryMode = false;
-    let activeNode = null;
+  // ---------- CONFIGURATION ----------
+  const CYAN = 0x00e5ff;
+  const ORANGE = 0xff6d00;
+  
+  // ---------- NODE DATA (static positions - no drift to keep edges intact) ----------
+  const nodeData = [
+    { id:'complex', label:'Complex Numbers', symbol:'ℂ', type:'dense', desc:'All numbers a+bi. The universal container of every number.', pos:[0, 5.2, 0], parent:null },
+    { id:'real', label:'Real Numbers', symbol:'ℝ', type:'dense', desc:'Continuous number line. Dense: between any two reals lies another.', pos:[-3.2, 2.6, 0], parent:'complex' },
+    { id:'imaginary', label:'Imaginary Numbers', symbol:'𝕀', type:'dense', desc:'Multiples of i (√-1). Create the complex plane.', pos:[3.2, 2.6, 0], parent:'complex' },
+    { id:'rational', label:'Rational Numbers', symbol:'ℚ', type:'dense', desc:'Fractions p/q. Surprisingly dense: infinite rationals between any two.', pos:[-5.4, -0.2, 0], parent:'real' },
+    { id:'irrational', label:'Irrational Numbers', symbol:'ℝ\\ℚ', type:'dense', desc:'π, √2, e. Never fractions, yet also dense on the line.', pos:[-1.2, -0.2, 0], parent:'real' },
+    { id:'integers', label:'Integers', symbol:'ℤ', type:'discrete', desc:'..., -2, -1, 0, 1, 2,... Discrete with explicit gaps.', pos:[-6.8, -3.2, 0], parent:'rational' },
+    { id:'whole', label:'Whole Numbers', symbol:'𝕎', type:'discrete', desc:'0,1,2,3,... Non-negative integers, discrete.', pos:[-5.2, -6.0, 0], parent:'integers' },
+    { id:'natural', label:'Natural Numbers', symbol:'ℕ', type:'discrete', desc:'1,2,3,... The counting numbers. Foundation of arithmetic.', pos:[-3.8, -8.5, 0], parent:'whole' }
+  ];
 
-    // Canvas + context for number line
-    let lineCanvas, lineCtx;
+  // Setup Scene
+  const canvas = document.getElementById('three-canvas');
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false });
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.setPixelRatio(window.devicePixelRatio);
+  renderer.setClearColor(0x020208, 1);
+  
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 500);
+  camera.position.set(0, 0, 22);
+  camera.lookAt(0, -1, 0);
+  
+  // Lighting
+  const ambientLight = new THREE.AmbientLight(0x222222);
+  scene.add(ambientLight);
+  const mainLight = new THREE.DirectionalLight(0xffffff, 0.9);
+  mainLight.position.set(2, 5, 4);
+  scene.add(mainLight);
+  const fillLight = new THREE.PointLight(0x4466cc, 0.3);
+  fillLight.position.set(-1, 2, 3);
+  scene.add(fillLight);
+  const backLight = new THREE.PointLight(0xffaa44, 0.2);
+  backLight.position.set(0, 1, -5);
+  scene.add(backLight);
+  
+  // ---------- CREATE 3D NODES (with pulsing glow & orbiting particles) ----------
+  const nodes3D = {};
+  const orbitingParticles = []; // store { mesh, radius, speed, angle, center }
+  
+  nodeData.forEach((data, idx) => {
+    const group = new THREE.Group();
+    group.position.set(data.pos[0], data.pos[1], data.pos[2]);
+    const isDense = data.type === 'dense';
+    const color = isDense ? CYAN : ORANGE;
     
-    // Init Three.js
-    function init() {
-        scene = new THREE.Scene();
-        scene.background = new THREE.Color(0x01010c);
-        scene.fog = new THREE.FogExp2(0x01010c, 0.025);
-
-        camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 500);
-        camera.position.set(0, 2, 22);
-        camera.lookAt(0, 0, 0);
-
-        renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
-        renderer.setSize(window.innerWidth, window.innerHeight);
-        renderer.shadowMap.enabled = true; // subtle shadows for depth
-        renderer.setPixelRatio(window.devicePixelRatio);
-        document.getElementById('canvas-container').appendChild(renderer.domElement);
-
-        raycaster = new THREE.Raycaster();
-        mouse = new THREE.Vector2();
-
-        // Enhanced Lighting: vibrant and dramatic
-        const ambient = new THREE.AmbientLight(0x111122);
-        scene.add(ambient);
-        const mainLight = new THREE.DirectionalLight(0xffffff, 1.2);
-        mainLight.position.set(5, 12, 8);
-        mainLight.castShadow = true;
-        scene.add(mainLight);
-        const fillLight = new THREE.PointLight(0x2266ff, 0.6);
-        fillLight.position.set(-3, 5, 6);
-        scene.add(fillLight);
-        const backLight = new THREE.PointLight(0xff44aa, 0.4);
-        backLight.position.set(2, 3, -6);
-        scene.add(backLight);
-        
-        // starfield background particles (rich)
-        const starGeo = new THREE.BufferGeometry();
-        const starCount = 1800;
-        const starPos = [];
-        for (let i = 0; i < starCount; i++) {
-            starPos.push((Math.random() - 0.5) * 200);
-            starPos.push((Math.random() - 0.5) * 100);
-            starPos.push((Math.random() - 0.5) * 80 - 40);
+    // Core shape: Sphere for dense, Icosahedron for discrete (more tech look)
+    let geometry;
+    if (isDense) geometry = new THREE.SphereGeometry(0.48, 48, 48);
+    else geometry = new THREE.IcosahedronGeometry(0.5, 0);
+    const material = new THREE.MeshStandardMaterial({
+      color: color,
+      emissive: color,
+      emissiveIntensity: 0.35,
+      metalness: 0.7,
+      roughness: 0.25,
+      flatShading: false
+    });
+    const coreMesh = new THREE.Mesh(geometry, material);
+    group.add(coreMesh);
+    
+    // Glow aura (scaled)
+    const glowMat = new THREE.MeshBasicMaterial({ color: color, transparent: true, opacity: 0.15, side: THREE.BackSide });
+    const glowGeo = isDense ? new THREE.SphereGeometry(0.72, 24, 24) : new THREE.IcosahedronGeometry(0.75, 0);
+    const glowMesh = new THREE.Mesh(glowGeo, glowMat);
+    group.add(glowMesh);
+    
+    // Text label using CanvasTexture
+    const canvasTex = document.createElement('canvas');
+    canvasTex.width = 512;
+    canvasTex.height = 128;
+    const ctx = canvasTex.getContext('2d');
+    ctx.fillStyle = 'rgba(0,0,0,0)';
+    ctx.fillRect(0, 0, canvasTex.width, canvasTex.height);
+    ctx.font = `bold 38px 'Inter', sans-serif`;
+    ctx.fillStyle = isDense ? '#00e5ff' : '#ffaa44';
+    ctx.textAlign = 'center';
+    ctx.fillText(`${data.symbol}  ${data.label}`, canvasTex.width/2, 70);
+    const texture = new THREE.CanvasTexture(canvasTex);
+    const spriteMat = new THREE.SpriteMaterial({ map: texture, depthTest: false });
+    const sprite = new THREE.Sprite(spriteMat);
+    sprite.scale.set(3.6, 0.9, 1);
+    sprite.position.y = -1.1;
+    group.add(sprite);
+    
+    scene.add(group);
+    nodes3D[data.id] = { group, core: coreMesh, glow: glowMesh, data, originalPos: data.pos.slice() };
+    
+    // ORBITING PARTICLES for extra life (10 per node)
+    for (let i = 0; i < 12; i++) {
+      const pGeo = new THREE.SphereGeometry(0.045, 8, 8);
+      const pMat = new THREE.MeshStandardMaterial({ color: color, emissive: color, emissiveIntensity: 0.5 });
+      const orb = new THREE.Mesh(pGeo, pMat);
+      group.add(orb);
+      const radius = 0.95 + Math.random() * 0.3;
+      const speed = 0.8 + Math.random() * 1.2;
+      const angle = Math.random() * Math.PI * 2;
+      orbitingParticles.push({
+        mesh: orb,
+        radius,
+        speed,
+        angle,
+        center: group,
+        axis: Math.random() > 0.5 ? 'xz' : 'xy',
+        yOffset: (Math.random() - 0.5) * 0.7
+      });
+    }
+  });
+  
+  // ---------- EDGES (Hierarchical connections) ----------
+  const edgesList = [];
+  function createEdge(parentId, childId) {
+    const fromNode = nodes3D[parentId];
+    const toNode = nodes3D[childId];
+    if (!fromNode || !toNode) return;
+    const fromPos = fromNode.group.position;
+    const toPos = toNode.group.position;
+    const isDense = nodes3D[childId].data.type === 'dense';
+    const color = isDense ? CYAN : ORANGE;
+    const points = [
+      new THREE.Vector3(fromPos.x, fromPos.y, fromPos.z),
+      new THREE.Vector3(toPos.x, toPos.y, toPos.z)
+    ];
+    if (isDense) {
+      // Curved, glowing dense connection
+      const midX = (fromPos.x + toPos.x) / 2;
+      const midY = (fromPos.y + toPos.y) / 2 + 0.35;
+      const curve = new THREE.QuadraticBezierCurve3(points[0], new THREE.Vector3(midX, midY, 0), points[1]);
+      const tubeGeo = new THREE.TubeGeometry(curve, 32, 0.045, 6, false);
+      const mat = new THREE.MeshStandardMaterial({ color: color, emissive: color, emissiveIntensity: 0.25, transparent: true });
+      const tube = new THREE.Mesh(tubeGeo, mat);
+      scene.add(tube);
+      edgesList.push({ obj: tube, type: 'dense', fromId: parentId, toId: childId });
+    } else {
+      // Discrete: dashed line effect using small line segments
+      const group = new THREE.Group();
+      const steps = 20;
+      for (let i = 0; i < steps; i++) {
+        const t1 = i / steps;
+        const t2 = (i + 0.45) / steps;
+        if (t2 > 1) continue;
+        const p1 = new THREE.Vector3().lerpVectors(points[0], points[1], t1);
+        const p2 = new THREE.Vector3().lerpVectors(points[0], points[1], t2);
+        const geo = new THREE.BufferGeometry().setFromPoints([p1, p2]);
+        const matLine = new THREE.LineBasicMaterial({ color: color, transparent: true, opacity: 0.7 });
+        const seg = new THREE.Line(geo, matLine);
+        group.add(seg);
+      }
+      scene.add(group);
+      edgesList.push({ obj: group, type: 'discrete', fromId: parentId, toId: childId });
+    }
+  }
+  
+  // Build edges based on parent relation
+  nodeData.forEach(d => { if (d.parent) createEdge(d.parent, d.id); });
+  
+  // ---------- FLOW PARTICLES (moving along dense edges, dynamic) ----------
+  class FlowParticle {
+    constructor(edgeObj, fromNode, toNode, colorHex) {
+      this.edgeObj = edgeObj;
+      this.fromNode = fromNode;
+      this.toNode = toNode;
+      this.t = Math.random();
+      this.speed = 0.003 + Math.random() * 0.005;
+      const geo = new THREE.SphereGeometry(0.055, 10, 10);
+      const mat = new THREE.MeshStandardMaterial({ color: colorHex, emissive: colorHex, emissiveIntensity: 0.7 });
+      this.mesh = new THREE.Mesh(geo, mat);
+      scene.add(this.mesh);
+    }
+    update() {
+      this.t += this.speed;
+      if (this.t > 1) this.t -= 1;
+      const p1 = this.fromNode.group.position;
+      const p2 = this.toNode.group.position;
+      // For dense edges, we follow a quadratic curve to match the visual edge
+      const midX = (p1.x + p2.x) / 2;
+      const midY = (p1.y + p2.y) / 2 + 0.35;
+      const t = this.t;
+      const x = (1-t)*(1-t)*p1.x + 2*(1-t)*t*midX + t*t*p2.x;
+      const y = (1-t)*(1-t)*p1.y + 2*(1-t)*t*midY + t*t*p2.y;
+      const z = (1-t)*(1-t)*p1.z + 2*(1-t)*t*0 + t*t*p2.z;
+      this.mesh.position.set(x, y, z);
+      const intensity = 0.5 + Math.sin(this.t * Math.PI) * 0.6;
+      this.mesh.material.emissiveIntensity = intensity;
+    }
+  }
+  
+  const flowParticles = [];
+  edgesList.forEach(edge => {
+    if (edge.type === 'dense') {
+      const fromNode = nodes3D[edge.fromId];
+      const toNode = nodes3D[edge.toId];
+      for (let i = 0; i < 6; i++) {
+        flowParticles.push(new FlowParticle(edge, fromNode, toNode, CYAN));
+      }
+    }
+  });
+  
+  // ---------- BACKGROUND STARFIELD + FLOATING DUST ----------
+  const starCount = 1800;
+  const starGeo = new THREE.BufferGeometry();
+  const starPos = [];
+  for (let i = 0; i < starCount; i++) {
+    starPos.push((Math.random() - 0.5) * 200);
+    starPos.push((Math.random() - 0.5) * 120);
+    starPos.push((Math.random() - 0.5) * 80 - 40);
+  }
+  starGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(starPos), 3));
+  const starMat = new THREE.PointsMaterial({ color: 0x88aaff, size: 0.08, transparent: true, opacity: 0.5 });
+  const stars = new THREE.Points(starGeo, starMat);
+  scene.add(stars);
+  
+  // floating dust (slow moving)
+  const dustCount = 800;
+  const dustGeo = new THREE.BufferGeometry();
+  const dustPositions = [];
+  const dustVel = [];
+  for (let i=0; i<dustCount; i++) {
+    dustPositions.push((Math.random() - 0.5)*45);
+    dustPositions.push((Math.random() - 0.5)*35);
+    dustPositions.push((Math.random() - 0.5)*25 - 15);
+    dustVel.push((Math.random() - 0.5)*0.002, (Math.random() - 0.5)*0.002, (Math.random() - 0.5)*0.001);
+  }
+  dustGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(dustPositions), 3));
+  const dustMat = new THREE.PointsMaterial({ color: 0x77aaff, size: 0.04, transparent: true });
+  const dustCloud = new THREE.Points(dustGeo, dustMat);
+  scene.add(dustCloud);
+  
+  // ---------- CAMERA CONTROL (smooth follow & focus) ----------
+  let camTargetPos = new THREE.Vector3(0, 0, 22);
+  let camLookAt = new THREE.Vector3(0, -1, 0);
+  function moveCameraTo(posX, posY, posZ, lookX, lookY, lookZ, duration = 1.2) {
+    gsap.to(camTargetPos, { x: posX, y: posY, z: posZ, duration: duration, ease: "power2.inOut" });
+    gsap.to(camLookAt, { x: lookX, y: lookY, z: lookZ, duration: duration, ease: "power2.inOut" });
+  }
+  function resetCamera() { moveCameraTo(0, 0, 22, 0, -1, 0, 1.2); selectedNodeId = null; }
+  function focusNode(id) {
+    const node = nodes3D[id];
+    if (!node) return;
+    const pos = node.group.position;
+    moveCameraTo(pos.x, pos.y, pos.z + 5.5, pos.x, pos.y, pos.z, 1.1);
+    selectedNodeId = id;
+  }
+  let selectedNodeId = null;
+  
+  // ---------- RAYCASTER & TOOLTIP ----------
+  const raycaster = new THREE.Raycaster();
+  const mouse = new THREE.Vector2();
+  let hoveredNodeId = null;
+  const tooltipDiv = document.getElementById('tooltip');
+  function showTooltip(nodeData, clientX, clientY) {
+    const isDense = nodeData.type === 'dense';
+    tooltipDiv.className = isDense ? 'tt-cyan' : 'tt-orange';
+    tooltipDiv.innerHTML = `<h3>${nodeData.symbol} ${nodeData.label}</h3><p>${nodeData.desc}</p><p style="margin-top:8px;font-size:10px;">${isDense ? '🌀 DENSE: infinite points between' : '⬛ DISCRETE: isolated steps'}</p>`;
+    tooltipDiv.style.display = 'block';
+    let left = clientX + 18;
+    let top = clientY - 10;
+    const rect = tooltipDiv.getBoundingClientRect();
+    if (left + rect.width > window.innerWidth - 10) left = clientX - rect.width - 18;
+    if (top + rect.height > window.innerHeight - 10) top = window.innerHeight - rect.height - 10;
+    tooltipDiv.style.left = `${left}px`;
+    tooltipDiv.style.top = `${top}px`;
+  }
+  function hideTooltip() { tooltipDiv.style.display = 'none'; }
+  
+  canvas.addEventListener('mousemove', (e) => {
+    mouse.x = (e.clientX / renderer.domElement.clientWidth) * 2 - 1;
+    mouse.y = -(e.clientY / renderer.domElement.clientHeight) * 2 + 1;
+    raycaster.setFromCamera(mouse, camera);
+    const spheres = Object.values(nodes3D).map(n => n.core);
+    const intersects = raycaster.intersectObjects(spheres);
+    if (intersects.length > 0) {
+      const hitCore = intersects[0].object;
+      const entry = Object.values(nodes3D).find(n => n.core === hitCore);
+      if (entry && hoveredNodeId !== entry.data.id) {
+        if (hoveredNodeId) {
+          const prevNode = nodes3D[hoveredNodeId];
+          if(prevNode) gsap.to(prevNode.glow.material, { opacity: 0.15, duration: 0.2 });
         }
-        starGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(starPos), 3));
-        const starMat = new THREE.PointsMaterial({ color: 0xaaccff, size: 0.08, transparent: true, opacity: 0.6 });
-        const stars = new THREE.Points(starGeo, starMat);
-        scene.add(stars);
-        
-        createPremiumNodes();
-        createDynamicLinks();
-        setupNumberLineUI();
-        
-        window.addEventListener('resize', onWindowResize);
-        window.addEventListener('mousemove', onMouseMove);
-        window.addEventListener('click', onNodeClick);
-        document.getElementById('reset-btn').addEventListener('click', resetCameraView);
-        document.getElementById('tour-btn').addEventListener('click', guidedTourWithImaginary);
-        
-        animate();
+        hoveredNodeId = entry.data.id;
+        gsap.to(entry.glow.material, { opacity: 0.45, duration: 0.25 });
+        showTooltip(entry.data, e.clientX, e.clientY);
+        canvas.style.cursor = 'pointer';
+      }
+    } else {
+      if (hoveredNodeId) {
+        const prev = nodes3D[hoveredNodeId];
+        if(prev) gsap.to(prev.glow.material, { opacity: 0.15, duration: 0.2 });
+        hoveredNodeId = null;
+        hideTooltip();
+        canvas.style.cursor = 'default';
+      }
     }
-    
-    // Create visually bold nodes with rings, emissive glows
-    function createPremiumNodes() {
-        data.nodes.forEach(node => {
-            // main glossy core
-            const geometry = new THREE.SphereGeometry(0.85, 32, 32);
-            const material = new THREE.MeshStandardMaterial({
-                color: node.color,
-                emissive: node.type === 'dense' ? 0x2266aa : 0x442200,
-                emissiveIntensity: 0.35,
-                metalness: 0.7,
-                roughness: 0.2,
-                flatShading: false
-            });
-            const core = new THREE.Mesh(geometry, material);
-            core.position.set(...node.pos);
-            core.userData = node;
-            core.castShadow = true;
-            core.receiveShadow = false;
-            scene.add(core);
-            
-            // outer ring (rotating torus)
-            const ringGeo = new THREE.TorusGeometry(1.05, 0.07, 48, 100);
-            const ringMat = new THREE.MeshStandardMaterial({ color: node.color, emissive: node.color, emissiveIntensity: 0.5 });
-            const ring = new THREE.Mesh(ringGeo, ringMat);
-            ring.userData = { speed: 0.008, axis: 'y' };
-            core.add(ring);
-            rotatingRings.push(ring);
-            
-            // add second perpendicular ring for style
-            const ring2Geo = new THREE.TorusGeometry(1.12, 0.05, 48, 100);
-            const ring2Mat = new THREE.MeshStandardMaterial({ color: node.color, emissive: node.color, emissiveIntensity: 0.3 });
-            const ring2 = new THREE.Mesh(ring2Geo, ring2Mat);
-            ring2.rotation.x = Math.PI / 2;
-            core.add(ring2);
-            rotatingRings.push(ring2);
-            
-            // Text label using canvas texture (bold font)
-            const canvas = document.createElement('canvas');
-            const ctx = canvas.getContext('2d');
-            canvas.width = 512;
-            canvas.height = 256;
-            ctx.fillStyle = '#ffffff';
-            ctx.font = 'Bold 60px "Inter", system-ui';
-            ctx.textAlign = 'center';
-            ctx.shadowBlur = 0;
-            ctx.fillStyle = `#${node.color.toString(16)}`;
-            ctx.fillText(node.label.split(' ')[0], 256, 140);
-            ctx.font = '28px "Inter"';
-            ctx.fillStyle = '#ccccff';
-            ctx.fillText(node.label.includes(' ') ? node.label.split(' ')[1] : '', 256, 200);
-            const texture = new THREE.CanvasTexture(canvas);
-            const labelPlane = new THREE.PlaneGeometry(2.4, 0.9);
-            const labelMat = new THREE.MeshBasicMaterial({ map: texture, transparent: true, side: THREE.DoubleSide });
-            const labelMesh = new THREE.Mesh(labelPlane, labelMat);
-            labelMesh.position.set(0, 0, 0.92);
-            core.add(labelMesh);
-            
-            // floating particles around node (to emphasize density)
-            const particleCount = 35;
-            const particleGroup = [];
-            for (let i = 0; i < particleCount; i++) {
-                const pGeo = new THREE.SphereGeometry(0.05, 6, 6);
-                const pMat = new THREE.MeshStandardMaterial({ color: node.color, emissive: node.color, emissiveIntensity: 0.6 });
-                const particle = new THREE.Mesh(pGeo, pMat);
-                particle.userData = { angleX: Math.random() * Math.PI * 2, angleY: Math.random() * Math.PI * 2, radius: 1.3 + Math.random() * 0.6, speed: 0.005 + Math.random() * 0.01 };
-                core.add(particle);
-                particleGroup.push(particle);
-            }
-            core.userData.particles = particleGroup;
-            nodeMeshes.push(core);
-        });
+  });
+  canvas.addEventListener('click', () => { if (hoveredNodeId) focusNode(hoveredNodeId); });
+  
+  // ---------- VIEW MODE: DENSE / DISCRETE ----------
+  let viewMode = 'dense';
+  const btnDense = document.getElementById('btn-dense');
+  const btnDiscrete = document.getElementById('btn-discrete');
+  function setViewMode(mode) {
+    viewMode = mode;
+    btnDense.classList.toggle('active-cyan', mode === 'dense');
+    btnDiscrete.classList.toggle('active-orange', mode === 'discrete');
+    Object.values(nodes3D).forEach(n => {
+      const match = (mode === 'dense' && n.data.type === 'dense') || (mode === 'discrete' && n.data.type === 'discrete');
+      gsap.to(n.core.material, { opacity: match ? 1 : 0.25, emissiveIntensity: match ? 0.55 : 0.05, duration: 0.6 });
+      gsap.to(n.glow.material, { opacity: match ? 0.35 : 0.05, duration: 0.6 });
+    });
+    edgesList.forEach(edge => {
+      const edgeTypeMatch = (mode === 'dense' && edge.type === 'dense') || (mode === 'discrete' && edge.type === 'discrete');
+      if (edge.obj.isMesh) edge.obj.material.opacity = edgeTypeMatch ? 0.85 : 0.12;
+      else if (edge.obj.children) edge.obj.children.forEach(c => { if (c.material) c.material.opacity = edgeTypeMatch ? 0.8 : 0.1; });
+    });
+    drawNumberLine();
+  }
+  btnDense.addEventListener('click', () => setViewMode('dense'));
+  btnDiscrete.addEventListener('click', () => setViewMode('discrete'));
+  document.getElementById('btn-reset').addEventListener('click', resetCamera);
+  
+  // ---------- NUMBER LINE INTERACTIVE (2D) ----------
+  const nlCanvas = document.getElementById('nl-canvas');
+  const nlCtx = nlCanvas.getContext('2d');
+  let nlRange = { min: -5, max: 5 };
+  function resizeNL() {
+    const container = document.getElementById('numberline-panel');
+    const w = container.clientWidth - 40;
+    nlCanvas.width = w;
+    nlCanvas.height = 85;
+    drawNumberLine();
+  }
+  function drawNumberLine() {
+    if (!nlCanvas.width) return;
+    const w = nlCanvas.width, h = nlCanvas.height;
+    nlCtx.clearRect(0, 0, w, h);
+    const axisY = h * 0.6;
+    nlCtx.strokeStyle = "#ffffff30";
+    nlCtx.beginPath(); nlCtx.moveTo(20, axisY); nlCtx.lineTo(w-20, axisY); nlCtx.stroke();
+    const toX = v => 20 + ((v - nlRange.min) / (nlRange.max - nlRange.min)) * (w - 40);
+    if (viewMode === 'dense') {
+      const stepCount = Math.min(180, Math.floor(300 / (nlRange.max - nlRange.min)));
+      nlCtx.fillStyle = "#00e5ff";
+      for (let i = 0; i <= stepCount; i++) {
+        const val = nlRange.min + (nlRange.max - nlRange.min) * i / stepCount;
+        const x = toX(val);
+        nlCtx.beginPath(); nlCtx.arc(x, axisY, 2.2, 0, Math.PI*2); nlCtx.fill();
+      }
+      nlCtx.fillStyle = "#00e5ff88";
+      nlCtx.font = "10px 'Inter'";
+      nlCtx.fillText(`Dense continuum — infinite density`, w/2, 20);
+    } else {
+      const intStart = Math.ceil(nlRange.min);
+      const intEnd = Math.floor(nlRange.max);
+      nlCtx.fillStyle = "#ff6d00";
+      for (let i = intStart; i <= intEnd; i++) {
+        const x = toX(i);
+        nlCtx.fillRect(x-3, axisY-4, 6, 8);
+        nlCtx.fillStyle = "#ffaa77";
+        nlCtx.font = "9px 'Inter'";
+        nlCtx.fillText(i, x-2, axisY+16);
+        nlCtx.fillStyle = "#ff6d00";
+      }
+      nlCtx.fillStyle = "#ffaa66";
+      nlCtx.font = "10px 'Inter'";
+      nlCtx.fillText(`Discrete integer lattice — isolated points`, w/2, 20);
     }
-    
-    // Flow lines with glowing tubes + discrete dashed
-    function createDynamicLinks() {
-        data.links.forEach(link => {
-            const fromNode = data.nodes.find(n => n.id === link.from);
-            const toNode = data.nodes.find(n => n.id === link.to);
-            if (!fromNode || !toNode) return;
-            const start = new THREE.Vector3(...fromNode.pos);
-            const end = new THREE.Vector3(...toNode.pos);
-            const midY = (fromNode.pos[1] + toNode.pos[1]) / 2;
-            const ctrl1 = new THREE.Vector3(fromNode.pos[0], midY, 0);
-            const ctrl2 = new THREE.Vector3(toNode.pos[0], midY, 0);
-            const curve = new THREE.CubicBezierCurve3(start, ctrl1, ctrl2, end);
-            
-            if (link.type === 'dense') {
-                const tubeGeo = new THREE.TubeGeometry(curve, 48, 0.045, 6, false);
-                const tubeMat = new THREE.MeshStandardMaterial({ color: 0x33ccff, emissive: 0x0088aa, emissiveIntensity: 0.4, transparent: true });
-                const tube = new THREE.Mesh(tubeGeo, tubeMat);
-                scene.add(tube);
-                // add flowing orbs
-                for (let i = 0; i < 12; i++) {
-                    const orb = new THREE.Mesh(new THREE.SphereGeometry(0.08, 8, 8), new THREE.MeshStandardMaterial({ color: 0x00f2ff, emissive: 0x00aacc }));
-                    orb.userData = { curve, t: i / 12, speed: 0.003 + Math.random() * 0.002 };
-                    scene.add(orb);
-                    flowParticles.push(orb);
-                }
-            } else {
-                // discrete: dashed line
-                const points = curve.getPoints(40);
-                const lineGeo = new THREE.BufferGeometry().setFromPoints(points);
-                const lineMat = new THREE.LineBasicMaterial({ color: 0xffaa44 });
-                const lineObj = new THREE.Line(lineGeo, lineMat);
-                scene.add(lineObj);
-                // small glowing dots
-                for (let i = 0; i <= 12; i++) {
-                    const t = i / 12;
-                    const pt = curve.getPoint(t);
-                    const dot = new THREE.Mesh(new THREE.SphereGeometry(0.07, 6, 6), new THREE.MeshStandardMaterial({ color: 0xffaa55, emissive: 0xff5500 }));
-                    dot.position.copy(pt);
-                    scene.add(dot);
-                }
-            }
-        });
+    nlCtx.fillStyle = "#aaa";
+    nlCtx.fillText(nlRange.min.toFixed(1), 12, axisY+18);
+    nlCtx.fillText(nlRange.max.toFixed(1), w-28, axisY+18);
+  }
+  document.getElementById('nl-zoomin').addEventListener('click', () => {
+    const mid = (nlRange.min + nlRange.max)/2;
+    const half = (nlRange.max - nlRange.min)/3.5;
+    if (half > 0.03) { nlRange.min = mid - half; nlRange.max = mid + half; drawNumberLine(); }
+  });
+  document.getElementById('nl-zoomout').addEventListener('click', () => {
+    const mid = (nlRange.min + nlRange.max)/2;
+    const half = (nlRange.max - nlRange.min);
+    nlRange.min = mid - half; nlRange.max = mid + half;
+    if (nlRange.max - nlRange.min > 20) { nlRange.min = -10; nlRange.max = 10; }
+    drawNumberLine();
+  });
+  document.getElementById('nl-reset').addEventListener('click', () => { nlRange = { min: -5, max: 5 }; drawNumberLine(); });
+  window.addEventListener('resize', () => { camera.aspect = window.innerWidth/window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); resizeNL(); });
+  resizeNL();
+  
+  // ---------- GUIDED TOUR ----------
+  const tourBtn = document.getElementById('btn-tour');
+  const tourInfoDiv = document.getElementById('tour-info');
+  let tourActive = false;
+  const tourSteps = [
+    { id:'complex', text:'🌌 Complex Numbers (ℂ): The ultimate set, containing all numbers.' },
+    { id:'real', text:'📈 Real Numbers (ℝ): The continuous, dense number line.' },
+    { id:'imaginary', text:'🌀 Imaginary Numbers: Multiples of i, expand the plane.' },
+    { id:'rational', text:'🔢 Rationals (ℚ): Fractions, also incredibly dense.' },
+    { id:'irrational', text:'✨ Irrationals (√2, π): Never fractions, yet still dense.' },
+    { id:'integers', text:'⬛ Integers (ℤ): Discrete, clear gaps between values.' },
+    { id:'whole', text:'📊 Whole Numbers (𝕎): Non‑negative integers, discrete.' },
+    { id:'natural', text:'🔹 Natural Numbers (ℕ): 1,2,3… The origin of counting.' }
+  ];
+  tourBtn.addEventListener('click', () => {
+    if (tourActive) return;
+    tourActive = true;
+    tourBtn.textContent = '🎧 Tour in Progress...';
+    let stepIdx = 0;
+    function nextStep() {
+      if (stepIdx >= tourSteps.length) {
+        tourInfoDiv.style.display = 'none';
+        tourActive = false;
+        tourBtn.textContent = '✨ Guided Tour';
+        resetCamera();
+        return;
+      }
+      const step = tourSteps[stepIdx];
+      focusNode(step.id);
+      tourInfoDiv.innerHTML = step.text;
+      tourInfoDiv.style.display = 'block';
+      gsap.fromTo(tourInfoDiv, { opacity: 0, y: 12 }, { opacity: 1, y: 0, duration: 0.5 });
+      stepIdx++;
+      setTimeout(nextStep, 3800);
     }
+    nextStep();
+  });
+  
+  // ---------- ANIMATION LOOP (Pulse, Orbiting particles, Flow, Dust) ----------
+  let time = 0;
+  function animate() {
+    requestAnimationFrame(animate);
+    time += 0.016;
     
-    // Enhanced Number line: supports real axis & imaginary axis with zoom
-    function setupNumberLineUI() {
-        lineCanvas = document.getElementById('line-canvas');
-        lineCtx = lineCanvas.getContext('2d');
-        const resizeLine = () => {
-            const container = document.getElementById('viz-panel');
-            const width = container.clientWidth - 48;
-            lineCanvas.width = width;
-            lineCanvas.height = 70;
-            drawNumberLine();
-        };
-        window.addEventListener('resize', resizeLine);
-        resizeLine();
-        document.getElementById('viz-panel').addEventListener('wheel', (e) => {
-            e.preventDefault();
-            const delta = e.deltaY > 0 ? 0.92 : 1.08;
-            currentZoomLevel = Math.min(Math.max(currentZoomLevel * delta, 0.8), 280);
-            drawNumberLine();
-        });
+    // Node pulsation and orbiting particles
+    Object.values(nodes3D).forEach((node, idx) => {
+      const intensity = 0.35 + Math.sin(time * 2.2 + idx) * 0.18;
+      node.core.material.emissiveIntensity = (viewMode === 'dense' && node.data.type === 'dense') || (viewMode === 'discrete' && node.data.type === 'discrete') ? intensity : 0.08;
+      const scale = 1 + Math.sin(time * 4 + idx) * 0.02;
+      node.core.scale.set(scale, scale, scale);
+    });
+    
+    // orbiting particles
+    orbitingParticles.forEach(p => {
+      p.angle += 0.025 * p.speed;
+      const x = Math.cos(p.angle) * p.radius;
+      const z = Math.sin(p.angle) * p.radius;
+      p.mesh.position.set(x, p.yOffset + Math.sin(p.angle * 1.7) * 0.1, z);
+    });
+    
+    // update flow particles
+    flowParticles.forEach(fp => fp.update());
+    
+    // animate dust cloud
+    const positions = dustCloud.geometry.attributes.position.array;
+    for (let i = 0; i < dustCount; i++) {
+      positions[i*3] += dustVel[i*3];
+      positions[i*3+1] += dustVel[i*3+1];
+      positions[i*3+2] += dustVel[i*3+2];
+      if (Math.abs(positions[i*3]) > 35) dustVel[i*3] *= -1;
+      if (Math.abs(positions[i*3+1]) > 25) dustVel[i*3+1] *= -1;
     }
+    dustCloud.geometry.attributes.position.needsUpdate = true;
+    stars.rotation.y += 0.0005;
     
-    function drawNumberLine() {
-        if (!lineCtx || !lineCanvas) return;
-        const w = lineCanvas.width;
-        const h = lineCanvas.height;
-        lineCtx.clearRect(0, 0, w, h);
-        const centerY = h/2;
-        const axisColor = isImaginaryMode ? '#ff66ee' : '#00f2ff';
-        // draw axis
-        lineCtx.beginPath();
-        lineCtx.strokeStyle = '#ffffff33';
-        lineCtx.lineWidth = 1.5;
-        lineCtx.moveTo(0, centerY);
-        lineCtx.lineTo(w, centerY);
-        lineCtx.stroke();
-        
-        const stepBase = w / 8;
-        const zoomStep = stepBase / Math.max(0.5, currentZoomLevel);
-        if (zoomStep < 2) return;
-        const startX = (w/2) % zoomStep;
-        
-        for (let x = startX; x <= w; x += zoomStep) {
-            let value = Math.round((x - w/2) / zoomStep);
-            if (isImaginaryMode) {
-                let label = value === 0 ? '0' : (value === 1 ? 'i' : (value === -1 ? '-i' : (value > 0 ? `${value}i` : `${value}i`)));
-                lineCtx.fillStyle = '#ffbbff';
-                lineCtx.font = 'bold 12px "Inter"';
-                lineCtx.fillText(label, x-8, centerY - 12);
-            } else {
-                lineCtx.fillStyle = '#bbffff';
-                lineCtx.font = '12px "Inter"';
-                lineCtx.fillText(value, x-6, centerY - 12);
-            }
-            // tick
-            lineCtx.beginPath();
-            lineCtx.strokeStyle = axisColor;
-            lineCtx.lineWidth = 2;
-            lineCtx.moveTo(x, centerY-8);
-            lineCtx.lineTo(x, centerY+8);
-            lineCtx.stroke();
-            
-            // DENSITY visual: if dense mode and zoom > 1.5 show micro points
-            if (!isImaginaryMode && activeNode && (activeNode.type === 'dense' || activeNode.id === 'real') && currentZoomLevel > 1.8) {
-                for (let k = 1; k <= 3; k++) {
-                    const subX = x + (zoomStep/4) * k;
-                    if (subX < w) {
-                        lineCtx.beginPath();
-                        lineCtx.fillStyle = '#00f2ffaa';
-                        lineCtx.arc(subX, centerY, 1.5, 0, Math.PI*2);
-                        lineCtx.fill();
-                    }
-                }
-            }
-            // imaginary density representation
-            if (isImaginaryMode && currentZoomLevel > 1.5) {
-                for (let k = 1; k <= 3; k++) {
-                    const subX = x + (zoomStep/4) * k;
-                    if (subX < w) {
-                        lineCtx.beginPath();
-                        lineCtx.fillStyle = '#ff88ffaa';
-                        lineCtx.arc(subX, centerY, 1.8, 0, Math.PI*2);
-                        lineCtx.fill();
-                    }
-                }
-            }
-        }
-        lineCtx.shadowBlur = 8;
-        lineCtx.shadowColor = axisColor;
-    }
-    
-    function focusOnNode(node) {
-        activeNode = node;
-        const card = document.getElementById('info-card');
-        document.getElementById('panel-title').innerHTML = `<i class="fas ${node.icon || 'fa-cube'}"></i> ${node.label}`;
-        document.getElementById('panel-desc').innerHTML = node.desc;
-        card.classList.add('visible');
-        
-        // update number line mode
-        const isDense = (node.type === 'dense' || node.id === 'imaginary');
-        isImaginaryMode = (node.id === 'imaginary');
-        const modeText = isImaginaryMode ? "✨ IMAGINARY AXIS (DENSE CONTINUUM) ✨" : (isDense ? "🔵 DENSE MODE · INFINITE ZOOM" : "🟠 DISCRETE MODE · FIXED STEPS");
-        document.getElementById('mode-badge').innerHTML = modeText;
-        document.getElementById('viz-panel').style.display = 'flex';
-        currentZoomLevel = 1;
-        drawNumberLine();
-        
-        // zoom camera to node with emphasis
-        const targetPos = { x: node.pos[0], y: node.pos[1], z: 6.5 };
-        gsap.to(camera.position, {
-            x: targetPos.x, y: targetPos.y, z: targetPos.z,
-            duration: 1.2,
-            ease: "back.out(0.4)",
-            onUpdate: () => camera.lookAt(node.pos[0], node.pos[1], 0)
-        });
-        // pulsate effect on node
-        const mesh = nodeMeshes.find(m => m.userData.id === node.id);
-        if (mesh) {
-            gsap.to(mesh.scale, { x: 1.1, y: 1.1, z: 1.1, duration: 0.3, yoyo: true, repeat: 1 });
-        }
-    }
-    
-    function resetCameraView() {
-        document.getElementById('info-card').classList.remove('visible');
-        document.getElementById('viz-panel').style.display = 'none';
-        activeNode = null;
-        isImaginaryMode = false;
-        gsap.to(camera.position, { x: 0, y: 1.5, z: 20, duration: 1.4, ease: "power2.out", onUpdate: () => camera.lookAt(0, 2, 0) });
-    }
-    
-    function guidedTourWithImaginary() {
-        const tourIds = ['complex', 'real', 'imaginary', 'rational', 'integers', 'natural'];
-        let idx = 0;
-        function next() {
-            if (idx >= tourIds.length) { resetCameraView(); return; }
-            const node = data.nodes.find(n => n.id === tourIds[idx]);
-            if (node) focusOnNode(node);
-            idx++;
-            setTimeout(next, 3800);
-        }
-        next();
-    }
-    
-    function onMouseMove(event) {
-        mouse.x = (event.clientX / renderer.domElement.clientWidth) * 2 - 1;
-        mouse.y = -(event.clientY / renderer.domElement.clientHeight) * 2 + 1;
-        raycaster.setFromCamera(mouse, camera);
-        const intersects = raycaster.intersectObjects(nodeMeshes);
-        const tooltipDiv = document.getElementById('tooltip');
-        if (intersects.length > 0) {
-            const node = intersects[0].object.userData;
-            tooltipDiv.style.display = 'block';
-            tooltipDiv.style.left = event.clientX + 15 + 'px';
-            tooltipDiv.style.top = event.clientY + 10 + 'px';
-            tooltipDiv.innerText = `📌 ${node.label} — click to explore`;
-            document.body.style.cursor = 'pointer';
-        } else {
-            tooltipDiv.style.display = 'none';
-            document.body.style.cursor = 'default';
-        }
-    }
-    
-    function onNodeClick() {
-        raycaster.setFromCamera(mouse, camera);
-        const hits = raycaster.intersectObjects(nodeMeshes);
-        if (hits.length) focusOnNode(hits[0].object.userData);
-    }
-    
-    function animate() {
-        requestAnimationFrame(animate);
-        // rotate rings
-        rotatingRings.forEach(ring => {
-            ring.rotation.y += 0.008;
-            ring.rotation.x += 0.003;
-        });
-        // orbiting particles around nodes
-        nodeMeshes.forEach(mesh => {
-            if (mesh.userData.particles) {
-                mesh.userData.particles.forEach((p, idx) => {
-                    const t = Date.now() * 0.002 + idx;
-                    const radius = 1.25;
-                    p.position.x = Math.sin(t) * radius;
-                    p.position.z = Math.cos(t * 0.9) * radius;
-                    p.position.y = Math.sin(t * 1.3) * 0.8;
-                });
-            }
-        });
-        // flow particles on curves
-        flowParticles.forEach(p => {
-            if (p.userData && p.userData.curve) {
-                p.userData.t += p.userData.speed;
-                if (p.userData.t > 1) p.userData.t = 0;
-                const pos = p.userData.curve.getPoint(p.userData.t);
-                p.position.copy(pos);
-            }
-        });
-        // gentle float
-        nodeMeshes.forEach((mesh, i) => {
-            mesh.position.y += Math.sin(Date.now() * 0.0015 + i) * 0.0012;
-        });
-        renderer.render(scene, camera);
-    }
-    
-    function onWindowResize() {
-        camera.aspect = window.innerWidth / window.innerHeight;
-        camera.updateProjectionMatrix();
-        renderer.setSize(window.innerWidth, window.innerHeight);
-        if (lineCanvas) drawNumberLine();
-    }
-    
-    window.onload = init;
+    // smooth camera
+    camera.position.lerp(camTargetPos, 0.07);
+    const lookTarget = camLookAt.clone();
+    camera.lookAt(lookTarget);
+    renderer.render(scene, camera);
+  }
+  animate();
+  setViewMode('dense');
+  console.log('✨ Enhanced Number Hierarchy — animations fully active');
 </script>
 </body>
 </html>
