@@ -1,0 +1,705 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>NUMBERVERSE | JEE Advanced · Hierarchy of Numbers</title>
+    <!-- Google Fonts + Icon Library -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,500;14..32,700;14..32,800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Three.js & GSAP -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            user-select: none;
+        }
+
+        body {
+            overflow: hidden;
+            font-family: 'Inter', sans-serif;
+            background: #01010c;
+            color: #ffffff;
+        }
+
+        /* 3D canvas container */
+        #canvas-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+        }
+
+        /* UI Overlay - premium glassmorphic layers */
+        #ui-layer {
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+            z-index: 20;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 32px 40px;
+        }
+
+        /* Header with animated gradient */
+        .title-block {
+            pointer-events: auto;
+            background: linear-gradient(135deg, rgba(0,0,0,0.6) 0%, rgba(10,20,30,0.4) 100%);
+            backdrop-filter: blur(12px);
+            border-radius: 32px;
+            padding: 16px 28px;
+            border: 1px solid rgba(0, 242, 255, 0.3);
+            width: fit-content;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.5);
+        }
+        h1 {
+            font-weight: 800;
+            font-size: 2rem;
+            letter-spacing: -0.5px;
+            background: linear-gradient(135deg, #FFFFFF, #88ccff, #ffaa44);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            margin-bottom: 4px;
+        }
+        .subtitle {
+            font-size: 0.75rem;
+            font-weight: 500;
+            letter-spacing: 3px;
+            color: #aaf0ff;
+            text-transform: uppercase;
+        }
+
+        /* INFO CARD - sleek animated */
+        .info-card {
+            position: absolute;
+            bottom: 120px;
+            left: 40px;
+            width: 320px;
+            background: rgba(8, 12, 25, 0.75);
+            backdrop-filter: blur(18px);
+            border-radius: 28px;
+            border: 1px solid rgba(0, 242, 255, 0.4);
+            padding: 24px;
+            pointer-events: auto;
+            transform: translateX(-40px) translateY(20px);
+            opacity: 0;
+            transition: all 0.5s cubic-bezier(0.2, 0.9, 0.4, 1.1);
+            box-shadow: 0 20px 35px -12px rgba(0,0,0,0.6), 0 0 0 1px rgba(0,242,255,0.1);
+        }
+        .info-card.visible {
+            opacity: 1;
+            transform: translateX(0) translateY(0);
+        }
+        .node-title {
+            font-size: 1.8rem;
+            font-weight: 800;
+            letter-spacing: -0.02em;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .node-title i {
+            font-size: 2rem;
+            filter: drop-shadow(0 0 6px currentColor);
+        }
+        .node-desc {
+            font-size: 0.9rem;
+            line-height: 1.5;
+            color: #d0eaff;
+            margin-bottom: 20px;
+        }
+        .legend {
+            display: flex;
+            gap: 20px;
+            border-top: 1px solid rgba(255,255,255,0.2);
+            padding-top: 16px;
+            margin-top: 4px;
+        }
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.7rem;
+            font-weight: 500;
+        }
+        .dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 10px;
+            box-shadow: 0 0 8px currentColor;
+        }
+        .dot.cyan { background: #00f2ff; box-shadow: 0 0 8px #00f2ff; }
+        .dot.orange { background: #ff8c00; box-shadow: 0 0 8px #ff8c00; }
+        .dot.magenta { background: #ff44dd; box-shadow: 0 0 8px #ff44dd; }
+
+        /* Interactive Number Line - dynamic */
+        .viz-panel {
+            position: absolute;
+            bottom: 32px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 700px;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(24px);
+            border-radius: 32px;
+            border: 1px solid rgba(255,255,255,0.2);
+            padding: 16px 24px;
+            pointer-events: auto;
+            display: none;
+            flex-direction: column;
+            transition: 0.3s;
+            z-index: 30;
+            box-shadow: 0 12px 30px rgba(0,0,0,0.6);
+        }
+        .viz-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 12px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            letter-spacing: 1px;
+            color: #ccddff;
+        }
+        .zoom-hint {
+            background: rgba(0,242,255,0.2);
+            padding: 4px 12px;
+            border-radius: 40px;
+            font-size: 0.7rem;
+        }
+        canvas#line-canvas {
+            width: 100%;
+            height: 70px;
+            background: rgba(0,0,0,0.4);
+            border-radius: 20px;
+            margin-top: 6px;
+        }
+        .mode-badge {
+            text-align: center;
+            margin-top: 10px;
+            font-size: 0.7rem;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+
+        /* Buttons with glass neon */
+        .controls {
+            position: absolute;
+            bottom: 32px;
+            right: 32px;
+            display: flex;
+            gap: 16px;
+            pointer-events: auto;
+        }
+        .btn {
+            background: rgba(20, 30, 55, 0.7);
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(0, 242, 255, 0.4);
+            padding: 12px 28px;
+            border-radius: 60px;
+            color: white;
+            font-weight: 600;
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: all 0.25s ease;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            letter-spacing: 1px;
+        }
+        .btn i { font-size: 1rem; }
+        .btn:hover {
+            background: #00aaff30;
+            border-color: #00f2ff;
+            transform: translateY(-2px);
+            box-shadow: 0 0 15px rgba(0,242,255,0.4);
+        }
+
+        #tooltip {
+            position: fixed;
+            background: #000000cc;
+            backdrop-filter: blur(8px);
+            padding: 6px 14px;
+            border-radius: 40px;
+            font-size: 0.8rem;
+            font-weight: 500;
+            border-left: 3px solid #00f2ff;
+            pointer-events: none;
+            z-index: 200;
+            font-family: monospace;
+            display: none;
+            white-space: nowrap;
+        }
+        @media (max-width: 800px) {
+            .viz-panel { width: 90%; }
+            .info-card { width: 260px; bottom: 100px; left: 16px; }
+            .btn { padding: 8px 16px; }
+        }
+    </style>
+</head>
+<body>
+<div id="canvas-container"></div>
+<div id="ui-layer">
+    <div class="title-block">
+        <h1><i class="fas fa-chalkboard-user"></i> NUMBERVERSE · HIERARCHY</h1>
+        <div class="subtitle">JEE Advanced | Abstract to Concrete · Dense vs Discrete</div>
+    </div>
+    <div class="info-card" id="info-card">
+        <div class="node-title" id="panel-title">
+            <i class="fas fa-cube"></i> 
+            <span>Number Realm</span>
+        </div>
+        <div class="node-desc" id="panel-desc">Select any glowing node to explore its mathematical nature & zoom into its number line.</div>
+        <div class="legend">
+            <div class="legend-item"><div class="dot cyan"></div> <span>DENSE (Continuum)</span></div>
+            <div class="legend-item"><div class="dot orange"></div> <span>DISCRETE (Gaps)</span></div>
+            <div class="legend-item"><div class="dot magenta"></div> <span>IMAGINARY · Zoom</span></div>
+        </div>
+    </div>
+    <div class="viz-panel" id="viz-panel">
+        <div class="viz-header">
+            <span><i class="fas fa-chart-line"></i> DENSITY SIMULATION</span>
+            <span class="zoom-hint"><i class="fas fa-mouse-pointer"></i> SCROLL → ZOOM INFINITE</span>
+        </div>
+        <canvas id="line-canvas" width="700" height="70" style="width:100%; height:70px"></canvas>
+        <div class="mode-badge" id="mode-badge">⚡ DENSE MODE (CONTINUUM)</div>
+    </div>
+    <div class="controls">
+        <button class="btn" id="tour-btn"><i class="fas fa-play"></i> GUIDED TOUR</button>
+        <button class="btn" id="reset-btn"><i class="fas fa-globe"></i> RESET VIEW</button>
+    </div>
+</div>
+<div id="tooltip"></div>
+
+<script>
+    // ==========  ENHANCED VISUALS: BOLD, ILLUSTRATIVE, IMAGINARY ZOOM & DENSITY ==========
+    const data = {
+        nodes: [
+            { id: 'complex', label: 'ℂ Complex', pos: [0, 8, 0], color: 0xffffff, type: 'dense', desc: 'Universe of all numbers: a + bi. Contains reals & imaginaries.', icon: 'fa-infinity', glow: 0x88aaff },
+            { id: 'real', label: 'ℝ Real', pos: [-5, 4, 0], color: 0x00f2ff, type: 'dense', desc: 'Continuous line: every point is a real number. Dense & uncountable.', icon: 'fa-chart-line', glow: 0x00f2ff },
+            { id: 'imaginary', label: '𝕚 Imaginary', pos: [5, 4, 0], color: 0xff44dd, type: 'dense', desc: 'Numbers of form bi (b ∈ ℝ). Square gives negative. Dense on imaginary axis!', icon: 'fa-eye', glow: 0xff66ee },
+            { id: 'rational', label: 'ℚ Rational', pos: [-8, 0, 0], color: 0x44ccff, type: 'dense', desc: 'p/q, q≠0. Dense yet countable (infinite points between).', icon: 'fa-fraction', glow: 0x44aaff },
+            { id: 'irrational', label: 'ℙ Irrational', pos: [-2, 0, 0], color: 0x66ccff, type: 'dense', desc: 'π, √2, e ... Non-repeating decimals. Dense but not rational.', icon: 'fa-pi', glow: 0x33bbff },
+            { id: 'integers', label: 'ℤ Integers', pos: [-8, -4, 0], color: 0xff8c00, type: 'discrete', desc: '..., -2, -1, 0, 1, 2,... Discrete gaps of size 1.', icon: 'fa-hashtag', glow: 0xffaa44 },
+            { id: 'whole', label: '𝕎 Whole', pos: [-8, -7, 0], color: 0xffaa33, type: 'discrete', desc: 'Natural numbers with zero: {0,1,2,...}.', icon: 'fa-circle-dot', glow: 0xffaa33 },
+            { id: 'natural', label: 'ℕ Natural', pos: [-8, -10, 0], color: 0xffcc55, type: 'discrete', desc: 'Counting numbers: 1,2,3,...', icon: 'fa-leaf', glow: 0xffcc55 }
+        ],
+        links: [
+            { from: 'complex', to: 'real', type: 'dense' },
+            { from: 'complex', to: 'imaginary', type: 'dense' },
+            { from: 'real', to: 'rational', type: 'dense' },
+            { from: 'real', to: 'irrational', type: 'dense' },
+            { from: 'rational', to: 'integers', type: 'discrete' },
+            { from: 'integers', to: 'whole', type: 'discrete' },
+            { from: 'whole', to: 'natural', type: 'discrete' }
+        ]
+    };
+
+    let scene, camera, renderer, raycaster, mouse;
+    let nodeMeshes = [];
+    let flowParticles = [];
+    let rotatingRings = [];
+    let currentZoomLevel = 1;
+    let isImaginaryMode = false;
+    let activeNode = null;
+
+    // Canvas + context for number line
+    let lineCanvas, lineCtx;
+    
+    // Init Three.js
+    function init() {
+        scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x01010c);
+        scene.fog = new THREE.FogExp2(0x01010c, 0.025);
+
+        camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 500);
+        camera.position.set(0, 2, 22);
+        camera.lookAt(0, 0, 0);
+
+        renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.shadowMap.enabled = true; // subtle shadows for depth
+        renderer.setPixelRatio(window.devicePixelRatio);
+        document.getElementById('canvas-container').appendChild(renderer.domElement);
+
+        raycaster = new THREE.Raycaster();
+        mouse = new THREE.Vector2();
+
+        // Enhanced Lighting: vibrant and dramatic
+        const ambient = new THREE.AmbientLight(0x111122);
+        scene.add(ambient);
+        const mainLight = new THREE.DirectionalLight(0xffffff, 1.2);
+        mainLight.position.set(5, 12, 8);
+        mainLight.castShadow = true;
+        scene.add(mainLight);
+        const fillLight = new THREE.PointLight(0x2266ff, 0.6);
+        fillLight.position.set(-3, 5, 6);
+        scene.add(fillLight);
+        const backLight = new THREE.PointLight(0xff44aa, 0.4);
+        backLight.position.set(2, 3, -6);
+        scene.add(backLight);
+        
+        // starfield background particles (rich)
+        const starGeo = new THREE.BufferGeometry();
+        const starCount = 1800;
+        const starPos = [];
+        for (let i = 0; i < starCount; i++) {
+            starPos.push((Math.random() - 0.5) * 200);
+            starPos.push((Math.random() - 0.5) * 100);
+            starPos.push((Math.random() - 0.5) * 80 - 40);
+        }
+        starGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(starPos), 3));
+        const starMat = new THREE.PointsMaterial({ color: 0xaaccff, size: 0.08, transparent: true, opacity: 0.6 });
+        const stars = new THREE.Points(starGeo, starMat);
+        scene.add(stars);
+        
+        createPremiumNodes();
+        createDynamicLinks();
+        setupNumberLineUI();
+        
+        window.addEventListener('resize', onWindowResize);
+        window.addEventListener('mousemove', onMouseMove);
+        window.addEventListener('click', onNodeClick);
+        document.getElementById('reset-btn').addEventListener('click', resetCameraView);
+        document.getElementById('tour-btn').addEventListener('click', guidedTourWithImaginary);
+        
+        animate();
+    }
+    
+    // Create visually bold nodes with rings, emissive glows
+    function createPremiumNodes() {
+        data.nodes.forEach(node => {
+            // main glossy core
+            const geometry = new THREE.SphereGeometry(0.85, 32, 32);
+            const material = new THREE.MeshStandardMaterial({
+                color: node.color,
+                emissive: node.type === 'dense' ? 0x2266aa : 0x442200,
+                emissiveIntensity: 0.35,
+                metalness: 0.7,
+                roughness: 0.2,
+                flatShading: false
+            });
+            const core = new THREE.Mesh(geometry, material);
+            core.position.set(...node.pos);
+            core.userData = node;
+            core.castShadow = true;
+            core.receiveShadow = false;
+            scene.add(core);
+            
+            // outer ring (rotating torus)
+            const ringGeo = new THREE.TorusGeometry(1.05, 0.07, 48, 100);
+            const ringMat = new THREE.MeshStandardMaterial({ color: node.color, emissive: node.color, emissiveIntensity: 0.5 });
+            const ring = new THREE.Mesh(ringGeo, ringMat);
+            ring.userData = { speed: 0.008, axis: 'y' };
+            core.add(ring);
+            rotatingRings.push(ring);
+            
+            // add second perpendicular ring for style
+            const ring2Geo = new THREE.TorusGeometry(1.12, 0.05, 48, 100);
+            const ring2Mat = new THREE.MeshStandardMaterial({ color: node.color, emissive: node.color, emissiveIntensity: 0.3 });
+            const ring2 = new THREE.Mesh(ring2Geo, ring2Mat);
+            ring2.rotation.x = Math.PI / 2;
+            core.add(ring2);
+            rotatingRings.push(ring2);
+            
+            // Text label using canvas texture (bold font)
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            canvas.width = 512;
+            canvas.height = 256;
+            ctx.fillStyle = '#ffffff';
+            ctx.font = 'Bold 60px "Inter", system-ui';
+            ctx.textAlign = 'center';
+            ctx.shadowBlur = 0;
+            ctx.fillStyle = `#${node.color.toString(16)}`;
+            ctx.fillText(node.label.split(' ')[0], 256, 140);
+            ctx.font = '28px "Inter"';
+            ctx.fillStyle = '#ccccff';
+            ctx.fillText(node.label.includes(' ') ? node.label.split(' ')[1] : '', 256, 200);
+            const texture = new THREE.CanvasTexture(canvas);
+            const labelPlane = new THREE.PlaneGeometry(2.4, 0.9);
+            const labelMat = new THREE.MeshBasicMaterial({ map: texture, transparent: true, side: THREE.DoubleSide });
+            const labelMesh = new THREE.Mesh(labelPlane, labelMat);
+            labelMesh.position.set(0, 0, 0.92);
+            core.add(labelMesh);
+            
+            // floating particles around node (to emphasize density)
+            const particleCount = 35;
+            const particleGroup = [];
+            for (let i = 0; i < particleCount; i++) {
+                const pGeo = new THREE.SphereGeometry(0.05, 6, 6);
+                const pMat = new THREE.MeshStandardMaterial({ color: node.color, emissive: node.color, emissiveIntensity: 0.6 });
+                const particle = new THREE.Mesh(pGeo, pMat);
+                particle.userData = { angleX: Math.random() * Math.PI * 2, angleY: Math.random() * Math.PI * 2, radius: 1.3 + Math.random() * 0.6, speed: 0.005 + Math.random() * 0.01 };
+                core.add(particle);
+                particleGroup.push(particle);
+            }
+            core.userData.particles = particleGroup;
+            nodeMeshes.push(core);
+        });
+    }
+    
+    // Flow lines with glowing tubes + discrete dashed
+    function createDynamicLinks() {
+        data.links.forEach(link => {
+            const fromNode = data.nodes.find(n => n.id === link.from);
+            const toNode = data.nodes.find(n => n.id === link.to);
+            if (!fromNode || !toNode) return;
+            const start = new THREE.Vector3(...fromNode.pos);
+            const end = new THREE.Vector3(...toNode.pos);
+            const midY = (fromNode.pos[1] + toNode.pos[1]) / 2;
+            const ctrl1 = new THREE.Vector3(fromNode.pos[0], midY, 0);
+            const ctrl2 = new THREE.Vector3(toNode.pos[0], midY, 0);
+            const curve = new THREE.CubicBezierCurve3(start, ctrl1, ctrl2, end);
+            
+            if (link.type === 'dense') {
+                const tubeGeo = new THREE.TubeGeometry(curve, 48, 0.045, 6, false);
+                const tubeMat = new THREE.MeshStandardMaterial({ color: 0x33ccff, emissive: 0x0088aa, emissiveIntensity: 0.4, transparent: true });
+                const tube = new THREE.Mesh(tubeGeo, tubeMat);
+                scene.add(tube);
+                // add flowing orbs
+                for (let i = 0; i < 12; i++) {
+                    const orb = new THREE.Mesh(new THREE.SphereGeometry(0.08, 8, 8), new THREE.MeshStandardMaterial({ color: 0x00f2ff, emissive: 0x00aacc }));
+                    orb.userData = { curve, t: i / 12, speed: 0.003 + Math.random() * 0.002 };
+                    scene.add(orb);
+                    flowParticles.push(orb);
+                }
+            } else {
+                // discrete: dashed line
+                const points = curve.getPoints(40);
+                const lineGeo = new THREE.BufferGeometry().setFromPoints(points);
+                const lineMat = new THREE.LineBasicMaterial({ color: 0xffaa44 });
+                const lineObj = new THREE.Line(lineGeo, lineMat);
+                scene.add(lineObj);
+                // small glowing dots
+                for (let i = 0; i <= 12; i++) {
+                    const t = i / 12;
+                    const pt = curve.getPoint(t);
+                    const dot = new THREE.Mesh(new THREE.SphereGeometry(0.07, 6, 6), new THREE.MeshStandardMaterial({ color: 0xffaa55, emissive: 0xff5500 }));
+                    dot.position.copy(pt);
+                    scene.add(dot);
+                }
+            }
+        });
+    }
+    
+    // Enhanced Number line: supports real axis & imaginary axis with zoom
+    function setupNumberLineUI() {
+        lineCanvas = document.getElementById('line-canvas');
+        lineCtx = lineCanvas.getContext('2d');
+        const resizeLine = () => {
+            const container = document.getElementById('viz-panel');
+            const width = container.clientWidth - 48;
+            lineCanvas.width = width;
+            lineCanvas.height = 70;
+            drawNumberLine();
+        };
+        window.addEventListener('resize', resizeLine);
+        resizeLine();
+        document.getElementById('viz-panel').addEventListener('wheel', (e) => {
+            e.preventDefault();
+            const delta = e.deltaY > 0 ? 0.92 : 1.08;
+            currentZoomLevel = Math.min(Math.max(currentZoomLevel * delta, 0.8), 280);
+            drawNumberLine();
+        });
+    }
+    
+    function drawNumberLine() {
+        if (!lineCtx || !lineCanvas) return;
+        const w = lineCanvas.width;
+        const h = lineCanvas.height;
+        lineCtx.clearRect(0, 0, w, h);
+        const centerY = h/2;
+        const axisColor = isImaginaryMode ? '#ff66ee' : '#00f2ff';
+        // draw axis
+        lineCtx.beginPath();
+        lineCtx.strokeStyle = '#ffffff33';
+        lineCtx.lineWidth = 1.5;
+        lineCtx.moveTo(0, centerY);
+        lineCtx.lineTo(w, centerY);
+        lineCtx.stroke();
+        
+        const stepBase = w / 8;
+        const zoomStep = stepBase / Math.max(0.5, currentZoomLevel);
+        if (zoomStep < 2) return;
+        const startX = (w/2) % zoomStep;
+        
+        for (let x = startX; x <= w; x += zoomStep) {
+            let value = Math.round((x - w/2) / zoomStep);
+            if (isImaginaryMode) {
+                let label = value === 0 ? '0' : (value === 1 ? 'i' : (value === -1 ? '-i' : (value > 0 ? `${value}i` : `${value}i`)));
+                lineCtx.fillStyle = '#ffbbff';
+                lineCtx.font = 'bold 12px "Inter"';
+                lineCtx.fillText(label, x-8, centerY - 12);
+            } else {
+                lineCtx.fillStyle = '#bbffff';
+                lineCtx.font = '12px "Inter"';
+                lineCtx.fillText(value, x-6, centerY - 12);
+            }
+            // tick
+            lineCtx.beginPath();
+            lineCtx.strokeStyle = axisColor;
+            lineCtx.lineWidth = 2;
+            lineCtx.moveTo(x, centerY-8);
+            lineCtx.lineTo(x, centerY+8);
+            lineCtx.stroke();
+            
+            // DENSITY visual: if dense mode and zoom > 1.5 show micro points
+            if (!isImaginaryMode && activeNode && (activeNode.type === 'dense' || activeNode.id === 'real') && currentZoomLevel > 1.8) {
+                for (let k = 1; k <= 3; k++) {
+                    const subX = x + (zoomStep/4) * k;
+                    if (subX < w) {
+                        lineCtx.beginPath();
+                        lineCtx.fillStyle = '#00f2ffaa';
+                        lineCtx.arc(subX, centerY, 1.5, 0, Math.PI*2);
+                        lineCtx.fill();
+                    }
+                }
+            }
+            // imaginary density representation
+            if (isImaginaryMode && currentZoomLevel > 1.5) {
+                for (let k = 1; k <= 3; k++) {
+                    const subX = x + (zoomStep/4) * k;
+                    if (subX < w) {
+                        lineCtx.beginPath();
+                        lineCtx.fillStyle = '#ff88ffaa';
+                        lineCtx.arc(subX, centerY, 1.8, 0, Math.PI*2);
+                        lineCtx.fill();
+                    }
+                }
+            }
+        }
+        lineCtx.shadowBlur = 8;
+        lineCtx.shadowColor = axisColor;
+    }
+    
+    function focusOnNode(node) {
+        activeNode = node;
+        const card = document.getElementById('info-card');
+        document.getElementById('panel-title').innerHTML = `<i class="fas ${node.icon || 'fa-cube'}"></i> ${node.label}`;
+        document.getElementById('panel-desc').innerHTML = node.desc;
+        card.classList.add('visible');
+        
+        // update number line mode
+        const isDense = (node.type === 'dense' || node.id === 'imaginary');
+        isImaginaryMode = (node.id === 'imaginary');
+        const modeText = isImaginaryMode ? "✨ IMAGINARY AXIS (DENSE CONTINUUM) ✨" : (isDense ? "🔵 DENSE MODE · INFINITE ZOOM" : "🟠 DISCRETE MODE · FIXED STEPS");
+        document.getElementById('mode-badge').innerHTML = modeText;
+        document.getElementById('viz-panel').style.display = 'flex';
+        currentZoomLevel = 1;
+        drawNumberLine();
+        
+        // zoom camera to node with emphasis
+        const targetPos = { x: node.pos[0], y: node.pos[1], z: 6.5 };
+        gsap.to(camera.position, {
+            x: targetPos.x, y: targetPos.y, z: targetPos.z,
+            duration: 1.2,
+            ease: "back.out(0.4)",
+            onUpdate: () => camera.lookAt(node.pos[0], node.pos[1], 0)
+        });
+        // pulsate effect on node
+        const mesh = nodeMeshes.find(m => m.userData.id === node.id);
+        if (mesh) {
+            gsap.to(mesh.scale, { x: 1.1, y: 1.1, z: 1.1, duration: 0.3, yoyo: true, repeat: 1 });
+        }
+    }
+    
+    function resetCameraView() {
+        document.getElementById('info-card').classList.remove('visible');
+        document.getElementById('viz-panel').style.display = 'none';
+        activeNode = null;
+        isImaginaryMode = false;
+        gsap.to(camera.position, { x: 0, y: 1.5, z: 20, duration: 1.4, ease: "power2.out", onUpdate: () => camera.lookAt(0, 2, 0) });
+    }
+    
+    function guidedTourWithImaginary() {
+        const tourIds = ['complex', 'real', 'imaginary', 'rational', 'integers', 'natural'];
+        let idx = 0;
+        function next() {
+            if (idx >= tourIds.length) { resetCameraView(); return; }
+            const node = data.nodes.find(n => n.id === tourIds[idx]);
+            if (node) focusOnNode(node);
+            idx++;
+            setTimeout(next, 3800);
+        }
+        next();
+    }
+    
+    function onMouseMove(event) {
+        mouse.x = (event.clientX / renderer.domElement.clientWidth) * 2 - 1;
+        mouse.y = -(event.clientY / renderer.domElement.clientHeight) * 2 + 1;
+        raycaster.setFromCamera(mouse, camera);
+        const intersects = raycaster.intersectObjects(nodeMeshes);
+        const tooltipDiv = document.getElementById('tooltip');
+        if (intersects.length > 0) {
+            const node = intersects[0].object.userData;
+            tooltipDiv.style.display = 'block';
+            tooltipDiv.style.left = event.clientX + 15 + 'px';
+            tooltipDiv.style.top = event.clientY + 10 + 'px';
+            tooltipDiv.innerText = `📌 ${node.label} — click to explore`;
+            document.body.style.cursor = 'pointer';
+        } else {
+            tooltipDiv.style.display = 'none';
+            document.body.style.cursor = 'default';
+        }
+    }
+    
+    function onNodeClick() {
+        raycaster.setFromCamera(mouse, camera);
+        const hits = raycaster.intersectObjects(nodeMeshes);
+        if (hits.length) focusOnNode(hits[0].object.userData);
+    }
+    
+    function animate() {
+        requestAnimationFrame(animate);
+        // rotate rings
+        rotatingRings.forEach(ring => {
+            ring.rotation.y += 0.008;
+            ring.rotation.x += 0.003;
+        });
+        // orbiting particles around nodes
+        nodeMeshes.forEach(mesh => {
+            if (mesh.userData.particles) {
+                mesh.userData.particles.forEach((p, idx) => {
+                    const t = Date.now() * 0.002 + idx;
+                    const radius = 1.25;
+                    p.position.x = Math.sin(t) * radius;
+                    p.position.z = Math.cos(t * 0.9) * radius;
+                    p.position.y = Math.sin(t * 1.3) * 0.8;
+                });
+            }
+        });
+        // flow particles on curves
+        flowParticles.forEach(p => {
+            if (p.userData && p.userData.curve) {
+                p.userData.t += p.userData.speed;
+                if (p.userData.t > 1) p.userData.t = 0;
+                const pos = p.userData.curve.getPoint(p.userData.t);
+                p.position.copy(pos);
+            }
+        });
+        // gentle float
+        nodeMeshes.forEach((mesh, i) => {
+            mesh.position.y += Math.sin(Date.now() * 0.0015 + i) * 0.0012;
+        });
+        renderer.render(scene, camera);
+    }
+    
+    function onWindowResize() {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        if (lineCanvas) drawNumberLine();
+    }
+    
+    window.onload = init;
+</script>
+</body>
+</html>
