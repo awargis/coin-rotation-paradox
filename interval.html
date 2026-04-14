@@ -1,0 +1,415 @@
+<!doctype html>
+<html lang="en" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JEE Set Theory Visualizer Pro</title>
+    <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Rajdhani:wght@300;500;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <style>
+        :root {
+            --bg: #050508;
+            --surface: rgba(18, 18, 31, 0.8);
+            --accent-a: #00f0ff;
+            --accent-b: #ff2a6d;
+            --accent-res: #a855f7;
+            --glass-border: rgba(255, 255, 255, 0.1);
+        }
+
+        body {
+            font-family: 'Rajdhani', sans-serif;
+            background: var(--bg);
+            color: #e0e0ff;
+            overflow: hidden;
+            height: 100vh;
+        }
+
+        .font-display { font-family: 'Orbitron', sans-serif; }
+        .font-mono { font-family: 'JetBrains Mono', monospace; }
+
+        /* Cinematic HUD Background */
+        .grid-bg {
+            position: fixed;
+            inset: 0;
+            background-image: 
+                linear-gradient(rgba(0, 240, 255, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 240, 255, 0.03) 1px, transparent 1px);
+            background-size: 40px 40px;
+            pointer-events: none;
+            z-index: -1;
+        }
+
+        .glass-panel {
+            background: var(--surface);
+            backdrop-filter: blur(12px);
+            border: 1px solid var(--glass-border);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .glass-panel::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 2px;
+            background: linear-gradient(90deg, transparent, var(--accent-a), transparent);
+            opacity: 0.5;
+        }
+
+        /* Number Line UI */
+        .nl-container { height: 160px; position: relative; }
+        .nl-main-line {
+            position: absolute;
+            top: 50%;
+            left: 20px; right: 20px;
+            height: 1px;
+            background: rgba(224, 224, 255, 0.2);
+        }
+
+        .nl-interval {
+            position: absolute;
+            height: 8px;
+            border-radius: 4px;
+            top: 50%;
+            transform: translateY(-50%);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .nl-point {
+            position: absolute;
+            width: 14px; height: 14px;
+            border-radius: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            border: 2px solid;
+            z-index: 20;
+        }
+
+        .point-open { background: var(--bg) !important; }
+        
+        /* Operation Buttons */
+        .btn-op {
+            transition: all 0.2s;
+            border: 1px solid rgba(224, 224, 255, 0.1);
+            background: rgba(255, 255, 255, 0.03);
+        }
+        .btn-op:hover { background: rgba(0, 240, 255, 0.1); }
+        .btn-op.active {
+            background: rgba(0, 240, 255, 0.15);
+            border-color: var(--accent-a);
+            color: var(--accent-a);
+            box-shadow: 0 0 15px rgba(0, 240, 255, 0.2);
+        }
+
+        input[type="range"] {
+            accent-color: var(--accent-a);
+            height: 4px;
+        }
+
+        /* Tooltip-like values */
+        .val-badge {
+            background: rgba(0, 0, 0, 0.5);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 10px;
+            border: 1px solid var(--glass-border);
+        }
+    </style>
+</head>
+<body class="p-4 flex flex-col gap-4">
+    <div class="grid-bg"></div>
+
+    <header class="flex justify-between items-center px-4 py-2 glass-panel rounded-lg">
+        <div class="flex items-center gap-3">
+            <i data-lucide="layers" class="text-cyan-400"></i>
+            <h1 class="font-display tracking-widest text-sm text-cyan-400">SET_THEORY_LAB v3.0</h1>
+        </div>
+        <div id="status-indicator" class="text-[10px] font-mono opacity-50">SYSTEM_READY // U = [-10, 10]</div>
+    </header>
+
+    <div class="flex flex-col lg:flex-row gap-4 flex-1 overflow-hidden">
+        <aside class="w-full lg:w-80 flex flex-col gap-4 overflow-y-auto pr-2">
+            <div class="glass-panel p-4 rounded-xl space-y-4">
+                <div class="flex justify-between items-center">
+                    <span class="font-display text-xs text-cyan-400">INTERVAL_A</span>
+                    <span id="label-a" class="font-mono text-cyan-400 text-sm">[-3, 5)</span>
+                </div>
+                <div class="space-y-4">
+                    <div class="space-y-1">
+                        <div class="flex justify-between text-[10px] opacity-60"><span>MIN</span><span id="val-a-l">-3</span></div>
+                        <input type="range" id="a-l" min="-10" max="10" step="0.5" value="-3" class="w-full">
+                    </div>
+                    <div class="space-y-1">
+                        <div class="flex justify-between text-[10px] opacity-60"><span>MAX</span><span id="val-a-r">5</span></div>
+                        <input type="range" id="a-r" min="-10" max="10" step="0.5" value="5" class="w-full">
+                    </div>
+                    <div class="flex gap-2">
+                        <button id="tog-a-l" class="flex-1 py-1 text-[10px] border border-white/10 rounded uppercase">Left Closed</button>
+                        <button id="tog-a-r" class="flex-1 py-1 text-[10px] border border-white/10 rounded uppercase">Right Closed</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="glass-panel p-4 rounded-xl space-y-4" style="--accent-a: var(--accent-b)">
+                <div class="flex justify-between items-center">
+                    <span class="font-display text-xs text-pink-500">INTERVAL_B</span>
+                    <span id="label-b" class="font-mono text-pink-500 text-sm">(1, 8]</span>
+                </div>
+                <div class="space-y-4">
+                    <div class="space-y-1">
+                        <div class="flex justify-between text-[10px] opacity-60"><span>MIN</span><span id="val-b-l">1</span></div>
+                        <input type="range" id="b-l" min="-10" max="10" step="0.5" value="1" class="w-full">
+                    </div>
+                    <div class="space-y-1">
+                        <div class="flex justify-between text-[10px] opacity-60"><span>MAX</span><span id="val-b-r">8</span></div>
+                        <input type="range" id="b-r" min="-10" max="10" step="0.5" value="8" class="w-full">
+                    </div>
+                    <div class="flex gap-2">
+                        <button id="tog-b-l" class="flex-1 py-1 text-[10px] border border-white/10 rounded uppercase">Left Closed</button>
+                        <button id="tog-b-r" class="flex-1 py-1 text-[10px] border border-white/10 rounded uppercase">Right Closed</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="glass-panel p-4 rounded-xl">
+                <span class="font-display text-[10px] opacity-50 block mb-3">SELECT_OPERATION</span>
+                <div class="grid grid-cols-2 gap-2">
+                    <button class="btn-op active p-2 rounded text-xs font-mono" data-op="union">A ∪ B</button>
+                    <button class="btn-op p-2 rounded text-xs font-mono" data-op="intersect">A ∩ B</button>
+                    <button class="btn-op p-2 rounded text-xs font-mono" data-op="diff">A - B</button>
+                    <button class="btn-op p-2 rounded text-xs font-mono" data-op="symm">A △ B</button>
+                    <button class="btn-op p-2 rounded text-xs font-mono col-span-2" data-op="comp">Complement (A ∪ B)'</button>
+                </div>
+            </div>
+        </aside>
+
+        <main class="flex-1 flex flex-col gap-4 overflow-hidden">
+            <div class="glass-panel rounded-xl p-6 flex-shrink-0">
+                <div class="nl-container" id="nl-canvas">
+                    <div class="nl-main-line"></div>
+                    </div>
+                <div class="flex justify-around mt-4 text-[10px] font-mono opacity-40">
+                    <div class="flex items-center gap-2"><div class="w-3 h-1 bg-cyan-400"></div> Set A</div>
+                    <div class="flex items-center gap-2"><div class="w-3 h-1 bg-pink-500"></div> Set B</div>
+                    <div class="flex items-center gap-2"><div class="w-3 h-1 bg-purple-500"></div> Result</div>
+                </div>
+            </div>
+
+            <div class="glass-panel rounded-xl p-6 flex-1 overflow-y-auto space-y-6">
+                <div>
+                    <h3 class="font-display text-xs text-purple-400 mb-2 tracking-tighter">FINAL_OUTPUT_NOTATION</h3>
+                    <div id="math-output" class="text-2xl font-mono text-white"></div>
+                </div>
+                
+                <div>
+                    <h3 class="font-display text-xs text-white/40 mb-2">LATEX_REPRESENTATION</h3>
+                    <div id="latex-box" class="p-4 bg-black/40 border border-white/5 rounded-lg flex justify-center"></div>
+                </div>
+
+                <div id="edge-case-panel" class="hidden">
+                    <div class="flex items-center gap-2 text-amber-400 mb-2">
+                        <i data-lucide="alert-triangle" size="14"></i>
+                        <span class="font-display text-[10px]">JEE_CRITICAL_DETAIL</span>
+                    </div>
+                    <p id="edge-case-text" class="text-sm text-amber-200/70 italic"></p>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        const state = {
+            a: { l: -3, r: 5, lc: true, rc: false },
+            b: { l: 1, r: 8, lc: false, rc: true },
+            op: 'union',
+            u: { l: -10, r: 10 } // Universal Set
+        };
+
+        // Logic Engine
+        class Interval {
+            constructor(l, r, lc, rc) {
+                this.l = l; this.r = r; this.lc = lc; this.rc = rc;
+            }
+            isEmpty() { return this.l > this.r || (this.l === this.r && !(this.lc && this.rc)); }
+            toString() {
+                if(this.isEmpty()) return "∅";
+                if(this.l === this.r) return `{${this.l}}`;
+                return `${this.lc ? '[' : '('}${this.l}, ${this.r}${this.rc ? ']' : ')'}`;
+            }
+            toLatex() {
+                if(this.isEmpty()) return "\\emptyset";
+                if(this.l === this.r) return `\\{${this.l}\\}`;
+                return `${this.lc ? '[' : '('}${this.l}, ${this.r}${this.rc ? ']' : ')'}`;
+            }
+        }
+
+        const Logic = {
+            intersect: (A, B) => {
+                const l = Math.max(A.l, B.l);
+                const r = Math.min(A.r, B.r);
+                const lc = l === A.l ? A.lc : B.lc;
+                const rc = r === A.r ? A.rc : B.rc;
+                const res = new Interval(l, r, lc, rc);
+                return res.isEmpty() ? [] : [res];
+            },
+            union: (A, B) => {
+                const inter = Logic.intersect(A, B);
+                const touching = inter.length > 0 || (A.r === B.l && (A.rc || B.lc)) || (B.r === A.l && (B.rc || A.lc));
+                if (touching) {
+                    const l = Math.min(A.l, B.l);
+                    const r = Math.max(A.r, B.r);
+                    const lc = (l === A.l && A.lc) || (l === B.l && B.lc);
+                    const rc = (r === A.r && A.rc) || (r === B.r && B.rc);
+                    return [new Interval(l, r, lc, rc)];
+                }
+                return [A, B].sort((a,b) => a.l - b.l).filter(i => !i.isEmpty());
+            },
+            diff: (A, B) => {
+                const inters = Logic.intersect(A, B);
+                if (inters.length === 0) return [A];
+                const I = inters[0];
+                const res = [];
+                // Left chunk
+                const left = new Interval(A.l, I.l, A.lc, !I.lc);
+                if (!left.isEmpty()) res.push(left);
+                // Right chunk
+                const right = new Interval(I.r, A.r, !I.rc, A.rc);
+                if (!right.isEmpty()) res.push(right);
+                return res;
+            }
+        };
+
+        function update() {
+            // Update Labels
+            const A = new Interval(state.a.l, state.a.r, state.a.lc, state.a.rc);
+            const B = new Interval(state.b.l, state.b.r, state.b.lc, state.b.rc);
+            
+            document.getElementById('label-a').innerText = A.toString();
+            document.getElementById('label-b').innerText = B.toString();
+            
+            // Calculate Results
+            let results = [];
+            if(state.op === 'union') results = Logic.union(A, B);
+            if(state.op === 'intersect') results = Logic.intersect(A, B);
+            if(state.op === 'diff') results = Logic.diff(A, B);
+            if(state.op === 'symm') {
+                results = [...Logic.diff(A,B), ...Logic.diff(B,A)].sort((a,b) => a.l - b.l);
+            }
+            if(state.op === 'comp') {
+                const U = new Interval(-10, 10, true, true);
+                const combined = Logic.union(A, B);
+                let currentU = [U];
+                combined.forEach(sub => {
+                    let nextU = [];
+                    currentU.forEach(uPart => {
+                        nextU = nextU.concat(Logic.diff(uPart, sub));
+                    });
+                    currentU = nextU;
+                });
+                results = currentU;
+            }
+
+            // Render Results
+            const outputText = results.length ? results.map(r => r.toString()).join(" ∪ ") : "∅";
+            document.getElementById('math-output').innerText = outputText;
+            
+            const latex = results.length ? results.map(r => r.toLatex()).join(" \\cup ") : "\\emptyset";
+            katex.render(latex, document.getElementById('latex-box'), { displayMode: true });
+
+            // Detect JEE Trap
+            const edgePanel = document.getElementById('edge-case-panel');
+            if(state.op === 'diff' && (A.rc === B.lc && A.r === B.l)) {
+                edgePanel.classList.remove('hidden');
+                document.getElementById('edge-case-text').innerText = "Bracket Inversion! Since you are removing a closed boundary, the result becomes open at that point.";
+            } else {
+                edgePanel.classList.add('hidden');
+            }
+
+            drawNumberLine(A, B, results);
+        }
+
+        function drawNumberLine(A, B, results) {
+            const canvas = document.getElementById('nl-canvas');
+            canvas.querySelectorAll('.nl-interval, .nl-point, .nl-tick').forEach(e => e.remove());
+
+            const w = canvas.offsetWidth - 40;
+            const toX = (val) => 20 + ((val + 10) / 20) * w;
+
+            // Ticks
+            for(let i = -10; i <= 10; i++) {
+                const tick = document.createElement('div');
+                tick.className = 'nl-tick absolute w-[1px] h-2 bg-white/10 top-1/2 mt-4';
+                tick.style.left = toX(i) + 'px';
+                canvas.appendChild(tick);
+            }
+
+            const drawRange = (iv, color, offset, isRes = false) => {
+                if(iv.isEmpty()) return;
+                const x1 = toX(iv.l);
+                const x2 = toX(iv.r);
+                
+                const bar = document.createElement('div');
+                bar.className = 'nl-interval';
+                bar.style.left = x1 + 'px';
+                bar.style.width = (x2 - x1) + 'px';
+                bar.style.background = color;
+                bar.style.marginTop = offset + 'px';
+                if(!isRes) bar.style.opacity = '0.3';
+                canvas.appendChild(bar);
+
+                [ {v: iv.l, c: iv.lc}, {v: iv.r, c: iv.rc} ].forEach(p => {
+                    const dot = document.createElement('div');
+                    dot.className = `nl-point ${p.c ? '' : 'point-open'}`;
+                    dot.style.left = toX(p.v) + 'px';
+                    dot.style.borderColor = color;
+                    dot.style.marginTop = offset + 'px';
+                    if(p.c) dot.style.background = color;
+                    canvas.appendChild(dot);
+                });
+            };
+
+            drawRange(A, '#00f0ff', -25);
+            drawRange(B, '#ff2a6d', 25);
+            results.forEach(r => drawRange(r, '#a855f7', 0, true));
+        }
+
+        // Event Listeners
+        const bind = (id, key, subkey) => {
+            document.getElementById(id).addEventListener('input', (e) => {
+                state[key][subkey] = parseFloat(e.target.value);
+                document.getElementById('val-' + id).innerText = e.target.value;
+                update();
+            });
+        };
+
+        bind('a-l', 'a', 'l'); bind('a-r', 'a', 'r');
+        bind('b-l', 'b', 'l'); bind('b-r', 'b', 'r');
+
+        const toggle = (id, key, subkey) => {
+            document.getElementById(id).addEventListener('click', (e) => {
+                state[key][subkey] = !state[key][subkey];
+                e.target.classList.toggle('bg-white/20');
+                update();
+            });
+        };
+
+        toggle('tog-a-l', 'a', 'lc'); toggle('tog-a-r', 'a', 'rc');
+        toggle('tog-b-l', 'b', 'lc'); toggle('tog-b-r', 'b', 'rc');
+
+        document.querySelectorAll('.btn-op').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.btn-op').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                state.op = btn.dataset.op;
+                update();
+            });
+        });
+
+        window.addEventListener('resize', update);
+        update();
+        lucide.createIcons();
+    </script>
+</body>
+</html>
