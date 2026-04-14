@@ -1,0 +1,729 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>JEE Math Visualizer | Inequality with X‑Axis Highlight & Drop Lines</title>
+  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/mathjs@11.11.1/lib/browser/math.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; user-select: none; }
+    html, body { width: 100%; height: 100%; overflow: hidden; background: #0a0a0a; font-family: 'Rajdhani', sans-serif; }
+    #canvas-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; }
+    canvas { display: block; outline: none; }
+    
+    .hud-panel {
+      background: rgba(8, 8, 12, 0.85);
+      border: 1px solid rgba(0, 255, 255, 0.2);
+      backdrop-filter: blur(14px);
+      border-radius: 12px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(0, 255, 255, 0.05) inset;
+    }
+    .neon-cyan { color: #00ffff; text-shadow: 0 0 6px rgba(0, 255, 255, 0.5); }
+    .neon-magenta { color: #ff44ff; text-shadow: 0 0 6px rgba(255, 68, 255, 0.5); }
+    .neon-green { color: #00ffaa; text-shadow: 0 0 4px rgba(0, 255, 170, 0.6); }
+    .neon-gold { color: #ffaa33; text-shadow: 0 0 4px rgba(255, 170, 51, 0.6); }
+    
+    .btn-hud {
+      background: rgba(0, 255, 255, 0.06);
+      border: 1px solid rgba(0, 255, 255, 0.3);
+      color: #0ff;
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-family: 'Rajdhani', sans-serif;
+      font-weight: 600;
+      font-size: 12px;
+      letter-spacing: 1px;
+      cursor: pointer;
+      transition: all 0.2s;
+      text-transform: uppercase;
+    }
+    .btn-hud:hover { background: rgba(0, 255, 255, 0.2); box-shadow: 0 0 10px rgba(0, 255, 255, 0.2); transform: scale(0.98); }
+    .btn-hud.active { background: rgba(0, 255, 255, 0.25); border-color: #0ff; box-shadow: 0 0 12px rgba(0, 255, 255, 0.3); }
+    .btn-hud.magenta { border-color: rgba(255, 68, 255, 0.4); color: #ff44ff; background: rgba(255, 68, 255, 0.05); }
+    .btn-hud.magenta:hover { background: rgba(255, 68, 255, 0.15); }
+    
+    .input-hud {
+      background: rgba(0, 0, 0, 0.6);
+      border: 1px solid rgba(0, 255, 255, 0.3);
+      color: #0ff;
+      padding: 6px 10px;
+      border-radius: 6px;
+      font-family: 'Orbitron', monospace;
+      font-size: 12px;
+      outline: none;
+      width: 100%;
+      transition: 0.2s;
+    }
+    .input-hud:focus { border-color: #0ff; box-shadow: 0 0 12px rgba(0, 255, 255, 0.2); }
+    .input-hud.magenta { color: #ff44ff; border-color: rgba(255, 68, 255, 0.4); }
+    .input-hud.magenta:focus { border-color: #ff44ff; }
+    
+    .toggle-track {
+      width: 40px; height: 20px; border-radius: 20px;
+      background: rgba(30, 30, 40, 0.9);
+      border: 1px solid rgba(255,255,255,0.15);
+      cursor: pointer; position: relative; transition: all 0.25s;
+    }
+    .toggle-track.on { background: rgba(0, 255, 255, 0.35); border-color: #0ff; }
+    .toggle-knob {
+      width: 16px; height: 16px; border-radius: 50%;
+      background: #aaa; position: absolute; top: 1px; left: 2px; transition: all 0.25s;
+    }
+    .toggle-track.on .toggle-knob { left: 20px; background: #0ff; box-shadow: 0 0 8px #0ff; }
+    
+    .preset-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; margin-top: 6px; }
+    .preset-btn {
+      background: rgba(20, 20, 30, 0.7);
+      border: 1px solid rgba(255,255,255,0.1);
+      color: #ccc;
+      padding: 4px 6px;
+      border-radius: 5px;
+      font-family: 'Orbitron', monospace;
+      font-size: 10px;
+      cursor: pointer;
+      transition: all 0.15s;
+      text-align: center;
+    }
+    .preset-btn:hover { border-color: #0ff; color: #0ff; background: rgba(0, 255, 255, 0.1); }
+    
+    #info-bar { position: absolute; bottom: 18px; left: 50%; transform: translateX(-50%); padding: 6px 20px; border-radius: 40px; font-size: 12px; pointer-events: none; opacity: 0.9; background: rgba(0,0,0,0.6); backdrop-filter: blur(8px); color: #0ff; font-family: monospace; }
+    .scanline { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,255,255,0.02) 2px, rgba(0,255,255,0.02) 4px); z-index: 5; }
+    ::-webkit-scrollbar { width: 4px; }
+    ::-webkit-scrollbar-track { background: #111; }
+    ::-webkit-scrollbar-thumb { background: #0ff; border-radius: 4px; }
+    
+    .axis-hint {
+      position: absolute;
+      bottom: 60px;
+      left: 20px;
+      background: rgba(0,0,0,0.65);
+      backdrop-filter: blur(8px);
+      border-left: 3px solid #0ff;
+      padding: 6px 12px;
+      border-radius: 4px;
+      font-size: 11px;
+      color: #ddd;
+      pointer-events: none;
+      z-index: 20;
+      font-family: monospace;
+    }
+  </style>
+</head>
+<body class="h-full">
+  <div id="canvas-container"></div>
+  <div class="scanline"></div>
+  
+  <div style="position:absolute;top:18px;left:50%;transform:translateX(-50%);text-align:center;pointer-events:none;z-index:20;">
+    <div style="font-family:'Orbitron',monospace;font-size:18px;font-weight:800;letter-spacing:3px;" class="neon-cyan">ADITYA WARGIS </div>
+    <div style="font-size:11px;color:rgba(255,255,255,0.4);letter-spacing:2px;">INEQUALITY: X‑AXIS HIGHLIGHT + VERTICAL DROP LINES</div>
+  </div>
+
+  <div id="control-panel" class="hud-panel" style="position:absolute;top:18px;right:18px;width:280px;padding:16px;z-index:20;max-height:calc(100% - 40px);overflow-y:auto;backdrop-filter:blur(16px);">
+    <div style="font-family:'Orbitron',monospace;font-size:10px;letter-spacing:2px;color:#0ff8;margin-bottom:12px;">◉ FUNCTION MATRIX</div>
+    
+    <div style="margin-bottom:14px;">
+      <label style="font-size:11px;color:#0ff;letter-spacing:1px;">f(x) <span class="neon-cyan">● CYAN</span></label>
+      <input id="fx-input" class="input-hud" value="x^2" style="margin-top:5px;">
+      <div class="preset-grid">
+        <button class="preset-btn" data-target="fx" data-val="x^2">x²</button>
+        <button class="preset-btn" data-target="fx" data-val="sqrt(x)">√x</button>
+        <button class="preset-btn" data-target="fx" data-val="1/x">1/x</button>
+        <button class="preset-btn" data-target="fx" data-val="sin(x)">sin(x)</button>
+        <button class="preset-btn" data-target="fx" data-val="x^3 - 3*x">x³−3x</button>
+        <button class="preset-btn" data-target="fx" data-val="log(x)">ln(x)</button>
+        <button class="preset-btn" data-target="fx" data-val="abs(x)">|x|</button>
+        <button class="preset-btn" data-target="fx" data-val="exp(x)">eˣ</button>
+      </div>
+    </div>
+    
+    <div style="margin-bottom:14px;">
+      <label style="font-size:11px;color:#ff44ff;letter-spacing:1px;">g(x) <span class="neon-magenta">● MAGENTA</span></label>
+      <input id="gx-input" class="input-hud magenta" value="x" style="margin-top:5px;">
+      <div class="preset-grid">
+        <button class="preset-btn" data-target="gx" data-val="x">x</button>
+        <button class="preset-btn" data-target="gx" data-val="2*x - 1">2x−1</button>
+        <button class="preset-btn" data-target="gx" data-val="x^2 - 2">x²−2</button>
+        <button class="preset-btn" data-target="gx" data-val="cos(x)">cos(x)</button>
+      </div>
+    </div>
+    
+    <div style="border-top:1px solid rgba(0,255,255,0.15);padding-top:12px;margin-bottom:12px;">
+      <div style="font-family:'Orbitron',monospace;font-size:9px;letter-spacing:2px;color:#aaa;margin-bottom:10px;">◉ CONCEPT VISUALS</div>
+      <div class="flex justify-between items-center mb-2"><span style="font-size:12px;color:#ddd;">📐 DOMAIN (X‑axis)</span> <div id="toggle-domain" class="toggle-track"><div class="toggle-knob"></div></div></div>
+      <div class="flex justify-between items-center mb-2"><span style="font-size:12px;color:#ddd;">📏 RANGE (Y‑axis)</span> <div id="toggle-range" class="toggle-track"><div class="toggle-knob"></div></div></div>
+      <div class="flex justify-between items-center mb-2"><span style="font-size:12px;color:#0ff; font-weight:bold;">✅ f(x) ≥ g(x) (X‑highlights + drop lines)</span> <div id="toggle-ineq" class="toggle-track"><div class="toggle-knob"></div></div></div>
+      <div class="flex justify-between items-center mb-2"><span style="font-size:12px;color:#ddd;">Show g(x) Curve</span> <div id="toggle-gx" class="toggle-track on"><div class="toggle-knob"></div></div></div>
+    </div>
+    
+    <div style="border-top:1px solid rgba(0,255,255,0.15);padding-top:12px;">
+      <div style="font-family:'Orbitron',monospace;font-size:9px;letter-spacing:2px;color:#aaa;margin-bottom:8px;">◉ CAMERA PRESETS</div>
+      <div style="display:flex;gap:8px;">
+        <button id="cam-perspective" class="btn-hud active" style="flex:1;">3D ORBIT</button>
+        <button id="cam-front" class="btn-hud" style="flex:1;">FRONT</button>
+        <button id="cam-top" class="btn-hud" style="flex:1;">TOP</button>
+      </div>
+    </div>
+    
+    <div id="intersections-info" style="border-top:1px solid rgba(0,255,255,0.15);padding-top:12px;margin-top:12px;display:none;">
+      <div style="font-family:'Orbitron',monospace;font-size:9px;letter-spacing:2px;color:#0ffa;">◉ f = g INTERSECTIONS</div>
+      <div id="intersections-list" style="font-size:11px;color:#ccd;margin-top:6px;max-height:100px;overflow-y:auto;"></div>
+    </div>
+  </div>
+  
+  <div id="info-bar" class="hud-panel" style="background:rgba(0,0,0,0.7);"></div>
+  <div id="coord-display" style="position:absolute;bottom:14px;right:18px;font-family:'Orbitron',monospace;font-size:10px;color:rgba(0,255,255,0.5);z-index:20;pointer-events:none;background:rgba(0,0,0,0.4);padding:4px 8px;border-radius:12px;"><span id="mouse-coords"></span></div>
+  <div class="axis-hint">💡 INEQUALITY ON: cyan X‑intervals + vertical lines from intersections to X‑axis</div>
+
+  <script>
+    // ========== CONFIGURATION ==========
+    const RANGE = 7.8;
+    const SAMPLES = 720;
+    const ASYMPTOTE_THRESH = 40;
+    
+    const state = {
+      fxExpr: 'x^2', gxExpr: 'x',
+      showDomain: false, showRange: false, showInequality: false, showGx: true,
+      cameraMode: '3d',
+      fxCompiled: null, gxCompiled: null,
+      intersections: [],
+      animProgress: { fx: 1, gx: 1 },
+      isAnimating: false
+    };
+    
+    // Three.js Setup
+    const container = document.getElementById('canvas-container');
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x05070a);
+    scene.fog = new THREE.FogExp2(0x05070a, 0.012);
+    
+    const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 200);
+    camera.position.set(12, 8, 14);
+    camera.lookAt(0, 0, 0);
+    
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(window.devicePixelRatio);
+    renderer.setClearColor(0x05070a, 1);
+    container.appendChild(renderer.domElement);
+    
+    // Orbit controls
+    let isDragging = false, prevMouse = { x: 0, y: 0 };
+    let spherical = { radius: 16, theta: Math.PI / 3.8, phi: Math.PI / 2.6 };
+    let targetSpherical = { ...spherical };
+    
+    function updateCameraFromSpherical(s) {
+      camera.position.x = s.radius * Math.sin(s.phi) * Math.cos(s.theta);
+      camera.position.y = s.radius * Math.cos(s.phi);
+      camera.position.z = s.radius * Math.sin(s.phi) * Math.sin(s.theta);
+      camera.lookAt(0, 0, 0);
+    }
+    
+    renderer.domElement.addEventListener('pointerdown', (e) => { isDragging = true; prevMouse = { x: e.clientX, y: e.clientY }; });
+    window.addEventListener('pointerup', () => isDragging = false);
+    renderer.domElement.addEventListener('pointermove', (e) => {
+      if (!isDragging || state.cameraMode !== '3d') return;
+      const dx = e.clientX - prevMouse.x, dy = e.clientY - prevMouse.y;
+      targetSpherical.theta -= dx * 0.008;
+      targetSpherical.phi = Math.max(0.15, Math.min(Math.PI - 0.15, targetSpherical.phi + dy * 0.008));
+      prevMouse = { x: e.clientX, y: e.clientY };
+    });
+    renderer.domElement.addEventListener('wheel', (e) => {
+      if (state.cameraMode !== '3d') return;
+      targetSpherical.radius = Math.max(5.5, Math.min(38, targetSpherical.radius + e.deltaY * 0.018));
+      e.preventDefault();
+    }, { passive: false });
+    
+    renderer.domElement.addEventListener('touchstart', (e) => { if(e.touches.length === 1) { isDragging = true; prevMouse = { x: e.touches[0].clientX, y: e.touches[0].clientY }; } }, { passive: true });
+    renderer.domElement.addEventListener('touchmove', (e) => { if(isDragging && state.cameraMode === '3d' && e.touches.length === 1) { const dx = e.touches[0].clientX - prevMouse.x, dy = e.touches[0].clientY - prevMouse.y; targetSpherical.theta -= dx * 0.008; targetSpherical.phi = Math.max(0.15, Math.min(Math.PI - 0.15, targetSpherical.phi + dy * 0.008)); prevMouse = { x: e.touches[0].clientX, y: e.touches[0].clientY }; } }, { passive: true });
+    renderer.domElement.addEventListener('touchend', () => isDragging = false);
+    
+    // Grid & Axes
+    const gridGroup = new THREE.Group();
+    const gridMat = new THREE.LineBasicMaterial({ color: 0x1a2a3a, transparent: true, opacity: 0.4 });
+    for (let i = -RANGE; i <= RANGE; i += 1) {
+      const lineX = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(i, 0, -RANGE), new THREE.Vector3(i, 0, RANGE)]);
+      const lineZ = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(-RANGE, 0, i), new THREE.Vector3(RANGE, 0, i)]);
+      gridGroup.add(new THREE.Line(lineX, gridMat), new THREE.Line(lineZ, gridMat));
+    }
+    const axesMat = (color, opacity) => new THREE.LineBasicMaterial({ color, transparent: true, opacity });
+    gridGroup.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(-RANGE,0,0), new THREE.Vector3(RANGE,0,0)]), axesMat(0x44ffaa, 0.6)));
+    gridGroup.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0,-RANGE,0), new THREE.Vector3(0,RANGE,0)]), axesMat(0xffaa55, 0.6)));
+    gridGroup.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0,0,-RANGE), new THREE.Vector3(0,0,RANGE)]), axesMat(0x5588ff, 0.35)));
+    const tickMat = new THREE.LineBasicMaterial({ color: 0x336699 });
+    for (let i = -Math.floor(RANGE); i <= Math.floor(RANGE); i++) {
+      if (i === 0) continue;
+      const t1 = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(i, -0.12, 0), new THREE.Vector3(i, 0.12, 0)]);
+      const t2 = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(-0.12, i, 0), new THREE.Vector3(0.12, i, 0)]);
+      gridGroup.add(new THREE.Line(t1, tickMat), new THREE.Line(t2, tickMat));
+    }
+    scene.add(gridGroup);
+    scene.add(new THREE.AmbientLight(0x222222));
+    const dirLight = new THREE.DirectionalLight(0xffffff, 0.6);
+    dirLight.position.set(2, 5, 3);
+    scene.add(dirLight);
+    
+    // ========== UTILITIES ==========
+    function compileExpr(expr) {
+      try { const node = math.parse(expr); const compiled = node.compile(); compiled.evaluate({ x: 1 }); return compiled; } 
+      catch(e) { return null; }
+    }
+    function evalFunc(compiled, x) {
+      if (!compiled) return NaN;
+      try { const y = compiled.evaluate({ x }); if (!isFinite(y) || Math.abs(y) > ASYMPTOTE_THRESH) return NaN; return y; } 
+      catch(e) { return NaN; }
+    }
+    
+    // ========== DOMAIN & RANGE INTERVAL DETECTION ==========
+    function getDomainIntervals(compiled) {
+      if (!compiled) return [];
+      const intervals = [];
+      let inInterval = false;
+      let start = -RANGE;
+      for (let i = 0; i <= SAMPLES; i++) {
+        const x = -RANGE + (2 * RANGE * i / SAMPLES);
+        const y = evalFunc(compiled, x);
+        const isValid = !isNaN(y);
+        if (isValid && !inInterval) {
+          inInterval = true;
+          start = x;
+        } else if (!isValid && inInterval) {
+          intervals.push([start, x]);
+          inInterval = false;
+        }
+      }
+      if (inInterval) intervals.push([start, RANGE]);
+      return intervals;
+    }
+    
+    function getRangeInterval(compiled) {
+      if (!compiled) return null;
+      let minY = Infinity, maxY = -Infinity;
+      let hasValid = false;
+      for (let i = 0; i <= SAMPLES; i++) {
+        const x = -RANGE + (2 * RANGE * i / SAMPLES);
+        const y = evalFunc(compiled, x);
+        if (!isNaN(y)) {
+          hasValid = true;
+          if (y < minY) minY = y;
+          if (y > maxY) maxY = y;
+        }
+      }
+      if (!hasValid) return null;
+      minY = Math.max(-RANGE, minY);
+      maxY = Math.min(RANGE, maxY);
+      if (maxY - minY < 0.02) return null;
+      return [minY, maxY];
+    }
+    
+    // Create glowing tube along axis (for domain, range, or inequality X‑segments)
+    function createAxisTube(start, end, axis, colorHex, radius = 0.085, yOffset = 0) {
+      let p1, p2;
+      if (axis === 'x') {
+        p1 = new THREE.Vector3(start, yOffset, 0.02);
+        p2 = new THREE.Vector3(end, yOffset, 0.02);
+      } else {
+        p1 = new THREE.Vector3(0, start, 0.02);
+        p2 = new THREE.Vector3(0, end, 0.02);
+      }
+      const points = [p1, p2];
+      const curve = new THREE.CatmullRomCurve3(points);
+      const tubeGeo = new THREE.TubeGeometry(curve, 12, radius, 8, false);
+      const material = new THREE.MeshStandardMaterial({ color: colorHex, emissive: colorHex, emissiveIntensity: 0.55, transparent: true, opacity: 0.9 });
+      const tube = new THREE.Mesh(tubeGeo, material);
+      const glowGeo = new THREE.TubeGeometry(curve, 12, radius * 2.2, 8, false);
+      const glowMat = new THREE.MeshBasicMaterial({ color: colorHex, transparent: true, opacity: 0.28 });
+      const glowTube = new THREE.Mesh(glowGeo, glowMat);
+      const group = new THREE.Group();
+      group.add(tube, glowTube);
+      return group;
+    }
+    
+    // Create vertical line from point (x, y) down to (x, 0)
+    function createVerticalDropLine(x, y, colorHex = 0x00ffff, radius = 0.035) {
+      if (Math.abs(y) < 0.05) return new THREE.Group(); // too short
+      const start = new THREE.Vector3(x, y, 0.02);
+      const end = new THREE.Vector3(x, 0, 0.02);
+      const points = [start, end];
+      const curve = new THREE.CatmullRomCurve3(points);
+      const tubeGeo = new THREE.TubeGeometry(curve, 8, radius, 6, false);
+      const material = new THREE.MeshStandardMaterial({ color: colorHex, emissive: colorHex, emissiveIntensity: 0.4, transparent: true, opacity: 0.85 });
+      const tube = new THREE.Mesh(tubeGeo, material);
+      const glowGeo = new THREE.TubeGeometry(curve, 8, radius * 2.5, 6, false);
+      const glowMat = new THREE.MeshBasicMaterial({ color: colorHex, transparent: true, opacity: 0.2 });
+      const glowTube = new THREE.Mesh(glowGeo, glowMat);
+      const group = new THREE.Group();
+      group.add(tube, glowTube);
+      return group;
+    }
+    
+    // Curve rendering
+    let curveMeshes = { fx: null, gx: null };
+    let axisHighlights = { domainGroup: null, rangeGroup: null };
+    let inequalityVisuals = { fill: null, xSegments: null, dropLines: [] };
+    let pulseMeshes = [];
+    
+    function createCurveSegments(compiled, progress = 1) {
+      const segments = [];
+      let current = [];
+      const limit = Math.floor(SAMPLES * progress);
+      for (let i = 0; i <= limit; i++) {
+        const x = -RANGE + (2 * RANGE * i / SAMPLES);
+        const y = evalFunc(compiled, x);
+        if (isNaN(y) || Math.abs(y) > ASYMPTOTE_THRESH) {
+          if (current.length > 1) segments.push(current);
+          current = [];
+          continue;
+        }
+        const clampedY = Math.max(-RANGE, Math.min(RANGE, y));
+        current.push(new THREE.Vector3(x, clampedY, 0));
+      }
+      if (current.length > 1) segments.push(current);
+      return segments;
+    }
+    
+    function buildGlowCurve(segments, colorHex) {
+      const group = new THREE.Group();
+      const mainMat = new THREE.LineBasicMaterial({ color: colorHex, linewidth: 2 });
+      segments.forEach(seg => {
+        const geo = new THREE.BufferGeometry().setFromPoints(seg);
+        group.add(new THREE.Line(geo, mainMat));
+        if (seg.length > 2) {
+          const curve = new THREE.CatmullRomCurve3(seg);
+          const tubeGeo = new THREE.TubeGeometry(curve, seg.length * 2, 0.045, 6, false);
+          const glowMat = new THREE.MeshBasicMaterial({ color: colorHex, transparent: true, opacity: 0.35 });
+          group.add(new THREE.Mesh(tubeGeo, glowMat));
+        }
+      });
+      return group;
+    }
+    
+    // Inequality fill (area between curves)
+    function buildInequalityFill(fxC, gxC) {
+      const group = new THREE.Group();
+      if (!fxC || !gxC) return group;
+      const vertices = [];
+      for (let i = 0; i < SAMPLES; i++) {
+        const x1 = -RANGE + (2 * RANGE * i / SAMPLES);
+        const x2 = -RANGE + (2 * RANGE * (i + 1) / SAMPLES);
+        const fy1 = evalFunc(fxC, x1), fy2 = evalFunc(fxC, x2);
+        const gy1 = evalFunc(gxC, x1), gy2 = evalFunc(gxC, x2);
+        if ([fy1, fy2, gy1, gy2].some(v => isNaN(v))) continue;
+        const cy1 = Math.max(-RANGE, Math.min(RANGE, fy1));
+        const cy2 = Math.max(-RANGE, Math.min(RANGE, fy2));
+        const cgy1 = Math.max(-RANGE, Math.min(RANGE, gy1));
+        const cgy2 = Math.max(-RANGE, Math.min(RANGE, gy2));
+        const above1 = fy1 >= gy1 - 1e-9;
+        const above2 = fy2 >= gy2 - 1e-9;
+        if (above1 && above2) {
+          vertices.push(x1, cy1, 0, x1, cgy1, 0, x2, cy2, 0);
+          vertices.push(x2, cy2, 0, x1, cgy1, 0, x2, cgy2, 0);
+        } else if (above1 && !above2) {
+          const xIntersect = findIntersectionX(fxC, gxC, x1, x2);
+          if (isFinite(xIntersect)) {
+            const yInter = evalFunc(fxC, xIntersect);
+            const clampedYinter = Math.max(-RANGE, Math.min(RANGE, yInter));
+            vertices.push(x1, cy1, 0, x1, cgy1, 0, xIntersect, clampedYinter, 0);
+            vertices.push(xIntersect, clampedYinter, 0, x1, cgy1, 0, xIntersect, clampedYinter, 0);
+          }
+        } else if (!above1 && above2) {
+          const xIntersect = findIntersectionX(fxC, gxC, x1, x2);
+          if (isFinite(xIntersect)) {
+            const yInter = evalFunc(fxC, xIntersect);
+            const clampedYinter = Math.max(-RANGE, Math.min(RANGE, yInter));
+            vertices.push(xIntersect, clampedYinter, 0, xIntersect, clampedYinter, 0, x2, cy2, 0);
+            vertices.push(x2, cy2, 0, xIntersect, clampedYinter, 0, x2, cgy2, 0);
+          }
+        }
+      }
+      if (vertices.length) {
+        const geo = new THREE.BufferGeometry();
+        geo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(vertices), 3));
+        const mat = new THREE.MeshBasicMaterial({ color: 0x33aaff, transparent: true, opacity: 0.28, side: THREE.DoubleSide });
+        group.add(new THREE.Mesh(geo, mat));
+      }
+      return group;
+    }
+    
+    // Get X‑axis intervals where f(x) >= g(x) (for highlighting)
+    function getInequalityXIntervals(fxC, gxC) {
+      if (!fxC || !gxC) return [];
+      const intervals = [];
+      let inInterval = false;
+      let start = -RANGE;
+      for (let i = 0; i <= SAMPLES; i++) {
+        const x = -RANGE + (2 * RANGE * i / SAMPLES);
+        const fy = evalFunc(fxC, x);
+        const gy = evalFunc(gxC, x);
+        if (isNaN(fy) || isNaN(gy)) {
+          if (inInterval) { intervals.push([start, x]); inInterval = false; }
+          continue;
+        }
+        const condition = fy >= gy - 1e-9;
+        if (condition && !inInterval) {
+          inInterval = true;
+          start = x;
+        } else if (!condition && inInterval) {
+          intervals.push([start, x]);
+          inInterval = false;
+        }
+      }
+      if (inInterval) intervals.push([start, RANGE]);
+      return intervals;
+    }
+    
+    function findIntersectionX(fxC, gxC, x1, x2) {
+      let lo = x1, hi = x2;
+      for (let iter = 0; iter < 24; iter++) {
+        const mid = (lo + hi) / 2;
+        const diffMid = evalFunc(fxC, mid) - evalFunc(gxC, mid);
+        const diffLo = evalFunc(fxC, lo) - evalFunc(gxC, lo);
+        if (Math.abs(diffMid) < 1e-7) return mid;
+        if (diffLo * diffMid < 0) hi = mid;
+        else lo = mid;
+      }
+      return (lo + hi) / 2;
+    }
+    
+    function findIntersections(fxC, gxC) {
+      if (!fxC || !gxC) return [];
+      const results = [];
+      let prevDiff = null;
+      for (let i = 0; i <= SAMPLES; i++) {
+        const x = -RANGE + (2 * RANGE * i / SAMPLES);
+        const fy = evalFunc(fxC, x), gy = evalFunc(gxC, x);
+        if (isNaN(fy) || isNaN(gy)) { prevDiff = null; continue; }
+        const diff = fy - gy;
+        if (prevDiff !== null && prevDiff * diff < 0) {
+          let lo = x - (2*RANGE/SAMPLES), hi = x;
+          for (let j=0; j<18; j++) { const mid = (lo+hi)/2; const fd = evalFunc(fxC, mid) - evalFunc(gxC, mid); if (fd * (evalFunc(fxC, lo)-evalFunc(gxC, lo)) < 0) hi = mid; else lo = mid; }
+          const ix = (lo+hi)/2, iy = evalFunc(fxC, ix);
+          if (isFinite(iy)) results.push({ x: ix, y: iy });
+        }
+        prevDiff = diff;
+      }
+      return results;
+    }
+    
+    function clearPulseMarkers() { pulseMeshes.forEach(p => scene.remove(p)); pulseMeshes = []; }
+    function createPulseAt(x, y) {
+      const group = new THREE.Group();
+      group.position.set(x, y, 0.03);
+      const dot = new THREE.Mesh(new THREE.SphereGeometry(0.09, 16, 16), new THREE.MeshStandardMaterial({ color: 0xffaa44, emissive: 0xff4400, emissiveIntensity: 0.7 }));
+      group.add(dot);
+      for (let i=0; i<2; i++) {
+        const ringGeo = new THREE.RingGeometry(0.12, 0.28, 24);
+        const ringMat = new THREE.MeshBasicMaterial({ color: 0xffaa66, transparent: true, opacity: 0.9, side: THREE.DoubleSide });
+        const ring = new THREE.Mesh(ringGeo, ringMat);
+        ring.userData = { delay: i * 0.2, mat: ringMat };
+        group.add(ring);
+      }
+      group.userData = { time: 0 };
+      scene.add(group);
+      pulseMeshes.push(group);
+    }
+    
+    function refreshIntersectionPulses() {
+      clearPulseMarkers();
+      if (state.showGx && state.intersections.length) state.intersections.forEach(pt => createPulseAt(pt.x, pt.y));
+    }
+    
+    function updateIntersectionsUI() {
+      const el = document.getElementById('intersections-info');
+      const listDiv = document.getElementById('intersections-list');
+      if (state.intersections.length > 0 && state.showGx) {
+        el.style.display = 'block';
+        listDiv.innerHTML = state.intersections.map(p => `<div style="margin-bottom:4px; font-family:monospace;">⚡ f = g at (${p.x.toFixed(3)}, ${p.y.toFixed(3)})</div>`).join('');
+      } else { el.style.display = 'none'; }
+    }
+    
+    // ========== REBUILD SCENE WITH ENHANCED INEQUALITY VISUALS ==========
+    function rebuildScene(skipPulseRefresh = false) {
+      // Remove existing
+      Object.values(curveMeshes).forEach(m => { if(m) scene.remove(m); });
+      if (axisHighlights.domainGroup) scene.remove(axisHighlights.domainGroup);
+      if (axisHighlights.rangeGroup) scene.remove(axisHighlights.rangeGroup);
+      if (inequalityVisuals.fill) scene.remove(inequalityVisuals.fill);
+      if (inequalityVisuals.xSegments) scene.remove(inequalityVisuals.xSegments);
+      if (inequalityVisuals.dropLines.length) { inequalityVisuals.dropLines.forEach(line => scene.remove(line)); inequalityVisuals.dropLines = []; }
+      
+      state.fxCompiled = compileExpr(state.fxExpr);
+      state.gxCompiled = compileExpr(state.gxExpr);
+      
+      // Curves
+      if (state.fxCompiled) {
+        const segs = createCurveSegments(state.fxCompiled, state.animProgress.fx);
+        curveMeshes.fx = buildGlowCurve(segs, 0x00ffff);
+        scene.add(curveMeshes.fx);
+      }
+      if (state.showGx && state.gxCompiled) {
+        const segsG = createCurveSegments(state.gxCompiled, state.animProgress.gx);
+        curveMeshes.gx = buildGlowCurve(segsG, 0xff44ff);
+        scene.add(curveMeshes.gx);
+      }
+      
+      // DOMAIN & RANGE highlights (unchanged)
+      if (state.showDomain && state.fxCompiled) {
+        const domainIntervals = getDomainIntervals(state.fxCompiled);
+        const group = new THREE.Group();
+        domainIntervals.forEach(([a, b]) => { if (b - a > 0.02) group.add(createAxisTube(a, b, 'x', 0x44ffaa, 0.09)); });
+        axisHighlights.domainGroup = group;
+        scene.add(axisHighlights.domainGroup);
+      }
+      if (state.showRange && state.fxCompiled) {
+        const rangeInterval = getRangeInterval(state.fxCompiled);
+        if (rangeInterval) {
+          const [yMin, yMax] = rangeInterval;
+          const group = new THREE.Group();
+          if (yMax - yMin > 0.02) group.add(createAxisTube(yMin, yMax, 'y', 0xffaa55, 0.09));
+          axisHighlights.rangeGroup = group;
+          scene.add(axisHighlights.rangeGroup);
+        }
+      }
+      
+      // INEQUALITY VISUALS: fill + X‑axis segments + vertical drop lines
+      if (state.showInequality && state.showGx && state.fxCompiled && state.gxCompiled) {
+        // 1) Fill between curves
+        inequalityVisuals.fill = buildInequalityFill(state.fxCompiled, state.gxCompiled);
+        scene.add(inequalityVisuals.fill);
+        
+        // 2) X‑axis intervals where f >= g (highlight in cyan)
+        const xIntervals = getInequalityXIntervals(state.fxCompiled, state.gxCompiled);
+        const xGroup = new THREE.Group();
+        xIntervals.forEach(([a, b]) => {
+          if (b - a > 0.02) xGroup.add(createAxisTube(a, b, 'x', 0x00ffff, 0.11, 0.02)); // slightly above axis
+        });
+        inequalityVisuals.xSegments = xGroup;
+        scene.add(inequalityVisuals.xSegments);
+        
+        // 3) Vertical drop lines from each intersection point down to X‑axis
+        const intersections = findIntersections(state.fxCompiled, state.gxCompiled);
+        intersections.forEach(pt => {
+          const line = createVerticalDropLine(pt.x, pt.y, 0x00ffff, 0.04);
+          inequalityVisuals.dropLines.push(line);
+          scene.add(line);
+        });
+      }
+      
+      // Intersection points for pulses & UI (only if gx visible)
+      if (state.showGx && state.fxCompiled && state.gxCompiled) {
+        state.intersections = findIntersections(state.fxCompiled, state.gxCompiled);
+        updateIntersectionsUI();
+        if (!skipPulseRefresh && !state.isAnimating) refreshIntersectionPulses();
+      } else {
+        state.intersections = [];
+        updateIntersectionsUI();
+        if (!skipPulseRefresh) clearPulseMarkers();
+      }
+    }
+    
+    function finalizeAfterAnimation() { state.isAnimating = false; rebuildScene(false); refreshIntersectionPulses(); }
+    function animateDrawIn() {
+      if (state.isAnimating) return;
+      state.isAnimating = true;
+      state.animProgress.fx = 0; state.animProgress.gx = 0;
+      rebuildScene(true);
+      gsap.killTweensOf(state.animProgress);
+      gsap.to(state.animProgress, { fx: 1, duration: 1.1, ease: "power2.out", onUpdate: () => rebuildScene(true) });
+      if (state.showGx) gsap.to(state.animProgress, { gx: 1, duration: 1.1, delay: 0.15, ease: "power2.out", onUpdate: () => rebuildScene(true), onComplete: finalizeAfterAnimation });
+      else setTimeout(() => { if(state.isAnimating) finalizeAfterAnimation(); }, 1200);
+    }
+    
+    function setCameraMode(mode) {
+      document.querySelectorAll('#cam-perspective,#cam-front,#cam-top').forEach(b => b.classList.remove('active'));
+      state.cameraMode = mode;
+      if (mode === '3d') { document.getElementById('cam-perspective').classList.add('active'); gsap.to(targetSpherical, { radius: 16, theta: Math.PI/3.8, phi: Math.PI/2.6, duration: 1.0 }); }
+      else if (mode === 'front') { document.getElementById('cam-front').classList.add('active'); gsap.to(targetSpherical, { radius: 18, theta: 0, phi: Math.PI/2, duration: 1.0 }); }
+      else if (mode === 'top') { document.getElementById('cam-top').classList.add('active'); gsap.to(targetSpherical, { radius: 18, theta: 0, phi: 0.05, duration: 1.0 }); }
+    }
+    
+    // Toggle handlers
+    function setupToggle(id, key) {
+      const el = document.getElementById(id);
+      el.addEventListener('click', () => { state[key] = !state[key]; el.classList.toggle('on', state[key]); rebuildScene(false); refreshIntersectionPulses(); });
+      el.classList.toggle('on', state[key]);
+    }
+    setupToggle('toggle-domain', 'showDomain');
+    setupToggle('toggle-range', 'showRange');
+    setupToggle('toggle-ineq', 'showInequality');
+    setupToggle('toggle-gx', 'showGx');
+    
+    let inputTimeout;
+    function handleFuncInput() {
+      clearTimeout(inputTimeout);
+      inputTimeout = setTimeout(() => {
+        state.fxExpr = document.getElementById('fx-input').value.trim() || 'x^2';
+        state.gxExpr = document.getElementById('gx-input').value.trim() || 'x';
+        animateDrawIn();
+      }, 380);
+    }
+    document.getElementById('fx-input').addEventListener('input', handleFuncInput);
+    document.getElementById('gx-input').addEventListener('input', handleFuncInput);
+    document.querySelectorAll('.preset-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const target = btn.dataset.target, val = btn.dataset.val;
+        if (target === 'fx') { document.getElementById('fx-input').value = val; state.fxExpr = val; }
+        else { document.getElementById('gx-input').value = val; state.gxExpr = val; }
+        animateDrawIn();
+      });
+    });
+    document.getElementById('cam-perspective').addEventListener('click', () => setCameraMode('3d'));
+    document.getElementById('cam-front').addEventListener('click', () => setCameraMode('front'));
+    document.getElementById('cam-top').addEventListener('click', () => setCameraMode('top'));
+    
+    // Mouse coordinates
+    const raycaster = new THREE.Raycaster(), mouseVec = new THREE.Vector2();
+    renderer.domElement.addEventListener('mousemove', (event) => {
+      mouseVec.x = (event.clientX / renderer.domElement.clientWidth) * 2 - 1;
+      mouseVec.y = -(event.clientY / renderer.domElement.clientHeight) * 2 + 1;
+      raycaster.setFromCamera(mouseVec, camera);
+      const plane = new THREE.Plane(new THREE.Vector3(0, 0, 1), 0);
+      const point = raycaster.ray.intersectPlane(plane, new THREE.Vector3());
+      if (point) document.getElementById('mouse-coords').innerHTML = `X: ${point.x.toFixed(2)} &nbsp; Y: ${point.y.toFixed(2)}`;
+      else document.getElementById('mouse-coords').innerHTML = `–––`;
+    });
+    
+    // Pulse animation & render loop
+    function animatePulses(dt) {
+      for (let i=pulseMeshes.length-1; i>=0; i--) {
+        const p = pulseMeshes[i];
+        p.userData.time = (p.userData.time || 0) + dt;
+        p.children.forEach((child, idx) => {
+          if (idx === 0) return;
+          const t = Math.max(0, p.userData.time - (child.userData.delay || 0));
+          const scale = 1 + t * 3.5;
+          const opacity = Math.max(0, 0.8 - t * 1.2);
+          child.scale.set(scale, scale, 1);
+          if (child.userData.mat) child.userData.mat.opacity = opacity;
+        });
+        if (p.userData.time > 1.8) { scene.remove(p); pulseMeshes.splice(i,1); }
+      }
+    }
+    
+    const clock = new THREE.Clock();
+    function renderLoop() {
+      const delta = Math.min(clock.getDelta(), 0.033);
+      spherical.theta += (targetSpherical.theta - spherical.theta) * 0.09;
+      spherical.phi += (targetSpherical.phi - spherical.phi) * 0.09;
+      spherical.radius += (targetSpherical.radius - spherical.radius) * 0.09;
+      updateCameraFromSpherical(spherical);
+      animatePulses(delta);
+      renderer.render(scene, camera);
+      requestAnimationFrame(renderLoop);
+    }
+    
+    window.addEventListener('resize', () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+    
+    rebuildScene(false);
+    animateDrawIn();
+    renderLoop();
+  </script>
+</body>
+</html>
