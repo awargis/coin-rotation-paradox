@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Calculus Vending Machine | Function vs Relation - Enhanced Dispense</title>
+    <style>
+        :root {
+            --bg-1: #04111f;
+            --bg-2: #071d33;
+            --bg-3: #020711;
+            --panel: rgba(3, 10, 24, 0.82);
+            --panel-border: rgba(87, 230, 255, 0.45);
+            --cyan: #7df9ff;
+            --cyan-strong: #2af3ff;
+            --green-strong: #0fff95;
+            --red-strong: #ff335f;
+            --gold: #ffd36c;
+            --violet: #8f7dff;
+            --text: #dbf8ff;
+            --muted: #8eb7c6;
+            --shadow: 0 20px 40px rgba(0, 0, 0, 0.28);
+            --radius: 18px;
+        }
+        * { box-sizing: border-box; user-select: none; }
+        html, body { width: 100%; height: 100%; overflow: hidden; }
+        body {
+            margin: 0;
+            font-family: "Bahnschrift", "Trebuchet MS", sans-serif;
+            color: var(--text);
+            background:
+                radial-gradient(circle at 20% 0%, rgba(85, 144, 255, 0.22), transparent 28%),
+                radial-gradient(circle at 80% 10%, rgba(88, 255, 212, 0.12), transparent 24%),
+                radial-gradient(circle at 50% 100%, rgba(143, 125, 255, 0.08), transparent 30%),
+                linear-gradient(140deg, var(--bg-3), var(--bg-1) 35%, var(--bg-2));
+        }
+        canvas { display: block; position: fixed; inset: 0; z-index: 0; }
+        .overlay { position: fixed; inset: 0; pointer-events: none; z-index: 2; }
+        .panel {
+            position: absolute;
+            background: var(--panel);
+            border: 1px solid var(--panel-border);
+            box-shadow: var(--shadow);
+            backdrop-filter: blur(14px);
+            border-radius: var(--radius);
+            overflow: hidden;
+            pointer-events: auto;
+            z-index: 3;
+        }
+        .hud {
+            left: 20px;
+            bottom: 20px;
+            width: min(430px, calc(100vw - 40px));
+            padding: 18px 20px 16px;
+        }
+        .hud-top { display: flex; justify-content: space-between; gap: 12px; align-items: flex-start; margin-bottom: 14px; }
+        .eyebrow { font-size: 11px; letter-spacing: 0.22em; text-transform: uppercase; color: var(--cyan); margin-bottom: 6px; }
+        .hud h1 { margin: 0; font-size: clamp(1.2rem, 2vw, 1.55rem); line-height: 1.05; letter-spacing: 0.04em; }
+        .mode-chip { padding: 8px 12px; border-radius: 999px; border: 1px solid rgba(255, 255, 255, 0.14); background: rgba(125, 249, 255, 0.08); font-size: 12px; font-weight: 700; white-space: nowrap; }
+        .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 12px; }
+        .stat { background: rgba(255, 255, 255, 0.04); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 14px; padding: 10px; }
+        .stat-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.12em; margin-bottom: 4px; }
+        .stat-value { font-size: 14px; font-weight: 700; }
+        .lesson-card { padding: 12px 14px; border-radius: 14px; background: rgba(255, 255, 255, 0.045); border: 1px solid rgba(255, 255, 255, 0.08); }
+        .lesson-title { font-size: 12px; color: var(--gold); margin-bottom: 6px; text-transform: uppercase; }
+        .lesson-body { margin: 0; font-size: 13px; line-height: 1.5; }
+        .readout-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 12px; }
+        .readout { padding: 10px 12px; border-radius: 14px; background: rgba(5, 17, 32, 0.9); border: 1px solid rgba(125, 249, 255, 0.12); }
+        .readout-label { color: var(--muted); font-size: 10px; letter-spacing: 0.16em; text-transform: uppercase; margin-bottom: 5px; }
+        .readout-value { font-size: 13px; font-weight: 700; }
+        .controls {
+            right: 20px;
+            bottom: 20px;
+            width: min(380px, calc(100vw - 40px));
+            padding: 18px;
+            pointer-events: auto;
+        }
+        .controls-inner { display: grid; gap: 14px; }
+        .section-title { font-size: 12px; text-transform: uppercase; letter-spacing: 0.14em; color: var(--cyan); }
+        .mode-group { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        button, input { font: inherit; }
+        .mode-btn, .action-btn {
+            appearance: none;
+            border: 1px solid rgba(125, 249, 255, 0.55);
+            border-radius: 14px;
+            background: linear-gradient(180deg, rgba(255, 255, 255, 0.09), transparent), rgba(7, 19, 35, 0.92);
+            color: var(--text);
+            padding: 12px 14px;
+            cursor: pointer;
+            transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+        }
+        .mode-btn.active.function { border-color: rgba(15, 255, 149, 0.95); background: linear-gradient(180deg, rgba(20, 255, 133, 0.18), rgba(11, 40, 25, 0.9)); color: #d9ffea; }
+        .mode-btn.active.relation { border-color: rgba(255, 69, 104, 0.95); background: linear-gradient(180deg, rgba(255, 70, 110, 0.18), rgba(45, 9, 15, 0.9)); color: #ffe4e8; }
+        .mode-btn strong { display: block; font-size: 14px; margin-bottom: 3px; }
+        .mode-btn span { font-size: 12px; color: var(--muted); }
+        .input-row { display: grid; grid-template-columns: auto 1fr auto; gap: 10px; align-items: center; }
+        .input-field { border: 1px solid rgba(125, 249, 255, 0.45); border-radius: 14px; background: rgba(2, 10, 20, 0.86); color: var(--text); padding: 12px 14px; }
+        .action-btn { font-weight: 700; white-space: nowrap; background: linear-gradient(180deg, #1a4970, #051c2e); border-color: #4acfff; }
+        .status { padding: 12px 14px; border-radius: 14px; font-size: 13px; background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.08); min-height: 50px; transition: all 0.2s; }
+        .status.valid { color: #d8ffe9; border-color: rgba(15, 255, 149, 0.6); background: rgba(15, 255, 149, 0.12); }
+        .status.invalid { color: #ffe8ec; border-color: rgba(255, 51, 95, 0.64); background: rgba(255, 51, 95, 0.13); }
+        .status.warning { color: #fff2d0; border-color: rgba(255, 211, 108, 0.68); background: rgba(255, 211, 108, 0.12); }
+        .legend { position: absolute; top: 20px; left: 20px; padding: 10px 14px; display: flex; gap: 16px; font-size: 12px; pointer-events: none; background: rgba(0,0,0,0.3); border-radius: 40px; backdrop-filter: blur(8px); }
+        .legend-item { display: flex; align-items: center; gap: 8px; }
+        .swatch { width: 12px; height: 12px; border-radius: 999px; }
+        .swatch.green { background: var(--green-strong); box-shadow: 0 0 8px #0fff95; }
+        .swatch.red { background: var(--red-strong); box-shadow: 0 0 8px #ff335f; }
+        .status-bar { position: absolute; top: 20px; right: 20px; padding: 10px 14px; background: rgba(0,0,0,0.45); backdrop-filter: blur(8px); border-radius: 24px; font-size: 11px; }
+        .status-line { display: flex; justify-content: space-between; gap: 20px; }
+        .cooldown-indicator { background: rgba(125, 249, 255, 0.2); border-radius: 20px; height: 3px; width: 100%; margin-top: 8px; transition: width 0.05s linear; }
+        button:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+        @media (max-width: 680px) { .stats, .mode-group, .input-row, .readout-row { grid-template-columns: 1fr; } .legend { display: none; } .hud { bottom: 320px; } .controls { bottom: 12px; } }
+    </style>
+</head>
+<body>
+<div class="overlay">
+    <div class="panel legend">
+        <div class="legend-item"><span class="swatch green"></span><span>Function: One Input → One Output (Single Can)</span></div>
+        <div class="legend-item"><span class="swatch red"></span><span>Relation: One Input → Two Outputs (Twin Cans)</span></div>
+    </div>
+    <div class="panel status-bar">
+        <div class="status-line"><span>Core State</span><strong id="coreState">Stable</strong></div>
+        <div class="status-line"><span>Output Channel</span><strong id="outputChannel">Single stream</strong></div>
+        <div class="status-line"><span>Diagnostic</span><strong id="diagnosticText">No anomaly</strong></div>
+    </div>
+    <section class="panel hud">
+        <div class="hud-top"><div><div class="eyebrow">Neural Math Foundry // Function Contract</div><h1>Function vs Relation Dispenser</h1></div><div class="mode-chip" id="modeChip">FUNCTION MODE</div></div>
+        <div class="stats"><div class="stat"><div class="stat-label">Domain</div><div class="stat-value" id="domainDisplay">All reals</div></div><div class="stat"><div class="stat-label">Range</div><div class="stat-value" id="rangeDisplay">[0,∞)</div></div><div class="stat"><div class="stat-label">Rule</div><div class="stat-value" id="mappingDisplay">f(x)=x²</div></div></div>
+        <div class="lesson-card"><div class="lesson-title">Concept Check</div><p class="lesson-body" id="lessonText">A function gives exactly one output for each input.</p></div>
+        <div class="readout-row"><div class="readout"><div class="readout-label">Input</div><div class="readout-value" id="inputReadout">x = 2</div></div><div class="readout"><div class="readout-label">Projection</div><div class="readout-value" id="projectionReadout">y = 4</div></div><div class="readout"><div class="readout-label">Validity</div><div class="readout-value" id="validityReadout">Unique</div></div></div>
+    </section>
+    <section class="panel controls">
+        <div class="controls-inner">
+            <div class="section-title">⚡ MACHINE MODE</div>
+            <div class="mode-group"><button id="functionModeBtn" class="mode-btn active function"><strong>Function</strong><span>Single output</span></button><button id="relationModeBtn" class="mode-btn relation"><strong>Relation</strong><span>Split outputs</span></button></div>
+            <div class="input-row"><label class="input-label" for="inputValue">x =</label><input class="input-field" type="number" id="inputValue" value="2" step="0.5"><button class="action-btn" id="dispenseBtn">🍬 DISPENSE</button></div>
+            <div class="status" id="statusMsg">Ready. Press DISPENSE to see the can(s) launch from slot.</div>
+            <div class="quick-info" id="outputPreview">Current preview: x = 2 → f(x) = 4</div>
+            <div id="cooldownBar" class="cooldown-indicator" style="width:0%"></div>
+        </div>
+    </section>
+</div>
+<script type="importmap">{"imports":{"three":"https://unpkg.com/three@0.128.0/build/three.module.js","three/addons/":"https://unpkg.com/three@0.128.0/examples/jsm/","cannon-es":"https://unpkg.com/cannon-es@0.20.0/dist/cannon-es.js","gsap":"https://unpkg.com/gsap@3.12.5/index.js"}}</script>
+<script type="module">
+import * as THREE from "three";
+import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+import { EffectComposer } from "three/addons/postprocessing/EffectComposer.js";
+import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
+import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js";
+import * as CANNON from "cannon-es";
+import gsap from "gsap";
+
+// --- DOM Elements ---
+const elements = {
+    modeChip: document.getElementById("modeChip"), domainDisplay: document.getElementById("domainDisplay"), rangeDisplay: document.getElementById("rangeDisplay"),
+    mappingDisplay: document.getElementById("mappingDisplay"), lessonText: document.getElementById("lessonText"), statusMsg: document.getElementById("statusMsg"),
+    outputPreview: document.getElementById("outputPreview"), inputReadout: document.getElementById("inputReadout"), projectionReadout: document.getElementById("projectionReadout"),
+    validityReadout: document.getElementById("validityReadout"), coreState: document.getElementById("coreState"), outputChannel: document.getElementById("outputChannel"),
+    diagnosticText: document.getElementById("diagnosticText"), functionModeBtn: document.getElementById("functionModeBtn"), relationModeBtn: document.getElementById("relationModeBtn"),
+    inputValue: document.getElementById("inputValue"), dispenseBtn: document.getElementById("dispenseBtn"), cooldownBar: document.getElementById("cooldownBar")
+};
+
+const MODES = {
+    function: { chip: "⚡ FUNCTION MODE", domain: "All real numbers", range: "[0, ∞)", mapping: "f(x) = x²", lesson: "Every input yields exactly ONE output. Squaring is a function.", preview: (x) => `Preview: x = ${formatNumber(x)} → f(x) = ${formatNumber(x * x)}`, screenHeading: "FUNCTION ACTIVE", screenFooter: "✓ One input → One can" },
+    relation: { chip: "🌀 RELATION MODE", domain: "x ≥ 0 (real outputs)", range: "All real y", mapping: "x = y²  ⇒  y = ±√x", lesson: "Relation: one input maps to TWO outputs. Fails vertical line test.", preview: (x) => x < 0 ? "⚠️ Negative x has no real sqrt. Use x ≥ 0." : `Preview: x = ${formatNumber(x)} → y = ${formatNumber(Math.sqrt(x))} and y = ${formatNumber(-Math.sqrt(x))}`, screenHeading: "RELATION SPLIT", screenFooter: "⚠ One input → Two cans" }
+};
+
+let currentMode = "function";
+let activeCans = []; // { mesh, body, labelTexture }
+let lastTime = performance.now();
+let dispenseCooldown = false;
+let cooldownTimer = null;
+
+// --- 3D Setup ---
+const scene = new THREE.Scene(); scene.background = new THREE.Color(0x020914); scene.fog = new THREE.FogExp2(0x03111f, 0.006);
+const camera = new THREE.PerspectiveCamera(44, window.innerWidth / window.innerHeight, 0.1, 1000); camera.position.set(5.3, 3.9, 6.4);
+const renderer = new THREE.WebGLRenderer({ antialias: true }); renderer.setSize(window.innerWidth, window.innerHeight); renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap; renderer.toneMapping = THREE.ReinhardToneMapping;
+document.body.appendChild(renderer.domElement);
+const composer = new EffectComposer(renderer); composer.addPass(new RenderPass(scene, camera)); const bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 0.45, 0.22, 0.92); composer.addPass(bloomPass);
+const controls = new OrbitControls(camera, renderer.domElement); controls.enableDamping = true; controls.target.set(0, 1.8, 0); controls.minDistance = 4; controls.maxDistance = 10;
+
+// Lighting & Environment
+scene.add(new THREE.AmbientLight(0x1f3150, 0.48));
+const heroLight = new THREE.SpotLight(0xffb27b, 1.2); heroLight.position.set(3.6, 4.6, 3.8); heroLight.castShadow = true; scene.add(heroLight);
+const fillLight = new THREE.PointLight(0x4dc8ff, 0.45); fillLight.position.set(-2.8, 2.2, 3.2); scene.add(fillLight);
+const rimLight = new THREE.PointLight(0x2aa8ff, 0.78); rimLight.position.set(-1.2, 2.9, -3.4); scene.add(rimLight);
+const pulseLight = new THREE.PointLight(0x66ecff, 0.7, 10); pulseLight.position.set(0, 2.15, 0.35); scene.add(pulseLight);
+const floor = new THREE.Mesh(new THREE.CircleGeometry(9, 32), new THREE.MeshStandardMaterial({ color: 0x112236, roughness: 0.34, metalness: 0.62, emissive: 0x061527 })); floor.rotation.x = -Math.PI / 2; floor.position.y = -0.19; floor.receiveShadow = true; scene.add(floor);
+const gridHelper = new THREE.GridHelper(22, 32, 0x42d7ff, 0x235f8b); gridHelper.position.y = -0.18; gridHelper.material.transparent = true; gridHelper.material.opacity = 0.26; scene.add(gridHelper);
+
+// --- Machine Group & Slot World Position ---
+const machineGroup = new THREE.Group(); scene.add(machineGroup);
+const body = new THREE.Mesh(new THREE.BoxGeometry(2.3, 3.35, 1.72), new THREE.MeshStandardMaterial({ color: 0x1a1c2d, metalness: 0.72, roughness: 0.36 })); body.position.y = 1.67; body.castShadow = true; machineGroup.add(body);
+const slotMesh = new THREE.Mesh(new THREE.BoxGeometry(0.92, 0.3, 0.45), new THREE.MeshStandardMaterial({ color: 0x384158, metalness: 0.85 })); slotMesh.position.set(0, 0.66, 0.89); machineGroup.add(slotMesh);
+const ledMaterial = new THREE.MeshStandardMaterial({ color: 0xff4f95, emissive: 0xff2f7a, emissiveIntensity: 0.24 }); const ledStrip = new THREE.Mesh(new THREE.BoxGeometry(2.1, 0.08, 0.08), ledMaterial); ledStrip.position.set(0, 0.25, 0.89); machineGroup.add(ledStrip);
+const coilRingTop = new THREE.Mesh(new THREE.TorusGeometry(1.22, 0.045, 16, 64), new THREE.MeshStandardMaterial({ color: 0x56efff, emissive: 0x1fe7ff, emissiveIntensity: 0.55 })); coilRingTop.rotation.x = Math.PI / 2; coilRingTop.position.set(0, 3.25, 0); machineGroup.add(coilRingTop);
+const holoTorus = new THREE.Mesh(new THREE.TorusGeometry(0.86, 0.018, 10, 72), new THREE.MeshBasicMaterial({ color: 0x68f9ff, transparent: true, opacity: 0.5 })); holoTorus.rotation.x = Math.PI / 2; holoTorus.position.set(0, 2.05, 0.25); machineGroup.add(holoTorus);
+machineGroup.position.set(0, -0.1, 0);
+// Get SLOT WORLD POSITION (where cans eject)
+const slotWorldPos = new THREE.Vector3(0, 0.56, 0.89); // machineGroup at (0,-0.1) + slot local (0,0.66,0.89)
+
+// --- Physics World ---
+const world = new CANNON.World(); world.gravity.set(0, -9.82, 0); world.broadphase = new CANNON.NaiveBroadphase();
+const groundBody = new CANNON.Body({ mass: 0 }); groundBody.addShape(new CANNON.Box(new CANNON.Vec3(7, 0.2, 7))); groundBody.position.y = -0.35; world.addBody(groundBody);
+const machineCollision = new CANNON.Body({ mass: 0 }); machineCollision.addShape(new CANNON.Box(new CANNON.Vec3(1.25, 1.9, 0.95))); machineCollision.position.set(0, 1.55, 0); world.addBody(machineCollision);
+
+// --- Decorative FX ---
+const dustGeometry = new THREE.BufferGeometry(); const dustCount = 1200; const dustPositions = new Float32Array(dustCount * 3);
+for (let i = 0; i < dustCount; i++) { dustPositions[i*3] = (Math.random() - 0.5) * 18; dustPositions[i*3+1] = Math.random() * 5.7; dustPositions[i*3+2] = (Math.random() - 0.5) * 14 - 3; }
+dustGeometry.setAttribute("position", new THREE.BufferAttribute(dustPositions, 3)); const dustSystem = new THREE.Points(dustGeometry, new THREE.PointsMaterial({ color: 0x8dcfff, size: 0.02, transparent: true, opacity: 0.3 })); scene.add(dustSystem);
+const starField = new THREE.Points(new THREE.BufferGeometry(), new THREE.PointsMaterial({ color: 0xb8eaff, size: 0.035, transparent: true })); scene.add(starField);
+
+// Helper: format numbers
+function formatNumber(val) { if (!Number.isFinite(val)) return "undefined"; return Number.parseFloat(val.toFixed(5)).toString(); }
+
+// --- Label Textures for Cans ---
+function createLabelTexture(lines, isRelation) {
+    const canvas = document.createElement("canvas"); canvas.width = 512; canvas.height = 256;
+    const ctx = canvas.getContext("2d"); ctx.fillStyle = isRelation ? "#2a0811" : "#082619"; ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.strokeStyle = isRelation ? "#ff6b7d" : "#8cff96"; ctx.lineWidth = 6; ctx.strokeRect(12, 12, canvas.width - 24, canvas.height - 24);
+    ctx.fillStyle = isRelation ? "#ffd3da" : "#d8ffe4"; ctx.font = "bold 34px 'Segoe UI'"; ctx.fillText(lines[0], 34, 74);
+    ctx.fillStyle = "#dce9ff"; ctx.font = "22px 'Segoe UI'"; ctx.fillText(lines[1], 34, 136);
+    ctx.fillStyle = "#9cb9dc"; ctx.font = "18px 'Segoe UI'"; ctx.fillText(lines[2], 34, 186);
+    return new THREE.CanvasTexture(canvas);
+}
+
+// --- ENHANCED CAN CREATION with precise slot ejection ---
+function createEnhancedCan({ inputVal, outputVal, isRelation, mappingSuffix, positionOffset, velocityVec, angularVec }) {
+    const canColor = isRelation ? 0xcc334d : 0x33cc77;
+    const emissiveColor = isRelation ? 0x42121d : 0x0e4020;
+    const canMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.29, 0.29, 0.48, 28), new THREE.MeshStandardMaterial({ color: canColor, emissive: emissiveColor, emissiveIntensity: 0.35, metalness: 0.72, roughness: 0.3 }));
+    canMesh.castShadow = true; canMesh.receiveShadow = true;
+    const labelText = isRelation ? `Output: ${formatNumber(outputVal)}` : `y = ${formatNumber(outputVal)}`;
+    const labelTexture = createLabelTexture([labelText, isRelation ? "Relation Mode" : "Function Mode", `${mappingSuffix} for x = ${formatNumber(inputVal)}`], isRelation);
+    const label = new THREE.Mesh(new THREE.CylinderGeometry(0.301, 0.301, 0.32, 28, 1, true), new THREE.MeshStandardMaterial({ map: labelTexture }));
+    label.rotation.z = Math.PI / 2; canMesh.add(label);
+    
+    // Physics body
+    const body = new CANNON.Body({ mass: 0.65 });
+    body.addShape(new CANNON.Cylinder(0.29, 0.29, 0.48, 16));
+    const basePos = slotWorldPos.clone();
+    const offset = positionOffset || new THREE.Vector3((Math.random() - 0.5) * 0.22, Math.random() * 0.1, 0.05);
+    body.position.set(basePos.x + offset.x, basePos.y + offset.y, basePos.z + offset.z);
+    body.linearVelocity = velocityVec || new CANNON.Vec3((Math.random() - 0.5) * 1.2, 2.2 + Math.random() * 1.4, 2.8 + Math.random() * 1.2);
+    body.angularVelocity = angularVec || new CANNON.Vec3(0.8, 1.4, 0.7);
+    world.addBody(body);
+    scene.add(canMesh);
+    activeCans.push({ mesh: canMesh, body, labelTexture });
+    // Pop effect scale
+    gsap.fromTo(canMesh.scale, { x: 0.1, y: 0.1, z: 0.1 }, { x: 1, y: 1, z: 1, duration: 0.28, ease: "back.out(2)" });
+    return canMesh;
+}
+
+// --- Slot Flash & particles ---
+function slotFlashEffect(isRelation) {
+    const flashMat = new THREE.MeshStandardMaterial({ color: isRelation ? 0xff3366 : 0x33ff99, emissive: isRelation ? 0xff1155 : 0x22ff88, emissiveIntensity: 1.2, transparent: true });
+    const flashCube = new THREE.Mesh(new THREE.BoxGeometry(0.98, 0.35, 0.12), flashMat);
+    flashCube.position.copy(slotWorldPos); scene.add(flashCube);
+    gsap.to(flashMat, { emissiveIntensity: 0, duration: 0.2, onComplete: () => scene.remove(flashCube) });
+    // Particle burst at slot
+    const particleCount = 45; const geom = new THREE.BufferGeometry(); const positions = new Float32Array(particleCount * 3);
+    for (let i = 0; i < particleCount; i++) { positions[i*3] = (Math.random() - 0.5) * 0.8; positions[i*3+1] = Math.random() * 0.6; positions[i*3+2] = Math.random() * 0.5; }
+    geom.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+    const parts = new THREE.Points(geom, new THREE.PointsMaterial({ color: isRelation ? 0xff7799 : 0x88ffaa, size: 0.04, transparent: true }));
+    parts.position.copy(slotWorldPos); scene.add(parts);
+    gsap.to(parts.material, { opacity: 0, duration: 0.5, onComplete: () => scene.remove(parts) });
+}
+
+// --- UI Feedback & Mode Switching ---
+function updateStatus(msg, type) { elements.statusMsg.textContent = msg; elements.statusMsg.className = `status ${type || ""}`; if (type === "invalid") elements.statusMsg.classList.add("shake"); setTimeout(() => elements.statusMsg.classList.remove("shake"), 400); }
+
+function previewCurrentInput() {
+    const x = parseFloat(elements.inputValue.value) || 0;
+    elements.inputReadout.textContent = `x = ${formatNumber(x)}`;
+    if (currentMode === "function") { elements.projectionReadout.textContent = `y = ${formatNumber(x*x)}`; elements.validityReadout.textContent = "✓ Unique"; }
+    else if (x < 0) { elements.projectionReadout.textContent = "No real y"; elements.validityReadout.textContent = "⛔ Blocked"; }
+    else { elements.projectionReadout.textContent = `${formatNumber(Math.sqrt(x))}, ${formatNumber(-Math.sqrt(x))}`; elements.validityReadout.textContent = "⚡ Split"; }
+    elements.outputPreview.textContent = MODES[currentMode].preview(x);
+}
+
+function setMode(mode) {
+    currentMode = mode; const data = MODES[mode];
+    elements.modeChip.textContent = data.chip; elements.domainDisplay.textContent = data.domain; elements.rangeDisplay.textContent = data.range;
+    elements.mappingDisplay.textContent = data.mapping; elements.lessonText.textContent = data.lesson;
+    elements.functionModeBtn.classList.toggle("active", mode === "function"); elements.relationModeBtn.classList.toggle("active", mode === "relation");
+    elements.coreState.textContent = mode === "function" ? "Stable" : "Split state";
+    elements.outputChannel.textContent = mode === "function" ? "Single stream" : "Dual stream";
+    elements.diagnosticText.textContent = mode === "function" ? "Contract intact" : "Anomaly detected";
+    updateStatus(data.status, "valid");
+    previewCurrentInput();
+    gsap.to(ledMaterial, { emissiveIntensity: mode === "function" ? 0.35 : 0.68, duration: 0.3 });
+}
+
+// --- DISPENSE ENHANCED: correct Function (1 can) / Relation (2 cans) with physics ejection ---
+function dispense() {
+    if (dispenseCooldown) { updateStatus("⏳ Machine is dispensing... please wait.", "warning"); return; }
+    const raw = parseFloat(elements.inputValue.value);
+    const x = isNaN(raw) ? 0 : raw;
+    
+    if (currentMode === "function") {
+        const y = x * x;
+        dispenseCooldown = true; elements.dispenseBtn.disabled = true;
+        slotFlashEffect(false);
+        // Create one can shooting from slot
+        const velocity = new CANNON.Vec3((Math.random() - 0.5) * 0.8, 2.5 + Math.random() * 1.2, 3.0 + Math.random() * 1.0);
+        createEnhancedCan({ inputVal: x, outputVal: y, isRelation: false, mappingSuffix: "f(x)=x²", positionOffset: new THREE.Vector3((Math.random()-0.5)*0.2, 0.05, 0), velocityVec: velocity });
+        updateStatus(`✓ Function: x = ${formatNumber(x)} → unique output y = ${formatNumber(y)}. Single can dispensed.`, "valid");
+        gsap.to(pulseLight, { intensity: 1.4, duration: 0.12, yoyo: true, repeat: 3 });
+        gsap.to(slotMesh.position, { z: 0.98, duration: 0.08, yoyo: true, repeat: 2 });
+        startCooldown();
+    } 
+    else if (currentMode === "relation") {
+        if (x < 0) {
+            updateStatus(`⚠ Relation requires x ≥ 0 for real outputs. Input ${formatNumber(x)} rejected.`, "invalid");
+            gsap.to(slotMesh.position, { z: 0.95, duration: 0.05, yoyo: true, repeat: 4, ease: "none" });
+            return;
+        }
+        const y1 = Math.sqrt(x); const y2 = -Math.sqrt(x);
+        dispenseCooldown = true; elements.dispenseBtn.disabled = true;
+        slotFlashEffect(true);
+        // Two cans: left offset & right offset, different velocities for organic separation
+        const velLeft = new CANNON.Vec3(-0.7 + Math.random()*0.3, 2.4 + Math.random()*1.2, 2.9 + Math.random()*1.0);
+        const velRight = new CANNON.Vec3(0.5 + Math.random()*0.4, 2.6 + Math.random()*1.1, 2.7 + Math.random()*1.1);
+        createEnhancedCan({ inputVal: x, outputVal: y1, isRelation: true, mappingSuffix: "y = +√x", positionOffset: new THREE.Vector3(-0.28, 0.08, 0.02), velocityVec: velLeft, angularVec: new CANNON.Vec3(1.2, 0.9, 0.5) });
+        createEnhancedCan({ inputVal: x, outputVal: y2, isRelation: true, mappingSuffix: "y = -√x", positionOffset: new THREE.Vector3(0.26, 0.08, 0.02), velocityVec: velRight, angularVec: new CANNON.Vec3(-0.8, 1.3, 0.6) });
+        updateStatus(`⚠ Relation: x = ${formatNumber(x)} gives TWO outputs: ${formatNumber(y1)} and ${formatNumber(y2)}. Two cans ejected.`, "invalid");
+        gsap.to(pulseLight, { intensity: 1.8, duration: 0.1, yoyo: true, repeat: 4 });
+        gsap.to(slotMesh.position, { z: 1.02, duration: 0.06, yoyo: true, repeat: 3, ease: "power1" });
+        cameraShakeIntensity(0.45);
+        startCooldown();
+    }
+    previewCurrentInput();
+}
+
+function cameraShakeIntensity(intensity) {
+    const orig = camera.position.clone();
+    gsap.to(camera.position, { x: orig.x + 0.06 * intensity, y: orig.y - 0.04 * intensity, duration: 0.04, yoyo: true, repeat: 4, onComplete: () => camera.position.copy(orig) });
+}
+
+function startCooldown() {
+    let elapsed = 0; const duration = 0.55;
+    const interval = setInterval(() => { elapsed += 0.03; elements.cooldownBar.style.width = `${Math.min(100, (elapsed/duration)*100)}%`; if (elapsed >= duration) { clearInterval(interval); elements.cooldownBar.style.width = "0%"; } }, 30);
+    setTimeout(() => { dispenseCooldown = false; elements.dispenseBtn.disabled = false; updateStatus("Ready. Insert value and dispense.", "valid"); }, duration * 1000);
+}
+
+// --- Screen Canvas Update ---
+const screenCanvas = document.createElement("canvas"); screenCanvas.width = 1024; screenCanvas.height = 512; const screenCtx = screenCanvas.getContext("2d"); const screenTexture = new THREE.CanvasTexture(screenCanvas);
+const screen = new THREE.Mesh(new THREE.BoxGeometry(1.56, 1.02, 0.1), new THREE.MeshStandardMaterial({ map: screenTexture, emissive: 0x0f5170, emissiveIntensity: 0.28 })); screen.position.set(0, 2.5, 0.87); machineGroup.add(screen);
+function updateScreenDynamic() {
+    const mode = currentMode; const data = MODES[mode]; const xVal = parseFloat(elements.inputValue.value) || 0;
+    screenCtx.clearRect(0, 0, screenCanvas.width, screenCanvas.height); screenCtx.fillStyle = "#03111b"; screenCtx.fillRect(0, 0, screenCanvas.width, screenCanvas.height);
+    screenCtx.fillStyle = mode === "function" ? "rgba(20, 255, 133, 0.18)" : "rgba(255, 51, 95, 0.18)"; screenCtx.fillRect(0, 0, screenCanvas.width, screenCanvas.height);
+    screenCtx.strokeStyle = "rgba(125, 249, 255, 0.4)"; screenCtx.lineWidth = 3; screenCtx.strokeRect(26, 26, screenCanvas.width - 52, screenCanvas.height - 52);
+    screenCtx.font = "bold 48px Bahnschrift"; screenCtx.fillStyle = mode === "function" ? "#8effb1" : "#ff8da0"; screenCtx.fillText(data.screenHeading, 48, 90);
+    screenCtx.font = "30px Bahnschrift"; screenCtx.fillStyle = "#d9f5ff";
+    let detail = mode === "function" ? `f(${formatNumber(xVal)}) = ${formatNumber(xVal*xVal)}` : (xVal < 0 ? `x = ${formatNumber(xVal)} → No real sqrt` : `x = ${formatNumber(xVal)} → ±${formatNumber(Math.sqrt(xVal))}`);
+    screenCtx.fillText(detail, 48, 200);
+    screenCtx.font = "26px Bahnschrift"; screenCtx.fillStyle = "#ffc781"; screenCtx.fillText(data.screenFooter, 48, 380);
+    screenTexture.needsUpdate = true;
+}
+setInterval(updateScreenDynamic, 180);
+
+// --- Animation Loop & Physics Cleanup ---
+function animate() {
+    const now = performance.now(); const delta = Math.min(1/30, (now - lastTime)/1000); lastTime = now;
+    world.step(1/60, delta, 3);
+    for (let i = activeCans.length-1; i >= 0; i--) {
+        const can = activeCans[i];
+        can.mesh.position.copy(can.body.position); can.mesh.quaternion.copy(can.body.quaternion);
+        if (can.body.position.y < -1.3 || Math.abs(can.body.position.x) > 6.5 || can.body.position.z > 6 || can.body.position.z < -6) {
+            world.removeBody(can.body); scene.remove(can.mesh); if (can.labelTexture) can.labelTexture.dispose(); activeCans.splice(i,1);
+        }
+    }
+    dustSystem.rotation.y += 0.0007; starField.rotation.y -= 0.0002; coilRingTop.rotation.z += 0.014; holoTorus.rotation.z += 0.018;
+    holoTorus.position.y = 2.05 + Math.sin(now * 0.0023) * 0.08;
+    pulseLight.intensity += (0.72 + Math.sin(now * 0.005) * 0.12 - pulseLight.intensity) * 0.05;
+    controls.update(); composer.render(); requestAnimationFrame(animate);
+}
+
+// --- Event Binding ---
+elements.functionModeBtn.addEventListener("click", () => setMode("function"));
+elements.relationModeBtn.addEventListener("click", () => setMode("relation"));
+elements.dispenseBtn.addEventListener("click", dispense);
+elements.inputValue.addEventListener("input", () => { previewCurrentInput(); updateScreenDynamic(); });
+window.addEventListener("resize", () => { camera.aspect = window.innerWidth / window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); composer.setSize(window.innerWidth, window.innerHeight); });
+
+setMode("function"); previewCurrentInput(); animate();
+// add starfield positions
+const starPositions = new Float32Array(1800 * 3);
+for (let i=0;i<1800;i++) { starPositions[i*3] = (Math.random() - 0.5) * 48; starPositions[i*3+1] = Math.random() * 18 + 2; starPositions[i*3+2] = (Math.random() - 0.5) * 44 - 8; }
+starField.geometry.setAttribute("position", new THREE.BufferAttribute(starPositions, 3));
+starField.material.opacity = 0.5;
+</script>
+</body>
+</html>
