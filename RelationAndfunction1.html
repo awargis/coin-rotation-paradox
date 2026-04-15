@@ -1,0 +1,657 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Calculus Vending Machine | Perfect Lighting & Educational Simulation</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            font-family: 'Share Tech Mono', 'Courier New', monospace;
+        }
+        /* Holographic HUD - Clean and readable */
+        .ui-panel {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(0, 5, 20, 0.85);
+            backdrop-filter: blur(12px);
+            border-left: 4px solid #0ff;
+            border-radius: 8px;
+            padding: 14px 22px;
+            color: #0ff;
+            font-family: 'Share Tech Mono', monospace;
+            pointer-events: none;
+            z-index: 10;
+            box-shadow: 0 0 20px rgba(0, 255, 255, 0.2);
+            text-shadow: 0 0 2px rgba(0,255,255,0.5);
+            transition: border-left-color 0.2s, box-shadow 0.2s;
+        }
+        .ui-panel h3 {
+            margin: 0 0 8px 0;
+            letter-spacing: 2px;
+            font-size: 1.2rem;
+        }
+        .ui-panel p {
+            margin: 5px 0;
+            font-size: 0.9rem;
+        }
+        .ui-panel .note {
+            font-size: 0.7rem;
+            color: #aaa;
+            margin-top: 8px;
+            border-top: 1px dashed #0ff8;
+            padding-top: 5px;
+        }
+        .controls {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(0,0,0,0.8);
+            backdrop-filter: blur(8px);
+            border-radius: 12px;
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            z-index: 20;
+            font-family: 'Share Tech Mono', monospace;
+            border: 1px solid #0ff;
+            box-shadow: 0 0 15px rgba(0,255,255,0.2);
+            pointer-events: auto;
+        }
+        button, .mode-btn {
+            background: #111;
+            border: 1px solid #0ff;
+            color: #0ff;
+            padding: 8px 16px;
+            font-family: monospace;
+            font-weight: bold;
+            cursor: pointer;
+            transition: 0.2s;
+            border-radius: 4px;
+            letter-spacing: 1px;
+        }
+        button:hover, .mode-btn.active {
+            background: #0ff;
+            color: #000;
+            box-shadow: 0 0 12px #0ff;
+        }
+        .mode-group {
+            display: flex;
+            gap: 10px;
+            justify-content: space-between;
+        }
+        .mode-btn {
+            flex: 1;
+            text-align: center;
+        }
+        .mode-btn.relation-active {
+            background: #a00;
+            border-color: #f44;
+            color: #fff;
+            text-shadow: 0 0 3px red;
+            box-shadow: 0 0 12px #f00;
+        }
+        .mode-btn.function-active {
+            background: #0a0;
+            border-color: #0f0;
+            color: #000;
+            text-shadow: 0 0 2px #0f0;
+        }
+        .input-group {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+        .input-group input {
+            background: #222;
+            border: 1px solid #0ff;
+            color: #0ff;
+            padding: 8px;
+            font-family: monospace;
+            width: 100px;
+            text-align: center;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+        .status-msg {
+            font-size: 12px;
+            text-align: center;
+            margin-top: 5px;
+            padding: 6px;
+            border-radius: 4px;
+            transition: 0.2s;
+            font-weight: bold;
+        }
+        .green-glow {
+            background: rgba(0,255,0,0.25);
+            border: 1px solid #0f0;
+            color: #0f0;
+            box-shadow: 0 0 8px #0f0;
+        }
+        .red-glitch {
+            background: rgba(255,0,0,0.35);
+            border: 1px solid #f00;
+            color: #fff;
+            text-shadow: 0 0 5px red;
+            animation: glitchPulse 0.15s ease-in-out 3;
+        }
+        @keyframes glitchPulse {
+            0% { transform: translateX(0); background: rgba(255,0,0,0.3);}
+            25% { transform: translateX(3px); background: rgba(255,0,0,0.7);}
+            75% { transform: translateX(-3px);}
+            100% { transform: translateX(0);}
+        }
+        .instruction {
+            font-size: 10px;
+            text-align: center;
+            color: #0ff8;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="ui-panel" id="hudPanel">
+        <h3>⚡ CALCULUS VENDING MACHINE ⚡</h3>
+        <p>📐 DOMAIN: <span id="domainDisplay">ℝ (all real numbers)</span></p>
+        <p>🎯 RANGE: <span id="rangeDisplay">[0, ∞)</span></p>
+        <p>🧠 MAPPING: <span id="mappingDisplay">f(x) = x²  (Many‑to‑One)</span></p>
+        <div class="note">💡 FUNCTION: each input → exactly ONE output ✓<br>⚠️ RELATION (glitch): one input → TWO outputs → NOT a function</div>
+    </div>
+    <div class="controls">
+        <div class="mode-group">
+            <button id="functionModeBtn" class="mode-btn function-active">📈 FUNCTION (Valid)</button>
+            <button id="relationModeBtn" class="mode-btn">🌀 RELATION (Glitch: 1→2)</button>
+        </div>
+        <div class="input-group">
+            <span style="color:#0ff;">x = </span>
+            <input type="number" id="inputValue" value="2.0" step="0.5">
+            <button id="dispenseBtn">🎰 DISPENSE</button>
+        </div>
+        <div id="statusMsg" class="status-msg">🔮 Ready | Insert a value</div>
+        <div class="instruction">🖱️ Drag to orbit | Observe can outputs</div>
+    </div>
+
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.128.0/build/three.module.js",
+                "three/addons/": "https://unpkg.com/three@0.128.0/examples/jsm/",
+                "cannon-es": "https://unpkg.com/cannon-es@0.20.0/dist/cannon-es.js"
+            }
+        }
+    </script>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+        import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+        import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+        import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+        import * as CANNON from 'cannon-es';
+        import gsap from 'https://unpkg.com/gsap@3.12.5/index.js';
+
+        // --- Setup Scene, Camera, Renderer ---
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x050510);
+        scene.fog = new THREE.FogExp2(0x050510, 0.008);
+        
+        const camera = new THREE.PerspectiveCamera(42, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.set(5.2, 3.5, 6.8);
+        camera.lookAt(0, 1.6, 0);
+        
+        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(window.devicePixelRatio);
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        renderer.toneMapping = THREE.ACESFilmicToneMapping;
+        renderer.toneMappingExposure = 1.1;
+        document.body.appendChild(renderer.domElement);
+        
+        // --- Postprocessing Bloom (Subtle, no glare) ---
+        const renderScene = new RenderPass(scene, camera);
+        const bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 0.8, 0.2, 0.6);
+        bloomPass.threshold = 0.2;
+        bloomPass.strength = 0.7;
+        bloomPass.radius = 0.4;
+        const effectComposer = new EffectComposer(renderer);
+        effectComposer.addPass(renderScene);
+        effectComposer.addPass(bloomPass);
+        
+        // --- Controls ---
+        const controls = new OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.05;
+        controls.autoRotate = false;
+        controls.enableZoom = true;
+        controls.enablePan = true;
+        controls.target.set(0, 1.8, 0);
+        
+        // --- PERFECT LIGHTING: No harsh glares, balanced diffused illumination ---
+        // Ambient fill (soft)
+        const ambientLight = new THREE.AmbientLight(0x222244, 0.65);
+        scene.add(ambientLight);
+        
+        // Key light: soft directional from upper left (low intensity to avoid glare)
+        const keyLight = new THREE.DirectionalLight(0xffccaa, 0.9);
+        keyLight.position.set(3, 5, 2);
+        keyLight.castShadow = true;
+        keyLight.shadow.mapSize.width = 1024;
+        keyLight.shadow.mapSize.height = 1024;
+        keyLight.shadow.bias = -0.0001;
+        scene.add(keyLight);
+        
+        // Fill light: cool blue from right side (soft)
+        const fillLight = new THREE.PointLight(0x6688ff, 0.55);
+        fillLight.position.set(-2.5, 2.5, 3);
+        scene.add(fillLight);
+        
+        // Rim light (back) subtle to define edges without glare
+        const rimLight = new THREE.PointLight(0x88aaff, 0.5);
+        rimLight.position.set(0, 2.2, -3.5);
+        scene.add(rimLight);
+        
+        // Warm fill from below to lift shadows
+        const bounceLight = new THREE.PointLight(0xcc9966, 0.35);
+        bounceLight.position.set(0, -0.8, 0.5);
+        scene.add(bounceLight);
+        
+        // Soft fill from front to reduce harshness
+        const frontFill = new THREE.PointLight(0xaaccff, 0.4);
+        frontFill.position.set(0, 1.8, 3);
+        scene.add(frontFill);
+        
+        // Optional: subtle back rim to separate machine from background
+        const backRim = new THREE.PointLight(0x55aaff, 0.45);
+        backRim.position.set(0.5, 2.5, -2.8);
+        scene.add(backRim);
+        
+        // --- Environment: matte floor to avoid reflections/glare ---
+        const gridHelper = new THREE.GridHelper(22, 32, 0x3388ff, 0x335588);
+        gridHelper.position.y = -0.2;
+        gridHelper.material.transparent = true;
+        gridHelper.material.opacity = 0.3;
+        scene.add(gridHelper);
+        
+        // Non-reflective floor (matte, low roughness)
+        const floorMat = new THREE.MeshStandardMaterial({ color: 0x112233, roughness: 0.85, metalness: 0.05, emissive: 0x001122 });
+        const floorDisc = new THREE.Mesh(new THREE.CircleGeometry(9, 28), floorMat);
+        floorDisc.rotation.x = -Math.PI / 2;
+        floorDisc.position.y = -0.19;
+        floorDisc.receiveShadow = true;
+        scene.add(floorDisc);
+        
+        // Cyberpunk pillars (muted reflections)
+        const pillarMat = new THREE.MeshStandardMaterial({ color: 0x2a2a3a, metalness: 0.2, roughness: 0.6, emissive: 0x111122 });
+        const pillarPos = [[-3.8, 0, -3.5], [3.8, 0, -3.5], [-3.5, 0, 3.2], [3.5, 0, 3.2]];
+        pillarPos.forEach(pos => {
+            const pillar = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.5, 3.8, 8), pillarMat);
+            pillar.position.set(pos[0], 1.6, pos[2]);
+            pillar.castShadow = true;
+            scene.add(pillar);
+            // Neon rings with low intensity to avoid glare
+            const neonRing = new THREE.Mesh(new THREE.TorusGeometry(0.5, 0.05, 16, 40), new THREE.MeshStandardMaterial({ color: 0x00aaff, emissive: 0x0077aa, emissiveIntensity: 0.5 }));
+            neonRing.position.set(pos[0], 2.4, pos[2]);
+            scene.add(neonRing);
+        });
+        
+        // --- Vending Machine Model (matte/semi-matte finish, reduced reflections) ---
+        const machineGroup = new THREE.Group();
+        const bodyMat = new THREE.MeshStandardMaterial({ color: 0x1a1a2e, metalness: 0.25, roughness: 0.65, emissive: 0x050510 });
+        const body = new THREE.Mesh(new THREE.BoxGeometry(2.3, 3.3, 1.7), bodyMat);
+        body.castShadow = true;
+        body.receiveShadow = true;
+        body.position.y = 1.65;
+        machineGroup.add(body);
+        
+        // Screen panel (diffuse glow)
+        const screenMat = new THREE.MeshStandardMaterial({ color: 0x0088bb, emissive: 0x004466, emissiveIntensity: 0.4, metalness: 0.1, roughness: 0.4 });
+        const screen = new THREE.Mesh(new THREE.BoxGeometry(1.5, 1.0, 0.1), screenMat);
+        screen.position.set(0, 2.5, 0.86);
+        machineGroup.add(screen);
+        
+        // Dispensing slot (matte)
+        const slotMat = new THREE.MeshStandardMaterial({ color: 0x444466, metalness: 0.1, roughness: 0.7 });
+        const slot = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.28, 0.45), slotMat);
+        slot.position.set(0, 0.65, 0.88);
+        machineGroup.add(slot);
+        
+        // LED strips (soft glow)
+        const ledMat = new THREE.MeshStandardMaterial({ color: 0xff4488, emissive: 0xff2266, emissiveIntensity: 0.4 });
+        const ledStrip = new THREE.Mesh(new THREE.BoxGeometry(2.1, 0.08, 0.08), ledMat);
+        ledStrip.position.set(0, 0.25, 0.89);
+        machineGroup.add(ledStrip);
+        const sideLed = new THREE.Mesh(new THREE.BoxGeometry(0.08, 2.4, 0.08), ledMat);
+        sideLed.position.set(1.15, 1.7, 0.89);
+        machineGroup.add(sideLed);
+        const sideLed2 = sideLed.clone();
+        sideLed2.position.set(-1.15, 1.7, 0.89);
+        machineGroup.add(sideLed2);
+        
+        // Buttons (matte)
+        const btnMat = new THREE.MeshStandardMaterial({ color: 0x88aaff, metalness: 0.1, roughness: 0.6 });
+        [-0.7, 0, 0.7].forEach(x => {
+            const btn = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.13, 0.09, 12), btnMat);
+            btn.position.set(x, 1.25, 0.89);
+            machineGroup.add(btn);
+        });
+        
+        machineGroup.position.set(0, -0.1, 0);
+        scene.add(machineGroup);
+        
+        // --- Physics world ---
+        const world = new CANNON.World();
+        world.gravity = new CANNON.Vec3(0, -9.82, 0);
+        world.broadphase = new CANNON.NaiveBroadphase();
+        world.defaultContactMaterial.restitution = 0.55;
+        
+        const groundPhysMat = new CANNON.Material("ground");
+        const groundBody = new CANNON.Body({ mass: 0, material: groundPhysMat });
+        groundBody.addShape(new CANNON.Box(new CANNON.Vec3(7, 0.2, 7)));
+        groundBody.position.y = -0.35;
+        world.addBody(groundBody);
+        
+        const machinePhys = new CANNON.Body({ mass: 0 });
+        machinePhys.addShape(new CANNON.Box(new CANNON.Vec3(1.25, 1.85, 0.95)));
+        machinePhys.position.set(0, 1.55, 0);
+        world.addBody(machinePhys);
+        
+        let activeCans = [];
+        
+        // Create can with matte label (no gloss)
+        function createCan(value, isRelation = false, outputNumber = 0) {
+            const color = isRelation ? 0xcc5555 : 0x55cc88;
+            const emissiveColor = isRelation ? 0x441111 : 0x115522;
+            const material = new THREE.MeshStandardMaterial({ color: color, metalness: 0.1, roughness: 0.7, emissive: emissiveColor, emissiveIntensity: 0.15 });
+            const geometry = new THREE.CylinderGeometry(0.29, 0.29, 0.48, 28);
+            const canMesh = new THREE.Mesh(geometry, material);
+            canMesh.castShadow = true;
+            canMesh.receiveShadow = true;
+            
+            // Label texture (matte appearance)
+            const labelCanvas = document.createElement('canvas');
+            labelCanvas.width = 512;
+            labelCanvas.height = 256;
+            const labelCtx = labelCanvas.getContext('2d');
+            labelCtx.fillStyle = isRelation ? "#2a0000" : "#003322";
+            labelCtx.fillRect(0, 0, 512, 256);
+            labelCtx.font = "Bold 36px 'Share Tech Mono'";
+            labelCtx.fillStyle = isRelation ? "#ffaaaa" : "#aaffaa";
+            labelCtx.fillText(`y = ${outputNumber.toFixed(4)}`, 40, 80);
+            labelCtx.font = "22px monospace";
+            labelCtx.fillStyle = "#ccddff";
+            labelCtx.fillText(isRelation ? `⚠️ RELATION (One-to-Many)` : `✓ FUNCTION (Many-to-One)`, 40, 150);
+            labelCtx.font = "18px monospace";
+            labelCtx.fillStyle = "#aaaaff";
+            labelCtx.fillText(isRelation ? `x → ±√x` : `x² → ${outputNumber.toFixed(4)}`, 40, 200);
+            const labelTexture = new THREE.CanvasTexture(labelCanvas);
+            const labelMat = new THREE.MeshStandardMaterial({ map: labelTexture, roughness: 0.8 });
+            const labelPlane = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 0.07, 24), labelMat);
+            labelPlane.position.y = 0.02;
+            canMesh.add(labelPlane);
+            
+            // Physics body
+            const shape = new CANNON.Cylinder(0.29, 0.29, 0.48, 12);
+            const body = new CANNON.Body({ mass: 0.65 });
+            body.addShape(shape);
+            const spawnPos = new THREE.Vector3((Math.random() - 0.5) * 0.4, 0.55, 1.25);
+            body.position.set(spawnPos.x, spawnPos.y, spawnPos.z);
+            body.linearVelocity = new CANNON.Vec3((Math.random() - 0.5) * 1.5, 2.8 + Math.random() * 1.2, 2.0 + Math.random());
+            body.angularVelocity = new CANNON.Vec3(0.6, 1.2, 0.4);
+            world.addBody(body);
+            
+            canMesh.userData = { body: body, type: "can" };
+            scene.add(canMesh);
+            activeCans.push({ mesh: canMesh, body: body });
+            
+            gsap.fromTo(canMesh.scale, { x: 0.2, y: 0.2, z: 0.2 }, { x: 1, y: 1, z: 1, duration: 0.35, ease: "back.out(1.5)" });
+            return canMesh;
+        }
+        
+        // --- Glitch effect (visual, but no light glare) ---
+        function triggerGlitchAnimation(intensity = 1) {
+            const overlay = document.createElement('div');
+            overlay.style.position = 'fixed';
+            overlay.style.top = 0;
+            overlay.style.left = 0;
+            overlay.style.width = '100%';
+            overlay.style.height = '100%';
+            overlay.style.backgroundColor = `rgba(255, 0, 0, ${0.25 * intensity})`;
+            overlay.style.pointerEvents = 'none';
+            overlay.style.zIndex = 999;
+            overlay.style.mixBlendMode = 'screen';
+            document.body.appendChild(overlay);
+            gsap.to(overlay, { opacity: 0, duration: 0.25, onComplete: () => overlay.remove() });
+            // Subtle camera shake
+            const originalPos = camera.position.clone();
+            gsap.to(camera.position, { x: originalPos.x + 0.04 * intensity, y: originalPos.y - 0.03 * intensity, duration: 0.04, yoyo: true, repeat: 5, onComplete: () => camera.position.copy(originalPos) });
+            // LED flicker (emissive intensity)
+            gsap.to(ledMat, { emissiveIntensity: 0.9 * intensity, duration: 0.08, yoyo: true, repeat: 5, onComplete: () => ledMat.emissiveIntensity = 0.4 });
+        }
+        
+        function showSuccessUI() {
+            const statusDiv = document.getElementById('statusMsg');
+            statusDiv.classList.remove('red-glitch');
+            statusDiv.classList.add('green-glow');
+            statusDiv.innerHTML = "✅ VALID FUNCTION | Single output dispensed (Many-to-One is a function)";
+            gsap.to(statusDiv, { duration: 1.8, opacity: 0.9, onComplete: () => { setTimeout(() => { if(statusDiv.innerHTML.includes("VALID")) statusDiv.classList.remove('green-glow'); statusDiv.innerHTML = "🔮 Ready | Insert value"; }, 2000); } });
+            const hud = document.getElementById('hudPanel');
+            gsap.to(hud, { borderLeftColor: "#0f0", boxShadow: "0 0 15px #0f0", duration: 0.35, yoyo: true, repeat: 1 });
+        }
+        
+        function showRelationGlitchUI() {
+            const statusDiv = document.getElementById('statusMsg');
+            statusDiv.classList.remove('green-glow');
+            statusDiv.classList.add('red-glitch');
+            statusDiv.innerHTML = "⚠️ INVALID FUNCTION | One input → TWO outputs (Relation fails vertical line test)";
+            triggerGlitchAnimation(0.8);
+            gsap.to(statusDiv, { duration: 2.2, opacity: 0.95, onComplete: () => { setTimeout(() => { statusDiv.classList.remove('red-glitch'); statusDiv.innerHTML = "🔮 Ready | Insert value"; }, 2200); } });
+            const hud = document.getElementById('hudPanel');
+            gsap.to(hud, { borderLeftColor: "#f00", boxShadow: "0 0 20px #f00", duration: 0.25, yoyo: true, repeat: 2 });
+        }
+        
+        // --- Update HUD with educational emphasis ---
+        let currentMode = "function";
+        function updateHUD(mode, inputVal = null, outputs = null) {
+            const domainSpan = document.getElementById('domainDisplay');
+            const rangeSpan = document.getElementById('rangeDisplay');
+            const mappingSpan = document.getElementById('mappingDisplay');
+            if (mode === "function") {
+                domainSpan.innerHTML = "ℝ (all real numbers)";
+                rangeSpan.innerHTML = "[0, ∞)  (non-negative)";
+                mappingSpan.innerHTML = "f(x) = x²  |  Many‑to‑One ✓ FUNCTION";
+            } else {
+                domainSpan.innerHTML = "x ≥ 0 (non-negative) — relation restricted";
+                rangeSpan.innerHTML = "ℝ (dual outputs: ±√x)";
+                mappingSpan.innerHTML = "x → y²  ⇒  y = ±√x  |  ❌ NOT a function (One-to-Many)";
+            }
+            if (inputVal !== undefined && outputs) {
+                if (mode === "function") {
+                    updateScreenTexture(mode, `f(${inputVal}) = ${outputs[0].toFixed(5)}  |  Valid Function`);
+                } else {
+                    updateScreenTexture(mode, `x = ${inputVal}  →  y₁ = +${outputs[0].toFixed(5)} ,  y₂ = ${outputs[1].toFixed(5)}  |  RELATION (Glitch)`);
+                }
+            } else {
+                updateScreenTexture(mode, mode === "function" ? "FUNCTION MODE: f(x)=x² (One Output)" : "RELATION MODE: x = y²  (Two Outputs → Invalid Function)");
+            }
+        }
+        
+        function updateScreenTexture(mode, infoText) {
+            const canvasTex = document.createElement('canvas');
+            canvasTex.width = 1024;
+            canvasTex.height = 512;
+            const ctx = canvasTex.getContext('2d');
+            ctx.fillStyle = "#001122";
+            ctx.fillRect(0, 0, canvasTex.width, canvasTex.height);
+            ctx.font = "Bold 48px 'Share Tech Mono'";
+            ctx.fillStyle = mode === 'function' ? "#0f0" : "#f66";
+            ctx.fillText(mode === 'function' ? "✓ FUNCTION ACTIVE" : "⚠️ RELATION (GLITCH)", 50, 100);
+            ctx.font = "36px monospace";
+            ctx.fillStyle = "#bbddff";
+            ctx.fillText(infoText.substring(0, 48), 50, 210);
+            ctx.font = "28px monospace";
+            ctx.fillStyle = "#88aaff";
+            ctx.fillText("f(x) = x²   vs   y² = x", 50, 340);
+            ctx.font = "24px monospace";
+            ctx.fillStyle = "#ffaa88";
+            ctx.fillText("One input → One output (valid)  |  One input → Two outputs (invalid)", 50, 450);
+            const texture = new THREE.CanvasTexture(canvasTex);
+            if (screen.material) screen.material.map = texture;
+            screen.material.needsUpdate = true;
+        }
+        
+        // --- Dispense Logic ---
+        function dispense() {
+            const inputElem = document.getElementById('inputValue');
+            let x = parseFloat(inputElem.value);
+            if (isNaN(x)) x = 0;
+            
+            if (currentMode === "function") {
+                const y = x * x;
+                updateHUD("function", x, [y]);
+                createCan(false, false, y);
+                showSuccessUI();
+                gsap.to(slot.position, { z: 0.98, duration: 0.12, yoyo: true, repeat: 1, ease: "power1.inOut" });
+                // Soft green particles (no glare)
+                const greenParticles = new THREE.Points(new THREE.BufferGeometry(), new THREE.PointsMaterial({ color: 0x33ff33, size: 0.03, transparent: true }));
+                const posArray = new Float32Array(60);
+                for(let i=0;i<60;i++) {
+                    posArray[i*3] = (Math.random()-0.5)*1.2;
+                    posArray[i*3+1] = Math.random()*0.8;
+                    posArray[i*3+2] = Math.random()*1.0+0.8;
+                }
+                greenParticles.geometry.setAttribute('position', new THREE.BufferAttribute(posArray, 3));
+                greenParticles.position.set(0, 0.7, 1.0);
+                scene.add(greenParticles);
+                gsap.to(greenParticles.material, { opacity: 0, duration: 0.8, onComplete: () => scene.remove(greenParticles) });
+            } 
+            else {
+                if (x < 0) {
+                    const statusDiv = document.getElementById('statusMsg');
+                    statusDiv.innerHTML = "⛔ RELATION requires x ≥ 0 (domain restriction for real outputs)";
+                    statusDiv.classList.add('red-glitch');
+                    gsap.to(statusDiv, { duration: 1.5, opacity: 0.7, onComplete: () => setTimeout(() => statusDiv.classList.remove('red-glitch'), 1500) });
+                    triggerGlitchAnimation(0.6);
+                    return;
+                }
+                const y1 = Math.sqrt(x);
+                const y2 = -Math.sqrt(x);
+                updateHUD("relation", x, [y1, y2]);
+                createCan(true, true, y1);
+                createCan(true, true, y2);
+                showRelationGlitchUI();
+                gsap.to(slot.position, { z: 1.02, duration: 0.07, yoyo: true, repeat: 4, ease: "none" });
+                // Red glitch particles (soft, no glare)
+                const particleCount = 100;
+                const particleGeo = new THREE.BufferGeometry();
+                const positions = new Float32Array(particleCount * 3);
+                for (let i = 0; i < particleCount; i++) {
+                    positions[i*3] = (Math.random() - 0.5) * 1.6;
+                    positions[i*3+1] = Math.random() * 1.2;
+                    positions[i*3+2] = Math.random() * 1.5 + 0.6;
+                }
+                particleGeo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+                const glitchParticles = new THREE.Points(particleGeo, new THREE.PointsMaterial({ color: 0xff6666, size: 0.045, transparent: true }));
+                glitchParticles.position.set(0, 0.65, 1.15);
+                scene.add(glitchParticles);
+                gsap.to(glitchParticles.material, { opacity: 0, duration: 0.7, onComplete: () => scene.remove(glitchParticles) });
+            }
+        }
+        
+        // --- UI Event Bindings ---
+        document.getElementById('functionModeBtn').addEventListener('click', () => {
+            currentMode = "function";
+            document.getElementById('functionModeBtn').classList.add('function-active');
+            document.getElementById('relationModeBtn').classList.remove('relation-active');
+            document.getElementById('relationModeBtn').style.background = "#111";
+            updateHUD("function");
+            updateScreenTexture("function", "Function Mode: f(x)=x² (One output per input)");
+        });
+        document.getElementById('relationModeBtn').addEventListener('click', () => {
+            currentMode = "relation";
+            document.getElementById('relationModeBtn').classList.add('relation-active');
+            document.getElementById('functionModeBtn').classList.remove('function-active');
+            updateHUD("relation");
+            updateScreenTexture("relation", "RELATION MODE: x = y² → One input gives TWO outputs (NOT a function)");
+        });
+        document.getElementById('dispenseBtn').addEventListener('click', dispense);
+        
+        updateHUD("function");
+        updateScreenTexture("function", "Ready | f(x) = x²");
+        
+        // --- Floating dust particles (atmosphere, no reflections) ---
+        const dustGeo = new THREE.BufferGeometry();
+        const dustCount = 1000;
+        const dustPos = new Float32Array(dustCount * 3);
+        for (let i=0; i<dustCount; i++) {
+            dustPos[i*3] = (Math.random() - 0.5) * 18;
+            dustPos[i*3+1] = Math.random() * 5.5;
+            dustPos[i*3+2] = (Math.random() - 0.5) * 14 - 3;
+        }
+        dustGeo.setAttribute('position', new THREE.BufferAttribute(dustPos, 3));
+        const dustMat = new THREE.PointsMaterial({ color: 0x88aaff, size: 0.018, transparent: true, opacity: 0.25 });
+        const dustSystem = new THREE.Points(dustGeo, dustMat);
+        scene.add(dustSystem);
+        
+        // --- Holographic signboard (matte emissive) ---
+        const signCanvas = document.createElement('canvas');
+        signCanvas.width = 1024;
+        signCanvas.height = 256;
+        const signCtx = signCanvas.getContext('2d');
+        signCtx.fillStyle = "#001133";
+        signCtx.fillRect(0, 0, 1024, 256);
+        signCtx.font = "bold 56px 'Share Tech Mono'";
+        signCtx.fillStyle = "#0ff";
+        signCtx.fillText("CALCULUS VENDING MACHINE", 80, 100);
+        signCtx.font = "28px monospace";
+        signCtx.fillStyle = "#88f";
+        signCtx.fillText("Function (Many-to-One)  |  Relation (One-to-Many)", 120, 180);
+        const signTexture = new THREE.CanvasTexture(signCanvas);
+        const signMat = new THREE.MeshStandardMaterial({ map: signTexture, emissive: 0x2266aa, emissiveIntensity: 0.25, roughness: 0.7 });
+        const signBoard = new THREE.Mesh(new THREE.BoxGeometry(3.2, 0.7, 0.12), signMat);
+        signBoard.position.set(0, 3.7, -1.0);
+        scene.add(signBoard);
+        
+        // --- Animation Loop & Physics Sync ---
+        let lastTime = performance.now();
+        function animate() {
+            const now = performance.now();
+            let delta = Math.min(1/30, (now - lastTime) / 1000);
+            lastTime = now;
+            world.step(1 / 60, delta, 3);
+            
+            for (let i = activeCans.length-1; i >= 0; i--) {
+                const can = activeCans[i];
+                if (can.body && can.mesh) {
+                    can.mesh.position.copy(can.body.position);
+                    can.mesh.quaternion.copy(can.body.quaternion);
+                    if (can.body.position.y < -1.2 || Math.abs(can.body.position.x) > 6 || can.body.position.z > 5) {
+                        world.removeBody(can.body);
+                        scene.remove(can.mesh);
+                        activeCans.splice(i,1);
+                    }
+                } else {
+                    activeCans.splice(i,1);
+                }
+            }
+            controls.update();
+            effectComposer.render();
+            requestAnimationFrame(animate);
+        }
+        
+        animate();
+        
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            effectComposer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+        
+        console.log("Calculus Vending Machine with Perfect Lighting: No glare, soft diffuse illumination, educational ready.");
+    </script>
+</body>
+</html>
