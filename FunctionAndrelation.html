@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JEE Calculus | The Function Contract |</title>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Roboto+Mono&display=swap" rel="stylesheet">
+    <style>
+        body { margin: 0; overflow: hidden; background-color: #e0e0e0; font-family: 'Roboto Mono', monospace; }
+        
+        /* Glass Morphism UI */
+        #gui {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 12px;
+            padding: 20px;
+            width: 320px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+            z-index: 100;
+        }
+
+        h1 { font-family: 'Orbitron', sans-serif; font-size: 18px; margin: 0 0 10px 0; color: #333; }
+        .logic-panel { font-size: 13px; color: #555; border-top: 1px solid #ddd; pt: 10px; margin-top: 10px; }
+        .highlight { color: #0077ff; font-weight: bold; }
+
+        .controls {
+            position: absolute;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 15px;
+            background: white;
+            padding: 15px;
+            border-radius: 50px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.15);
+            z-index: 100;
+        }
+
+        button {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 25px;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 12px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+
+        .btn-func { background: #0077ff; color: white; }
+        .btn-rel { background: #ff3366; color: white; }
+        .btn-dispense { background: #333; color: white; border: 2px solid #333; }
+
+        button:hover { transform: translateY(-3px); box-shadow: 0 5px 15px rgba(0,0,0,0.2); opacity: 0.9; }
+        
+        #status {
+            position: absolute;
+            bottom: 100px;
+            left: 50%;
+            transform: translateX(-50%);
+            text-align: center;
+            font-weight: bold;
+            font-size: 20px;
+            text-shadow: 0 2px 4px rgba(255,255,255,0.8);
+        }
+    </style>
+</head>
+<body>
+
+<div id="gui">
+    <h1>ADITYA WARGIS</h1>
+    <div class="logic-panel">
+        <p>Current Mode: <span id="mode-text" class="highlight">FUNCTION</span></p>
+        <p>Logic: <span id="logic-formula" class="highlight">f(x) = x²</span></p>
+        <p id="definition">"Every input has exactly ONE unique output."</p>
+    </div>
+</div>
+
+<div id="status">READY FOR INPUT</div>
+
+<div class="controls">
+    <button class="btn-func" onclick="setMode('function')">SET: FUNCTION</button>
+    <button class="btn-rel" onclick="setMode('relation')">SET: RELATION</button>
+    <div style="border-left: 1px solid #ddd; margin: 0 10px;"></div>
+    <button class="btn-dispense" onclick="dispense()">DISPENSE SODA (x)</button>
+</div>
+
+<script type="importmap">
+    {
+        "imports": {
+            "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+            "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/",
+            "cannon-es": "https://unpkg.com/cannon-es@0.20.0/dist/cannon-es.js"
+        }
+    }
+</script>
+
+<script type="module">
+    import * as THREE from 'three';
+    import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+    import * as CANNON from 'cannon-es';
+    import gsap from 'https://unpkg.com/gsap@3.12.5/index.js';
+
+    let scene, camera, renderer, world, controls;
+    let machine, cans = [];
+    let currentMode = 'function';
+
+    function init() {
+        // --- SCENE & RENDERER ---
+        scene = new THREE.Scene();
+        scene.background = new THREE.Color(0xf0f0f5); // Soft architectural grey
+        
+        camera = new THREE.PerspectiveCamera(40, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.set(6, 4, 10);
+
+        renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        renderer.toneMapping = THREE.ACESFilmicToneMapping;
+        renderer.toneMappingExposure = 1.2; // Brighter overall scene
+        document.body.appendChild(renderer.domElement);
+
+        controls = new OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.target.set(0, 1.5, 0);
+
+        // --- PHYSICS ---
+        world = new CANNON.World();
+        world.gravity.set(0, -9.82, 0);
+
+        // --- LIGHTING (Studio Setup) ---
+        const hemiLight = new THREE.HemisphereLight(0xffffff, 0xaaaaaa, 1.0);
+        scene.add(hemiLight);
+
+        const keyLight = new THREE.DirectionalLight(0xffffff, 2);
+        keyLight.position.set(5, 10, 5);
+        keyLight.castShadow = true;
+        keyLight.shadow.mapSize.set(2048, 2048);
+        scene.add(keyLight);
+
+        const fillLight = new THREE.RectAreaLight(0xffffff, 5, 10, 10);
+        fillLight.position.set(-5, 5, 5);
+        fillLight.lookAt(0, 0, 0);
+        scene.add(fillLight);
+
+        // --- ENVIRONMENT ---
+        // Floor
+        const floor = new THREE.Mesh(
+            new THREE.PlaneGeometry(50, 50),
+            new THREE.MeshStandardMaterial({ color: 0xe2e2e2, roughness: 0.8 })
+        );
+        floor.rotation.x = -Math.PI / 2;
+        floor.receiveShadow = true;
+        scene.add(floor);
+
+        const groundBody = new CANNON.Body({ mass: 0 });
+        groundBody.addShape(new CANNON.Plane());
+        groundBody.quaternion.setFromEuler(-Math.PI / 2, 0, 0);
+        world.addBody(groundBody);
+
+        // --- THE MACHINE ---
+        const machineGroup = new THREE.Group();
+        
+        // Main Body (Brushed Aluminum Style)
+        const body = new THREE.Mesh(
+            new THREE.BoxGeometry(2.2, 4, 1.8),
+            new THREE.MeshStandardMaterial({ color: 0xcccccc, metalness: 0.5, roughness: 0.2 })
+        );
+        body.position.y = 2;
+        body.castShadow = true;
+        machineGroup.add(body);
+
+        // Front Panel
+        const panel = new THREE.Mesh(
+            new THREE.BoxGeometry(2.3, 3.8, 0.1),
+            new THREE.MeshStandardMaterial({ color: 0x333333 })
+        );
+        panel.position.set(0, 2, 0.9);
+        machineGroup.add(panel);
+
+        // Glowing Screen
+        const screen = new THREE.Mesh(
+            new THREE.PlaneGeometry(1.8, 1.2),
+            new THREE.MeshBasicMaterial({ color: 0x0077ff })
+        );
+        screen.position.set(0, 3, 0.96);
+        machineGroup.add(screen);
+
+        scene.add(machineGroup);
+        machine = machineGroup;
+
+        animate();
+    }
+
+    window.setMode = (mode) => {
+        currentMode = mode;
+        const modeText = document.getElementById('mode-text');
+        const formula = document.getElementById('logic-formula');
+        const def = document.getElementById('definition');
+        
+        if(mode === 'function') {
+            modeText.innerText = "FUNCTION";
+            modeText.className = "highlight";
+            formula.innerText = "f(x) = x²";
+            def.innerText = "Valid: Every input has exactly ONE unique output.";
+        } else {
+            modeText.innerText = "RELATION";
+            modeText.style.color = "#ff3366";
+            formula.innerText = "x = y² (y = ±√x)";
+            def.innerText = "Invalid: One input results in TWO outputs. Broken Contract!";
+        }
+    }
+
+    window.dispense = () => {
+        const status = document.getElementById('status');
+        
+        if(currentMode === 'function') {
+            createCan(0x0077ff, 0);
+            status.innerHTML = "<span style='color:#0077ff'>✓ OUTPUT: 1 CAN (VALID FUNCTION)</span>";
+        } else {
+            createCan(0xff3366, -0.4);
+            setTimeout(() => createCan(0xff3366, 0.4), 100);
+            status.innerHTML = "<span style='color:#ff3366'>⚠ ERROR: 2 CANS (NOT A FUNCTION)</span>";
+            gsap.to(machine.position, { x: 0.05, duration: 0.05, repeat: 5, yoyo: true });
+        }
+    }
+
+    function createCan(color, xPos) {
+        const mesh = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.25, 0.25, 0.6, 32),
+            new THREE.MeshStandardMaterial({ color: color, metalness: 0.6, roughness: 0.2 })
+        );
+        mesh.castShadow = true;
+        scene.add(mesh);
+
+        const body = new CANNON.Body({ mass: 1 });
+        body.addShape(new CANNON.Cylinder(0.25, 0.25, 0.6, 32));
+        body.position.set(xPos, 1.5, 1.5);
+        body.velocity.set(0, 2, 4);
+        world.addBody(body);
+
+        cans.push({ mesh, body });
+    }
+
+    function animate() {
+        requestAnimationFrame(animate);
+        world.step(1/60);
+        
+        cans.forEach(c => {
+            c.mesh.position.copy(c.body.position);
+            c.mesh.quaternion.copy(c.body.quaternion);
+        });
+
+        controls.update();
+        renderer.render(scene, camera);
+    }
+
+    init();
+    window.onresize = () => {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+    };
+
+</script>
+</body>
+</html>
