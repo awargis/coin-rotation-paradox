@@ -3,581 +3,375 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>JEE Advanced Practice Test: Matrices & Determinants</title>
+    <title>Comprehensive JEE: Matrices & Determinants</title>
     
     <!-- Chosen Palette: Slate Backgrounds, Indigo Primary, Emerald Success, Rose Danger, Gray Text -->
-    <!-- Application Structure Plan: The application uses a task-oriented "Mock Test" dashboard layout. Users can filter questions by section (Single Choice, Multi Choice, Passage, Numerical) mimicking the JEE format. An interactive "Show Answer" button provides immediate feedback without navigating away. A "Submit Test" feature compiles the results and displays a dynamic performance analysis chart using Chart.js. This structure facilitates focused practice, immediate conceptual correction, and overall performance tracking. -->
+    <!-- Application Structure Plan: A refined mock-test dashboard that organizes questions extracted from the specific VP test series (Test 01, 02, and 03). The layout separates questions into distinct JEE categories: Single Choice, Multi-Correct, Comprehension, and Numerical. It includes a progress tracker and a detailed performance visualization after submission. -->
     <!-- Visualization & Content Choices: 
-         - Questions/Math: Rendered using MathJax for precise mathematical typography. 
-         - Options/Structure: HTML grid layouts with JS toggles for interactive revelation.
-         - Performance Analysis: Radar chart (Chart.js) to show relative strengths across question types upon submission. No SVG or Mermaid used. 
+         - MathJax is used for high-fidelity rendering of matrices and determinant bars.
+         - Chart.js provides a Polar Area chart to visualize the distribution of difficulty and topics.
+         - Logic includes state management for multiple-choice selections and numerical verification.
     -->
     <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
 
-    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
             theme: {
                 extend: {
                     colors: {
-                        brand: {
-                            50: '#eef2ff',
-                            100: '#e0e7ff',
-                            500: '#6366f1',
-                            600: '#4f46e5',
-                            700: '#4338ca',
-                            900: '#312e81',
-                        }
-                    },
-                    fontFamily: {
-                        sans: ['Inter', 'sans-serif'],
+                        brand: { 50: '#eef2ff', 100: '#e0e7ff', 500: '#6366f1', 600: '#4f46e5', 700: '#4338ca', 900: '#312e81' }
                     }
                 }
             }
         }
     </script>
 
-    <!-- MathJax for Mathematical Formatting -->
     <script>
-        MathJax = {
+        window.MathJax = {
             tex: {
                 inlineMath: [['$', '$'], ['\\(', '\\)']],
                 displayMath: [['$$', '$$'], ['\\[', '\\]']],
-                processEscapes: true,
-                packages: {'[+]': ['noerrors']}
+                processEscapes: true
             },
-            options: {
-                skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre']
+            options: { skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre'] },
+            startup: {
+                pageReady: () => {
+                    return MathJax.startup.defaultPageReady().then(() => {
+                        console.log('MathJax is ready');
+                    });
+                }
             }
         };
     </script>
     <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
-
-    <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
     <style>
         body { font-family: 'Inter', sans-serif; background-color: #f8fafc; }
-        .math-scroll { overflow-x: auto; overflow-y: hidden; padding-bottom: 0.5rem; }
-        .mjx-chtml { outline: none; }
-        
-        /* Chart Container styling adhering to strict requirements */
-        .chart-container {
-            position: relative;
-            width: 100%;
-            max-width: 600px;
-            margin-left: auto;
-            margin-right: auto;
-            height: 40vh;
-            max-height: 400px;
-        }
-        @media (min-width: 768px) {
-            .chart-container {
-                height: 350px;
-            }
-        }
-
-        /* Custom Scrollbar for formulas if they overflow */
-        ::-webkit-scrollbar { width: 6px; height: 6px; }
-        ::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 4px; }
-        ::-webkit-scrollbar-thumb { background: #c7c7cc; border-radius: 4px; }
-        ::-webkit-scrollbar-thumb:hover { background: #a0a0a5; }
+        .math-scroll { overflow-x: auto; padding-bottom: 0.5rem; }
+        .chart-container { position: relative; width: 100%; max-width: 500px; margin: auto; height: 350px; }
+        .option-card.selected { border-color: #6366f1; background-color: #eef2ff; }
+        .correct { border-color: #10b981 !important; background-color: #ecfdf5 !important; }
+        .incorrect { border-color: #f43f5e !important; background-color: #fff1f2 !important; }
     </style>
 </head>
 <body class="text-slate-800 antialiased min-h-screen flex flex-col">
 
-    <!-- Header -->
     <header class="bg-white shadow-sm border-b border-slate-200 sticky top-0 z-50">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
+        <div class="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
             <div class="flex items-center gap-3">
                 <div class="bg-brand-600 text-white font-bold p-2 rounded text-lg leading-none">VP</div>
                 <div>
-                    <h1 class="text-xl font-bold text-slate-900 leading-tight">AIR PAT - Advanced Practice</h1>
-                    <p class="text-xs text-slate-500 font-medium tracking-wide uppercase">Matrices & Determinants</p>
+                    <h1 class="text-xl font-bold text-slate-900 leading-tight">Mathematics Question Bank</h1>
+                    <p class="text-xs text-slate-500 font-medium tracking-wide uppercase">Source: PAT Test Series (01, 02, 03)</p>
                 </div>
             </div>
-            <div class="text-right hidden sm:block">
-                <div class="text-sm font-semibold text-slate-700">M. Marks: 24</div>
-                <div class="text-xs text-slate-500">Duration: Self-Paced</div>
+            <div class="hidden sm:block text-right">
+                <span class="text-xs font-bold text-slate-400 uppercase">Topic</span>
+                <div class="text-sm font-semibold text-slate-700">Matrices & Determinants</div>
             </div>
         </div>
     </header>
 
-    <!-- Main Content Layout -->
-    <main class="flex-grow max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full">
+    <main class="flex-grow max-w-7xl mx-auto px-4 py-8 w-full">
         
-        <!-- Welcome / Instructions Section -->
-        <section id="instructions-section" class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 sm:p-8 mb-8">
-            <h2 class="text-2xl font-bold text-slate-900 mb-4 border-b pb-2">General Instructions</h2>
-            <p class="text-slate-600 mb-6">
-                This interactive document synthesizes high-quality questions on <strong>Matrices & Determinants</strong> based on the pattern of JEE Advanced mock tests. Navigate through the sections, attempt the questions on your own, and use the interactive reveal to check your understanding.
-            </p>
-            <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
-                <div class="bg-slate-50 p-4 rounded-lg border border-slate-100">
-                    <div class="font-semibold text-slate-800 mb-1">Section 1</div>
-                    <div class="text-sm text-slate-600">Single Correct Type</div>
-                    <div class="text-xs text-brand-600 font-medium mt-2">+3 / -1</div>
-                </div>
-                <div class="bg-slate-50 p-4 rounded-lg border border-slate-100">
-                    <div class="font-semibold text-slate-800 mb-1">Section 2</div>
-                    <div class="text-sm text-slate-600">Multiple Correct Type</div>
-                    <div class="text-xs text-brand-600 font-medium mt-2">+4 / -2</div>
-                </div>
-                <div class="bg-slate-50 p-4 rounded-lg border border-slate-100">
-                    <div class="font-semibold text-slate-800 mb-1">Section 3</div>
-                    <div class="text-sm text-slate-600">Comprehension/Passage</div>
-                    <div class="text-xs text-brand-600 font-medium mt-2">+3 / -1</div>
-                </div>
-                <div class="bg-slate-50 p-4 rounded-lg border border-slate-100">
-                    <div class="font-semibold text-slate-800 mb-1">Section 4</div>
-                    <div class="text-sm text-slate-600">Integer/Numerical</div>
-                    <div class="text-xs text-brand-600 font-medium mt-2">+3 / 0</div>
-                </div>
+        <!-- Dashboard / Filters -->
+        <div class="mb-8 flex flex-wrap gap-4 items-center justify-between">
+            <div class="flex gap-2 bg-white p-1 rounded-lg border border-slate-200" id="filter-tabs">
+                <!-- Filters injected here -->
             </div>
-        </section>
-
-        <!-- Dynamic Content Area -->
-        <div class="flex flex-col md:flex-row gap-8">
-            
-            <!-- Sidebar Navigation -->
-            <aside class="w-full md:w-64 flex-shrink-0">
-                <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden sticky top-24">
-                    <div class="p-4 bg-slate-50 border-b border-slate-200">
-                        <h3 class="font-semibold text-slate-800">Test Sections</h3>
-                    </div>
-                    <nav class="flex flex-col p-2 gap-1" id="section-nav">
-                        <!-- Navigation buttons injected by JS -->
-                    </nav>
-                    <div class="p-4 bg-slate-50 border-t border-slate-200 mt-2">
-                        <button id="submit-btn" class="w-full py-2 px-4 bg-brand-600 hover:bg-brand-700 text-white font-semibold rounded-lg transition-colors duration-200 flex items-center justify-center gap-2">
-                            <span>Submit & Analyze</span>
-                            <span>&#8594;</span>
-                        </button>
-                    </div>
-                </div>
-            </aside>
-
-            <!-- Question Container -->
-            <div id="question-container" class="flex-grow space-y-6">
-                <!-- Questions injected by JS -->
+            <div id="stats-summary" class="text-sm font-medium text-slate-500">
+                <!-- Count here -->
             </div>
         </div>
 
-        <!-- Results / Dashboard Container (Hidden initially) -->
-        <section id="results-section" class="hidden mt-12 bg-white rounded-xl shadow-sm border border-slate-200 p-6 sm:p-8">
-            <h2 class="text-2xl font-bold text-slate-900 mb-2">Performance Analysis</h2>
-            <p class="text-slate-600 mb-8">This dashboard summarizes your conceptual coverage and tracks the difficulty metrics of the questions presented.</p>
-            
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
-                <div class="space-y-6">
-                    <div class="bg-indigo-50 border border-indigo-100 rounded-lg p-5">
-                        <h4 class="font-semibold text-indigo-900 mb-2">Topic Breakdown</h4>
-                        <ul class="text-indigo-800 text-sm space-y-2">
-                            <li class="flex justify-between border-b border-indigo-200/50 pb-1"><span>Matrix Polynomials</span> <span>3 Qs</span></li>
-                            <li class="flex justify-between border-b border-indigo-200/50 pb-1"><span>Properties of Determinants</span> <span>2 Qs</span></li>
-                            <li class="flex justify-between border-b border-indigo-200/50 pb-1"><span>System of Linear Equations</span> <span>1 Qs</span></li>
-                            <li class="flex justify-between"><span>Symmetric/Skew-Symmetric</span> <span>1 Qs</span></li>
-                        </ul>
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+            <!-- Questions List -->
+            <div id="questions-list" class="lg:col-span-8 space-y-6">
+                <!-- Questions injected here -->
+            </div>
+
+            <!-- Sidebar / Progress -->
+            <aside class="lg:col-span-4 space-y-6">
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 sticky top-24">
+                    <h3 class="font-bold text-slate-900 mb-4 border-b pb-2">Your Progress</h3>
+                    <div id="progress-dots" class="grid grid-cols-5 gap-2 mb-6">
+                        <!-- Dots here -->
                     </div>
                     
-                    <div class="bg-emerald-50 border border-emerald-100 rounded-lg p-5">
-                        <h4 class="font-semibold text-emerald-900 mb-2">Key Takeaways</h4>
-                        <p class="text-emerald-800 text-sm leading-relaxed">
-                            Focus heavily on matrix recurrence relations (like $A^n$). The passage question highlights the importance of recognizing the binomial expansion of $(I+A)^n$ when $A$ is a nilpotent matrix. Ensure thorough practice of adjoint properties for multiple-correct questions.
-                        </p>
+                    <div class="space-y-3">
+                        <button id="submit-test" class="w-full py-3 bg-brand-600 hover:bg-brand-700 text-white font-bold rounded-lg transition-all flex items-center justify-center gap-2">
+                            <span>Submit for Analysis</span>
+                            <span id="submit-loader" class="hidden animate-spin">&#9696;</span>
+                        </button>
+                        <button id="reset-test" class="w-full py-2 text-slate-500 hover:text-slate-700 text-sm font-medium">
+                            Clear All Selections
+                        </button>
                     </div>
                 </div>
-                
-                <div class="flex flex-col items-center">
-                    <h4 class="font-semibold text-slate-700 mb-4 text-center">Conceptual Weightage</h4>
-                    <!-- Properly Constrained Chart Container -->
-                    <div class="chart-container">
-                        <canvas id="analysisChart"></canvas>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="mt-8 text-center border-t border-slate-200 pt-6">
-                <button id="reset-btn" class="px-6 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium rounded-lg transition-colors">
-                    Reset & Practice Again
-                </button>
-            </div>
-        </section>
 
+                <!-- Analysis Panel (Injected on Submit) -->
+                <div id="analysis-panel" class="hidden bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+                    <h3 class="font-bold text-slate-900 mb-4">Topic Weightage</h3>
+                    <div class="chart-container">
+                        <canvas id="weightageChart"></canvas>
+                    </div>
+                </div>
+            </aside>
+        </div>
     </main>
 
-    <!-- Footer -->
-    <footer class="bg-slate-900 text-slate-400 py-6 text-center text-sm">
-        <p>Created for Advanced Analytical Practice &bull; Interactive SPA</p>
+    <footer class="bg-slate-900 text-slate-500 py-8 text-center">
+        <p class="text-sm italic">Synthesized from uploaded JEE Advanced Cumulative & PAT Solutions</p>
     </footer>
 
-    <!-- JavaScript Application Logic -->
     <script>
-        // Use String.raw to avoid excessive backslash escaping in LaTeX strings
-        const questionsData = [
+        const questions = [
             {
-                id: 'q1',
-                section: 'Single Correct',
-                topic: 'Matrix Multiplication & Polynomials',
-                text: String.raw`Consider the matrix equation $[1 \quad x \quad 1] \begin{bmatrix} 1 & 2 & 3 \\ 4 & 5 & 6 \\ 3 & 2 & 5 \end{bmatrix} \begin{bmatrix} 1 \\ -2 \\ 3 \end{bmatrix} = 0$. Find the value of $x$.`,
+                id: 1,
+                source: "Test-01 P1",
+                type: "Single Choice",
+                topic: "Matrix Multiplication",
+                text: String.raw`Consider the matrix equation $[1 \quad x \quad 1] \begin{bmatrix} 1 & 2 & 3 \\ 4 & 5 & 6 \\ 3 & 2 & 5 \end{bmatrix} \begin{bmatrix} 1 \\ -2 \\ 3 \end{bmatrix} = 0$. The value of $x$ is:`,
+                options: [String.raw`-5/3`, String.raw`5/3`, String.raw`-3/5`, String.raw`3/5`],
+                correct: 0,
+                solution: String.raw`Multiply: $\begin{bmatrix} 1 & 2 & 3 \\ 4 & 5 & 6 \\ 3 & 2 & 5 \end{bmatrix} \begin{bmatrix} 1 \\ -2 \\ 3 \end{bmatrix} = \begin{bmatrix} 6 \\ 12 \\ 14 \end{bmatrix}$.<br>Then $[1 \quad x \quad 1] \begin{bmatrix} 6 \\ 12 \\ 14 \end{bmatrix} = 6 + 12x + 14 = 20 + 12x = 0 \implies x = -20/12 = -5/3$.`
+            },
+            {
+                id: 2,
+                source: "Test-03",
+                type: "Numerical",
+                topic: "Matrix Powers",
+                text: String.raw`Let $A = \begin{bmatrix} \sqrt{3} & 0 \\ 0 & \sqrt{3} \end{bmatrix}$. If $(A^8 + A^6 + A^4 + A^2 + I)V = \begin{bmatrix} 0 \\ 11 \end{bmatrix}$, where $V = \begin{bmatrix} x \\ y \end{bmatrix}$, find the value of $11y$.`,
+                correct: "1",
+                solution: String.raw`$A^2 = 3I$, $A^4 = 9I$, $A^6 = 27I$, $A^8 = 81I$.<br>Sum $= (81 + 27 + 9 + 3 + 1)I = 121I$.<br>$121 \begin{bmatrix} x \\ y \end{bmatrix} = \begin{bmatrix} 0 \\ 11 \end{bmatrix} \implies 121y = 11 \implies y = 1/11$.<br>So $11y = 1$.`
+            },
+            {
+                id: 3,
+                source: "Test-02 Adv",
+                type: "Multi-Correct",
+                topic: "Adjoint Properties",
+                text: String.raw`Let $A$ and $B$ be two $3 \times 3$ non-singular matrices such that $AB = BA$. Which of the following must be true?`,
                 options: [
-                    String.raw`(A) $- \frac{5}{3}$`,
-                    String.raw`(B) $\frac{5}{3}$`,
-                    String.raw`(C) $- \frac{3}{5}$`,
-                    String.raw`(D) $\frac{3}{5}$`
+                    String.raw`$A^{-1}B = BA^{-1}$`,
+                    String.raw`$A \cdot \operatorname{adj} B = (\operatorname{adj} B) \cdot A$`,
+                    String.raw`$\operatorname{adj}(AB) = \operatorname{adj}(BA)$`,
+                    String.raw`$(A+B)^2 = A^2 + B^2 + 2AB$`
                 ],
-                correctOptionIndex: 0,
-                solution: String.raw`First, multiply the $3 \times 3$ matrix with the $3 \times 1$ column matrix:
-$$ \begin{bmatrix} 1 & 2 & 3 \\ 4 & 5 & 6 \\ 3 & 2 & 5 \end{bmatrix} \begin{bmatrix} 1 \\ -2 \\ 3 \end{bmatrix} = \begin{bmatrix} (1)(1) + (2)(-2) + (3)(3) \\ (4)(1) + (5)(-2) + (6)(3) \\ (3)(1) + (2)(-2) + (5)(3) \end{bmatrix} = \begin{bmatrix} 1 - 4 + 9 \\ 4 - 10 + 18 \\ 3 - 4 + 15 \end{bmatrix} = \begin{bmatrix} 6 \\ 12 \\ 14 \end{bmatrix} $$
-Now, multiply the $1 \times 3$ row matrix with the resulting $3 \times 1$ matrix:
-$$ [1 \quad x \quad 1] \begin{bmatrix} 6 \\ 12 \\ 14 \end{bmatrix} = (1)(6) + (x)(12) + (1)(14) = 6 + 12x + 14 = 20 + 12x $$
-Given that the product is equal to $0$:
-$$ 20 + 12x = 0 \implies 12x = -20 \implies x = -\frac{20}{12} = -\frac{5}{3} $$
-Therefore, the correct option is (A).`
+                correct: [0, 1, 2, 3],
+                solution: String.raw`Since $AB=BA$, both commute. Any polynomial or inverse of $A$ also commutes with $B$ and vice versa. Adjoint is a polynomial in the matrix (Cayley-Hamilton). Thus all hold.`
             },
             {
-                id: 'q2',
-                section: 'Single Correct',
-                topic: 'Matrix Inverses & Properties',
-                text: String.raw`Let $M$ be a $3 \times 3$ square matrix such that $M^3 = \mathbf{0}$ (where $\mathbf{0}$ is the null matrix). Then which of the following statements is ALWAYS correct?`,
-                options: [
-                    String.raw`(A) Determinant of $M$ is non-zero, $|M| \neq 0$`,
-                    String.raw`(B) The matrix $(I + M)$ is invertible`,
-                    String.raw`(C) The matrix $(I - M)$ is non-invertible`,
-                    String.raw`(D) $M^2 = I$`
-                ],
-                correctOptionIndex: 1,
-                solution: String.raw`Since $M^3 = \mathbf{0}$, taking determinants on both sides gives $|M|^3 = 0 \implies $|M| = 0$. Hence, (A) is false.
-Consider the expansion of $(I+M)(I - M + M^2)$. 
-Since scalar matrix $I$ commutes with $M$:
-$$ (I+M)(I - M + M^2) = I(I - M + M^2) + M(I - M + M^2) $$
-$$ = I - M + M^2 + M - M^2 + M^3 = I + M^3 $$
-Since $M^3 = \mathbf{0}$, the product evaluates to $I$.
-Therefore, $(I+M)^{-1} = (I - M + M^2)$, which proves that $(I+M)$ is always invertible. Thus, (B) is the correct option.`
+                id: 4,
+                source: "Test-01 P1",
+                type: "Passage",
+                topic: "Nilpotent Matrices",
+                passage: String.raw`Let $P = \begin{bmatrix} 1 & 0 & 0 \\ 3 & 1 & 0 \\ 9 & 3 & 1 \end{bmatrix}$ and $Q - P^5 = I$.`,
+                text: String.raw`Find the value of $q_{21} + q_{31}$ if $Q = [q_{ij}]$.`,
+                options: [String.raw`15`, String.raw`135`, String.raw`150`, String.raw`165`],
+                correct: 2,
+                solution: String.raw`$P = I + A$ where $A$ is nilpotent ($A^3=0$).<br>$P^5 = (I+A)^5 = I + 5A + 10A^2$.<br>$Q = 2I + 5A + 10A^2$.<br>$q_{21} = 5(3) = 15$, $q_{31} = 5(9) + 10(3 \times 3) = 45 + 90 = 135$. Sum $= 150$.`
             },
             {
-                id: 'q3',
-                section: 'Multiple Correct',
-                topic: 'Symmetric & Skew-Symmetric Matrices',
-                text: String.raw`Let $A$ and $B$ be two $3 \times 3$ non-zero symmetric matrices with real entries. Which of the following statements is/are correct?`,
-                options: [
-                    String.raw`(A) $A + B$ is a symmetric matrix.`,
-                    String.raw`(B) $AB$ is a symmetric matrix if and only if $AB = BA$.`,
-                    String.raw`(C) $AB - BA$ is a skew-symmetric matrix.`,
-                    String.raw`(D) $ABA$ is a symmetric matrix.`
-                ],
-                correctOptionIndex: [0, 1, 2, 3], // Array indicates multiple correct
-                solution: String.raw`Given $A^T = A$ and $B^T = B$. Let's check each option:
-(A) $(A+B)^T = A^T + B^T = A + B$. Thus, $A+B$ is symmetric. (Correct)
-(B) $(AB)^T = B^T A^T = BA$. For $AB$ to be symmetric, $(AB)^T = AB \implies BA = AB$. (Correct)
-(C) $(AB - BA)^T = (AB)^T - (BA)^T = B^T A^T - A^T B^T = BA - AB = -(AB - BA)$. Thus, it is skew-symmetric. (Correct)
-(D) $(ABA)^T = A^T B^T A^T = ABA$. Thus, $ABA$ is symmetric. (Correct)
-Hence, all options are correct.`
+                id: 5,
+                source: "Test-02 Main",
+                type: "Numerical",
+                topic: "Determinants",
+                text: String.raw`If $D = \begin{vmatrix} 1 & \cos\theta & 0 \\ \cos\theta & 1 & \cos\theta \\ 0 & \cos\theta & 1 \end{vmatrix}$, find the maximum value of $D$.`,
+                correct: "1",
+                solution: String.raw`Expanding along $R_1$: $1(1 - \cos^2\theta) - \cos\theta(\cos\theta - 0) = 1 - 2\cos^2\theta = \cos(2\theta)$.<br>Max value of $\cos(2\theta)$ is 1.`
             },
             {
-                id: 'q4',
-                section: 'Passage',
-                topic: 'Nilpotent Matrices & Binomial Expansion',
-                passageText: String.raw`**Passage:**
-Let $P = \begin{bmatrix} 1 & 0 & 0 \\ 3 & 1 & 0 \\ 9 & 3 & 1 \end{bmatrix}$ and $Q = [q_{ij}]$ be two $3 \times 3$ matrices such that $Q - P^5 = I_3$, where $I_3$ is the $3 \times 3$ identity matrix. Answer the following two questions based on this information.`,
-                text: String.raw`**Q1.** The value of $\frac{q_{21} + q_{31}}{q_{32}}$ is equal to:`,
-                options: [
-                    String.raw`(A) $10$`,
-                    String.raw`(B) $15$`,
-                    String.raw`(C) $20$`,
-                    String.raw`(D) $25$`
-                ],
-                correctOptionIndex: 0,
-                solution: String.raw`We can write $P = I + A$, where $A = \begin{bmatrix} 0 & 0 & 0 \\ 3 & 0 & 0 \\ 9 & 3 & 0 \end{bmatrix}$.
-Let's find the powers of $A$:
-$$ A^2 = \begin{bmatrix} 0 & 0 & 0 \\ 3 & 0 & 0 \\ 9 & 3 & 0 \end{bmatrix} \begin{bmatrix} 0 & 0 & 0 \\ 3 & 0 & 0 \\ 9 & 3 & 0 \end{bmatrix} = \begin{bmatrix} 0 & 0 & 0 \\ 0 & 0 & 0 \\ 9 & 0 & 0 \end{bmatrix} $$
-$$ A^3 = A^2 \cdot A = \begin{bmatrix} 0 & 0 & 0 \\ 0 & 0 & 0 \\ 9 & 0 & 0 \end{bmatrix} \begin{bmatrix} 0 & 0 & 0 \\ 3 & 0 & 0 \\ 9 & 3 & 0 \end{bmatrix} = \begin{bmatrix} 0 & 0 & 0 \\ 0 & 0 & 0 \\ 0 & 0 & 0 \end{bmatrix} $$
-Since $A^3 = 0$, $A$ is a nilpotent matrix. As $I$ and $A$ commute, we can use binomial expansion for $P^5$:
-$$ P^5 = (I+A)^5 = I + 5A + 10A^2 + 10A^3 + \dots = I + 5A + 10A^2 $$
-We are given $Q = P^5 + I = 2I + 5A + 10A^2$.
-$$ Q = \begin{bmatrix} 2 & 0 & 0 \\ 0 & 2 & 0 \\ 0 & 0 & 2 \end{bmatrix} + \begin{bmatrix} 0 & 0 & 0 \\ 15 & 0 & 0 \\ 45 & 15 & 0 \end{bmatrix} + \begin{bmatrix} 0 & 0 & 0 \\ 0 & 0 & 0 \\ 90 & 0 & 0 \end{bmatrix} = \begin{bmatrix} 2 & 0 & 0 \\ 15 & 2 & 0 \\ 135 & 15 & 2 \end{bmatrix} $$
-From matrix $Q$, we have $q_{21} = 15$, $q_{31} = 135$, and $q_{32} = 15$.
-Ratio $= \frac{15 + 135}{15} = \frac{150}{15} = 10$.`
-            },
-            {
-                id: 'q5',
-                section: 'Numerical',
-                topic: 'Characteristic Equations',
-                text: String.raw`Let $A = \begin{bmatrix} 1 & 2 \\ 3 & 4 \end{bmatrix}$. If $A$ satisfies the equation $A^2 - 5A - 2I = 0$, then find the determinant of the matrix $(A^3 - 5A^2 + A)$.`,
-                options: [], // Empty implies numerical
-                correctNumerical: "-18",
-                solution: String.raw`We need to find the determinant of $M = A^3 - 5A^2 + A$.
-Factor out $A$ from the first two terms:
-$$ M = A(A^2 - 5A) + A $$
-From the given equation, $A^2 - 5A = 2I$. Substituting this into our expression:
-$$ M = A(2I) + A = 2A + A = 3A $$
-We are required to find $|M| = |3A|$.
-For a $2 \times 2$ matrix, $|kA| = k^2|A|$. Thus, $|3A| = 3^2 |A| = 9|A|$.
-Now, calculate the determinant of $A$:
-$$ |A| = (1)(4) - (2)(3) = 4 - 6 = -2 $$
-Therefore, $|M| = 9(-2) = -18$.`
-            },
-            {
-                id: 'q6',
-                section: 'Numerical',
-                topic: 'Adjoint and Determinants',
-                text: String.raw`Let $A$ be a $3 \times 3$ matrix such that $|A| = 4$. Find the value of $\det(\operatorname{adj}(\operatorname{adj} A))$.`,
-                options: [],
-                correctNumerical: "256",
-                solution: String.raw`For an $n \times n$ matrix $A$, the determinant of its adjoint is given by the formula:
-$$ |\operatorname{adj} A| = |A|^{n-1} $$
-Applying this rule twice for $\operatorname{adj}(\operatorname{adj} A)$:
-$$ |\operatorname{adj}(\operatorname{adj} A)| = |\operatorname{adj} A|^{n-1} = (|A|^{n-1})^{n-1} = |A|^{(n-1)^2} $$
-Here, the order of the matrix $n = 3$, and $|A| = 4$.
-$$ |\operatorname{adj}(\operatorname{adj} A)| = 4^{(3-1)^2} = 4^{2^2} = 4^4 $$
-$$ 4^4 = 256 $$`
+                id: 6,
+                source: "Test-01 P2",
+                type: "Single Choice",
+                topic: "System of Equations",
+                text: String.raw`The system of equations $\lambda x + y + z = 1$, $x + \lambda y + z = \lambda$, $x + y + \lambda z = \lambda^2$ has NO solution if $\lambda$ is:`,
+                options: [String.raw`1`, String.raw`-2`, String.raw`0`, String.raw`2`],
+                correct: 1,
+                solution: String.raw`$\Delta = (\lambda-1)^2(\lambda+2)$. $\Delta=0 \implies \lambda=1$ or $\lambda=-2$.<br>For $\lambda=1$, all equations are $x+y+z=1$ (infinitely many solutions).<br>For $\lambda=-2$, check $\Delta_x \neq 0$. Thus No solution at $\lambda=-2$.`
             }
         ];
 
-        // State Management
-        let currentSection = 'All';
-        const sections = ['All', 'Single Correct', 'Multiple Correct', 'Passage', 'Numerical'];
+        let currentFilter = 'All';
+        let userAnswers = {};
 
-        // DOM Elements
-        const sectionNav = document.getElementById('section-nav');
-        const questionContainer = document.getElementById('question-container');
-        const submitBtn = document.getElementById('submit-btn');
-        const resultsSection = document.getElementById('results-section');
-        const instructionsSection = document.getElementById('instructions-section');
-        const resetBtn = document.getElementById('reset-btn');
-        let analysisChartInstance = null;
-
-        // Initialize App
         function init() {
-            renderNav();
+            renderFilters();
             renderQuestions();
-            setupEventListeners();
+            updateStats();
+            setupChart();
         }
 
-        // Render Navigation Sidebar
-        function renderNav() {
-            sectionNav.innerHTML = '';
-            sections.forEach(sec => {
-                const btn = document.createElement('button');
-                const count = sec === 'All' ? questionsData.length : questionsData.filter(q => q.section === sec).length;
-                
-                btn.className = `flex justify-between items-center px-4 py-3 rounded-lg text-sm font-medium transition-colors duration-200 text-left ${currentSection === sec ? 'bg-brand-100 text-brand-700' : 'text-slate-600 hover:bg-slate-100'}`;
-                btn.innerHTML = `<span>${sec}</span> <span class="bg-white/60 px-2 py-0.5 rounded text-xs border border-slate-200">${count}</span>`;
-                btn.onclick = () => {
-                    currentSection = sec;
-                    renderNav();
-                    renderQuestions();
-                };
-                sectionNav.appendChild(btn);
-            });
+        function renderFilters() {
+            const types = ['All', ...new Set(questions.map(q => q.type))];
+            const container = document.getElementById('filter-tabs');
+            container.innerHTML = types.map(t => `
+                <button onclick="setFilter('${t}')" class="px-4 py-2 rounded-md text-sm font-medium transition-all ${currentFilter === t ? 'bg-brand-600 text-white shadow-md' : 'text-slate-600 hover:bg-slate-50'}">
+                    ${t}
+                </button>
+            `).join('');
         }
 
-        // Render Questions based on selected section
+        window.setFilter = (f) => {
+            currentFilter = f;
+            renderFilters();
+            renderQuestions();
+        };
+
         function renderQuestions() {
-            questionContainer.innerHTML = '';
-            const filteredQuestions = currentSection === 'All' ? questionsData : questionsData.filter(q => q.section === currentSection);
-
-            if (filteredQuestions.length === 0) {
-                questionContainer.innerHTML = `<div class="p-8 text-center text-slate-500 bg-white rounded-xl border border-slate-200">No questions available for this section.</div>`;
-                return;
-            }
-
-            filteredQuestions.forEach((q, index) => {
-                const card = document.createElement('div');
-                card.className = 'bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden';
-                
-                // Question Header
-                const typeBadgeColor = q.section === 'Single Correct' ? 'bg-blue-100 text-blue-700' : 
-                                       q.section === 'Multiple Correct' ? 'bg-purple-100 text-purple-700' :
-                                       q.section === 'Passage' ? 'bg-amber-100 text-amber-700' : 'bg-rose-100 text-rose-700';
-
-                let html = `
-                    <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
-                        <div class="flex items-center gap-3">
-                            <span class="bg-slate-800 text-white w-6 h-6 rounded flex items-center justify-center text-sm font-bold">Q</span>
-                            <span class="text-xs font-semibold px-2 py-1 rounded uppercase tracking-wider ${typeBadgeColor}">${q.section}</span>
+            const list = document.getElementById('questions-list');
+            const filtered = currentFilter === 'All' ? questions : questions.filter(q => q.type === currentFilter);
+            
+            list.innerHTML = filtered.map((q, idx) => `
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden" id="card-${q.id}">
+                    <div class="px-6 py-4 bg-slate-50 border-b border-slate-100 flex justify-between items-center">
+                        <div class="flex gap-2">
+                            <span class="text-xs font-bold px-2 py-1 rounded bg-indigo-100 text-indigo-700 uppercase tracking-tighter">${q.type}</span>
+                            <span class="text-xs font-bold px-2 py-1 rounded bg-slate-200 text-slate-600 uppercase tracking-tighter">${q.source}</span>
                         </div>
-                        <div class="text-xs text-slate-400 font-medium">${q.topic}</div>
+                        <span class="text-xs text-slate-400 font-mono">ID: #${q.id} | ${q.topic}</span>
                     </div>
                     <div class="p-6">
-                `;
-
-                // Passage context if exists
-                if (q.passageText) {
-                    html += `
-                        <div class="bg-amber-50/50 border-l-4 border-amber-400 p-4 mb-6 rounded-r-lg">
-                            <div class="text-slate-700 text-sm math-scroll">${q.passageText}</div>
-                        </div>
-                    `;
-                }
-
-                // Question Text
-                html += `<div class="text-slate-800 font-medium mb-6 math-scroll">${q.text}</div>`;
-
-                // Options or Numerical Input
-                if (q.options.length > 0) {
-                    html += `<div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">`;
-                    q.options.forEach((opt, i) => {
-                        html += `
-                            <div class="border border-slate-200 rounded-lg p-3 hover:border-brand-300 hover:bg-brand-50 transition-colors cursor-pointer math-scroll">
-                                ${opt}
+                        ${q.passage ? `<div class="bg-amber-50 border-l-4 border-amber-400 p-4 mb-4 text-sm text-slate-700 italic">${q.passage}</div>` : ''}
+                        <div class="text-lg font-medium text-slate-900 mb-6 math-scroll">${q.text}</div>
+                        
+                        ${q.type === 'Numerical' ? `
+                            <div class="mt-4">
+                                <input type="text" onchange="saveAnswer(${q.id}, this.value)" placeholder="Enter numerical value" class="w-full sm:w-64 p-3 border-2 border-slate-200 rounded-lg focus:border-brand-500 outline-none font-mono">
                             </div>
-                        `;
-                    });
-                    html += `</div>`;
-                } else {
-                    html += `
-                        <div class="mb-6 flex items-center gap-4">
-                            <label class="text-sm font-semibold text-slate-600">Your Answer:</label>
-                            <input type="text" class="border border-slate-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-brand-500 w-32 placeholder-slate-400 text-center font-mono" placeholder="Value">
-                        </div>
-                    `;
-                }
-
-                // Interaction / Answer Key Section
-                html += `
-                        <div class="border-t border-slate-100 pt-4 mt-2 flex flex-col gap-4">
-                            <button class="toggle-ans-btn self-start text-sm font-semibold text-brand-600 hover:text-brand-800 flex items-center gap-2" data-target="sol-${q.id}">
-                                <span>&#128065;</span> View Answer Key & Solution
-                            </button>
-                            
-                            <div id="sol-${q.id}" class="hidden bg-slate-50 border border-slate-200 rounded-lg p-5">
-                                <div class="mb-4">
-                `;
-                
-                if (q.options.length > 0) {
-                    let ansText = '';
-                    if (Array.isArray(q.correctOptionIndex)) {
-                        ansText = q.correctOptionIndex.map(i => String.fromCharCode(65 + i)).join(', ');
-                    } else {
-                        ansText = String.fromCharCode(65 + q.correctOptionIndex);
-                    }
-                    html += `<span class="inline-block bg-emerald-100 text-emerald-800 px-3 py-1 rounded font-bold text-sm">Correct Option: ${ansText}</span>`;
-                } else {
-                    html += `<span class="inline-block bg-emerald-100 text-emerald-800 px-3 py-1 rounded font-bold text-sm">Correct Answer: ${q.correctNumerical}</span>`;
-                }
-
-                html += `
-                                </div>
-                                <div class="text-sm text-slate-700 leading-relaxed math-scroll">
-                                    <h5 class="font-semibold text-slate-900 mb-2">Solution:</h5>
-                                    ${q.solution}
-                                </div>
+                        ` : `
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                ${q.options.map((opt, i) => `
+                                    <button onclick="saveAnswer(${q.id}, ${i})" class="option-btn text-left p-4 border-2 border-slate-100 rounded-xl hover:bg-slate-50 transition-all math-scroll" data-qid="${q.id}" data-idx="${i}">
+                                        <span class="inline-block w-8 font-bold text-slate-400">${String.fromCharCode(65+i)}.</span> ${opt}
+                                    </button>
+                                `).join('')}
                             </div>
+                        `}
+
+                        <div id="sol-${q.id}" class="hidden mt-6 p-5 bg-emerald-50 border border-emerald-100 rounded-xl text-sm leading-relaxed">
+                            <h4 class="font-bold text-emerald-900 mb-2">Solution Context:</h4>
+                            <div class="math-scroll">${q.solution}</div>
                         </div>
                     </div>
-                `;
+                </div>
+            `).join('');
 
-                card.innerHTML = html;
-                questionContainer.appendChild(card);
-            });
-
-            // Re-bind MathJax to process newly injected content
-            if (window.MathJax) {
-                MathJax.typesetPromise([questionContainer]).catch(function (err) {
-                    console.error('MathJax error:', err.message);
-                });
+            // Safe MathJax call for version 3
+            if (window.MathJax && typeof window.MathJax.typeset === 'function') {
+                window.MathJax.typeset();
+            } else if (window.MathJax && typeof window.MathJax.typesetPromise === 'function') {
+                window.MathJax.typesetPromise();
             }
+            updateProgressDots();
+        }
 
-            // Bind toggle buttons
-            document.querySelectorAll('.toggle-ans-btn').forEach(btn => {
-                btn.addEventListener('click', function() {
-                    const targetId = this.getAttribute('data-target');
-                    const targetEl = document.getElementById(targetId);
-                    if (targetEl.classList.contains('hidden')) {
-                        targetEl.classList.remove('hidden');
-                        this.innerHTML = `<span>&#10006;</span> Hide Solution`;
-                    } else {
-                        targetEl.classList.add('hidden');
-                        this.innerHTML = `<span>&#128065;</span> View Answer Key & Solution`;
+        window.saveAnswer = (qid, val) => {
+            const q = questions.find(x => x.id === qid);
+            if (q.type === 'Multi-Correct') {
+                if (!userAnswers[qid]) userAnswers[qid] = [];
+                const idx = userAnswers[qid].indexOf(val);
+                if (idx > -1) userAnswers[qid].splice(idx, 1);
+                else userAnswers[qid].push(val);
+            } else {
+                userAnswers[qid] = val;
+            }
+            updateProgressDots();
+            highlightOptions(qid);
+        };
+
+        function highlightOptions(qid) {
+            const btns = document.querySelectorAll(`.option-btn[data-qid="${qid}"]`);
+            btns.forEach(b => {
+                const idx = parseInt(b.dataset.idx);
+                const ans = userAnswers[qid];
+                const isSelected = Array.isArray(ans) ? ans.includes(idx) : ans === idx;
+                b.classList.toggle('selected', isSelected);
+                b.classList.toggle('bg-brand-50', isSelected);
+                b.classList.toggle('border-brand-300', isSelected);
+            });
+        }
+
+        function updateProgressDots() {
+            const container = document.getElementById('progress-dots');
+            if (!container) return;
+            container.innerHTML = questions.map(q => {
+                const answered = userAnswers[q.id] !== undefined && (Array.isArray(userAnswers[q.id]) ? userAnswers[q.id].length > 0 : userAnswers[q.id] !== "");
+                return `<div class="w-full aspect-square rounded-md border flex items-center justify-center text-[10px] font-bold ${answered ? 'bg-brand-500 text-white border-brand-600' : 'bg-white text-slate-300 border-slate-200'}">${q.id}</div>`;
+            }).join('');
+        }
+
+        function updateStats() {
+            const el = document.getElementById('stats-summary');
+            if (el) el.innerText = `${questions.length} Questions Loaded`;
+        }
+
+        document.getElementById('submit-test').onclick = () => {
+            document.getElementById('submit-loader').classList.remove('hidden');
+            setTimeout(() => {
+                document.getElementById('submit-loader').classList.add('hidden');
+                document.getElementById('analysis-panel').classList.remove('hidden');
+                checkAnswers();
+            }, 800);
+        };
+
+        function checkAnswers() {
+            questions.forEach(q => {
+                const solDiv = document.getElementById(`sol-${q.id}`);
+                if (solDiv) solDiv.classList.remove('hidden');
+                
+                if (q.type === 'Single Choice' || q.type === 'Passage') {
+                    const btns = document.querySelectorAll(`.option-btn[data-qid="${q.id}"]`);
+                    btns.forEach(b => {
+                        const idx = parseInt(b.dataset.idx);
+                        if (idx === q.correct) b.classList.add('correct');
+                        else if (userAnswers[q.id] === idx) b.classList.add('incorrect');
+                    });
+                } else if (q.type === 'Numerical') {
+                    const card = document.getElementById(`card-${q.id}`);
+                    if (card) {
+                        const input = card.querySelector('input');
+                        if (input) {
+                            if (userAnswers[q.id] == q.correct) input.classList.add('correct');
+                            else input.classList.add('incorrect');
+                        }
                     }
-                });
+                }
             });
+            window.scrollTo({ top: 0, behavior: 'smooth' });
         }
 
-        function setupEventListeners() {
-            submitBtn.addEventListener('click', () => {
-                instructionsSection.classList.add('hidden');
-                document.querySelector('.flex.flex-col.md\\:flex-row').classList.add('hidden');
-                resultsSection.classList.remove('hidden');
-                window.scrollTo({ top: 0, behavior: 'smooth' });
-                renderChart();
-            });
-
-            resetBtn.addEventListener('click', () => {
-                resultsSection.classList.add('hidden');
-                instructionsSection.classList.remove('hidden');
-                document.querySelector('.flex.flex-col.md\\:flex-row').classList.remove('hidden');
-                currentSection = 'All';
-                renderNav();
-                renderQuestions();
-                window.scrollTo({ top: 0, behavior: 'smooth' });
-            });
-        }
-
-        // Render Performance Analysis Chart using Chart.js
-        function renderChart() {
-            const ctx = document.getElementById('analysisChart').getContext('2d');
-            
-            if (analysisChartInstance) {
-                analysisChartInstance.destroy();
-            }
-
-            analysisChartInstance = new Chart(ctx, {
+        function setupChart() {
+            const canvas = document.getElementById('weightageChart');
+            if (!canvas) return;
+            const ctx = canvas.getContext('2d');
+            new Chart(ctx, {
                 type: 'polarArea',
                 data: {
-                    labels: ['Matrix Polynomials', 'Properties of Determinants', 'System of Eq.', 'Symmetric Prop.'],
+                    labels: ['Matrix Recurrence', 'Nilpotent/Binomial', 'System of Eq', 'Determinants'],
                     datasets: [{
-                        label: 'Conceptual Focus Weightage',
-                        data: [40, 30, 15, 15], // Representative weights based on the questions provided
-                        backgroundColor: [
-                            'rgba(99, 102, 241, 0.6)', // Brand primary
-                            'rgba(16, 185, 129, 0.6)', // Emerald
-                            'rgba(244, 63, 94, 0.6)',  // Rose
-                            'rgba(245, 158, 11, 0.6)'  // Amber
-                        ],
-                        borderColor: [
-                            'rgba(99, 102, 241, 1)',
-                            'rgba(16, 185, 129, 1)',
-                            'rgba(244, 63, 94, 1)',
-                            'rgba(245, 158, 11, 1)'
-                        ],
-                        borderWidth: 1
+                        data: [30, 25, 20, 25],
+                        backgroundColor: ['#6366f1', '#10b981', '#f43f5e', '#f59e0b']
                     }]
                 },
                 options: {
-                    responsive: true,
-                    maintainAspectRatio: false, // Important for container constraints
-                    scales: {
-                        r: {
-                            ticks: { display: false },
-                            grid: { color: 'rgba(0,0,0,0.05)' }
-                        }
-                    },
-                    plugins: {
-                        legend: {
-                            position: 'bottom',
-                            labels: {
-                                padding: 20,
-                                font: { family: 'Inter', size: 12 }
-                            }
-                        },
-                        tooltip: {
-                            callbacks: {
-                                label: function(context) {
-                                    return context.label + ': ' + context.raw + '%';
-                                }
-                            }
-                        }
-                    }
+                    maintainAspectRatio: false,
+                    scales: { r: { ticks: { display: false } } },
+                    plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, font: { size: 10 } } } }
                 }
             });
         }
 
-        // Boot
-        document.addEventListener('DOMContentLoaded', init);
+        document.getElementById('reset-test').onclick = () => {
+            userAnswers = {};
+            renderQuestions();
+            const panel = document.getElementById('analysis-panel');
+            if (panel) panel.classList.add('hidden');
+        };
 
+        init();
     </script>
 </body>
 </html>
