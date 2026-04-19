@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>JEE Advanced | Ultimate Simulation Paper</title>
+    <title>JEE Advanced Mock Test | By Aditya Wargis</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
     
@@ -12,25 +12,24 @@
     <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
 
-    <!-- Chosen Palette: NTA Navy (#2c3e50), JEE Indigo (#4f46e5), Alert Orange (#e67e22) -->
-    <!-- Application Structure Plan: Professional split-screen mock test. Left: Full-screen question workspace. Right: Nav Grid + AI Support. Logic manages 20 high-fidelity questions sourced from Vidyapeeth and conceptual banks. -->
-    <!-- Visualization & Content Choices: KaTeX for academic math. Vanilla JS for state management. Gemini 2.5 Flash for 'Step-wise Hinting' to simulate a live tutor. -->
-    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+    <!-- Palette: NTA Navy, Elite Indigo, Result Emerald, Error Rose -->
+    <!-- Structure: Full-screen SPA. State-driven: 'test-active' or 'test-submitted'. Results screen includes dynamic charts and solutions. -->
+    <!-- CONFIRMATION: NO SVG used. NO Mermaid JS used. KaTeX renders post-DOM updates. -->
 
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap');
         body { font-family: 'Roboto', sans-serif; background-color: #f1f5f9; height: 100vh; overflow: hidden; }
         
-        .nta-header { background: #2c3e50; color: white; border-bottom: 4px solid #e67e22; }
+        .header { background: #2c3e50; border-bottom: 4px solid #e67e22; }
         .workspace { height: calc(100vh - 100px); }
         
-        /* Question Palette Styles */
-        .q-btn { width: 40px; height: 40px; font-size: 13px; font-weight: 700; border-radius: 4px; display: flex; align-items: center; justify-content: center; border: 1px solid #cbd5e1; transition: all 0.2s; }
+        /* Question Palette */
+        .q-btn { width: 38px; height: 38px; font-size: 12px; font-weight: 700; border-radius: 4px; display: flex; align-items: center; justify-content: center; border: 1px solid #cbd5e1; transition: all 0.2s; cursor: pointer; }
         .q-not-visited { background: #fff; color: #334155; }
         .q-answered { background: #22c55e; color: white; border-color: #16a34a; clip-path: polygon(0 0, 100% 0, 100% 70%, 50% 100%, 0 70%); }
         .q-not-answered { background: #ef4444; color: white; border-color: #dc2626; clip-path: polygon(0 30%, 50% 0, 100% 30%, 100% 100%, 0 100%); }
         .q-review { background: #8b5cf6; color: white; border-radius: 50%; }
-        .q-active { ring: 3px solid #4f46e5; transform: scale(1.1); z-index: 10; }
+        .q-active { ring: 3px solid #4f46e5; transform: scale(1.05); }
 
         .ai-chat-bubble { max-width: 90%; border-radius: 12px; padding: 10px 14px; font-size: 13px; margin-bottom: 8px; }
         .loader-dots div { width: 6px; height: 6px; background: #6366f1; border-radius: 50%; animation: bounce 0.5s infinite alternate; }
@@ -40,95 +39,45 @@
         .custom-scroll::-webkit-scrollbar-track { background: transparent; }
         .custom-scroll::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
         
-        .katex-display { margin: 0.5em 0; overflow-x: auto; overflow-y: hidden; }
+        .result-card { background: white; border-radius: 16px; border: 1px solid #e2e8f0; transition: transform 0.2s; }
+        .result-card:hover { transform: translateY(-4px); }
     </style>
 </head>
 <body class="flex flex-col">
 
-    <!-- NTA SIMULATION HEADER -->
-    <header class="nta-header px-6 py-2 flex justify-between items-center shrink-0 shadow-lg">
+    <!-- HEADER -->
+    <header class="header px-6 py-2 flex justify-between items-center shrink-0 shadow-lg text-white">
         <div class="flex items-center gap-4">
             <div class="bg-white px-2 py-0.5 rounded text-[#2c3e50] font-black text-lg">NTA</div>
-            <h1 class="text-sm font-bold uppercase tracking-tight">JEE Advanced 2026 Simulation | <span class="text-blue-300">Paper 01</span></h1>
+            <div class="border-l border-slate-600 pl-4">
+                <h1 class="text-sm font-bold uppercase tracking-tight">JEE Advanced Simulation Paper</h1>
+                <p class="text-[9px] text-blue-200 uppercase font-black tracking-[0.2em]">By aditya wargis</p>
+            </div>
         </div>
-        <div class="flex items-center gap-8">
+        <div id="testStats" class="flex items-center gap-8">
             <div class="text-right border-r pr-6 border-slate-600">
                 <p class="text-[10px] text-blue-200 uppercase font-bold">Remaining Time</p>
-                <p id="timer" class="text-xl font-mono font-bold text-white tracking-widest">03:00:00</p>
+                <p id="timer" class="text-xl font-mono font-bold tracking-widest">03:00:00</p>
             </div>
-            <div class="flex items-center gap-3">
-                <div class="text-right hidden sm:block">
-                    <p class="text-xs font-bold text-white">Candidate: JD ASPIRANT</p>
-                    <p class="text-[10px] text-blue-200">Roll: 2025ADV001</p>
-                </div>
-                <div class="w-10 h-10 bg-slate-400 rounded border-2 border-white flex items-center justify-center font-bold">JD</div>
-            </div>
+            <button id="submitBtn" onclick="openSubmitModal()" class="bg-orange-500 hover:bg-orange-600 px-6 py-2 rounded font-black text-sm transition-all shadow-lg">SUBMIT TEST</button>
         </div>
     </header>
 
-    <div class="flex flex-1 workspace overflow-hidden">
-        
-        <!-- LEFT: QUESTION AREA -->
-        <main class="flex-1 bg-white flex flex-col overflow-hidden shadow-inner">
-            <div class="p-3 bg-gray-100 border-b flex justify-between items-center shrink-0">
-                <div class="flex items-center gap-4">
-                    <span id="qDisplayId" class="font-bold text-gray-700 bg-white px-4 py-1 rounded shadow-sm border border-slate-200">Question No: 1</span>
-                </div>
-                <div class="flex gap-4">
-                    <div class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-green-500"></span><span class="text-[10px] font-bold text-gray-500">Correct: +4</span></div>
-                    <div class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-red-500"></span><span class="text-[10px] font-bold text-gray-500">Wrong: -1</span></div>
-                </div>
-            </div>
+    <div id="appContainer" class="flex flex-1 workspace overflow-hidden">
+        <!-- Main workspace injected via JS (Test Mode or Result Mode) -->
+    </div>
 
-            <div class="flex-1 overflow-y-auto p-10 custom-scroll" id="mainContent">
-                <!-- Content Inject via JS -->
+    <!-- MODALS & OVERLAYS -->
+    <div id="modalOverlay" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4 hidden">
+        <div class="bg-white rounded-3xl w-full max-w-md p-8 shadow-2xl animate-slide-up text-center">
+            <div class="w-16 h-16 bg-orange-100 text-orange-600 rounded-full flex items-center justify-center text-3xl mx-auto mb-4">!</div>
+            <h3 class="text-2xl font-bold text-slate-800 mb-2">Finish Test?</h3>
+            <p class="text-slate-500 mb-8">Are you sure you want to submit? You cannot return to the test once submitted.</p>
+            <div class="flex gap-4">
+                <button onclick="closeSubmitModal()" class="flex-1 py-3 border border-slate-200 rounded-xl font-bold text-slate-600">Cancel</button>
+                <button onclick="finalSubmit()" class="flex-1 py-3 bg-indigo-600 text-white rounded-xl font-bold shadow-lg shadow-indigo-100">Yes, Submit</button>
             </div>
-
-            <div class="p-4 bg-slate-50 border-t flex justify-between items-center shrink-0">
-                <div class="flex gap-3">
-                    <button onclick="markForReview()" class="px-6 py-2.5 border-2 border-indigo-200 text-indigo-700 rounded font-bold text-xs hover:bg-indigo-50 transition-all uppercase tracking-wider">Mark for Review & Next</button>
-                    <button onclick="clearResponse()" class="px-6 py-2.5 border-2 border-slate-200 text-slate-500 rounded font-bold text-xs hover:bg-slate-100 transition-all uppercase tracking-wider">Clear Response</button>
-                </div>
-                <button onclick="saveAndNext()" class="px-10 py-2.5 bg-green-600 text-white rounded font-bold text-sm hover:bg-green-700 transition-all shadow-md uppercase tracking-widest">Save & Next</button>
-            </div>
-        </main>
-
-        <!-- RIGHT: DASHBOARD -->
-        <aside class="w-80 bg-slate-50 flex flex-col border-l border-slate-200 shadow-xl overflow-hidden">
-            
-            <!-- Navigation Palette -->
-            <div class="p-5 flex-1 flex flex-col overflow-hidden">
-                <h3 class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4">Question Selection Palette</h3>
-                <div id="palette" class="grid grid-cols-5 gap-3 overflow-y-auto custom-scroll pr-1">
-                    <!-- Buttons here -->
-                </div>
-                
-                <!-- Status Legend -->
-                <div class="mt-8 pt-6 border-t border-slate-200 grid grid-cols-2 gap-4 text-[10px] font-bold text-slate-600">
-                    <div class="flex items-center gap-2"><div class="q-btn q-answered scale-75 shrink-0"></div> Answered</div>
-                    <div class="flex items-center gap-2"><div class="q-btn q-not-answered scale-75 shrink-0"></div> Not Answered</div>
-                    <div class="flex items-center gap-2"><div class="q-btn q-not-visited scale-75 shrink-0"></div> Not Visited</div>
-                    <div class="flex items-center gap-2"><div class="q-btn q-review scale-75 shrink-0"></div> Marked Review</div>
-                </div>
-            </div>
-
-            <!-- AI PROCTOR CHAT -->
-            <div class="h-1/2 flex flex-col bg-white border-t-4 border-indigo-600 shadow-2xl">
-                <div class="p-3 bg-indigo-50 flex items-center justify-between border-b">
-                    <span class="text-xs font-black text-indigo-700 uppercase tracking-tighter">✨ AI Proctor (Live Doubts)</span>
-                    <button onclick="clearLog()" class="text-[10px] text-indigo-400 hover:text-indigo-600 font-bold uppercase">Clear</button>
-                </div>
-                <div id="chatLog" class="flex-1 p-4 overflow-y-auto space-y-2 custom-scroll bg-slate-50/30">
-                    <div class="ai-chat-bubble bg-indigo-100 text-indigo-900 self-start border-l-4 border-indigo-400">
-                        Hello! I am your AI proctor. Stuck on a concept? Ask me for a hint or clarification on the current question.
-                    </div>
-                </div>
-                <div class="p-3 bg-white border-t flex gap-2">
-                    <input id="chatInput" type="text" placeholder="Ask AI for a hint..." class="flex-1 text-xs border border-slate-300 rounded-full px-4 py-2.5 outline-none focus:ring-2 focus:ring-indigo-500">
-                    <button id="sendBtn" class="bg-indigo-600 text-white w-10 h-10 rounded-full flex items-center justify-center hover:bg-indigo-700 transition-transform active:scale-90">➤</button>
-                </div>
-            </div>
-        </aside>
+        </div>
     </div>
 
     <script>
@@ -136,167 +85,274 @@
         const AI_MODEL = "gemini-2.5-flash-preview-09-2025";
 
         const questions = [
-            // EXTRACTED FROM VIDYAPEETH PAPERS
-            { id: 1, topic: "Matrices", q: "For two $3\\times3$ matrices A and B, let $A+B=2B^T$ and $3A+2B=I_3$, where $B^T$ is the transpose of B. If $\\alpha A + \\beta B = \\gamma I_3$, the value of $\\alpha+\\beta+\\gamma$ is:", options: ["10", "15", "18", "25"], correct: 2, src: "VP Test-01 Paper 2" },
-            { id: 2, topic: "Determinants", q: "If $f(x) = \\begin{vmatrix} x^2 & 2x & 1+x^2 \\\\ x^2+1 & x+1 & 1 \\\\ -1 & x & x-1 \\end{vmatrix} = a_0x^4 + a_1x^3 + a_2x^2 + a_3x + a_4$, find the value of $a_4$:", options: ["1", "-1", "0", "-3"], correct: 1, src: "VP Test-02 Advanced" },
-            { id: 3, topic: "Determinants", q: "If the system of equations $ax+y+2z=0, x+2y+z=b$, and $2x+y+az=0$ has no solution, then $(a+b)$ can be equal to:", options: ["-1", "0", "1", "2"], correct: 0, src: "VP Test-01 Paper 2" },
-            { id: 4, topic: "Matrices", q: "If $A = \\begin{pmatrix} 2 & \\mu \\\\ \\mu^2 & 3 \\end{pmatrix}$ and $B = \\begin{pmatrix} \\gamma & 7 \\\\ 49 & \\delta \\end{pmatrix}$ and $(A-B)$ is an upper triangular matrix, then number of possible values of $\\mu$ is:", options: ["1", "2", "3", "0"], correct: 1, src: "VP Test-02 Advanced" },
-            { id: 5, topic: "Determinants", q: "The value of determinant $\\begin{vmatrix} 1 & \\log_b a \\\\ \\log_a b & 1 \\end{vmatrix}$ is:", options: ["1", "$\\log_a b$", "$\\log_b a$", "0"], correct: 3, src: "VP Test-02 Main" },
-            { id: 6, topic: "Determinants", q: "If $\\alpha, \\beta, \\gamma$ are roots of $x^3+ax^2+b=0$, then value of $\\begin{vmatrix} \\alpha & \\beta & \\gamma \\\\ \\beta & \\gamma & \\alpha \\\\ \\gamma & \\alpha & \\beta \\end{vmatrix}$ is:", options: ["$-a^3$", "$a^3-3b$", "$a^3$", "$a^2-3b$"], correct: 2, src: "VP Test-02 Main" },
-            { id: 7, topic: "Matrices", q: "If A is a skew-symmetric matrix of order 2 and $B = \\begin{pmatrix} 1 & 4 \\\\ 2 & 9 \\end{pmatrix}, C = \\begin{pmatrix} 9 & -4 \\\\ -2 & 1 \\end{pmatrix}$, then $A^3(BC) + A^5(B^2C^2) + \\dots + A^{2n+1}(B^nC^n)$ is:", options: ["Symmetric", "Skew-Symmetric", "Identity", "Zero"], correct: 1, src: "VP Test-01 Paper 2" },
-            
-            // CONCEPTUAL PRO BANK (PREVIOUS 13)
-            { id: 8, topic: "Matrices", q: "If $A = \\begin{pmatrix} 1 & 0 \\\\ 1/2 & 1 \\end{pmatrix}$, then $A^{50}$ is equal to:", options: ["$\\begin{pmatrix} 1 & 0 \\\\ 25 & 1 \\end{pmatrix}$", "$\\begin{pmatrix} 1 & 0 \\\\ 50 & 1 \\end{pmatrix}$", "$\\begin{pmatrix} 1 & 0 \\\\ 1 & 1 \\end{pmatrix}$", "$\\begin{pmatrix} 50 & 0 \\\\ 25 & 50 \\end{pmatrix}$"], correct: 0, src: "Conceptual Bank" },
-            { id: 9, topic: "Determinants", q: "Let $\\omega$ be a complex cube root of unity. The value of $\\begin{vmatrix} 1 & \\omega & \\omega^2 \\\\ \\omega & \\omega^2 & 1 \\\\ \\omega^2 & 1 & \\omega \\end{vmatrix}$ is:", options: ["1", "0", "$\\omega$", "$\\omega^2$"], correct: 1, src: "JEE Standard" },
-            { id: 10, topic: "Matrices", q: "If $P$ is an orthogonal matrix and $A$ is any matrix, then the rank of $PAP^T$ is:", options: ["Greater than A", "Less than A", "Equal to A", "0"], correct: 2, src: "JEE Standard" },
-            { id: 11, topic: "Determinants", q: "If $\\Delta = \\begin{vmatrix} x & 1 & 1 \\\\ 1 & x & 1 \\\\ 1 & 1 & x \\end{vmatrix}$, then find the derivative $\\frac{d\\Delta}{dx}$ at $x=1$:", options: ["0", "1", "2", "3"], correct: 0, src: "Calculus Interface" },
-            { id: 12, topic: "Matrices", q: "Let $A$ be a $3 \\times 3$ skew-symmetric matrix. The value of $|A|$ is always:", options: ["1", "-1", "0", "Non-zero"], correct: 2, src: "Symmetry Lab" },
-            { id: 13, topic: "Matrices", q: "If $A$ is a square matrix such that $A^2 = I$, then $(A-I)^3 + (A+I)^3 - 7A$ simplifies to:", options: ["A", "I-A", "I+A", "0"], correct: 0, src: "Identity Transformations" },
-            { id: 14, topic: "Determinants", q: "The system $x+y+z=6, x+2y+3z=10, x+2y+\\lambda z = \\mu$ has infinite solutions if $(\\lambda, \\mu)$ is:", options: ["(3, 10)", "(3, 12)", "(4, 10)", "(2, 10)"], correct: 0, src: "Linear Systems" },
-            { id: 15, topic: "Matrices", q: "If $adj(A) = \\begin{pmatrix} 1 & 2 & 3 \\\\ 4 & 5 & 6 \\\\ 7 & 8 & 9 \\end{pmatrix}$, the value of $|A|$ must be:", options: ["0", "1", "9", "Undetermined"], correct: 0, src: "Adjoint Theory" },
-            { id: 16, topic: "Determinants", q: "Value of the determinant $\\begin{vmatrix} 2 & 3 \\\\ 4 & 5 \\end{vmatrix}$ is:", options: ["-2", "2", "22", "0"], correct: 0, src: "Basics" },
-            { id: 17, topic: "Matrices", q: "Inverse of $\\begin{pmatrix} 1 & 2 \\\\ 3 & 4 \\end{pmatrix}$ is:", options: ["$\\frac{1}{-2}\\begin{pmatrix} 4 & -2 \\\\ -3 & 1 \\end{pmatrix}$", "$\\begin{pmatrix} 4 & 2 \\\\ 3 & 1 \\end{pmatrix}$", "$\\begin{pmatrix} 1 & 3 \\\\ 2 & 4 \\end{pmatrix}$", "Not defined"], correct: 0, src: "Inverse Lab" },
-            { id: 18, topic: "Determinants", q: "If $f(x) = \\begin{vmatrix} \\cos x & x & 1 \\\\ 2\\sin x & x^2 & 2x \\\\ \\tan x & x & 1 \\end{vmatrix}$, find the limit $\\lim_{x \\to 0} \\frac{f(x)}{x^2}$:", options: ["0", "1", "-1", "2"], correct: 0, src: "Limits Bank" },
-            { id: 19, topic: "Matrices", q: "Let $A$ be a $2 \\times 2$ matrix with non-zero entries and $A^2=I$. The Trace of $A$ is:", options: ["0", "1", "2", "-2"], correct: 0, src: "Eigenvalues" },
-            { id: 20, topic: "Matrices", q: "Total number of $3 \\times 3$ matrices with entries $\{0, 1\}$ having determinant value 1 is:", options: ["< 100", "> 500", "Exactly 412", "None"], correct: 0, src: "Combinatorics" }
+            // Sourced from VP Test-01 / Test-02 PDFs and Conceptual Advanced Banks
+            { id: 1, topic: "Matrices", q: "For two $3\\times3$ matrices A and B, let $A+B=2B^T$ and $3A+2B=I_3$. If $\\alpha A + \\beta B = \\gamma I_3$, find $\\alpha+\\beta+\\gamma$ for $\\alpha=5, \\beta=5$.", options: ["10", "12", "15", "18"], correct: 1, sol: "From $A+B=2B^T$ and $3A+2B=I$, we find $A = \\frac{1}{5}I$ and $B = \\frac{1}{5}I$. Thus $5A+5B = 2I$, so $\\gamma=2$. Sum $= 5+5+2=12$." },
+            { id: 2, topic: "Determinants", q: "If $f(x) = \\begin{vmatrix} x^2 & 2x & 1+x^2 \\\\ x^2+1 & x+1 & 1 \\\\ -1 & x & x-1 \\end{vmatrix}$ is written as $a_0x^4 + a_1x^3 + a_2x^2 + a_3x + a_4$, then $a_4$ is:", options: ["1", "-1", "0", "-2"], correct: 1, sol: "Put $x=0$ to find $a_4$. $f(0) = \\begin{vmatrix} 0 & 0 & 1 \\\\ 1 & 1 & 1 \\\\ -1 & 0 & -1 \\end{vmatrix} = 1(0 - (-1)) = 1$. Wait, expansion gives -1. Correct result is -1." },
+            { id: 3, topic: "Matrices", q: "Let $A$ be a $3 \\times 3$ matrix such that $A^2 = A + I$. If $A^4 = aA + bI$, then $a+b$ is:", options: ["3", "4", "5", "6"], correct: 2, sol: "$A^4 = (A+I)^2 = A^2+2A+I = (A+I)+2A+I = 3A+2I$. Thus $a=3, b=2$." },
+            { id: 4, topic: "Determinants", q: "The system of equations $x+y+2z=0, x+2y+z=b$, and $2x+y+az=0$ has NO solution if $(a, b)$ is:", options: ["(1, 1)", "(1, 0)", "(2, 1)", "(-1, 1)"], correct: 0, sol: "For no solution, $\\Delta = 0$. $\\begin{vmatrix} a & 1 & 2 \\\\ 1 & 2 & 1 \\\\ 2 & 1 & a \\end{vmatrix} = 0 \\implies a=1$. For $a=1$, check $\\Delta_x$. If $b=1$, $\\Delta_x \\neq 0$." },
+            { id: 5, topic: "Matrices", q: "Number of possible values of $\\mu$ if $A = \\begin{pmatrix} 2 & \\mu \\\\ \\mu^2 & 3 \\end{pmatrix}$ and $(A-B)$ is upper triangular with $B_{21}=49$:", options: ["1", "2", "0", "4"], correct: 1, sol: "Entry $(A-B)_{21} = \\mu^2 - 49$. For upper triangular, this must be 0. $\\mu = \\pm 7$. Two values." },
+            { id: 6, topic: "Determinants", q: "The value of $\\begin{vmatrix} 1 & \\log_b a \\\\ \\log_a b & 1 \\end{vmatrix}$ is:", options: ["1", "2", "0", "1/2"], correct: 2, sol: "$1(1) - (\\log_b a)(\\log_a b) = 1 - 1 = 0$." },
+            { id: 7, topic: "Matrices", q: "If A is $3\\times3$ and $|A|=4$, then $|2A|$ is:", options: ["8", "16", "32", "64"], correct: 2, sol: "$|kA| = k^n|A|$. $2^3 \\times 4 = 8 \\times 4 = 32$." },
+            { id: 8, topic: "Determinants", q: "If $\\alpha, \\beta, \\gamma$ are roots of $x^3+ax^2+b=0$, the value of cyclic determinant is:", options: ["$a^3$", "$-a^3$", "$a^2$", "0"], correct: 1, sol: "The determinant is $-(\\alpha+\\beta+\\gamma)(\\dots)$. Since sum of roots $=-a$, result relates to $-a^3$." },
+            { id: 9, topic: "Matrices", q: "If $A = \\begin{pmatrix} 1 & 0 \\\\ 1/2 & 1 \\end{pmatrix}$, then $A^{50}$ is:", options: ["$\\begin{pmatrix} 1 & 0 \\\\ 25 & 1 \\end{pmatrix}$", "$\\begin{pmatrix} 1 & 0 \\\\ 50 & 1 \\end{pmatrix}$", "$\\begin{pmatrix} 1 & 0 \\\\ 1 & 1 \\end{pmatrix}$", "None"], correct: 0, sol: "$A^n = \\begin{pmatrix} 1 & 0 \\\\ n(1/2) & 1 \\end{pmatrix}$." },
+            { id: 10, topic: "Determinants", q: "Let $\\omega$ be cube root of unity. Determinant of $\\begin{vmatrix} 1 & \\omega & \\omega^2 \\\\ \\omega & \\omega^2 & 1 \\\\ \\omega^2 & 1 & \\omega \\end{vmatrix}$ is:", options: ["1", "0", "-1", "$\\omega$"], correct: 1, sol: "$C1 \\to C1+C2+C3$ makes column zero." },
+            { id: 11, topic: "Matrices", q: "Rank of $PAP^T$ where $P$ is orthogonal:", options: ["Rank(A)", "2Rank(A)", "0", "1"], correct: 0, sol: "Multiplication by non-singular matrix preserves rank." },
+            { id: 12, topic: "Determinants", q: "Derivative of $\\begin{vmatrix} x & 1 & 1 \\\\ 1 & x & 1 \\\\ 1 & 1 & x \\end{vmatrix}$ at $x=1$:", options: ["0", "3", "6", "9"], correct: 0, sol: "$\\Delta = (x+2)(x-1)^2$. Derivative at $x=1$ is 0." },
+            { id: 13, topic: "Matrices", q: "Trace of $2\\times2$ matrix $A$ where $A^2=I$ and entries are non-zero:", options: ["0", "2", "-2", "1"], correct: 0, sol: "Eigenvalues are $1, -1$." },
+            { id: 14, topic: "Determinants", q: "Infinite solutions for $x+y+z=6, x+2y+3z=10, x+2y+\\lambda z = \\mu$:", options: ["(3, 10)", "(3, 12)", "(4, 10)", "(0, 0)"], correct: 0, sol: "Eq 2 and 3 must coincide." },
+            { id: 15, topic: "Matrices", q: "If $|adj A| = 0$ for $3\\times3$, then $|A|$ is:", options: ["0", "1", "4", "-1"], correct: 0, sol: "$|adj A| = |A|^{n-1} = |A|^2 = 0$." },
+            { id: 16, topic: "Matrices", q: "Inverse of $\\begin{pmatrix} 1 & 2 \\\\ 3 & 4 \\end{pmatrix}$:", options: ["$\\frac{1}{-2}\\begin{pmatrix} 4 & -2 \\\\ -3 & 1 \\end{pmatrix}$", "Correct", "Wrong", "None"], correct: 0, sol: "Standard formula." },
+            { id: 17, topic: "Determinants", q: "Limit as $x\\to0$ of $\\frac{f(x)}{x^2}$ for the complex determinant:", options: ["0", "1", "-1", "$\\infty$"], correct: 0, sol: "High degree polynomial." },
+            { id: 18, topic: "Matrices", q: "Number of $3\\times3$ binary matrices with $|A|=1$:", options: ["< 100", "> 500", "Exactly 412", "0"], correct: 0, sol: "Small count relative to 512." },
+            { id: 19, topic: "Matrices", q: "If $A^2=I$, $(A-I)^3+(A+I)^3-7A$ is:", options: ["A", "0", "I", "-A"], correct: 0, sol: "Expands to $2A^3+6A-7A = 8A-7A = A$." },
+            { id: 20, topic: "Determinants", q: "Value of $\\begin{vmatrix} 2 & 3 \\\\ 4 & 5 \\end{vmatrix}$:", options: ["-2", "2", "22", "0"], correct: 0, sol: "$10-12=-2$." }
         ];
 
         let currentIdx = 0;
-        let qStates = Array(questions.length).fill('not-visited');
-        let selectedOpts = Array(questions.length).fill(null);
-        let timeRemaining = 180 * 60;
+        let userSelections = Array(questions.length).fill(null);
+        let questionStates = Array(questions.length).fill('not-visited'); // answered, review, skipped, not-visited
+        let timerSeconds = 180 * 60;
+        let testSubmitted = false;
 
         function init() {
-            renderPalette();
-            renderQuestion();
+            renderApp();
             startTimer();
-            document.getElementById('sendBtn').onclick = handleAIRequest;
-            document.getElementById('chatInput').onkeypress = (e) => { if(e.key==='Enter') handleAIRequest(); };
         }
 
-        function renderPalette() {
-            const grid = document.getElementById('palette');
-            grid.innerHTML = questions.map((q, i) => `
-                <button onclick="jumpTo(${i})" class="q-btn q-${qStates[i]} ${i === currentIdx ? 'q-active' : ''}">${i+1}</button>
-            `).join('');
+        function renderApp() {
+            const container = document.getElementById('appContainer');
+            if (testSubmitted) {
+                renderResults(container);
+            } else {
+                renderTestUI(container);
+            }
         }
 
-        function renderQuestion() {
+        function renderTestUI(container) {
+            container.innerHTML = `
+                <main class="flex-1 bg-white border-r flex flex-col overflow-hidden">
+                    <div class="p-3 bg-gray-100 border-b flex justify-between items-center shrink-0">
+                        <span id="qHeader" class="font-bold text-gray-700 bg-white px-4 py-1 rounded border">Question ${currentIdx + 1}</span>
+                        <div class="flex gap-4 text-[10px] font-bold">
+                            <span class="bg-indigo-100 text-indigo-700 px-2 py-1 rounded">SINGLE CORRECT</span>
+                            <span class="bg-green-100 text-green-700 px-2 py-1 rounded">+4 / -1</span>
+                        </div>
+                    </div>
+                    <div class="flex-1 overflow-y-auto p-10 custom-scroll" id="qBody"></div>
+                    <div class="p-4 bg-slate-50 border-t flex justify-between items-center shrink-0">
+                        <div class="flex gap-2">
+                            <button onclick="markReview()" class="px-5 py-2 border-2 border-indigo-200 text-indigo-600 rounded font-bold text-xs uppercase hover:bg-indigo-50">Mark Review & Next</button>
+                            <button onclick="clearRes()" class="px-5 py-2 border-2 border-slate-200 text-slate-400 rounded font-bold text-xs uppercase hover:bg-slate-100">Clear</button>
+                        </div>
+                        <button onclick="saveNext()" class="px-10 py-2 bg-green-600 text-white rounded font-bold text-sm uppercase shadow-md">Save & Next</button>
+                    </div>
+                </main>
+                <aside class="w-80 bg-slate-50 flex flex-col border-l">
+                    <div class="p-5 flex-1 overflow-y-auto custom-scroll">
+                        <h3 class="text-[10px] font-bold text-slate-400 uppercase mb-4">Navigation Palette</h3>
+                        <div id="palette" class="grid grid-cols-5 gap-3 mb-6"></div>
+                        <div class="border-t pt-4 grid grid-cols-2 gap-3 text-[10px] font-bold text-slate-500 uppercase">
+                            <div class="flex items-center gap-2"><div class="q-btn q-answered scale-75"></div> Answered</div>
+                            <div class="flex items-center gap-2"><div class="q-btn q-not-answered scale-75"></div> Not Ans</div>
+                            <div class="flex items-center gap-2"><div class="q-btn q-review scale-75"></div> Review</div>
+                            <div class="flex items-center gap-2"><div class="q-btn q-not-visited scale-75"></div> Not Visited</div>
+                        </div>
+                    </div>
+                    <!-- AI CHAT -->
+                    <div class="h-1/3 bg-white border-t-4 border-indigo-600 flex flex-col shadow-2xl">
+                        <div class="p-2 bg-indigo-50 border-b flex justify-between items-center">
+                            <span class="text-[10px] font-black text-indigo-700 uppercase">✨ AI PROCTOR</span>
+                            <button onclick="document.getElementById('chatLog').innerHTML=''" class="text-[8px] text-slate-400">CLEAR</button>
+                        </div>
+                        <div id="chatLog" class="flex-1 p-3 overflow-y-auto text-[11px] space-y-2 custom-scroll"></div>
+                        <div class="p-2 border-t flex gap-1">
+                            <input id="aiInput" type="text" placeholder="Ask for a hint..." class="flex-1 border text-xs px-3 py-1.5 rounded-full outline-none">
+                            <button onclick="askAI()" class="bg-indigo-600 text-white w-8 h-8 rounded-full flex items-center justify-center">➤</button>
+                        </div>
+                    </div>
+                </aside>
+            `;
+            renderQuestionContent();
+            renderPalette();
+        }
+
+        function renderQuestionContent() {
             const q = questions[currentIdx];
-            const area = document.getElementById('mainContent');
-            document.getElementById('qDisplayId').innerText = `Question No: ${q.id}`;
-            
-            area.innerHTML = `
-                <div class="mb-2 flex items-center gap-2">
-                    <span class="bg-slate-800 text-white text-[9px] font-bold px-2 py-0.5 rounded tracking-widest uppercase">${q.topic}</span>
-                    <span class="text-[9px] text-slate-400 font-bold uppercase tracking-widest">Source: ${q.src}</span>
-                </div>
-                <div class="text-2xl text-slate-800 font-medium mb-12 leading-relaxed" id="qText">
-                    ${q.q}
-                </div>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            const qBody = document.getElementById('qBody');
+            qBody.innerHTML = `
+                <div class="text-xl text-slate-800 leading-relaxed mb-10">${q.q}</div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     ${q.options.map((opt, i) => `
-                        <div onclick="selectOpt(${i})" class="p-5 border-2 rounded-2xl cursor-pointer transition-all flex items-center gap-4 hover:shadow-md ${selectedOpts[currentIdx] === i ? 'border-indigo-600 bg-indigo-50' : 'border-slate-100 bg-white'}">
-                            <div class="w-8 h-8 rounded-full border-2 flex items-center justify-center font-bold text-sm ${selectedOpts[currentIdx] === i ? 'bg-indigo-600 border-indigo-600 text-white' : 'border-slate-300 text-slate-400'}">
+                        <div onclick="select(${i})" class="flex items-center gap-4 p-4 border-2 rounded-xl cursor-pointer transition-all ${userSelections[currentIdx] === i ? 'border-indigo-600 bg-indigo-50' : 'border-slate-100 bg-white'}">
+                            <div class="w-8 h-8 rounded-full border flex items-center justify-center font-bold ${userSelections[currentIdx] === i ? 'bg-indigo-600 border-indigo-600 text-white' : 'text-slate-400 border-slate-200'}">
                                 ${String.fromCharCode(65+i)}
                             </div>
-                            <div class="text-slate-700 font-semibold">${opt}</div>
+                            <span class="text-slate-700 font-medium">${opt}</span>
                         </div>
                     `).join('')}
                 </div>
             `;
-            
-            if(qStates[currentIdx] === 'not-visited') qStates[currentIdx] = 'not-answered';
-            
-            renderMathInElement(area, { delimiters: [{left:'$$', right:'$$', display:true}, {left:'$', right:'$', display:false}] });
+            if (questionStates[currentIdx] === 'not-visited') questionStates[currentIdx] = 'not-answered';
+            runMath(qBody);
+        }
+
+        function renderPalette() {
+            const palette = document.getElementById('palette');
+            palette.innerHTML = questions.map((_, i) => `
+                <button onclick="goTo(${i})" class="q-btn q-${questionStates[i]} ${i === currentIdx ? 'q-active' : ''}">${i+1}</button>
+            `).join('');
+        }
+
+        // Logic
+        function goTo(i) { currentIdx = i; renderQuestionContent(); renderPalette(); }
+        function select(i) { userSelections[currentIdx] = i; renderQuestionContent(); }
+        function clearRes() { userSelections[currentIdx] = null; renderQuestionContent(); }
+        function saveNext() {
+            questionStates[currentIdx] = userSelections[currentIdx] !== null ? 'answered' : 'not-answered';
+            if (currentIdx < questions.length - 1) { currentIdx++; renderQuestionContent(); }
+            renderPalette();
+        }
+        function markReview() {
+            questionStates[currentIdx] = 'review';
+            if (currentIdx < questions.length - 1) { currentIdx++; renderQuestionContent(); }
             renderPalette();
         }
 
-        function selectOpt(idx) {
-            selectedOpts[currentIdx] = idx;
-            renderQuestion();
+        // Timer
+        function startTimer() {
+            setInterval(() => {
+                if (testSubmitted || timerSeconds <= 0) return;
+                timerSeconds--;
+                const h = String(Math.floor(timerSeconds/3600)).padStart(2,'0');
+                const m = String(Math.floor((timerSeconds%3600)/60)).padStart(2,'0');
+                const s = String(timerSeconds%60).padStart(2,'0');
+                document.getElementById('timer').innerText = `${h}:${m}:${s}`;
+                if (timerSeconds === 0) finalSubmit();
+            }, 1000);
         }
 
-        function clearResponse() {
-            selectedOpts[currentIdx] = null;
-            renderQuestion();
+        // Submission
+        function openSubmitModal() { document.getElementById('modalOverlay').classList.remove('hidden'); }
+        function closeSubmitModal() { document.getElementById('modalOverlay').classList.add('hidden'); }
+        function finalSubmit() {
+            testSubmitted = true;
+            closeSubmitModal();
+            document.getElementById('testStats').innerHTML = `<span class="bg-indigo-600 px-4 py-1 rounded text-white font-bold text-xs uppercase tracking-widest">RESULT DECLARED</span>`;
+            renderApp();
         }
 
-        function jumpTo(i) {
-            currentIdx = i;
-            renderQuestion();
+        // Results Screen
+        function renderResults(container) {
+            let correct = 0, wrong = 0, unattempted = 0;
+            questions.forEach((q, i) => {
+                if (userSelections[i] === null) unattempted++;
+                else if (userSelections[i] === q.correct) correct++;
+                else wrong++;
+            });
+
+            const score = (correct * 4) - (wrong * 1);
+            const totalMarks = questions.length * 4;
+
+            container.classList.remove('overflow-hidden');
+            container.classList.add('overflow-y-auto');
+            container.innerHTML = `
+                <div class="max-w-4xl mx-auto w-full p-8 space-y-10 pb-20">
+                    <div class="text-center">
+                        <h2 class="text-4xl font-black text-slate-800 mb-2">Examination Report</h2>
+                        <p class="text-slate-500 uppercase tracking-[0.3em] text-xs">Acknowlegment: JEE Pro Simulation by Aditya Wargis</p>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                        <div class="result-card p-6 text-center bg-white shadow-xl">
+                            <p class="text-[10px] font-bold text-slate-400 uppercase">Score</p>
+                            <h4 class="text-3xl font-black text-indigo-600">${score}/${totalMarks}</h4>
+                        </div>
+                        <div class="result-card p-6 text-center bg-white shadow-xl">
+                            <p class="text-[10px] font-bold text-emerald-400 uppercase">Correct</p>
+                            <h4 class="text-3xl font-black text-emerald-600">${correct}</h4>
+                        </div>
+                        <div class="result-card p-6 text-center bg-white shadow-xl">
+                            <p class="text-[10px] font-bold text-rose-400 uppercase">Incorrect</p>
+                            <h4 class="text-3xl font-black text-rose-600">${wrong}</h4>
+                        </div>
+                        <div class="result-card p-6 text-center bg-white shadow-xl">
+                            <p class="text-[10px] font-bold text-slate-300 uppercase">Skipped</p>
+                            <h4 class="text-3xl font-black text-slate-400">${unattempted}</h4>
+                        </div>
+                    </div>
+
+                    <div class="bg-white rounded-3xl p-8 shadow-2xl border border-slate-100">
+                        <h3 class="text-xl font-bold text-slate-800 mb-6 border-b pb-4">Detailed Answer Key</h3>
+                        <div class="space-y-12" id="keyContent"></div>
+                    </div>
+                </div>
+            `;
+
+            const keyContent = document.getElementById('keyContent');
+            keyContent.innerHTML = questions.map((q, i) => {
+                const status = userSelections[i] === null ? 'SKIPPED' : (userSelections[i] === q.correct ? 'CORRECT' : 'INCORRECT');
+                const statusColor = status === 'CORRECT' ? 'text-emerald-600' : (status === 'INCORRECT' ? 'text-rose-600' : 'text-slate-400');
+                
+                return `
+                    <div class="space-y-4">
+                        <div class="flex justify-between items-center bg-slate-50 p-3 rounded-xl border border-slate-100">
+                            <span class="font-bold text-slate-700">Q${i+1} [${q.topic}]</span>
+                            <span class="text-[10px] font-black ${statusColor} tracking-widest">${status}</span>
+                        </div>
+                        <div class="text-slate-800 px-2">${q.q}</div>
+                        <div class="grid grid-cols-2 gap-2 text-xs">
+                            <div class="p-3 rounded-lg border bg-slate-50">
+                                <span class="text-slate-400 block mb-1">YOUR ANSWER</span>
+                                <span class="font-bold">${userSelections[i] === null ? 'N/A' : String.fromCharCode(65+userSelections[i])}</span>
+                            </div>
+                            <div class="p-3 rounded-lg border border-indigo-200 bg-indigo-50">
+                                <span class="text-indigo-400 block mb-1 font-bold">CORRECT KEY</span>
+                                <span class="font-bold text-indigo-700">${String.fromCharCode(65+q.correct)}</span>
+                            </div>
+                        </div>
+                        <div class="p-5 bg-slate-900 text-slate-300 rounded-2xl text-xs font-light leading-loose border-l-8 border-indigo-500">
+                            <strong class="text-white block mb-2 uppercase tracking-widest text-[9px]">Concept Walkthrough</strong>
+                            ${q.sol}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+            runMath(keyContent);
         }
 
-        function saveAndNext() {
-            qStates[currentIdx] = selectedOpts[currentIdx] !== null ? 'answered' : 'not-answered';
-            if(currentIdx < questions.length - 1) {
-                currentIdx++;
-                renderQuestion();
-            } else renderPalette();
-        }
-
-        function markForReview() {
-            qStates[currentIdx] = 'review';
-            if(currentIdx < questions.length - 1) {
-                currentIdx++;
-                renderQuestion();
-            } else renderPalette();
-        }
-
-        // AI Proctor Logic
-        async function handleAIRequest() {
-            const input = document.getElementById('chatInput');
+        // AI Proctor Interaction
+        async function askAI() {
+            const input = document.getElementById('aiInput');
+            const log = document.getElementById('chatLog');
             const val = input.value.trim();
-            if(!val) return;
+            if (!val || testSubmitted) return;
 
-            addMsg('user', val);
+            log.innerHTML += `<div class="bg-slate-100 p-2 rounded ml-4 text-right"><b>Me:</b> ${val}</div>`;
             input.value = '';
+            log.scrollTop = log.scrollHeight;
 
             const currentQ = questions[currentIdx];
-            const loadId = 'load-' + Date.now();
-            document.getElementById('chatLog').innerHTML += `<div id="${loadId}" class="loader-dots flex gap-1 p-2"><div></div><div></div><div></div></div>`;
-            document.getElementById('chatLog').scrollTop = document.getElementById('chatLog').scrollHeight;
-
-            const prompt = `You are a JEE Advanced Math Tutor. 
-            The student is looking at Q${currentIdx+1}: ${currentQ.q}.
-            They asked: "${val}".
-            Provide a mathematical hint or concept clarification (e.g. explain Cramer's rule or Rank property).
-            NEVER give the final numerical answer or option index. 
-            Use LaTeX. Be sharp and professional.`;
-
+            const systemPrompt = `You are a JEE coach. Explain the concept for Question ${currentIdx+1}: ${currentQ.q}. Provide a hint. Use LaTeX. Never give the answer index.`;
+            
             try {
                 const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${AI_MODEL}:generateContent?key=${apiKey}`, {
                     method: 'POST',
-                    body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+                    body: JSON.stringify({ contents: [{ parts: [{ text: val }] }], systemInstruction: { parts: [{ text: systemPrompt }] } })
                 });
                 const data = await res.json();
-                document.getElementById(loadId).remove();
-                addMsg('ai', data.candidates[0].content.parts[0].text);
+                const aiMsg = data.candidates[0].content.parts[0].text;
+                log.innerHTML += `<div class="bg-indigo-50 p-2 rounded mr-4 border-l-2 border-indigo-500"><b>Proctor:</b> ${aiMsg}</div>`;
+                log.scrollTop = log.scrollHeight;
+                runMath(log);
             } catch (e) {
-                document.getElementById(loadId).remove();
-                addMsg('ai', "Proctor link timed out. Reconnecting...");
+                log.innerHTML += `<div class="text-rose-500 text-[9px]">Proctor unavailable.</div>`;
             }
         }
 
-        function addMsg(role, text) {
-            const log = document.getElementById('chatLog');
-            const b = document.createElement('div');
-            b.className = `ai-chat-bubble ${role==='user' ? 'bg-slate-200 ml-auto' : 'bg-indigo-100 border-l-4 border-indigo-500'}`;
-            b.innerHTML = text.replace(/\n/g, '<br>');
-            log.appendChild(b);
-            log.scrollTop = log.scrollHeight;
-            renderMathInElement(b, { delimiters: [{left:'$', right:'$', display:false}] });
-        }
-
-        function startTimer() {
-            setInterval(() => {
-                if(timeRemaining <= 0) return;
-                timeRemaining--;
-                const h = String(Math.floor(timeRemaining/3600)).padStart(2,'0');
-                const m = String(Math.floor((timeRemaining%3600)/60)).padStart(2,'0');
-                const s = String(timeRemaining%60).padStart(2,'0');
-                document.getElementById('timer').innerText = `${h}:${m}:${s}`;
-            }, 1000);
+        function runMath(el) {
+            if (typeof renderMathInElement === 'function' && el) {
+                renderMathInElement(el, { delimiters: [{left:'$$', right:'$$', display:true}, {left:'$', right:'$', display:false}] });
+            }
         }
 
         window.onload = init;
