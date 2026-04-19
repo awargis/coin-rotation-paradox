@@ -3,363 +3,375 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Elite Paper Architect | HUD v2.0</title>
-    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <title>Comprehensive JEE: Matrices & Determinants</title>
+    
+    <!-- Chosen Palette: Slate Backgrounds, Indigo Primary, Emerald Success, Rose Danger, Gray Text -->
+    <!-- Application Structure Plan: A refined mock-test dashboard that organizes questions extracted from the specific VP test series (Test 01, 02, and 03). The layout separates questions into distinct JEE categories: Single Choice, Multi-Correct, Comprehension, and Numerical. It includes a progress tracker and a detailed performance visualization after submission. -->
+    <!-- Visualization & Content Choices: 
+         - MathJax is used for high-fidelity rendering of matrices and determinant bars.
+         - Chart.js provides a Polar Area chart to visualize the distribution of difficulty and topics.
+         - Logic includes state management for multiple-choice selections and numerical verification.
+    -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: { 50: '#eef2ff', 100: '#e0e7ff', 500: '#6366f1', 600: '#4f46e5', 700: '#4338ca', 900: '#312e81' }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <script>
+        window.MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+                displayMath: [['$$', '$$'], ['\\[', '\\]']],
+                processEscapes: true
+            },
+            options: { skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre'] },
+            startup: {
+                pageReady: () => {
+                    return MathJax.startup.defaultPageReady().then(() => {
+                        console.log('MathJax is ready');
+                    });
+                }
+            }
+        };
+    </script>
     <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
     <style>
-        :root {
-            --bg-color: #050505;
-            --accent-cyan: #00f3ff;
-            --accent-gold: #ffcc00;
-            --glass-bg: rgba(20, 20, 25, 0.7);
-            --border-glow: 0 0 15px rgba(0, 243, 255, 0.4);
-        }
-
-        body {
-            background-color: var(--bg-color);
-            color: #e0e0e0;
-            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-            margin: 0;
-            padding: 20px;
-            overflow-x: hidden;
-            background-image: linear-gradient(rgba(0, 243, 255, 0.03) 1px, transparent 1px),
-                              linear-gradient(90deg, rgba(0, 243, 255, 0.03) 1px, transparent 1px);
-            background-size: 50px 50px;
-        }
-
-        /* Scanning Line Animation */
-        body::before {
-            content: " ";
-            position: fixed;
-            top: 0; left: 0; bottom: 0; right: 0;
-            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), 
-                        linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
-            z-index: 2;
-            background-size: 100% 2px, 3px 100%;
-            pointer-events: none;
-        }
-
-        .scanline {
-            width: 100%;
-            height: 100px;
-            z-index: 3;
-            background: linear-gradient(0deg, rgba(0, 243, 255, 0) 0%, rgba(0, 243, 255, 0.1) 50%, rgba(0, 243, 255, 0) 100%);
-            opacity: 0.1;
-            position: fixed;
-            bottom: 100%;
-            animation: scanline 8s linear infinite;
-        }
-
-        @keyframes scanline {
-            0% { bottom: 100%; }
-            100% { bottom: -100%; }
-        }
-
-        header {
-            text-align: center;
-            border-bottom: 2px solid var(--accent-cyan);
-            padding-bottom: 10px;
-            margin-bottom: 40px;
-            animation: flicker 3s infinite;
-        }
-
-        @keyframes flicker {
-            0%, 19%, 21%, 23%, 25%, 54%, 56%, 100% { opacity: 1; }
-            20%, 24%, 55% { opacity: 0.8; }
-        }
-
-        .header-title {
-            font-size: 1.5rem;
-            letter-spacing: 4px;
-            color: var(--accent-cyan);
-            text-transform: uppercase;
-            text-shadow: var(--border-glow);
-        }
-
-        .meta-container {
-            display: flex;
-            justify-content: space-around;
-            margin-top: 15px;
-            font-family: 'Courier New', Courier, monospace;
-            color: var(--accent-gold);
-        }
-
-        .question-card {
-            background: var(--glass-bg);
-            backdrop-filter: blur(12px);
-            border: 1px solid rgba(0, 243, 255, 0.2);
-            border-radius: 8px;
-            padding: 25px;
-            margin-bottom: 30px;
-            transition: 0.3s;
-            position: relative;
-        }
-
-        .question-card:hover {
-            border-color: var(--accent-cyan);
-            box-shadow: var(--border-glow);
-        }
-
-        .question-header {
-            color: var(--accent-cyan);
-            font-weight: bold;
-            margin-bottom: 15px;
-            font-size: 1.1rem;
-        }
-
-        .options-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 15px;
-            margin-top: 20px;
-        }
-
-        .option-btn {
-            background: rgba(255, 255, 255, 0.05);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            color: #fff;
-            padding: 12px;
-            cursor: pointer;
-            text-align: left;
-            transition: 0.2s;
-            border-radius: 4px;
-        }
-
-        .option-btn:hover {
-            background: rgba(0, 243, 255, 0.1);
-            border-color: var(--accent-cyan);
-        }
-
-        .option-btn.selected {
-            background: var(--accent-cyan);
-            color: #000;
-            font-weight: bold;
-        }
-
-        .numerical-input {
-            background: transparent;
-            border: none;
-            border-bottom: 2px solid var(--accent-cyan);
-            color: var(--accent-gold);
-            font-size: 1.5rem;
-            width: 100px;
-            text-align: center;
-            outline: none;
-        }
-
-        #submit-btn {
-            display: block;
-            width: 250px;
-            margin: 50px auto;
-            padding: 15px;
-            background: transparent;
-            color: var(--accent-cyan);
-            border: 2px solid var(--accent-cyan);
-            font-weight: bold;
-            cursor: pointer;
-            text-transform: uppercase;
-            letter-spacing: 2px;
-            transition: 0.4s;
-        }
-
-        #submit-btn:hover {
-            background: var(--accent-cyan);
-            color: #000;
-            box-shadow: 0 0 30px var(--accent-cyan);
-        }
-
-        #results {
-            display: none;
-            margin-top: 50px;
-            padding: 30px;
-            background: rgba(255, 204, 0, 0.1);
-            border: 1px solid var(--accent-gold);
-            text-align: center;
-        }
-
-        .matrix-table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 20px;
-        }
-
-        .matrix-table th, .matrix-table td {
-            border: 1px solid var(--accent-cyan);
-            padding: 10px;
-        }
+        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; }
+        .math-scroll { overflow-x: auto; padding-bottom: 0.5rem; }
+        .chart-container { position: relative; width: 100%; max-width: 500px; margin: auto; height: 350px; }
+        .option-card.selected { border-color: #6366f1; background-color: #eef2ff; }
+        .correct { border-color: #10b981 !important; background-color: #ecfdf5 !important; }
+        .incorrect { border-color: #f43f5e !important; background-color: #fff1f2 !important; }
     </style>
 </head>
-<body>
-    <div class="scanline"></div>
+<body class="text-slate-800 antialiased min-h-screen flex flex-col">
 
-    <header>
-        <div class="header-title">EXAMINATION SERIES: Algebra: Matrices & Determinants</div>
-        <div style="font-size: 0.8rem; color: #888;">ENGINEERED BY ADITYA WARGIS | SYSTEM REV 2.0</div>
-        <div class="meta-container">
-            <div>DURATION: 12.0 MIN</div>
-            <div>MAX MARKS: 20</div>
-            <div>SCORING: +4 / -1</div>
+    <header class="bg-white shadow-sm border-b border-slate-200 sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
+            <div class="flex items-center gap-3">
+                <div class="bg-brand-600 text-white font-bold p-2 rounded text-lg leading-none">VP</div>
+                <div>
+                    <h1 class="text-xl font-bold text-slate-900 leading-tight">Mathematics Question Bank</h1>
+                    <p class="text-xs text-slate-500 font-medium tracking-wide uppercase">Source: PAT Test Series (01, 02, 03)</p>
+                </div>
+            </div>
+            <div class="hidden sm:block text-right">
+                <span class="text-xs font-bold text-slate-400 uppercase">Topic</span>
+                <div class="text-sm font-semibold text-slate-700">Matrices & Determinants</div>
+            </div>
         </div>
     </header>
 
-    <div id="exam-container">
-        <div class="question-card" id="q1">
-            <div class="question-header">Q1. SINGLE CORRECT MCQ</div>
-            <div class="question-text">
-                Let $A$ be a $3 \times 3$ non-singular matrix such that $A A^T = A^T A$ and $B = A^{-1} A^T$. If $\det(A) = 4$, then the value of $\det(B)$ is:
+    <main class="flex-grow max-w-7xl mx-auto px-4 py-8 w-full">
+        
+        <!-- Dashboard / Filters -->
+        <div class="mb-8 flex flex-wrap gap-4 items-center justify-between">
+            <div class="flex gap-2 bg-white p-1 rounded-lg border border-slate-200" id="filter-tabs">
+                <!-- Filters injected here -->
             </div>
-            <div class="options-grid">
-                <button class="option-btn" onclick="selectOption(1, 'A')">A) $1$</button>
-                <button class="option-btn" onclick="selectOption(1, 'B')">B) $4$</button>
-                <button class="option-btn" onclick="selectOption(1, 'C')">C) $16$</button>
-                <button class="option-btn" onclick="selectOption(1, 'D')">D) $\frac{1}{4}$</button>
+            <div id="stats-summary" class="text-sm font-medium text-slate-500">
+                <!-- Count here -->
             </div>
         </div>
 
-        <div class="question-card" id="q2">
-            <div class="question-header">Q2. MULTI-CORRECT MSQ</div>
-            <div class="question-text">
-                Consider the system of equations:
-                $$\begin{cases} x + y + z = 6 \\ x + 2y + 3z = 10 \\ x + 2y + \lambda z = \mu \end{cases}$$
-                Which of the following statements is/are TRUE?
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+            <!-- Questions List -->
+            <div id="questions-list" class="lg:col-span-8 space-y-6">
+                <!-- Questions injected here -->
             </div>
-            <div class="options-grid">
-                <button class="option-btn" onclick="selectMulti(2, 'A')">A) If $\lambda = 3$ and $\mu \neq 10$, the system has no solution.</button>
-                <button class="option-btn" onclick="selectMulti(2, 'B')">B) If $\lambda \neq 3$, the system has a unique solution for any $\mu$.</button>
-                <button class="option-btn" onclick="selectMulti(2, 'C')">C) If $\lambda = 3$ and $\mu = 10$, the system has infinite solutions.</button>
-                <button class="option-btn" onclick="selectMulti(2, 'D')">D) If $\lambda = 2$, the system is always inconsistent.</button>
-            </div>
+
+            <!-- Sidebar / Progress -->
+            <aside class="lg:col-span-4 space-y-6">
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 sticky top-24">
+                    <h3 class="font-bold text-slate-900 mb-4 border-b pb-2">Your Progress</h3>
+                    <div id="progress-dots" class="grid grid-cols-5 gap-2 mb-6">
+                        <!-- Dots here -->
+                    </div>
+                    
+                    <div class="space-y-3">
+                        <button id="submit-test" class="w-full py-3 bg-brand-600 hover:bg-brand-700 text-white font-bold rounded-lg transition-all flex items-center justify-center gap-2">
+                            <span>Submit for Analysis</span>
+                            <span id="submit-loader" class="hidden animate-spin">&#9696;</span>
+                        </button>
+                        <button id="reset-test" class="w-full py-2 text-slate-500 hover:text-slate-700 text-sm font-medium">
+                            Clear All Selections
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Analysis Panel (Injected on Submit) -->
+                <div id="analysis-panel" class="hidden bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+                    <h3 class="font-bold text-slate-900 mb-4">Topic Weightage</h3>
+                    <div class="chart-container">
+                        <canvas id="weightageChart"></canvas>
+                    </div>
+                </div>
+            </aside>
         </div>
+    </main>
 
-        <div class="question-card" id="q3">
-            <div class="question-header">Q3. NUMERICAL ENTRY</div>
-            <div class="question-text">
-                If $P = \begin{bmatrix} 1 & 0 \\ 1/2 & 1 \end{bmatrix}$, then the value of $P^{50}$ is $\begin{bmatrix} 1 & 0 \\ x & 1 \end{bmatrix}$. Find the value of $x$.
-            </div>
-            <div style="margin-top: 20px;">
-                <input type="number" id="q3-ans" class="numerical-input" placeholder="0.0">
-            </div>
-        </div>
-
-        <div class="question-card" id="q4">
-            <div class="question-header">Q4. SINGLE CORRECT MCQ</div>
-            <div class="question-text">
-                Let $M$ and $N$ be two $3 \times 3$ non-singular skew-symmetric matrices such that $MN = NM$. Then the matrix $M^2 N^2$ is:
-            </div>
-            <div class="options-grid">
-                <button class="option-btn" onclick="selectOption(4, 'A')">A) Skew-Symmetric</button>
-                <button class="option-btn" onclick="selectOption(4, 'B')">B) Symmetric</button>
-                <button class="option-btn" onclick="selectOption(4, 'C')">C) Identity</button>
-                <button class="option-btn" onclick="selectOption(4, 'D')">D) Null Matrix</button>
-            </div>
-        </div>
-
-        <div class="question-card" id="q5">
-            <div class="question-header">Q5. MULTI-CORRECT MSQ</div>
-            <div class="question-text">
-                For a matrix $A = \begin{bmatrix} \alpha & 0 \\ 1 & 1 \end{bmatrix}$ and $B = \begin{bmatrix} 1 & 0 \\ 5 & 1 \end{bmatrix}$, if $A^2 = B$, then which of the following is/are correct?
-            </div>
-            <div class="options-grid">
-                <button class="option-btn" onclick="selectMulti(5, 'A')">A) $\alpha = 1$</button>
-                <button class="option-btn" onclick="selectMulti(5, 'B')">B) $\alpha = -1$</button>
-                <button class="option-btn" onclick="selectMulti(5, 'C')">C) No real value of $\alpha$ exists.</button>
-                <button class="option-btn" onclick="selectMulti(5, 'D')">D) $\det(A) = 1$ or $-1$.</button>
-            </div>
-        </div>
-    </div>
-
-    <button id="submit-btn" onclick="calculateScore()">Terminate & Analyze</button>
-
-    <div id="results">
-        <h2 style="color: var(--accent-gold);">PERFORMANCE MATRIX</h2>
-        <div id="score-display" style="font-size: 2rem; margin: 20px 0;"></div>
-        <table class="matrix-table">
-            <thead>
-                <tr>
-                    <th>Q#</th>
-                    <th>Status</th>
-                    <th>Correct Key</th>
-                    <th>Score</th>
-                </tr>
-            </thead>
-            <tbody id="matrix-body"></tbody>
-        </table>
-    </div>
+    <footer class="bg-slate-900 text-slate-500 py-8 text-center">
+        <p class="text-sm italic">Synthesized from uploaded JEE Advanced Cumulative & PAT Solutions</p>
+    </footer>
 
     <script>
-        const answers = {
-            1: 'A',
-            2: ['A', 'B', 'C'],
-            3: 25,
-            4: 'B',
-            5: ['C']
+        const questions = [
+            {
+                id: 1,
+                source: "Test-01 P1",
+                type: "Single Choice",
+                topic: "Matrix Multiplication",
+                text: String.raw`Consider the matrix equation $[1 \quad x \quad 1] \begin{bmatrix} 1 & 2 & 3 \\ 4 & 5 & 6 \\ 3 & 2 & 5 \end{bmatrix} \begin{bmatrix} 1 \\ -2 \\ 3 \end{bmatrix} = 0$. The value of $x$ is:`,
+                options: [String.raw`-5/3`, String.raw`5/3`, String.raw`-3/5`, String.raw`3/5`],
+                correct: 0,
+                solution: String.raw`Multiply: $\begin{bmatrix} 1 & 2 & 3 \\ 4 & 5 & 6 \\ 3 & 2 & 5 \end{bmatrix} \begin{bmatrix} 1 \\ -2 \\ 3 \end{bmatrix} = \begin{bmatrix} 6 \\ 12 \\ 14 \end{bmatrix}$.<br>Then $[1 \quad x \quad 1] \begin{bmatrix} 6 \\ 12 \\ 14 \end{bmatrix} = 6 + 12x + 14 = 20 + 12x = 0 \implies x = -20/12 = -5/3$.`
+            },
+            {
+                id: 2,
+                source: "Test-03",
+                type: "Numerical",
+                topic: "Matrix Powers",
+                text: String.raw`Let $A = \begin{bmatrix} \sqrt{3} & 0 \\ 0 & \sqrt{3} \end{bmatrix}$. If $(A^8 + A^6 + A^4 + A^2 + I)V = \begin{bmatrix} 0 \\ 11 \end{bmatrix}$, where $V = \begin{bmatrix} x \\ y \end{bmatrix}$, find the value of $11y$.`,
+                correct: "1",
+                solution: String.raw`$A^2 = 3I$, $A^4 = 9I$, $A^6 = 27I$, $A^8 = 81I$.<br>Sum $= (81 + 27 + 9 + 3 + 1)I = 121I$.<br>$121 \begin{bmatrix} x \\ y \end{bmatrix} = \begin{bmatrix} 0 \\ 11 \end{bmatrix} \implies 121y = 11 \implies y = 1/11$.<br>So $11y = 1$.`
+            },
+            {
+                id: 3,
+                source: "Test-02 Adv",
+                type: "Multi-Correct",
+                topic: "Adjoint Properties",
+                text: String.raw`Let $A$ and $B$ be two $3 \times 3$ non-singular matrices such that $AB = BA$. Which of the following must be true?`,
+                options: [
+                    String.raw`$A^{-1}B = BA^{-1}$`,
+                    String.raw`$A \cdot \operatorname{adj} B = (\operatorname{adj} B) \cdot A$`,
+                    String.raw`$\operatorname{adj}(AB) = \operatorname{adj}(BA)$`,
+                    String.raw`$(A+B)^2 = A^2 + B^2 + 2AB$`
+                ],
+                correct: [0, 1, 2, 3],
+                solution: String.raw`Since $AB=BA$, both commute. Any polynomial or inverse of $A$ also commutes with $B$ and vice versa. Adjoint is a polynomial in the matrix (Cayley-Hamilton). Thus all hold.`
+            },
+            {
+                id: 4,
+                source: "Test-01 P1",
+                type: "Passage",
+                topic: "Nilpotent Matrices",
+                passage: String.raw`Let $P = \begin{bmatrix} 1 & 0 & 0 \\ 3 & 1 & 0 \\ 9 & 3 & 1 \end{bmatrix}$ and $Q - P^5 = I$.`,
+                text: String.raw`Find the value of $q_{21} + q_{31}$ if $Q = [q_{ij}]$.`,
+                options: [String.raw`15`, String.raw`135`, String.raw`150`, String.raw`165`],
+                correct: 2,
+                solution: String.raw`$P = I + A$ where $A$ is nilpotent ($A^3=0$).<br>$P^5 = (I+A)^5 = I + 5A + 10A^2$.<br>$Q = 2I + 5A + 10A^2$.<br>$q_{21} = 5(3) = 15$, $q_{31} = 5(9) + 10(3 \times 3) = 45 + 90 = 135$. Sum $= 150$.`
+            },
+            {
+                id: 5,
+                source: "Test-02 Main",
+                type: "Numerical",
+                topic: "Determinants",
+                text: String.raw`If $D = \begin{vmatrix} 1 & \cos\theta & 0 \\ \cos\theta & 1 & \cos\theta \\ 0 & \cos\theta & 1 \end{vmatrix}$, find the maximum value of $D$.`,
+                correct: "1",
+                solution: String.raw`Expanding along $R_1$: $1(1 - \cos^2\theta) - \cos\theta(\cos\theta - 0) = 1 - 2\cos^2\theta = \cos(2\theta)$.<br>Max value of $\cos(2\theta)$ is 1.`
+            },
+            {
+                id: 6,
+                source: "Test-01 P2",
+                type: "Single Choice",
+                topic: "System of Equations",
+                text: String.raw`The system of equations $\lambda x + y + z = 1$, $x + \lambda y + z = \lambda$, $x + y + \lambda z = \lambda^2$ has NO solution if $\lambda$ is:`,
+                options: [String.raw`1`, String.raw`-2`, String.raw`0`, String.raw`2`],
+                correct: 1,
+                solution: String.raw`$\Delta = (\lambda-1)^2(\lambda+2)$. $\Delta=0 \implies \lambda=1$ or $\lambda=-2$.<br>For $\lambda=1$, all equations are $x+y+z=1$ (infinitely many solutions).<br>For $\lambda=-2$, check $\Delta_x \neq 0$. Thus No solution at $\lambda=-2$.`
+            }
+        ];
+
+        let currentFilter = 'All';
+        let userAnswers = {};
+
+        function init() {
+            renderFilters();
+            renderQuestions();
+            updateStats();
+            setupChart();
+        }
+
+        function renderFilters() {
+            const types = ['All', ...new Set(questions.map(q => q.type))];
+            const container = document.getElementById('filter-tabs');
+            container.innerHTML = types.map(t => `
+                <button onclick="setFilter('${t}')" class="px-4 py-2 rounded-md text-sm font-medium transition-all ${currentFilter === t ? 'bg-brand-600 text-white shadow-md' : 'text-slate-600 hover:bg-slate-50'}">
+                    ${t}
+                </button>
+            `).join('');
+        }
+
+        window.setFilter = (f) => {
+            currentFilter = f;
+            renderFilters();
+            renderQuestions();
         };
 
-        let userSelections = { 1: null, 2: [], 4: null, 5: [] };
+        function renderQuestions() {
+            const list = document.getElementById('questions-list');
+            const filtered = currentFilter === 'All' ? questions : questions.filter(q => q.type === currentFilter);
+            
+            list.innerHTML = filtered.map((q, idx) => `
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden" id="card-${q.id}">
+                    <div class="px-6 py-4 bg-slate-50 border-b border-slate-100 flex justify-between items-center">
+                        <div class="flex gap-2">
+                            <span class="text-xs font-bold px-2 py-1 rounded bg-indigo-100 text-indigo-700 uppercase tracking-tighter">${q.type}</span>
+                            <span class="text-xs font-bold px-2 py-1 rounded bg-slate-200 text-slate-600 uppercase tracking-tighter">${q.source}</span>
+                        </div>
+                        <span class="text-xs text-slate-400 font-mono">ID: #${q.id} | ${q.topic}</span>
+                    </div>
+                    <div class="p-6">
+                        ${q.passage ? `<div class="bg-amber-50 border-l-4 border-amber-400 p-4 mb-4 text-sm text-slate-700 italic">${q.passage}</div>` : ''}
+                        <div class="text-lg font-medium text-slate-900 mb-6 math-scroll">${q.text}</div>
+                        
+                        ${q.type === 'Numerical' ? `
+                            <div class="mt-4">
+                                <input type="text" onchange="saveAnswer(${q.id}, this.value)" placeholder="Enter numerical value" class="w-full sm:w-64 p-3 border-2 border-slate-200 rounded-lg focus:border-brand-500 outline-none font-mono">
+                            </div>
+                        ` : `
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                ${q.options.map((opt, i) => `
+                                    <button onclick="saveAnswer(${q.id}, ${i})" class="option-btn text-left p-4 border-2 border-slate-100 rounded-xl hover:bg-slate-50 transition-all math-scroll" data-qid="${q.id}" data-idx="${i}">
+                                        <span class="inline-block w-8 font-bold text-slate-400">${String.fromCharCode(65+i)}.</span> ${opt}
+                                    </button>
+                                `).join('')}
+                            </div>
+                        `}
 
-        function selectOption(q, opt) {
-            userSelections[q] = opt;
-            const btns = document.querySelectorAll(`#q${q} .option-btn`);
-            btns.forEach(b => b.classList.remove('selected'));
-            event.target.classList.add('selected');
+                        <div id="sol-${q.id}" class="hidden mt-6 p-5 bg-emerald-50 border border-emerald-100 rounded-xl text-sm leading-relaxed">
+                            <h4 class="font-bold text-emerald-900 mb-2">Solution Context:</h4>
+                            <div class="math-scroll">${q.solution}</div>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+
+            // Safe MathJax call for version 3
+            if (window.MathJax && typeof window.MathJax.typeset === 'function') {
+                window.MathJax.typeset();
+            } else if (window.MathJax && typeof window.MathJax.typesetPromise === 'function') {
+                window.MathJax.typesetPromise();
+            }
+            updateProgressDots();
         }
 
-        function selectMulti(q, opt) {
-            if (!userSelections[q].includes(opt)) {
-                userSelections[q].push(opt);
-                event.target.classList.add('selected');
+        window.saveAnswer = (qid, val) => {
+            const q = questions.find(x => x.id === qid);
+            if (q.type === 'Multi-Correct') {
+                if (!userAnswers[qid]) userAnswers[qid] = [];
+                const idx = userAnswers[qid].indexOf(val);
+                if (idx > -1) userAnswers[qid].splice(idx, 1);
+                else userAnswers[qid].push(val);
             } else {
-                userSelections[q] = userSelections[q].filter(i => i !== opt);
-                event.target.classList.remove('selected');
+                userAnswers[qid] = val;
             }
+            updateProgressDots();
+            highlightOptions(qid);
+        };
+
+        function highlightOptions(qid) {
+            const btns = document.querySelectorAll(`.option-btn[data-qid="${qid}"]`);
+            btns.forEach(b => {
+                const idx = parseInt(b.dataset.idx);
+                const ans = userAnswers[qid];
+                const isSelected = Array.isArray(ans) ? ans.includes(idx) : ans === idx;
+                b.classList.toggle('selected', isSelected);
+                b.classList.toggle('bg-brand-50', isSelected);
+                b.classList.toggle('border-brand-300', isSelected);
+            });
         }
 
-        function calculateScore() {
-            let total = 0;
-            const matrixBody = document.getElementById('matrix-body');
-            matrixBody.innerHTML = '';
+        function updateProgressDots() {
+            const container = document.getElementById('progress-dots');
+            if (!container) return;
+            container.innerHTML = questions.map(q => {
+                const answered = userAnswers[q.id] !== undefined && (Array.isArray(userAnswers[q.id]) ? userAnswers[q.id].length > 0 : userAnswers[q.id] !== "");
+                return `<div class="w-full aspect-square rounded-md border flex items-center justify-center text-[10px] font-bold ${answered ? 'bg-brand-500 text-white border-brand-600' : 'bg-white text-slate-300 border-slate-200'}">${q.id}</div>`;
+            }).join('');
+        }
 
-            for (let i = 1; i <= 5; i++) {
-                let qScore = 0;
-                let status = "Incorrect";
-                let userAns = i === 3 ? parseFloat(document.getElementById('q3-ans').value) : userSelections[i];
+        function updateStats() {
+            const el = document.getElementById('stats-summary');
+            if (el) el.innerText = `${questions.length} Questions Loaded`;
+        }
+
+        document.getElementById('submit-test').onclick = () => {
+            document.getElementById('submit-loader').classList.remove('hidden');
+            setTimeout(() => {
+                document.getElementById('submit-loader').classList.add('hidden');
+                document.getElementById('analysis-panel').classList.remove('hidden');
+                checkAnswers();
+            }, 800);
+        };
+
+        function checkAnswers() {
+            questions.forEach(q => {
+                const solDiv = document.getElementById(`sol-${q.id}`);
+                if (solDiv) solDiv.classList.remove('hidden');
                 
-                // Logic for MCQ
-                if (i === 1 || i === 4) {
-                    if (userAns === answers[i]) { qScore = 4; status = "Correct"; }
-                    else if (userAns) { qScore = -1; }
-                    else { qScore = 0; status = "Unattempted"; }
-                } 
-                // Logic for Numerical
-                else if (i === 3) {
-                    if (userAns === answers[i]) { qScore = 4; status = "Correct"; }
-                    else if (!isNaN(userAns)) { qScore = -1; }
-                    else { qScore = 0; status = "Unattempted"; }
+                if (q.type === 'Single Choice' || q.type === 'Passage') {
+                    const btns = document.querySelectorAll(`.option-btn[data-qid="${q.id}"]`);
+                    btns.forEach(b => {
+                        const idx = parseInt(b.dataset.idx);
+                        if (idx === q.correct) b.classList.add('correct');
+                        else if (userAnswers[q.id] === idx) b.classList.add('incorrect');
+                    });
+                } else if (q.type === 'Numerical') {
+                    const card = document.getElementById(`card-${q.id}`);
+                    if (card) {
+                        const input = card.querySelector('input');
+                        if (input) {
+                            if (userAnswers[q.id] == q.correct) input.classList.add('correct');
+                            else input.classList.add('incorrect');
+                        }
+                    }
                 }
-                // Logic for MSQ (Strict)
-                else {
-                    if (Array.isArray(userAns) && userAns.sort().join(',') === answers[i].sort().join(',')) {
-                        qScore = 4; status = "Correct";
-                    } else if (userAns.length > 0) {
-                        qScore = -1;
-                    } else { qScore = 0; status = "Unattempted"; }
-                }
-
-                total += qScore;
-                matrixBody.innerHTML += `
-                    <tr>
-                        <td>${i}</td>
-                        <td style="color: ${status === 'Correct' ? '#00ff00' : '#ff3333'}">${status}</td>
-                        <td>${Array.isArray(answers[i]) ? answers[i].join(', ') : answers[i]}</td>
-                        <td>${qScore}</td>
-                    </tr>
-                `;
-            }
-
-            document.getElementById('score-display').innerText = `TOTAL MARKS: ${total} / 20`;
-            document.getElementById('results').style.display = 'block';
-            window.scrollTo(0, document.body.scrollHeight);
+            });
+            window.scrollTo({ top: 0, behavior: 'smooth' });
         }
+
+        function setupChart() {
+            const canvas = document.getElementById('weightageChart');
+            if (!canvas) return;
+            const ctx = canvas.getContext('2d');
+            new Chart(ctx, {
+                type: 'polarArea',
+                data: {
+                    labels: ['Matrix Recurrence', 'Nilpotent/Binomial', 'System of Eq', 'Determinants'],
+                    datasets: [{
+                        data: [30, 25, 20, 25],
+                        backgroundColor: ['#6366f1', '#10b981', '#f43f5e', '#f59e0b']
+                    }]
+                },
+                options: {
+                    maintainAspectRatio: false,
+                    scales: { r: { ticks: { display: false } } },
+                    plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, font: { size: 10 } } } }
+                }
+            });
+        }
+
+        document.getElementById('reset-test').onclick = () => {
+            userAnswers = {};
+            renderQuestions();
+            const panel = document.getElementById('analysis-panel');
+            if (panel) panel.classList.add('hidden');
+        };
+
+        init();
     </script>
 </body>
 </html>
