@@ -1,0 +1,650 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NEET 2025 Mock Test - Comprehensive Practice</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <style>
+        /* Custom Styles for Application and Chart Containers */
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f8fafc; /* Tailwind slate-50 */
+            color: #1e293b; /* Tailwind slate-800 */
+        }
+        
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(226, 232, 240, 0.8);
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.01);
+        }
+
+        /* Mandatory Chart Container Styling */
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+            height: 300px;
+            max-height: 400px;
+            padding: 1rem;
+            background: #ffffff;
+            border-radius: 0.75rem;
+            border: 1px solid #e2e8f0;
+        }
+
+        @media (min-width: 768px) {
+            .chart-container {
+                height: 350px;
+            }
+        }
+
+        /* Interactive Elements */
+        .option-btn {
+            transition: all 0.2s ease-in-out;
+        }
+        .option-btn:hover {
+            transform: translateX(4px);
+        }
+        .option-selected {
+            background-color: #dbeafe; /* blue-100 */
+            border-color: #3b82f6; /* blue-500 */
+            color: #1e40af; /* blue-800 */
+        }
+        
+        /* Hidden Class for SPA routing */
+        .hidden {
+            display: none !important;
+        }
+
+        /* Scrollbar styling */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9; 
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1; 
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8; 
+        }
+    </style>
+
+    <!-- Chosen Palette: Warm Neutrals with Medical Blue (#2563eb) accents and system status colors (Green/Red) -->
+    
+    <!-- Application Structure Plan: 
+    The SPA is designed as a linear progression application suitable for a mock test environment.
+    1. Landing Page (#intro-view): Introduces the test based on the source report (PDF) topics, explaining the scope and setting expectations.
+    2. Quiz Interface (#quiz-view): A distraction-free environment presenting one question at a time. This reduces cognitive overload. It includes functional navigation (Next/Prev), a progress bar, and a question grid for jumping to specific questions.
+    3. Results Dashboard (#results-view): Displays after submission. Uses a Radar Chart (Chart.js) to visualize performance across the 4 core topics identified in the PDF (Practical Organic Chemistry, Salt Analysis, d & f Block, Work Power Energy). It provides a detailed review section allowing the user to explore correct answers and explanations for active learning.
+    This structure ensures ease of navigation and a logical flow from learning/testing to analysis. -->
+
+    <!-- Visualization & Content Choices: 
+    - Landing Page Stats: Goal -> Inform about test structure. Viz -> Text/Numbers.
+    - Quiz Navigation Grid: Goal -> Organize/Navigate. Viz -> HTML Grid of clickable numbers. Interaction -> Jump to question. Justification -> Allows non-linear testing if desired by the user.
+    - Results Radar Chart: Goal -> Compare topic performance. Viz -> Chart.js Radar Chart. Interaction -> Hover for exact scores. Justification -> Best way to show multidimensional skill proficiency at a glance. Confirming NO SVG/Mermaid.
+    - Detailed Review List: Goal -> Inform/Correct. Viz -> HTML list with conditional coloring (Green/Red). Interaction -> Scroll/Read. Justification -> Essential for post-test analysis and learning from mistakes. -->
+
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+</head>
+<body class="antialiased min-h-screen flex flex-col items-center py-8 px-4 sm:px-6 lg:px-8">
+
+    <div class="w-full max-w-4xl glass-panel rounded-2xl overflow-hidden flex flex-col min-h-[85vh]">
+        
+        <!-- Header -->
+        <header class="bg-blue-600 text-white p-6 flex justify-between items-center shrink-0">
+            <div>
+                <h1 class="text-2xl font-bold tracking-tight">⚕️ NEET 2025 Mock Simulator</h1>
+                <p class="text-blue-100 text-sm mt-1">Based on Vidyapeeth Practical & Core Syllabus</p>
+            </div>
+            <div id="header-stats" class="text-right hidden">
+                <div class="text-sm font-medium">Progress</div>
+                <div class="text-xl font-bold"><span id="progress-text">0</span> / 100</div>
+            </div>
+        </header>
+
+        <!-- Main Content Area -->
+        <main class="flex-grow p-6 sm:p-8 relative overflow-y-auto">
+
+            <!-- SECTION: Landing / Intro View -->
+            <section id="intro-view" class="h-full flex flex-col justify-center">
+                <div class="prose max-w-none text-center mb-8">
+                    <h2 class="text-3xl font-extrabold text-slate-800 mb-4">Are you ready for NEET 2025?</h2>
+                    <p class="text-slate-600 text-lg max-w-2xl mx-auto">
+                        This interactive assessment module evaluates your knowledge across key concepts extracted from your study material. 
+                        It covers Practical Organic Chemistry, Salt Analysis, d & f Block Elements, and Physics (Work, Power & Energy).
+                        Analyze your strengths and weaknesses through our dynamic results dashboard.
+                    </p>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-10 max-w-3xl mx-auto w-full">
+                    <div class="bg-blue-50 p-5 rounded-xl border border-blue-100">
+                        <div class="text-2xl mb-2">🧪</div>
+                        <h3 class="font-bold text-blue-900">Chemistry (75 Qs)</h3>
+                        <ul class="text-sm text-blue-800 mt-2 space-y-1 list-disc list-inside">
+                            <li>Preparation of p-Nitroacetanilide</li>
+                            <li>Electrophilic Aromatic Substitution</li>
+                            <li>Sulphate Ion ($SO_{4}^{2-}$) Analysis</li>
+                            <li>d & f Block Elements Properties</li>
+                        </ul>
+                    </div>
+                    <div class="bg-emerald-50 p-5 rounded-xl border border-emerald-100">
+                        <div class="text-2xl mb-2">⚛️</div>
+                        <h3 class="font-bold text-emerald-900">Physics (25 Qs)</h3>
+                        <ul class="text-sm text-emerald-800 mt-2 space-y-1 list-disc list-inside">
+                            <li>Work done by constant force</li>
+                            <li>Dot product & Vector components</li>
+                            <li>Work-Energy Theorem</li>
+                            <li>Conservative vs Non-conservative</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="text-center">
+                    <button id="start-btn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-10 rounded-full shadow-lg hover:shadow-xl transition-all transform hover:-translate-y-1 text-lg">
+                        Start Mock Test 🚀
+                    </button>
+                    <p class="text-xs text-slate-400 mt-4">100 Questions • No Negative Marking in this practice mode</p>
+                </div>
+            </section>
+
+            <!-- SECTION: Quiz Interface -->
+            <section id="quiz-view" class="hidden h-full flex flex-col">
+                <p class="text-slate-500 mb-4 text-sm leading-relaxed border-b pb-4">
+                    <strong>Testing Mode:</strong> Carefully read each question. You can navigate freely between questions using the 'Previous' and 'Next' buttons, or the question grid below. Once all questions are answered, click 'Submit Test' to view your detailed performance analysis.
+                </p>
+
+                <!-- Question Header & Topic -->
+                <div class="flex justify-between items-center mb-6">
+                    <span id="q-topic" class="text-xs font-bold uppercase tracking-wider text-blue-600 bg-blue-100 py-1 px-3 rounded-full">Topic</span>
+                    <span class="text-sm font-semibold text-slate-500">Question <span id="q-num-display">1</span> of 100</span>
+                </div>
+
+                <!-- Question Text -->
+                <h2 id="q-text" class="text-xl sm:text-2xl font-medium text-slate-800 mb-8 leading-snug">
+                    Question text goes here?
+                </h2>
+
+                <!-- Options -->
+                <div id="options-container" class="space-y-3 flex-grow">
+                    <!-- Options injected via JS -->
+                </div>
+
+                <!-- Navigation Controls -->
+                <div class="mt-8 pt-6 border-t border-slate-200 flex justify-between items-center">
+                    <button id="prev-btn" class="px-6 py-2 rounded-lg border border-slate-300 text-slate-600 font-medium hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
+                        ⬅️ Previous
+                    </button>
+                    
+                    <button id="submit-btn" class="hidden bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-8 rounded-lg shadow transition-colors">
+                        Submit Test ✅
+                    </button>
+
+                    <button id="next-btn" class="px-6 py-2 rounded-lg bg-blue-600 text-white font-medium hover:bg-blue-700 transition-colors">
+                        Next ➡️
+                    </button>
+                </div>
+
+                <!-- Question Navigator Grid -->
+                <div class="mt-8 border border-slate-200 rounded-xl p-4 bg-slate-50">
+                    <h4 class="text-xs font-bold text-slate-500 mb-3 uppercase text-center">Question Navigator</h4>
+                    <div id="q-navigator" class="grid grid-cols-10 sm:grid-cols-20 gap-1 md:gap-2">
+                        <!-- Grid items injected via JS -->
+                    </div>
+                </div>
+            </section>
+
+            <!-- SECTION: Results Dashboard -->
+            <section id="results-view" class="hidden">
+                <div class="text-center mb-8">
+                    <h2 class="text-3xl font-extrabold text-slate-800 mb-2">Test Complete! 🏁</h2>
+                    <p class="text-slate-600">Here is your comprehensive performance analysis.</p>
+                </div>
+
+                <!-- Score Banner -->
+                <div class="bg-gradient-to-r from-blue-600 to-indigo-700 rounded-2xl p-6 text-white text-center shadow-lg mb-8">
+                    <div class="text-6xl font-black mb-2"><span id="final-score">0</span><span class="text-3xl text-blue-200">/100</span></div>
+                    <div class="text-lg font-medium text-blue-100" id="performance-msg">Good Effort!</div>
+                </div>
+
+                <!-- Analysis Chart Container -->
+                <p class="text-sm text-slate-600 mb-2 text-center">
+                    The radar chart below visualizes your accuracy across the four core modules tested. Use this to identify areas requiring revision.
+                </p>
+                <div class="chart-container mb-12">
+                    <canvas id="performanceChart"></canvas>
+                </div>
+
+                <!-- Detailed Review -->
+                <div class="border-t border-slate-200 pt-8">
+                    <h3 class="text-2xl font-bold text-slate-800 mb-6">Detailed Solution Review</h3>
+                    <p class="text-slate-600 text-sm mb-6">Review your answers below. Explanations highlight the core concepts extracted from the syllabus notes.</p>
+                    <div id="review-container" class="space-y-6">
+                        <!-- Review items injected via JS -->
+                    </div>
+                </div>
+                
+                <div class="mt-10 text-center">
+                     <button onclick="location.reload()" class="bg-slate-800 hover:bg-slate-900 text-white font-bold py-3 px-8 rounded-lg transition-colors">
+                        Restart Mock Test 🔄
+                    </button>
+                </div>
+            </section>
+
+        </main>
+    </div>
+
+    <!-- Application Logic -->
+    <script>
+        // ---------------------------------------------------------
+        // DATA: 100 NEET-Level Questions derived from PDF constraints
+        // Topics: POC (Nitration), Salt Analysis (Sulphate), d&f block, WPE
+        // Formatting: Using HTML <sub> and <sup> for chemical formulas
+        // ---------------------------------------------------------
+        const questionData = [
+            // --- TOPIC: Practical Organic Chemistry (Preparation of p-Nitroacetanilide) ---
+            { q: "In the preparation of p-nitroacetanilide from acetanilide, what acts as the electrophile?", o: ["NO<sub>2</sub><sup>-</sup>", "NO<sup>+</sup>", "NO<sub>2</sub><sup>+</sup>", "HNO<sub>3</sub>"], a: 2, t: "Practical Organic Chemistry", e: "The nitrating mixture (conc. HNO3 + conc. H2SO4) releases the nitronium ion (NO2+) which acts as the electrophile." },
+            { q: "Which mixture is used as the nitrating reagent in the preparation of p-nitroacetanilide?", o: ["Dil. HNO<sub>3</sub> + Conc. H<sub>2</sub>SO<sub>4</sub>", "Conc. HNO<sub>3</sub> + Conc. HCl", "Conc. HNO<sub>3</sub> + Conc. H<sub>2</sub>SO<sub>4</sub>", "Fuming HNO<sub>3</sub> only"], a: 2, t: "Practical Organic Chemistry", e: "A mixture of conc. nitric acid and conc. sulphuric acid is used as the nitrating reagent." },
+            { q: "In the nitrating mixture, what is the role of concentrated H<sub>2</sub>SO<sub>4</sub>?", o: ["It acts as a base", "It acts as a reducing agent", "It acts as a solvent", "It acts as a strong acid to protonate HNO<sub>3</sub>"], a: 3, t: "Practical Organic Chemistry", e: "H2SO4 is a stronger acid than HNO3. It protonates HNO3 to form H2NO3+ which then loses water to generate the NO2+ electrophile." },
+            { q: "Why is direct nitration of aniline generally avoided for preparing p-nitroaniline?", o: ["Aniline is unreactive", "Nitric acid oxidizes aniline to tarry products", "Only ortho product is formed", "Reaction is endothermic"], a: 1, t: "Practical Organic Chemistry", e: "Direct nitration of aniline is highly exothermic and nitric acid being a strong oxidizing agent oxidizes aniline to dark tarry mass. Also, protonation yields anilinium ion which is meta directing." },
+            { q: "In acetanilide, the -NHCOCH<sub>3</sub> group is:", o: ["Strongly activating and o/p directing", "Moderately activating and o/p directing", "Deactivating and meta directing", "Deactivating and o/p directing"], a: 1, t: "Practical Organic Chemistry", e: "The lone pair on nitrogen is in resonance with the carbonyl group, making it moderately activating and ortho/para directing compared to the strongly activating -NH2 group." },
+            { q: "What is the major product obtained upon nitration of acetanilide?", o: ["o-Nitroacetanilide", "m-Nitroacetanilide", "p-Nitroacetanilide", "2,4-Dinitroacetanilide"], a: 2, t: "Practical Organic Chemistry", e: "Due to steric hindrance at the ortho position by the bulky -NHCOCH3 group, the para product (p-nitroacetanilide) is formed as the major product." },
+            { q: "The reaction of acetanilide with nitrating mixture is an example of:", o: ["Nucleophilic substitution", "Electrophilic addition", "Electrophilic aromatic substitution", "Free radical substitution"], a: 2, t: "Practical Organic Chemistry", e: "The NO2+ ion attacks the electron-rich benzene ring, which is characteristic of an electrophilic aromatic substitution reaction." },
+            { q: "During the preparation of p-nitroacetanilide, why is glacial acetic acid used?", o: ["As a catalyst", "As a solvent", "To neutralize the mixture", "To precipitate the product"], a: 1, t: "Practical Organic Chemistry", e: "Glacial acetic acid is often used as a solvent in the reaction mixture to dissolve acetanilide." },
+            { q: "After nitration of acetanilide, how is p-nitroacetanilide typically isolated?", o: ["By distillation", "By pouring the mixture into crushed ice/cold water", "By extraction with ether", "By sublimation"], a: 1, t: "Practical Organic Chemistry", e: "The reaction mixture is poured into crushed ice, which causes the p-nitroacetanilide to precipitate out as a solid." },
+            { q: "Which intermediate is formed when conc. HNO<sub>3</sub> reacts with conc. H<sub>2</sub>SO<sub>4</sub>?", o: ["H<sub>3</sub>O<sup>+</sup>", "HSO<sub>4</sub><sup>-</sup>", "NO<sub>2</sub><sup>+</sup>", "All of the above"], a: 3, t: "Practical Organic Chemistry", e: "Reaction: HNO3 + 2H2SO4 -> NO2+ + H3O+ + 2HSO4-. All three are formed." },
+            { q: "If you want to prepare p-nitroaniline from p-nitroacetanilide, what is the next step?", o: ["Oxidation", "Reduction", "Hydrolysis", "Halogenation"], a: 2, t: "Practical Organic Chemistry", e: "Hydrolysis (acidic or basic) of p-nitroacetanilide removes the acetyl group to yield p-nitroaniline." },
+            { q: "What is the colour of pure p-nitroacetanilide crystals?", o: ["White", "Pale Yellow", "Red", "Blue"], a: 1, t: "Practical Organic Chemistry", e: "Pure p-nitroacetanilide forms pale yellow or colourless/pale yellow crystals." },
+            { q: "Steric hindrance in acetanilide primarily affects which position during electrophilic attack?", o: ["Ortho", "Meta", "Para", "Ipso"], a: 0, t: "Practical Organic Chemistry", e: "The bulky acetamido group hinders attack at the adjacent ortho positions." },
+            { q: "Which of the following acts as a Lewis acid in the nitration of benzene (comparative context)?", o: ["HNO<sub>3</sub>", "H<sub>2</sub>SO<sub>4</sub>", "NO<sub>2</sub><sup>+</sup>", "Benzene"], a: 2, t: "Practical Organic Chemistry", e: "The NO2+ electrophile is an electron pair acceptor, thus a Lewis acid." },
+            { q: "The protection of aniline by acetylation to form acetanilide:", o: ["Increases reactivity towards electrophiles", "Decreases basicity of nitrogen", "Increases steric hindrance at para position", "Changes it to a meta directing group"], a: 1, t: "Practical Organic Chemistry", e: "Acetylation decreases the basicity and the activating power of the nitrogen atom due to resonance with the carbonyl group." },
+            { q: "What defines an electrophile?", o: ["Electron rich species", "Nucleus loving species", "Electron deficient species", "Neutral molecule only"], a: 2, t: "Practical Organic Chemistry", e: "Electrophiles are electron-deficient species that seek electrons (electron-loving)." },
+            { q: "What is the hybridization of the nitrogen atom in the nitronium ion (NO<sub>2</sub><sup>+</sup>)?", o: ["sp<sup>3</sup>", "sp<sup>2</sup>", "sp", "dsp<sup>2</sup>"], a: 2, t: "Practical Organic Chemistry", e: "NO2+ has a linear structure with a bond angle of 180°, indicating sp hybridization." },
+            { q: "During nitration, temperature control is crucial. If the temperature is too high, what might occur?", o: ["No reaction", "Formation of dinitro products", "Evaporation of H2SO4", "Solidification of mixture"], a: 1, t: "Practical Organic Chemistry", e: "Higher temperatures can lead to over-nitration, forming dinitroacetanilide." },
+            { q: "Which of the following statements about acetanilide is correct?", o: ["It is a liquid at room temperature", "It is an amide", "It is an ester", "It is highly soluble in cold water"], a: 1, t: "Practical Organic Chemistry", e: "Acetanilide (N-phenylacetamide) is a solid amide." },
+            { q: "In the electrophilic substitution of acetanilide, the intermediate formed is a:", o: ["Carbanion", "Free radical", "Sigma complex (Arenium ion)", "Benzyne"], a: 2, t: "Practical Organic Chemistry", e: "Electrophilic aromatic substitution proceeds via a resonance-stabilized carbocation intermediate known as an arenium ion or sigma complex." },
+            { q: "Which isomer is formed as a minor product during the nitration of acetanilide?", o: ["m-Nitroacetanilide", "o-Nitroacetanilide", "p-Nitroacetanilide", "p-Nitroaniline"], a: 1, t: "Practical Organic Chemistry", e: "o-nitroacetanilide is the minor product due to steric hindrance." },
+            { q: "The acetyl group (-COCH<sub>3</sub>) is an example of:", o: ["Protecting group", "Activating group", "Leaving group", "Catalyst"], a: 0, t: "Practical Organic Chemistry", e: "It protects the highly reactive amino group of aniline during nitration." },
+            { q: "Identify the correct reagent to convert p-nitroacetanilide to p-nitroaniline.", o: ["Sn/HCl", "NaOH/H<sub>2</sub>O, heat", "LiAlH<sub>4</sub>", "H<sub>2</sub>/Pd"], a: 1, t: "Practical Organic Chemistry", e: "Basic (or acidic) hydrolysis cleaves the amide bond to regenerate the amine." },
+            { q: "The rate of nitration is fastest for:", o: ["Benzene", "Nitrobenzene", "Acetanilide", "Aniline (without side reactions)"], a: 3, t: "Practical Organic Chemistry", e: "Aniline is most activated. However, practically, acetanilide is faster than benzene, but aniline (if it didn't form anilinium) is fastest." },
+            { q: "Which position is least susceptible to electrophilic attack in acetanilide?", o: ["Ortho", "Meta", "Para", "Ipso"], a: 1, t: "Practical Organic Chemistry", e: "The -NHCOCH3 group is o/p directing, making the meta position least susceptible to attack." },
+
+            // --- TOPIC: Salt Analysis (Sulphate Ion) ---
+            { q: "Which reagent is used for the confirmatory test of Sulphate (SO<sub>4</sub><sup>2-</sup>) ions?", o: ["Silver nitrate", "Barium chloride", "Ammonium chloride", "Potassium iodide"], a: 1, t: "Salt Analysis", e: "Barium chloride (BaCl2) is added to the acidified aqueous solution to test for sulphate ions." },
+            { q: "What is the colour of the precipitate formed when Barium chloride reacts with a sulphate salt?", o: ["Yellow", "Black", "White", "Red"], a: 2, t: "Salt Analysis", e: "A white precipitate of Barium sulphate (BaSO4) is formed." },
+            { q: "The white precipitate of Barium sulphate is:", o: ["Soluble in dil. HCl", "Soluble in conc. HNO<sub>3</sub>", "Insoluble in conc. HCl and conc. HNO<sub>3</sub>", "Soluble in hot water"], a: 2, t: "Salt Analysis", e: "According to the notes, BaSO4 is insoluble in conc. HCl or conc. HNO3." },
+            { q: "Which acid is used to acidify the sodium carbonate extract before adding Barium chloride in the sulphate test?", o: ["Sulphuric acid", "Acetic acid or dil. HCl", "Nitric acid", "Phosphoric acid"], a: 1, t: "Salt Analysis", e: "The extract is acidified with acetic acid (or dil HCl) to prevent the precipitation of Barium carbonate." },
+            { q: "In the Lead acetate test for sulphate ions, what is the precipitate formed?", o: ["PbCl<sub>2</sub>", "PbS", "PbSO<sub>4</sub>", "PbCO<sub>3</sub>"], a: 2, t: "Salt Analysis", e: "Sulphate ions give a white precipitate of Lead sulphate (PbSO4) when treated with lead acetate." },
+            { q: "The formula of the white precipitate formed in the lead acetate test is:", o: ["PbSO<sub>3</sub>", "PbSO<sub>4</sub>", "Pb(OH)<sub>2</sub>", "Pb(CH<sub>3</sub>COO)<sub>2</sub>"], a: 1, t: "Salt Analysis", e: "The reaction is: Na2SO4 + (CH3COO)2Pb -> PbSO4 (white ppt) + 2CH3COONa." },
+            { q: "Why is the sodium carbonate extract neutralised with acetic acid before adding lead acetate?", o: ["To precipitate carbonates", "To prevent precipitation of lead carbonate", "To oxidize sulphate", "To dissolve sulphate"], a: 1, t: "Salt Analysis", e: "If not neutralised, the basic carbonate extract would react with lead acetate to form a white precipitate of lead carbonate, interfering with the test." },
+            { q: "Which of the following anions also gives a white precipitate with BaCl<sub>2</sub> which is *soluble* in dil. HCl?", o: ["SO<sub>4</sub><sup>2-</sup>", "SO<sub>3</sub><sup>2-</sup>", "Cl<sup>-</sup>", "NO<sub>3</sub><sup>-</sup>"], a: 1, t: "Salt Analysis", e: "Sulphite (SO3 2-) gives BaSO3 which dissolves in dil HCl, whereas BaSO4 is insoluble." },
+            { q: "Sulphate ion belongs to which analytical group of anions?", o: ["Dilute acid group", "Concentrated acid group", "Independent/Special group", "Volatile group"], a: 2, t: "Salt Analysis", e: "Sulphate and phosphate do not give tests with dil. or conc. acids directly and belong to a special group requiring specific precipitation tests." },
+            { q: "The balanced equation for the Barium chloride test is: Na<sub>2</sub>SO<sub>4</sub> + BaCl<sub>2</sub> &rarr; X + 2NaCl. What is X?", o: ["BaSO<sub>3</sub>", "BaS", "BaSO<sub>4</sub>", "BaO"], a: 2, t: "Salt Analysis", e: "X is BaSO4, the white precipitate." },
+            { q: "What is the physical state of PbSO<sub>4</sub> formed in the test?", o: ["Colourless solution", "Yellow precipitate", "White precipitate", "Brown gas"], a: 2, t: "Salt Analysis", e: "Lead sulphate forms a white precipitate." },
+            { q: "Which of the following statements is true for BaSO<sub>4</sub>?", o: ["It is a basic salt", "It has a very high solubility product (Ksp)", "It has a very low solubility product (Ksp)", "It is soluble in excess BaCl2"], a: 2, t: "Salt Analysis", e: "BaSO4 is highly insoluble in water and acids, indicating a very low Ksp." },
+            { q: "During salt analysis, why is a sodium carbonate extract prepared?", o: ["To remove interfering basic radicals", "To colour the solution", "To make the solution acidic", "To precipitate anions"], a: 0, t: "Salt Analysis", e: "Boiling with Na2CO3 precipitates heavy metal cations as carbonates, leaving the anions in solution as soluble sodium salts." },
+            { q: "In the preparation of sodium carbonate extract, the salt is boiled with Na<sub>2</sub>CO<sub>3</sub> and:", o: ["Alcohol", "Distilled water", "Dil. HCl", "Conc. HNO<sub>3</sub>"], a: 1, t: "Salt Analysis", e: "The solid salt is boiled with Na2CO3 and distilled water." },
+            { q: "Which test can distinguish between SO<sub>4</sub><sup>2-</sup> and SO<sub>3</sub><sup>2-</sup>?", o: ["Barium chloride test followed by addition of dil. HCl", "Lead acetate test", "Silver nitrate test", "Flame test"], a: 0, t: "Salt Analysis", e: "BaSO3 dissolves in dil HCl with evolution of SO2, while BaSO4 remains insoluble." },
+            { q: "What happens if dil. H<sub>2</sub>SO<sub>4</sub> is added to a solution containing Pb<sup>2+</sup> ions?", o: ["No reaction", "White ppt of PbSO<sub>4</sub> forms", "Yellow ppt forms", "Solution turns blue"], a: 1, t: "Salt Analysis", e: "Pb2+ reacts with SO4 2- from the acid to form a white precipitate of PbSO4." },
+            { q: "Which cation gives a positive test with sulphate ions?", o: ["Na<sup>+</sup>", "K<sup>+</sup>", "Ba<sup>2+</sup>", "NH<sub>4</sub><sup>+</sup>"], a: 2, t: "Salt Analysis", e: "Ba2+ reacts to form insoluble BaSO4." },
+            { q: "Lead acetate paper is used in the test for which other anion (turning black)?", o: ["Sulphide (S<sup>2-</sup>)", "Sulphite (SO<sub>3</sub><sup>2-</sup>)", "Sulphate (SO<sub>4</sub><sup>2-</sup>)", "Nitrite (NO<sub>2</sub><sup>-</sup>)"], a: 0, t: "Salt Analysis", e: "Lead acetate paper turns black due to the formation of PbS in the presence of H2S gas from sulphide ions." },
+            { q: "Is BaSO<sub>4</sub> soluble in concentrated H<sub>2</sub>SO<sub>4</sub>?", o: ["Yes, forms Ba(HSO<sub>4</sub>)<sub>2</sub>", "No, it is completely insoluble", "Yes, forms BaS", "Yes, forms BaO"], a: 0, t: "Salt Analysis", e: "While generally insoluble in acids, BaSO4 does dissolve in hot concentrated H2SO4 forming soluble barium bisulphate, but is insoluble in HCl/HNO3." },
+            { q: "If the test for sulphate is performed without acidifying with acetic acid, what error might occur?", o: ["No precipitate forms", "BaCO<sub>3</sub> might precipitate if CO<sub>3</sub><sup>2-</sup> is present", "BaCl<sub>2</sub> evaporates", "Sulphate gets oxidized"], a: 1, t: "Salt Analysis", e: "Acidification removes carbonate ions (as CO2) which would otherwise form a white ppt of BaCO3, giving a false positive." },
+            { q: "The oxidation state of sulphur in the sulphate ion is:", o: ["+4", "+6", "-2", "0"], a: 1, t: "Salt Analysis", e: "In SO4 2-, Let x be O.S of S. x + 4(-2) = -2 => x = +6." },
+            { q: "Which of the following sulphates is most soluble in water?", o: ["BaSO<sub>4</sub>", "SrSO<sub>4</sub>", "CaSO<sub>4</sub>", "MgSO<sub>4</sub>"], a: 3, t: "Salt Analysis", e: "Hydration energy decreases faster than lattice energy down group 2, so solubility of sulphates decreases down the group. MgSO4 is highly soluble." },
+            { q: "In qualitative analysis, how is acetic acid added?", o: ["Dropwise until effervescence stops", "In large excess", "Only one drop", "Heated with vapors"], a: 0, t: "Salt Analysis", e: "It is added dropwise to the carbonate extract until all carbonate is destroyed (effervescence stops) to neutralize it." },
+            { q: "What is the geometry of the sulphate ion?", o: ["Square planar", "Tetrahedral", "Octahedral", "Trigonal planar"], a: 1, t: "Salt Analysis", e: "SO4 2- has sp3 hybridization and a tetrahedral shape." },
+            { q: "Lead sulphate is soluble in:", o: ["Dil. HCl", "Dil. HNO<sub>3</sub>", "Ammonium acetate solution", "Pure water"], a: 2, t: "Salt Analysis", e: "PbSO4 is soluble in concentrated ammonium acetate forming a complex." },
+
+            // --- TOPIC: d & f Block Elements ---
+            { q: "Which of the following is a characteristic property of transition elements?", o: ["Fixed oxidation state", "Diamagnetism primarily", "Formation of coloured ions", "Low melting points"], a: 2, t: "d & f Block Elements", e: "Transition metals typically form coloured ions due to d-d transitions." },
+            { q: "Why do transition elements show variable oxidation states?", o: ["Because of large energy difference between ns and (n-1)d orbitals", "Because of small energy difference between ns and (n-1)d orbitals", "Because they have stable noble gas configuration", "Because they are all radioactive"], a: 1, t: "d & f Block Elements", e: "The small energy gap allows electrons from both ns and (n-1)d subshells to participate in bonding." },
+            { q: "Which transition metal has the highest melting point?", o: ["Iron", "Titanium", "Tungsten", "Zinc"], a: 2, t: "d & f Block Elements", e: "Tungsten (W) has the highest melting point among transition metals due to strong intermetallic bonding." },
+            { q: "Lanthanoid contraction is due to the imperfect shielding of which electrons?", o: ["3d", "4d", "4f", "5f"], a: 2, t: "d & f Block Elements", e: "The 4f electrons have poor shielding effect, leading to a steady increase in effective nuclear charge and a decrease in size." },
+            { q: "Which of the following ions is colourless in aqueous solution?", o: ["Cu<sup>2+</sup>", "Ti<sup>3+</sup>", "Sc<sup>3+</sup>", "V<sup>3+</sup>"], a: 2, t: "d & f Block Elements", e: "Sc3+ has a 3d0 electronic configuration. Without unpaired d electrons, d-d transitions are impossible, making it colourless." },
+            { q: "The highest oxidation state shown by any transition metal is:", o: ["+6", "+7", "+8", "+9"], a: 2, t: "d & f Block Elements", e: "Ruthenium (Ru) and Osmium (Os) show the highest oxidation state of +8 (e.g., in OsO4)." },
+            { q: "Which element is not considered a typical transition metal despite being in the d-block?", o: ["Copper", "Zinc", "Iron", "Manganese"], a: 1, t: "d & f Block Elements", e: "Zinc has a completely filled d-orbital (3d10) in its ground state and stable +2 oxidation state, so it doesn't show typical transition metal properties." },
+            { q: "The magnetic moment of an ion is calculated using the 'spin-only' formula. What is it?", o: ["&mu; = &radic;[n(n+1)] BM", "&mu; = &radic;[n(n+2)] BM", "&mu; = n(n+2) BM", "&mu; = &radic;[2n(n+1)] BM"], a: 1, t: "d & f Block Elements", e: "The spin-only magnetic moment is given by μ = √(n(n+2)) Bohr Magnetons, where n is the number of unpaired electrons." },
+            { q: "Which oxidation state of Manganese is most stable in acidic medium?", o: ["+2", "+3", "+4", "+6"], a: 0, t: "d & f Block Elements", e: "Mn2+ has a stable half-filled 3d5 configuration." },
+            { q: "What is the general electronic configuration of the d-block elements?", o: ["(n-1)d<sup>1-10</sup> ns<sup>0-2</sup>", "(n-1)d<sup>1-10</sup> ns<sup>2</sup>", "(n-2)f<sup>1-14</sup> (n-1)d<sup>0-1</sup> ns<sup>2</sup>", "ns<sup>2</sup> np<sup>1-6</sup>"], a: 0, t: "d & f Block Elements", e: "The general configuration is (n-1)d^1-10 ns^0-2." },
+            { q: "Actinoids exhibit more number of oxidation states in general than the lanthanoids. This is because:", o: ["The 5f orbitals extend farther from the nucleus than the 4f orbitals", "The energy difference between 5f, 6d and 7s orbitals is less than that between 4f, 5d and 6s orbitals", "Actinoids are more reactive", "Actinoids are radioactive"], a: 1, t: "d & f Block Elements", e: "The comparable energies of 5f, 6d, and 7s subshells allow more electrons to participate in bonding." },
+            { q: "Which compound of transition metals is widely used as a catalyst in the contact process?", o: ["Fe<sub>2</sub>O<sub>3</sub>", "V<sub>2</sub>O<sub>5</sub>", "MnO<sub>2</sub>", "TiCl<sub>4</sub>"], a: 1, t: "d & f Block Elements", e: "Vanadium pentoxide (V2O5) is the catalyst in the Contact Process for H2SO4 manufacture." },
+            { q: "Potassium dichromate (K<sub>2</sub>Cr<sub>2</sub>O<sub>7</sub>) acts as a strong:", o: ["Reducing agent", "Oxidizing agent", "Dehydrating agent", "Bleaching agent"], a: 1, t: "d & f Block Elements", e: "In acidic medium, Cr(VI) is reduced to Cr(III), making it a strong oxidizing agent." },
+            { q: "The colour of KMnO<sub>4</sub> is due to:", o: ["d-d transition", "Charge transfer spectra", "Polarization", "Interference of light"], a: 1, t: "d & f Block Elements", e: "Mn in KMnO4 is in +7 state (d0). The intense purple colour is due to ligand-to-metal charge transfer (LMCT) from O to Mn." },
+            { q: "What is the consequence of the lanthanoid contraction?", o: ["Zr and Hf have almost identical atomic radii", "Separation of lanthanoids is very easy", "Decrease in ionization enthalpy down the group", "Increase in basic character of hydroxides from La to Lu"], a: 0, t: "d & f Block Elements", e: "Due to lanthanoid contraction, the elements of the 4d and 5d series (e.g., Zr and Hf) have nearly identical radii and similar chemical properties." },
+            { q: "Which of the following actinoids is not radioactive?", o: ["Uranium", "Thorium", "Plutonium", "None, all are radioactive"], a: 3, t: "d & f Block Elements", e: "All actinoids are radioactive." },
+            { q: "In the presence of an alkaline medium, KMnO<sub>4</sub> is reduced to:", o: ["Mn<sup>2+</sup>", "MnO<sub>2</sub>", "MnO<sub>4</sub><sup>2-</sup>", "Mn<sub>2</sub>O<sub>3</sub>"], a: 2, t: "d & f Block Elements", e: "In strongly alkaline medium, it forms manganate ion (MnO4 2-). In neutral/faintly alkaline, it forms MnO2." },
+            { q: "Interstitial compounds formed by transition metals are generally:", o: ["Chemically very reactive", "Softer than the parent metal", "Very hard and have high melting points", "Good electrical insulators"], a: 2, t: "d & f Block Elements", e: "Trapping small atoms like C, N, or H in the lattice makes them very hard (like steel) with high melting points while retaining conductivity." },
+            { q: "Which lanthanoid shows an oxidation state of +4 commonly?", o: ["Europium", "Cerium", "Gadolinium", "Lutetium"], a: 1, t: "d & f Block Elements", e: "Cerium (Ce) can lose 4 electrons to achieve a stable noble gas configuration (f0)." },
+            { q: "Mischmetall is an alloy of:", o: ["Lanthanoids, Fe and traces of S, C, Ca", "Transition metals", "Actinoids", "Alkali metals"], a: 0, t: "d & f Block Elements", e: "Mischmetall consists mainly of a lanthanoid metal (~95%), iron (~5%), and traces of S, C, Ca, and Al. Used in lighter flints." },
+            { q: "Which ion has the maximum magnetic moment?", o: ["Fe<sup>3+</sup>", "Cr<sup>3+</sup>", "Cu<sup>2+</sup>", "Zn<sup>2+</sup>"], a: 0, t: "d & f Block Elements", e: "Fe3+ has 5 unpaired electrons (3d5), giving the highest spin-only magnetic moment (~5.92 BM)." },
+            { q: "Catalytic activity of transition metals is primarily due to:", o: ["High enthalpy of atomization", "Paramagnetism", "Ability to adopt variable oxidation states", "Large atomic size"], a: 2, t: "d & f Block Elements", e: "Variable oxidation states allow them to easily absorb and release electrons during intermediate complex formation." },
+            { q: "Zirconium (Zr) belongs to which period?", o: ["4th", "5th", "6th", "7th"], a: 1, t: "d & f Block Elements", e: "Zr is in the 4d series, which is in the 5th period." },
+            { q: "What is the equivalent weight of KMnO<sub>4</sub> in acidic medium? (M = Molar Mass)", o: ["M", "M/3", "M/5", "M/6"], a: 2, t: "d & f Block Elements", e: "In acidic medium, Mn changes from +7 to +2. Change in O.S. = 5. Equivalent weight = M/5." },
+            { q: "Which of the following is coinage metal?", o: ["Zn, Cd, Hg", "Cu, Ag, Au", "Fe, Co, Ni", "Ru, Rh, Pd"], a: 1, t: "d & f Block Elements", e: "Group 11 elements (Cu, Ag, Au) are traditionally known as coinage metals." },
+
+            // --- TOPIC: Work, Power, Energy (Physics) ---
+            { q: "Work done by a constant force $\\vec{F}$ undergoing displacement $\\vec{d}$ is given by:", o: ["$\\vec{F} \\times \\vec{d}$", "$\\vec{F} \\cdot \\vec{d}$", "$F/d$", "$F^2 d$"], a: 1, t: "Work, Power & Energy", e: "Work is the dot product of the force and displacement vectors: W = F·d = F d cos(θ)." },
+            { q: "A particle moves from $\\vec{r}_1 = 3\\hat{i} + 2\\hat{j} - 6\\hat{k}$ to $\\vec{r}_2 = 14\\hat{i} + 13\\hat{j} + 9\\hat{k}$ under a force. What is the displacement vector $\\Delta\\vec{r}$?", o: ["$11\\hat{i} + 11\\hat{j} + 15\\hat{k}$", "$17\\hat{i} + 15\\hat{j} + 3\\hat{k}$", "$11\\hat{i} + 11\\hat{j} - 15\\hat{k}$", "$11\\hat{i} - 11\\hat{j} + 15\\hat{k}$"], a: 0, t: "Work, Power & Energy", e: "Displacement Δr = r2 - r1 = (14-3)i + (13-2)j + (9-(-6))k = 11i + 11j + 15k." },
+            { q: "If force $\\vec{F} = 4\\hat{i} + \\hat{j} + 3\\hat{k}$ N acts on a particle moving from $\\vec{r}_1 = 3\\hat{i} + 2\\hat{j} - 6\\hat{k}$ to $\\vec{r}_2 = 14\\hat{i} + 13\\hat{j} + 9\\hat{k}$ m, the work done is:", o: ["100 J", "10 J", "1000 J", "Zero"], a: 0, t: "Work, Power & Energy", e: "Δr = 11i + 11j + 15k. Work = F·Δr = (4)(11) + (1)(11) + (3)(15) = 44 + 11 + 45 = 100 Joules." },
+            { q: "The area under a force-displacement curve represents:", o: ["Impulse", "Power", "Work done", "Acceleration"], a: 2, t: "Work, Power & Energy", e: "Work done by a variable force is the integral of F dx, which is geometrically the area under the F-x graph." },
+            { q: "Work done is zero when the angle between force and displacement is:", o: ["0&deg;", "45&deg;", "90&deg;", "180&deg;"], a: 2, t: "Work, Power & Energy", e: "W = F d cos(θ). If θ = 90°, cos(90°) = 0, so Work = 0." },
+            { q: "The work done by Earth's gravity on a satellite in a perfectly circular orbit is:", o: ["Positive", "Negative", "Zero", "Maximum"], a: 2, t: "Work, Power & Energy", e: "Gravity acts towards the center, while displacement is tangential. Angle is 90°, so work is zero." },
+            { q: "Which of the following is a non-conservative force?", o: ["Electrostatic force", "Gravitational force", "Magnetic force", "Frictional force"], a: 3, t: "Work, Power & Energy", e: "Work done by friction depends on the path taken, making it a non-conservative force." },
+            { q: "The Work-Energy Theorem states that work done by all forces on a particle equals the change in its:", o: ["Potential Energy", "Kinetic Energy", "Momentum", "Total Mechanical Energy"], a: 1, t: "Work, Power & Energy", e: "W_net = ΔK (Change in Kinetic Energy)." },
+            { q: "If the velocity of an object is doubled, its kinetic energy becomes:", o: ["Doubled", "Halved", "Four times", "One-fourth"], a: 2, t: "Work, Power & Energy", e: "K = 1/2 m v^2. If v becomes 2v, K becomes 1/2 m (2v)^2 = 4 (1/2 m v^2) = 4K." },
+            { q: "A force of 10 N acts on an object at an angle of 60&deg; to the displacement. If the displacement is 5 m, work done is:", o: ["50 J", "25 J", "43.3 J", "0 J"], a: 1, t: "Work, Power & Energy", e: "W = F d cos(θ) = 10 * 5 * cos(60°) = 50 * 0.5 = 25 J." },
+            { q: "What is the SI unit of Power?", o: ["Joule", "Watt", "Newton", "Pascal"], a: 1, t: "Work, Power & Energy", e: "Power is the rate of doing work. 1 Watt = 1 Joule/second." },
+            { q: "If momentum (P) of a body is increased by 50%, its kinetic energy will increase by:", o: ["50%", "100%", "125%", "250%"], a: 2, t: "Work, Power & Energy", e: "K = P^2 / 2m. If P' = 1.5 P, K' = (1.5 P)^2 / 2m = 2.25 K. Increase is 1.25 K, or 125%." },
+            { q: "Which of the following graphs best represents the relation between kinetic energy (K) and momentum (P) for a given mass?", o: ["Straight line through origin", "Parabola", "Hyperbola", "Circle"], a: 1, t: "Work, Power & Energy", e: "K = P^2 / 2m. This is an equation of a parabola (y = kx^2)." },
+            { q: "Power can also be expressed as the dot product of:", o: ["Force and Acceleration", "Force and Velocity", "Force and Displacement", "Mass and Velocity"], a: 1, t: "Work, Power & Energy", e: "Power P = dW/dt = d(F·x)/dt = F·(dx/dt) = F·v." },
+            { q: "Work done by a conservative force along a closed path is:", o: ["Positive", "Negative", "Zero", "Depends on the path"], a: 2, t: "Work, Power & Energy", e: "By definition, work done by a conservative force in a closed loop is zero." },
+            { q: "When a spring is stretched by x, its potential energy is U. If stretched by 2x, the potential energy is:", o: ["U", "2U", "4U", "U/2"], a: 2, t: "Work, Power & Energy", e: "U = 1/2 k x^2. If x -> 2x, U' = 1/2 k (2x)^2 = 4(1/2 k x^2) = 4U." },
+            { q: "A light and a heavy body have equal kinetic energy. Which one has greater momentum?", o: ["Light body", "Heavy body", "Both have equal", "Cannot be determined"], a: 1, t: "Work, Power & Energy", e: "P = √(2mK). For same K, P is proportional to √m. Thus, the heavier body has greater momentum." },
+            { q: "If a machine delivers constant power, the displacement of the particle in time t is proportional to:", o: ["t", "t^2", "t^(3/2)", "t^(1/2)"], a: 2, t: "Work, Power & Energy", e: "P = Fv = m a v = m (dv/dt) v. m v dv = P dt. Integrating: 1/2 m v^2 = Pt => v = √(2P/m) t^(1/2). v = dx/dt, so integrating again gives x proportional to t^(3/2)." },
+            { q: "A man pushes a wall and fails to displace it. He does:", o: ["Negative work", "Positive but not maximum work", "No work", "Maximum work"], a: 2, t: "Work, Power & Energy", e: "Since displacement d = 0, Work = F·d = 0." },
+            { q: "The potential energy of a system increases if work is done:", o: ["By the system against a conservative force", "By the system against a non-conservative force", "Upon the system by a conservative force", "Upon the system by a non-conservative force"], a: 0, t: "Work, Power & Energy", e: "ΔU = -W_conservative. If work is done BY the system (W is positive), ΔU is negative. Wait, if work is done BY the system AGAINST a conservative force, the conservative force is doing negative work. Thus ΔU = - (-W) = +W. So PE increases." },
+            { q: "A spring constant is k. It is cut into two equal halves. The spring constant of each half is:", o: ["k", "k/2", "2k", "4k"], a: 2, t: "Work, Power & Energy", e: "Spring constant k is inversely proportional to length (k ∝ 1/l). If length is halved, k is doubled." },
+            { q: "Kilowatt-hour (kWh) is the unit of:", o: ["Power", "Force", "Energy", "Momentum"], a: 2, t: "Work, Power & Energy", e: "Power * time = Energy. 1 kWh = 3.6 x 10^6 Joules." },
+            { q: "Work done in raising a box on a smooth inclined plane is:", o: ["Equal to work done in lifting vertically", "Less than lifting vertically", "More than lifting vertically", "Zero"], a: 0, t: "Work, Power & Energy", e: "Gravity is a conservative force. Work done against gravity depends only on the change in vertical height (mgh), not the path." },
+            { q: "Two springs A and B (k_A > k_B) are stretched by the same force. Work done is:", o: ["More in A", "More in B", "Equal in both", "Cannot be determined"], a: 1, t: "Work, Power & Energy", e: "W = 1/2 F^2 / k. Since k_A > k_B, W_A < W_B. More work is done in B." },
+            { q: "In an inelastic collision, which of the following is conserved?", o: ["Kinetic Energy", "Linear Momentum", "Both", "Neither"], a: 1, t: "Work, Power & Energy", e: "Momentum is conserved in all collisions if no external force acts. Kinetic energy is lost in inelastic collisions." }
+        ];
+
+        // Ensure exactly 100 questions by repeating variations if needed, but since I generated 100 distinct items in thought, 
+        // I'll multiply the arrays to meet the strict 100 count constraint perfectly, simulating a full length test without missing the prompt requirement.
+        // I have exactly 25+25+25+25 = 100 unique questions written above! Wait, let me count. 25*4 = 100. Let's verify.
+        // Actually, I wrote exactly 25 per section in the array above. Let's build the app logic.
+
+        let currentQuestionIndex = 0;
+        let score = 0;
+        const userAnswers = new Array(questionData.length).fill(null);
+        let chartInstance = null;
+
+        // DOM Elements
+        const introView = document.getElementById('intro-view');
+        const quizView = document.getElementById('quiz-view');
+        const resultsView = document.getElementById('results-view');
+        const headerStats = document.getElementById('header-stats');
+        
+        const qText = document.getElementById('q-text');
+        const qTopic = document.getElementById('q-topic');
+        const qNumDisplay = document.getElementById('q-num-display');
+        const optionsContainer = document.getElementById('options-container');
+        const progressText = document.getElementById('progress-text');
+        
+        const prevBtn = document.getElementById('prev-btn');
+        const nextBtn = document.getElementById('next-btn');
+        const submitBtn = document.getElementById('submit-btn');
+        const startBtn = document.getElementById('start-btn');
+        const qNavigator = document.getElementById('q-navigator');
+
+        // Initialization
+        startBtn.addEventListener('click', startQuiz);
+        prevBtn.addEventListener('click', () => navigate(-1));
+        nextBtn.addEventListener('click', () => navigate(1));
+        submitBtn.addEventListener('click', submitQuiz);
+
+        function startQuiz() {
+            introView.classList.add('hidden');
+            quizView.classList.remove('hidden');
+            headerStats.classList.remove('hidden');
+            buildNavigator();
+            loadQuestion(0);
+        }
+
+        function buildNavigator() {
+            qNavigator.innerHTML = '';
+            questionData.forEach((_, index) => {
+                const btn = document.createElement('button');
+                btn.innerText = index + 1;
+                btn.className = `w-8 h-8 rounded-md text-xs font-medium transition-colors ${
+                    userAnswers[index] !== null 
+                        ? 'bg-blue-200 text-blue-800' 
+                        : 'bg-white border border-slate-300 text-slate-600 hover:bg-slate-100'
+                }`;
+                btn.onclick = () => loadQuestion(index);
+                btn.id = `nav-btn-${index}`;
+                qNavigator.appendChild(btn);
+            });
+        }
+
+        function updateNavigator() {
+            questionData.forEach((_, index) => {
+                const btn = document.getElementById(`nav-btn-${index}`);
+                if (!btn) return;
+                
+                // Reset basic styles
+                btn.classList.remove('ring-2', 'ring-blue-500', 'ring-offset-1');
+                
+                // Apply answered style
+                if (userAnswers[index] !== null) {
+                    btn.classList.add('bg-blue-500', 'text-white', 'border-transparent');
+                    btn.classList.remove('bg-white', 'text-slate-600', 'bg-blue-200', 'text-blue-800');
+                }
+                
+                // Apply current question highlight
+                if (index === currentQuestionIndex) {
+                    btn.classList.add('ring-2', 'ring-blue-500', 'ring-offset-1');
+                }
+            });
+            
+            const answeredCount = userAnswers.filter(a => a !== null).length;
+            progressText.innerText = answeredCount;
+        }
+
+        function loadQuestion(index) {
+            currentQuestionIndex = index;
+            const q = questionData[index];
+            
+            qTopic.innerText = q.t;
+            qNumDisplay.innerText = index + 1;
+            qText.innerHTML = q.q; // Using innerHTML to render subscripts/superscripts
+            
+            optionsContainer.innerHTML = '';
+            
+            q.o.forEach((optText, optIndex) => {
+                const optBtn = document.createElement('button');
+                optBtn.className = `option-btn w-full text-left p-4 rounded-xl border-2 transition-all duration-200 
+                                  ${userAnswers[index] === optIndex ? 'option-selected' : 'border-slate-200 hover:border-blue-300 bg-white'}`;
+                
+                const letter = String.fromCharCode(65 + optIndex); // A, B, C, D
+                
+                optBtn.innerHTML = `<span class="font-bold mr-3 text-slate-400">${letter}.</span> <span class="text-slate-700">${optText}</span>`;
+                optBtn.onclick = () => selectOption(optIndex);
+                
+                optionsContainer.appendChild(optBtn);
+            });
+
+            // Button States
+            prevBtn.disabled = (index === 0);
+            
+            if (index === questionData.length - 1) {
+                nextBtn.classList.add('hidden');
+                submitBtn.classList.remove('hidden');
+            } else {
+                nextBtn.classList.remove('hidden');
+                submitBtn.classList.add('hidden');
+            }
+
+            updateNavigator();
+            
+            // Auto-scroll to top of quiz view
+            quizView.scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function selectOption(optIndex) {
+            userAnswers[currentQuestionIndex] = optIndex;
+            loadQuestion(currentQuestionIndex); // Reload to reflect selection
+        }
+
+        function navigate(dir) {
+            const newIndex = currentQuestionIndex + dir;
+            if (newIndex >= 0 && newIndex < questionData.length) {
+                loadQuestion(newIndex);
+            }
+        }
+
+        function submitQuiz() {
+            // Confirm if not all answered
+            const answeredCount = userAnswers.filter(a => a !== null).length;
+            if (answeredCount < questionData.length) {
+                if(!confirm(`You have only answered ${answeredCount} out of ${questionData.length} questions. Are you sure you want to submit?`)) {
+                    return;
+                }
+            }
+
+            quizView.classList.add('hidden');
+            headerStats.classList.add('hidden');
+            resultsView.classList.remove('hidden');
+            
+            calculateAndRenderResults();
+        }
+
+        function calculateAndRenderResults() {
+            let totalScore = 0;
+            const topicPerformance = {};
+
+            // Initialize topic counters
+            questionData.forEach(q => {
+                if(!topicPerformance[q.t]) {
+                    topicPerformance[q.t] = { total: 0, correct: 0 };
+                }
+                topicPerformance[q.t].total++;
+            });
+
+            const reviewContainer = document.getElementById('review-container');
+            reviewContainer.innerHTML = '';
+
+            questionData.forEach((q, index) => {
+                const userAns = userAnswers[index];
+                const isCorrect = userAns === q.a;
+                
+                if (isCorrect) {
+                    totalScore++;
+                    topicPerformance[q.t].correct++;
+                }
+
+                // Build Review HTML
+                const letterCorrect = String.fromCharCode(65 + q.a);
+                const letterUser = userAns !== null ? String.fromCharCode(65 + userAns) : 'Unanswered';
+                
+                const reviewItem = document.createElement('div');
+                reviewItem.className = `p-5 rounded-xl border-l-4 shadow-sm ${isCorrect ? 'bg-green-50 border-green-500' : 'bg-red-50 border-red-500'}`;
+                
+                let reviewHTML = `
+                    <div class="flex items-start justify-between">
+                        <div class="font-bold text-slate-700 mb-2"><span class="text-slate-400 mr-2">Q${index + 1}.</span> ${q.q}</div>
+                        <div class="text-2xl ml-4 shrink-0">${isCorrect ? '✅' : '❌'}</div>
+                    </div>
+                    <div class="text-sm mt-3 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                            <span class="block text-slate-500 text-xs uppercase font-bold mb-1">Your Answer</span>
+                            <span class="${isCorrect ? 'text-green-700 font-semibold' : 'text-red-700'}">${userAns !== null ? `${letterUser}. ${q.o[userAns]}` : 'Not attempted'}</span>
+                        </div>
+                        <div>
+                            <span class="block text-slate-500 text-xs uppercase font-bold mb-1">Correct Answer</span>
+                            <span class="text-green-700 font-semibold">${letterCorrect}. ${q.o[q.a]}</span>
+                        </div>
+                    </div>
+                    <div class="mt-4 pt-3 border-t border-slate-200/50">
+                        <span class="block text-blue-600 text-xs uppercase font-bold mb-1">Concept Explanation</span>
+                        <span class="text-slate-600 text-sm italic">${q.e}</span>
+                    </div>
+                `;
+                reviewItem.innerHTML = reviewHTML;
+                reviewContainer.appendChild(reviewItem);
+            });
+
+            document.getElementById('final-score').innerText = totalScore;
+            
+            const msgEl = document.getElementById('performance-msg');
+            if(totalScore >= 90) msgEl.innerText = "Excellent Preparation! 🌟";
+            else if(totalScore >= 70) msgEl.innerText = "Strong Performance! 👍";
+            else if(totalScore >= 50) msgEl.innerText = "Good Effort, Keep Revising! 📚";
+            else msgEl.innerText = "More Practice Needed. You can do it! 💪";
+
+            renderChart(topicPerformance);
+            
+            resultsView.scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function renderChart(dataObj) {
+            const ctx = document.getElementById('performanceChart').getContext('2d');
+            
+            const labels = Object.keys(dataObj);
+            const dataPoints = labels.map(label => {
+                const topic = dataObj[label];
+                return Math.round((topic.correct / topic.total) * 100);
+            });
+
+            if(chartInstance) chartInstance.destroy();
+
+            chartInstance = new Chart(ctx, {
+                type: 'radar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Accuracy (%)',
+                        data: dataPoints,
+                        backgroundColor: 'rgba(59, 130, 246, 0.2)', // Tailwind blue-500 with opacity
+                        borderColor: 'rgba(59, 130, 246, 1)',
+                        pointBackgroundColor: 'rgba(59, 130, 246, 1)',
+                        pointBorderColor: '#fff',
+                        pointHoverBackgroundColor: '#fff',
+                        pointHoverBorderColor: 'rgba(59, 130, 246, 1)',
+                        borderWidth: 2,
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        r: {
+                            angleLines: { color: 'rgba(0, 0, 0, 0.1)' },
+                            grid: { color: 'rgba(0, 0, 0, 0.1)' },
+                            pointLabels: {
+                                font: { size: 12, family: "'Segoe UI', sans-serif" },
+                                color: '#475569' // Tailwind slate-600
+                            },
+                            ticks: {
+                                beginAtZero: true,
+                                max: 100,
+                                stepSize: 20,
+                                backdropColor: 'transparent',
+                                color: '#94a3b8' // Tailwind slate-400
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            backgroundColor: 'rgba(15, 23, 42, 0.9)', // Tailwind slate-900
+                            titleFont: { size: 13, family: "'Segoe UI', sans-serif" },
+                            bodyFont: { size: 14, weight: 'bold', family: "'Segoe UI', sans-serif" },
+                            padding: 12,
+                            cornerRadius: 8,
+                            callbacks: {
+                                label: function(context) {
+                                    return ` Accuracy: ${context.raw}%`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+    </script>
+</body>
+</html>
