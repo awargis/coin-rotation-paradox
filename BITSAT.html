@@ -1,0 +1,548 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>BITSAT 2026 | Advanced Practice Portal</title>
+    <!-- MathJax 3 with professional configuration -->
+    <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js" id="MathJax-script" async></script>
+    <script>
+        window.MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+                displayMath: [['$$', '$$'], ['\\[', '\\]']],
+                packages: { '[+]': ['ams', 'newcommand', 'boldsymbol'] },
+                tags: 'none',
+                macros: {
+                    RR: "\\mathbb{R}",
+                    NN: "\\mathbb{N}",
+                    v: "\\mathbf"
+                }
+            },
+            options: {
+                ignoreHtmlClass: 'no-mathjax',
+                processHtmlClass: 'math-area'
+            },
+            startup: {
+                pageReady: () => {
+                    return MathJax.startup.defaultPageReady();
+                }
+            }
+        };
+    </script>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        :root {
+            --bits-deep: #003d7a;
+            --bits-accent: #0077be;
+            --bits-bg-light: #f0f4fa;
+            --correct-green: #2c7a4d;
+            --mark-yellow: #e6a017;
+            --danger-red: #c72a2a;
+            --gray-border: #cfdde6;
+        }
+
+        body {
+            font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, BlinkMacSystemFont, 'Roboto', sans-serif;
+            margin: 0;
+            background: var(--bits-bg-light);
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        header {
+            background: linear-gradient(135deg, var(--bits-deep) 0%, #002856 100%);
+            color: white;
+            padding: 12px 28px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            flex-wrap: wrap;
+        }
+
+        .title h2 {
+            margin: 0;
+            font-weight: 600;
+            letter-spacing: -0.2px;
+            font-size: 1.5rem;
+        }
+
+        .title small {
+            font-size: 0.8rem;
+            opacity: 0.85;
+            display: block;
+        }
+
+        .timer-box {
+            background: #ffffffdd;
+            backdrop-filter: blur(8px);
+            color: #001f3f;
+            padding: 6px 20px;
+            border-radius: 60px;
+            font-weight: 700;
+            font-size: 1.4rem;
+            font-family: monospace;
+            letter-spacing: 1px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        }
+
+        .tabs {
+            display: flex;
+            background: white;
+            border-bottom: 2px solid var(--gray-border);
+            padding-left: 20px;
+            gap: 6px;
+        }
+
+        .tab {
+            padding: 12px 26px;
+            font-weight: 600;
+            cursor: pointer;
+            color: #2c3e66;
+            transition: 0.2s;
+            border-radius: 12px 12px 0 0;
+            font-size: 0.9rem;
+        }
+
+        .tab.active {
+            background: var(--bits-bg-light);
+            color: var(--bits-deep);
+            border-bottom: 3px solid var(--bits-accent);
+            font-weight: 700;
+        }
+
+        .tab:hover:not(.active) {
+            background: #e6edf4;
+        }
+
+        main {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+            gap: 1px;
+        }
+
+        .question-section {
+            flex: 3;
+            background: white;
+            padding: 30px 36px;
+            overflow-y: auto;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.02);
+        }
+
+        .sidebar {
+            flex: 1;
+            background: #ffffffec;
+            border-left: 1px solid var(--gray-border);
+            padding: 20px 18px;
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+        }
+
+        .palette {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 10px;
+            margin: 20px 0;
+            max-height: 380px;
+            overflow-y: auto;
+            padding-right: 6px;
+        }
+
+        .q-num {
+            background: #f8fafc;
+            border: 1px solid #cad2db;
+            border-radius: 10px;
+            padding: 8px 0;
+            text-align: center;
+            font-weight: 600;
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: all 0.1s ease;
+            color: #1e2f4e;
+        }
+
+        .q-num.answered {
+            background: var(--correct-green);
+            border-color: var(--correct-green);
+            color: white;
+        }
+
+        .q-num.marked {
+            background: var(--mark-yellow);
+            border-color: #c9820e;
+            color: #2c1a00;
+        }
+
+        .q-num.current {
+            border: 3px solid var(--bits-accent);
+            background: #e7f0ff;
+            font-weight: 800;
+            transform: scale(1.02);
+        }
+
+        .btn-container {
+            margin-top: 35px;
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+
+        button {
+            font-family: inherit;
+            font-weight: 600;
+            padding: 10px 24px;
+            border-radius: 40px;
+            border: none;
+            cursor: pointer;
+            transition: 0.2s;
+            font-size: 0.9rem;
+        }
+
+        .btn-next {
+            background: var(--bits-deep);
+            color: white;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+        }
+
+        .btn-mark {
+            background: var(--mark-yellow);
+            color: #2a1f00;
+        }
+
+        .btn-clear {
+            background: #eef2f6;
+            color: #2c3e66;
+            border: 1px solid #bdc4cc;
+        }
+
+        .btn-submit {
+            background: var(--danger-red);
+            color: white;
+            width: 100%;
+            margin-top: 20px;
+            font-size: 1rem;
+        }
+
+        .option {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 18px;
+            margin: 10px 0;
+            border: 1px solid #e2e8f0;
+            border-radius: 16px;
+            background: #fefefe;
+            cursor: pointer;
+            transition: 0.15s;
+            font-size: 1rem;
+        }
+
+        .option:hover {
+            background: #f0f6ff;
+            border-color: var(--bits-accent);
+        }
+
+        input[type="radio"] {
+            width: 18px;
+            height: 18px;
+            accent-color: var(--bits-deep);
+            margin: 0;
+        }
+
+        #question-text {
+            font-size: 1.25rem;
+            line-height: 1.5;
+            font-weight: 500;
+            color: #0a2540;
+            margin-bottom: 28px;
+            padding: 8px 0;
+            border-left: 4px solid var(--bits-accent);
+            padding-left: 20px;
+            background: #fafcff;
+        }
+
+        .math-area .MJX-TEX {
+            font-size: 1.05rem;
+        }
+
+        hr {
+            margin: 12px 0 20px;
+            border-color: #e2edf7;
+        }
+
+        .legend {
+            font-size: 0.75rem;
+            background: #f2f6fb;
+            padding: 10px;
+            border-radius: 14px;
+            margin: 5px 0;
+        }
+    </style>
+</head>
+<body>
+
+<header>
+    <div class="title">
+        <h2>BITSAT 2026 · Simulation</h2>
+        <small>Full Syllabus Mock | Mathematics + Sciences + LR</small>
+    </div>
+    <div class="timer-box">
+        ⏱️ <span id="timer">180:00</span>
+    </div>
+</header>
+
+<div class="tabs">
+    <div class="tab active" onclick="switchSection('math')">📐 Mathematics (40)</div>
+    <div class="tab" onclick="switchSection('phys')">⚛️ Physics (30)</div>
+    <div class="tab" onclick="switchSection('chem')">🧪 Chemistry (30)</div>
+    <div class="tab" onclick="switchSection('eng')">📖 English (10)</div>
+    <div class="tab" onclick="switchSection('lr')">🧠 Logical Reasoning (20)</div>
+</div>
+
+<main>
+    <div class="question-section">
+        <h3 id="q-header" style="color: #003d7a;">Question 1</h3>
+        <hr>
+        <div id="question-area" class="math-area">
+            <div id="question-text"></div>
+            <div class="options-container" id="options"></div>
+        </div>
+
+        <div class="btn-container">
+            <button class="btn-mark" onclick="markForReview()">📌 Mark for Review & Next</button>
+            <button class="btn-clear" onclick="clearResponse()">🗑️ Clear Response</button>
+            <button class="btn-next" onclick="saveAndNext()">💾 Save & Next</button>
+        </div>
+    </div>
+
+    <div class="sidebar">
+        <h4 style="margin-top: 0;">📋 Question Palette</h4>
+        <div class="palette" id="palette"></div>
+        <div class="legend">
+            <span style="background:#2c7a4d; display:inline-block; width:14px; height:14px; border-radius:4px;"></span> Answered &nbsp;&nbsp;
+            <span style="background:#e6a017; display:inline-block; width:14px; height:14px; border-radius:4px;"></span> Marked &nbsp;&nbsp;
+            <span style="background:#f8fafc; border:1px solid #aaa; display:inline-block; width:14px; height:14px; border-radius:4px;"></span> Not visited
+        </div>
+        <button class="btn-submit" onclick="submitExam()">✅ SUBMIT FINAL TEST</button>
+    </div>
+</main>
+
+<script>
+    // --------------------------------------------------------------
+    // SECTION RANGES
+    const sections = {
+        math: { start: 1, end: 40, label: "Mathematics" },
+        phys: { start: 41, end: 70, label: "Physics" },
+        chem: { start: 71, end: 100, label: "Chemistry" },
+        eng: { start: 101, end: 110, label: "English Proficiency" },
+        lr: { start: 111, end: 130, label: "Logical Reasoning" }
+    };
+
+    let currentQ = 1;
+    let answers = {};      // stores selected option index per question
+    let status = {};       // 'answered', 'marked' or '' (unvisited)
+
+    // --------------------------------------------------------------
+    // FULLY PROFESSIONAL MATHEMATICS DATA (40 questions, all equations in perfect LaTeX)
+    // Enhanced with \displaystyle for limits, integrals, fractions where appropriate
+    const questionsData = {
+        1: { q: "If $\\displaystyle z = \\frac{\\sqrt{3} + i}{2}$, then $z^{69}$ is equal to:", options: ["$i$", "$-i$", "$1$", "$-1$"], correct: 0 },
+        2: { q: "If $\\alpha$ and $\\beta$ are roots of $x^2 - 5x + 6 = 0$, the equation whose roots are $(\\alpha + 1)$ and $(\\beta + 1)$ is:", options: ["$x^2 - 7x + 12 = 0$", "$x^2 + 7x + 12 = 0$", "$x^2 - 5x + 12 = 0$", "$x^2 - 7x + 6 = 0$"], correct: 0 },
+        3: { q: "If $A$ is a square matrix such that $A^2 = A$, then the value of $(I + A)^3 - 7A$ is:", options: ["$A$", "$I - A$", "$I$", "$3A$"], correct: 2 },
+        4: { q: "The value of the determinant $\\begin{vmatrix} 1 & a & b+c \\\\ 1 & b & c+a \\\\ 1 & c & a+b \\end{vmatrix}$ is:", options: ["$a+b+c$", "$(a+b+c)^2$", "$0$", "$abc$"], correct: 2 },
+        5: { q: "$\\log_2 \\left( \\log_2 \\left( \\log_2 16 \\right) \\right)$ equals:", options: ["$0$", "$1$", "$2$", "$4$"], correct: 1 },
+        6: { q: "If the $n^{\\text{th}}$ term of an A.P. is $2n + 1$, the sum of first $n$ terms is:", options: ["$n^2 + 2n$", "$n^2 + n$", "$n^2 + 3n$", "$2n^2 + n$"], correct: 0 },
+        7: { q: "Coefficient of $x^4$ in the expansion of $(1 + x + x^2 + x^3)^{11}$ is:", options: ["$990$", "$605$", "$330$", "$110$"], correct: 0 },
+        8: { q: "Number of ways to seat $5$ people around a circular table:", options: ["$120$", "$24$", "$60$", "$12$"], correct: 1 },
+        9: { q: "$\\sin 75^\\circ$ equals:", options: ["$\\frac{\\sqrt{3}-1}{2\\sqrt{2}}$", "$\\frac{\\sqrt{3}+1}{2\\sqrt{2}}$", "$\\frac{\\sqrt{3}+1}{\\sqrt{2}}$", "$\\frac{\\sqrt{3}-1}{\\sqrt{2}}$"], correct: 1 },
+        10: { q: "$\\tan^{-1}(1) + \\tan^{-1}(2) + \\tan^{-1}(3)$ is equal to:", options: ["$\\frac{\\pi}{2}$", "$\\pi$", "$0$", "$2\\pi$"], correct: 1 },
+        11: { q: "Slope of a line perpendicular to $3x - 4y + 10 = 0$ is:", options: ["$\\frac{3}{4}$", "$-\\frac{3}{4}$", "$\\frac{4}{3}$", "$-\\frac{4}{3}$"], correct: 3 },
+        12: { q: "Radius of the circle $x^2 + y^2 - 4x + 6y - 12 = 0$ is:", options: ["$5$", "$\\sqrt{13}$", "$25$", "$7$"], correct: 0 },
+        13: { q: "Focus of the parabola $y^2 = 8x$ is:", options: ["$(4, 0)$", "$(0, 2)$", "$(2, 0)$", "$(0, 4)$"], correct: 2 },
+        14: { q: "Eccentricity of ellipse $\\displaystyle \\frac{x^2}{25} + \\frac{y^2}{16} = 1$ is:", options: ["$\\frac{3}{5}$", "$\\frac{4}{5}$", "$\\frac{9}{25}$", "$\\frac{1}{2}$"], correct: 0 },
+        15: { q: "Distance between directrices of hyperbola $\\displaystyle \\frac{x^2}{9} - \\frac{y^2}{16} = 1$ is:", options: ["$\\frac{18}{5}$", "$\\frac{25}{3}$", "$\\frac{5}{3}$", "$6$"], correct: 0 },
+        16: { q: "$\\displaystyle \\lim_{x \\to 0} \\frac{\\sin 5x}{x}$ equals:", options: ["$1$", "$0$", "$5$", "$\\frac{1}{5}$"], correct: 2 },
+        17: { q: "If $f(x) = \\frac{x^2 - 1}{x - 1}$ is continuous at $x = 1$, then $f(1)$ must be:", options: ["$0$", "$1$", "$2$", "Undefined"], correct: 2 },
+        18: { q: "If $y = \\log(\\sin x)$, then $\\frac{dy}{dx}$ is:", options: ["$\\tan x$", "$\\cot x$", "$\\sec x$", "$\\csc x$"], correct: 1 },
+        19: { q: "Slope of tangent to $y = x^2$ at $(1, 1)$ is:", options: ["$1$", "$2$", "$\\frac{1}{2}$", "$0$"], correct: 1 },
+        20: { q: "Minimum value of $f(x) = x^2 - 4x + 7$ is:", options: ["$3$", "$4$", "$7$", "$0$"], correct: 0 },
+        21: { q: "$\\displaystyle \\int \\frac{1}{x} \\, dx$ is equal to:", options: ["$x$", "$\\frac{x^2}{2}$", "$\\ln |x| + C$", "$-\\frac{1}{x^2}$"], correct: 2 },
+        22: { q: "$\\displaystyle \\int_0^1 x^2 \\, dx =$", options: ["$\\frac{1}{2}$", "$\\frac{1}{3}$", "$1$", "$0$"], correct: 1 },
+        23: { q: "Area bounded by $y = x$, $x = 0$, $x = 2$ and the $x$-axis is:", options: ["$1$", "$2$", "$4$", "$8$"], correct: 1 },
+        24: { q: "Order of differential equation $\\left(\\frac{d^2y}{dx^2}\\right)^3 + \\left(\\frac{dy}{dx}\\right)^4 + y = 0$ is:", options: ["$3$", "$4$", "$2$", "$1$"], correct: 2 },
+        25: { q: "$\\displaystyle \\int x e^x \\, dx =$", options: ["$(x-1)e^x + C$", "$(x+1)e^x + C$", "$x e^x + C$", "$e^x + C$"], correct: 0 },
+        26: { q: "If $\\vec{a} = \\hat{i} + \\hat{j}$ and $\\vec{b} = \\hat{i} - \\hat{j}$, then $\\vec{a} \\cdot \\vec{b}$ equals:", options: ["$2$", "$0$", "$-2$", "$1$"], correct: 1 },
+        27: { q: "Magnitude of vector product $|\\hat{i} \\times \\hat{j}|$ is:", options: ["$0$", "$1$", "$-1$", "$\\sqrt{2}$"], correct: 1 },
+        28: { q: "Direction cosines of $z$-axis are:", options: ["$(1, 0, 0)$", "$(0, 1, 0)$", "$(0, 0, 1)$", "$(1, 1, 1)$"], correct: 2 },
+        29: { q: "A fair die is thrown. Probability of getting a prime number is:", options: ["$\\frac{1}{3}$", "$\\frac{1}{2}$", "$\\frac{2}{3}$", "$\\frac{1}{6}$"], correct: 1 },
+        30: { q: "If $P(A) = 0.4$, $P(B) = 0.8$ and $P(B|A) = 0.6$, then $P(A \\cap B) =$", options: ["$0.24$", "$0.48$", "$0.32$", "$0.5$"], correct: 0 },
+        31: { q: "If $A = \\{1, 2, 3\\}$, number of subsets of $A$ is:", options: ["$3$", "$6$", "$8$", "$9$"], correct: 2 },
+        32: { q: "If $f(x) = x+1$ and $g(x) = x^2$, then $(f \\circ g)(2) =$", options: ["$5$", "$9$", "$4$", "$3$"], correct: 0 },
+        33: { q: "Mean of first $5$ natural numbers is:", options: ["$2$", "$3$", "$2.5$", "$15$"], correct: 1 },
+        34: { q: "Negation of the statement \"All cats are black\" is:", options: ["All cats are not black", "No cat is black", "Some cats are not black", "Some cats are black"], correct: 2 },
+        35: { q: "Maximum value of $Z = 3x + 4y$ subject to $x + y \\le 4$, $x, y \\ge 0$ is:", options: ["$12$", "$16$", "$14$", "$0$"], correct: 1 },
+        36: { q: "Relation $R$ on $\\{1, 2, 3\\}$ defined as $R = \\{(1,1), (2,2), (3,3)\\}$ is:", options: ["Reflexive only", "Symmetric only", "Transitive only", "Equivalence"], correct: 3 },
+        37: { q: "General solution of $\\sin x = 0$ is:", options: ["$n\\pi$", "$2n\\pi$", "$\\frac{n\\pi}{2}$", "$\\frac{(2n+1)\\pi}{2}$"], correct: 0 },
+        38: { q: "Modulus of complex number $3 + 4i$ is:", options: ["$7$", "$25$", "$5$", "$1$"], correct: 2 },
+        39: { q: "$10^{\\text{th}}$ term of sequence $1, 4, 9, 16, \\dots$ is:", options: ["$100$", "$81$", "$110$", "$121$"], correct: 0 },
+        40: { q: "Derivative of $e^{2x}$ w.r.t $x$ is:", options: ["$e^{2x}$", "$2e^{2x}$", "$\\frac{1}{2} e^{2x}$", "$2x e^{2x-1}$"], correct: 1 }
+    };
+
+    // Dummy data for other sections (simple placeholders with professional math style)
+    for (let i = 41; i <= 130; i++) {
+        questionsData[i] = {
+            q: "Sample question for demonstration: $\\displaystyle \\int_{0}^{\\pi} \\sin x \\, dx = 2$ (full exam contains subject-wise questions).",
+            options: ["Option A", "Option B", "Option C", "Option D"],
+            correct: 0
+        };
+    }
+
+    // Timer logic (3 hours)
+    let totalSeconds = 180 * 60;
+    const timerEl = document.getElementById('timer');
+    const timerInterval = setInterval(() => {
+        if (totalSeconds <= 0) {
+            clearInterval(timerInterval);
+            timerEl.innerText = "0:00";
+            alert("Time's up! Submitting test automatically.");
+            submitExam();
+            return;
+        }
+        totalSeconds--;
+        let mins = Math.floor(totalSeconds / 60);
+        let secs = totalSeconds % 60;
+        timerEl.innerText = `${mins}:${secs < 10 ? '0' : ''}${secs}`;
+    }, 1000);
+
+    function getSectionByNum(num) {
+        if (num <= 40) return 'math';
+        if (num <= 70) return 'phys';
+        if (num <= 100) return 'chem';
+        if (num <= 110) return 'eng';
+        return 'lr';
+    }
+
+    function initPalette() {
+        const paletteDiv = document.getElementById('palette');
+        paletteDiv.innerHTML = '';
+        const currentSectionKey = getSectionByNum(currentQ);
+        const { start, end } = sections[currentSectionKey];
+        for (let i = start; i <= end; i++) {
+            const btn = document.createElement('div');
+            btn.className = `q-num ${status[i] || ''} ${currentQ === i ? 'current' : ''}`;
+            btn.innerText = i;
+            btn.onclick = () => loadQuestion(i);
+            paletteDiv.appendChild(btn);
+        }
+    }
+
+    async function loadQuestion(qNum) {
+        currentQ = qNum;
+        document.getElementById('q-header').innerText = `Question ${currentQ}`;
+        const qData = questionsData[currentQ] || { q: "Advanced equation: $E = mc^2$", options: ["A", "B", "C", "D"], correct: 0 };
+        
+        const questionTextDiv = document.getElementById('question-text');
+        questionTextDiv.innerHTML = qData.q;
+        
+        const optionsContainer = document.getElementById('options');
+        optionsContainer.innerHTML = '';
+        qData.options.forEach((opt, idx) => {
+            const label = document.createElement('label');
+            label.className = 'option';
+            const isChecked = answers[currentQ] === idx;
+            label.innerHTML = `<input type="radio" name="q${currentQ}" value="${idx}" ${isChecked ? 'checked' : ''} onchange="selectOption(${currentQ}, ${idx})"> <span class="option-text">${opt}</span>`;
+            optionsContainer.appendChild(label);
+        });
+        
+        // Rerender math with MathJax for perfect typesetting
+        if (window.MathJax) {
+            await MathJax.typesetPromise([questionTextDiv, optionsContainer]);
+        }
+        updateTabs();
+        initPalette();
+    }
+
+    function selectOption(qNum, optIdx) {
+        answers[qNum] = optIdx;
+        if (!status[qNum]) status[qNum] = 'answered';
+        else if (status[qNum] === 'marked') status[qNum] = 'answered'; // override marked as answered if selected
+        else status[qNum] = 'answered';
+        initPalette();  // update palette colors
+    }
+
+    function saveAndNext() {
+        if (answers[currentQ] !== undefined) status[currentQ] = 'answered';
+        let next = currentQ + 1;
+        const currentSectionKey = getSectionByNum(currentQ);
+        const { end } = sections[currentSectionKey];
+        if (next > end) {
+            // move to next section if possible
+            const sectionOrder = ['math', 'phys', 'chem', 'eng', 'lr'];
+            let currentIdx = sectionOrder.indexOf(currentSectionKey);
+            if (currentIdx + 1 < sectionOrder.length) {
+                next = sections[sectionOrder[currentIdx + 1]].start;
+            } else {
+                next = currentQ; // end of test
+                alert("You've reached the end of all sections. Please review or submit.");
+                return;
+            }
+        }
+        if (next <= 130) loadQuestion(next);
+        else alert("End of exam. Please submit.");
+    }
+
+    function markForReview() {
+        status[currentQ] = 'marked';
+        saveAndNext();
+    }
+
+    function clearResponse() {
+        delete answers[currentQ];
+        if (status[currentQ] === 'marked') status[currentQ] = 'marked'; // keep marked status but answer cleared
+        else status[currentQ] = '';
+        loadQuestion(currentQ);
+    }
+
+    function switchSection(secKey) {
+        loadQuestion(sections[secKey].start);
+    }
+
+    function updateTabs() {
+        const activeSec = getSectionByNum(currentQ);
+        const tabs = document.querySelectorAll('.tab');
+        const secList = ['math', 'phys', 'chem', 'eng', 'lr'];
+        tabs.forEach((tab, idx) => {
+            if (secList[idx] === activeSec) tab.classList.add('active');
+            else tab.classList.remove('active');
+        });
+    }
+
+    function submitExam() {
+        if(confirm("🚨 Are you sure you want to submit the BITSAT simulation? Your answers will be evaluated.")) {
+            let score = 0;
+            let attemptedCount = 0;
+            for (let q = 1; q <= 40; q++) {  // Only math scoring for core demonstration, but full structure ready
+                if (answers[q] !== undefined && questionsData[q]) {
+                    attemptedCount++;
+                    if (answers[q] === questionsData[q].correct) score += 3;
+                    else score -= 1;
+                }
+            }
+            alert(`✅ Test Submitted Successfully!\n📊 Score (Mathematics only): ${score} / 120\n✍️ Attempted: ${attemptedCount} / 40\n🎯 Negative marking applied.`);
+            window.location.reload();
+        }
+    }
+
+    // initial load
+    loadQuestion(1);
+</script>
+</body>
+</html>
