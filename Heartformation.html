@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JEE Masterclass | The Heart of Math</title>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Inter:wght@300;400&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #050509;
+            --primary-glow: #00ffff;
+            --secondary-glow: #ff00ff;
+            --gold-glow: #ffd700;
+        }
+
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: var(--bg-color);
+            color: white;
+            font-family: 'Inter', sans-serif;
+            user-select: none;
+        }
+
+        canvas {
+            display: block;
+            touch-action: none;
+        }
+
+        #ui-layer {
+            position: absolute;
+            bottom: 40px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 85%;
+            max-width: 450px;
+            z-index: 10;
+            text-align: center;
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(10px);
+            padding: 20px;
+            border-radius: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .slider-container {
+            width: 100%;
+            margin-top: 15px;
+        }
+
+        input[type=range] {
+            -webkit-appearance: none;
+            width: 100%;
+            background: transparent;
+        }
+
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 6px;
+            cursor: pointer;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 3px;
+        }
+
+        input[type=range]::-webkit-slider-thumb {
+            height: 24px;
+            width: 24px;
+            border-radius: 50%;
+            background: #fff;
+            cursor: pointer;
+            -webkit-appearance: none;
+            margin-top: -9px;
+            box-shadow: 0 0 20px var(--primary-glow);
+            transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        input[type=range]:active::-webkit-slider-thumb {
+            transform: scale(1.3);
+        }
+
+        .label-container {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+            margin-bottom: 8px;
+            color: rgba(255, 255, 255, 0.6);
+            font-family: 'Orbitron', sans-serif;
+        }
+
+        #flash {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: white;
+            opacity: 0;
+            pointer-events: none;
+            z-index: 100;
+        }
+
+        .header-tag {
+            position: absolute;
+            top: 30px;
+            width: 100%;
+            text-align: center;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.8rem;
+            letter-spacing: 5px;
+            color: rgba(255, 255, 255, 0.3);
+            pointer-events: none;
+            z-index: 5;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="flash"></div>
+    <div class="header-tag">JEE MASTERCLASS // MATHEMATICAL RESONANCE</div>
+
+    <div id="ui-layer">
+        <div class="label-container">
+            <span>x = -√3</span>
+            <span id="slider-val">0% COMPLETE</span>
+            <span>x = √3</span>
+        </div>
+        <div class="slider-container">
+            <input type="range" id="progress-slider" min="0" max="100" value="0">
+        </div>
+    </div>
+
+    <canvas id="canvas"></canvas>
+
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        const slider = document.getElementById('progress-slider');
+        const sliderValText = document.getElementById('slider-val');
+        const flashOverlay = document.getElementById('flash');
+
+        let width, height, centerX, centerY, scale;
+        let t = 0;
+        let symbols = [];
+        const mathChars = ['∫', 'π', 'Σ', '√x', 'dy/dx', 'lim', '∞', 'θ', 'λ', 'Δ'];
+        
+        let revealTriggered = false;
+        let logoPhase = 0; // 0: none, 1: explosion, 2: settled
+        let logoAlpha = 0;
+        let logoScale = 0;
+        let logoBrightness = 1;
+        let revealStartTime = 0;
+
+        class MathSymbol {
+            constructor() {
+                this.reset();
+            }
+            reset() {
+                this.x = Math.random() * window.innerWidth;
+                this.y = Math.random() * window.innerHeight;
+                this.char = mathChars[Math.floor(Math.random() * mathChars.length)];
+                this.size = Math.random() * 14 + 12;
+                this.opacity = Math.random() * 0.2 + 0.05;
+                this.vx = (Math.random() - 0.5) * 0.4;
+                this.vy = (Math.random() - 0.5) * 0.4;
+                this.vaping = false;
+                this.vX = 0;
+                this.vY = 0;
+            }
+            vaporize() {
+                this.vaping = true;
+                const dx = this.x - centerX;
+                const dy = this.y - centerY;
+                const angle = Math.atan2(dy, dx);
+                const force = Math.random() * 20 + 10;
+                this.vX = Math.cos(angle) * force;
+                this.vY = Math.sin(angle) * force;
+            }
+            update() {
+                if (this.vaping) {
+                    this.x += this.vX;
+                    this.y += this.vY;
+                    this.opacity -= 0.01;
+                    if (this.opacity < 0) this.opacity = 0;
+                } else {
+                    this.x += this.vx;
+                    this.y += this.vy;
+                    if (this.x < -50) this.x = width + 50;
+                    if (this.x > width + 50) this.x = -50;
+                    if (this.y < -50) this.y = height + 50;
+                    if (this.y > height + 50) this.y = -50;
+                }
+            }
+            draw() {
+                if (this.opacity <= 0) return;
+                ctx.fillStyle = `rgba(255, 255, 255, ${this.opacity})`;
+                ctx.font = `${this.size}px 'Inter'`;
+                ctx.fillText(this.char, this.x, this.y);
+            }
+        }
+
+        function init() {
+            width = canvas.width = window.innerWidth;
+            height = canvas.height = window.innerHeight;
+            centerX = width / 2;
+            centerY = height / 2;
+            
+            // Adjust scale for responsiveness
+            scale = Math.min(width, height) * 0.18;
+
+            symbols = [];
+            for (let i = 0; i < 50; i++) {
+                symbols.push(new MathSymbol());
+            }
+        }
+
+        function triggerReveal() {
+            if (revealTriggered) return;
+            revealTriggered = true;
+            revealStartTime = performance.now();
+            
+            // 1. Screen Flash (0.1s)
+            flashOverlay.style.opacity = '1';
+            setTimeout(() => {
+                flashOverlay.style.transition = 'opacity 0.6s ease-out';
+                flashOverlay.style.opacity = '0';
+            }, 100);
+
+            // 2. Vaporization
+            symbols.forEach(s => s.vaporize());
+        }
+
+        function drawAxes() {
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            // X Axis
+            ctx.moveTo(0, centerY);
+            ctx.lineTo(width, centerY);
+            // Y Axis
+            ctx.moveTo(centerX, 0);
+            ctx.lineTo(centerX, height);
+            ctx.stroke();
+
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+            ctx.font = "10px 'Orbitron'";
+            ctx.fillText('x', width - 25, centerY - 10);
+            ctx.fillText('y', centerX + 10, 25);
+        }
+
+        function drawHeart() {
+            const progress = slider.value / 100;
+            const limit = Math.sqrt(3);
+            const currentXRange = -limit + (limit * 2 * progress);
+            
+            t += 0.005; // Cinematic breathing pulse
+
+            ctx.save();
+            ctx.translate(centerX, centerY);
+
+            // Cyan/Magenta cycle
+            const hueCycle = (Math.sin(t * 2) * 0.5 + 0.5);
+            const glowColor = hueCycle > 0.5 ? '#00ffff' : '#ff00ff';
+            
+            ctx.shadowBlur = 40;
+            ctx.shadowColor = glowColor;
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 5;
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+
+            ctx.beginPath();
+            let started = false;
+
+            // Equation: y = x^(2/3) + 0.9 * sin(t * x) * sqrt(3 - x^2)
+            // Range: -sqrt(3) to current progress
+            for (let x = -limit; x <= currentXRange; x += 0.01) {
+                const term1 = Math.pow(Math.abs(x), 2/3);
+                const term2 = 0.9 * Math.sin(t * 10 * x) * Math.sqrt(Math.max(0, 3 - x * x));
+                const y = term1 + term2;
+
+                // JEE Transformation: canvasY = centerY - (y * scale)
+                const px = x * scale;
+                const py = -(y * scale); 
+
+                if (!started) {
+                    ctx.moveTo(px, py);
+                    started = true;
+                } else {
+                    ctx.lineTo(px, py);
+                }
+            }
+            ctx.stroke();
+            ctx.restore();
+        }
+
+        function drawLogo(now) {
+            if (!revealTriggered) return;
+            
+            const elapsed = now - revealStartTime;
+            
+            // Phase Management
+            if (elapsed < 600) {
+                // Phase 1 & 2: Scale 0 -> 1.3 (explosion) and Brightness 1000%
+                logoScale = (elapsed / 400) * 1.3;
+                logoBrightness = 10 - (elapsed / 60); 
+                logoAlpha = Math.min(1, elapsed / 100);
+            } else {
+                // Phase 3: Settle at 1.0 and Pulse
+                const settleFactor = Math.min(1, (elapsed - 600) / 400);
+                const pulse = Math.sin(now * 0.002) * 0.05;
+                logoScale = (1.3 - (0.3 * settleFactor)) + pulse;
+                logoBrightness = 1;
+                logoAlpha = 1;
+            }
+
+            ctx.save();
+            ctx.translate(centerX, centerY - 20);
+            ctx.scale(logoScale, logoScale);
+            
+            // Gold Outer Glow
+            ctx.shadowBlur = 35 + Math.sin(now * 0.003) * 15;
+            ctx.shadowColor = '#ffd700';
+            
+            ctx.filter = `brightness(${logoBrightness})`;
+            ctx.globalAlpha = logoAlpha;
+            
+            // Updated to Black Logo
+            ctx.fillStyle = '#000000';
+            ctx.font = "900 85px 'Orbitron'";
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            ctx.fillText("PW", 0, 0);
+            
+            ctx.restore();
+        }
+
+        function animate(now) {
+            // Semi-transparent fill for "ghosting"
+            ctx.fillStyle = 'rgba(5, 5, 9, 0.1)';
+            ctx.fillRect(0, 0, width, height);
+
+            drawAxes();
+
+            symbols.forEach(s => {
+                s.update();
+                s.draw();
+            });
+
+            drawHeart();
+            drawLogo(now);
+
+            requestAnimationFrame(animate);
+        }
+
+        slider.addEventListener('input', (e) => {
+            const val = e.target.value;
+            sliderValText.innerText = `${val}% COMPLETE`;
+            if (val == 100) triggerReveal();
+        });
+
+        window.addEventListener('resize', init);
+        
+        init();
+        requestAnimationFrame(animate);
+
+    </script>
+</body>
+</html>
