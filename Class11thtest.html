@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NTA Mock Test | Wavy Curve Mastery</title>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    
+    <style>
+        :root {
+            --bg-body: #0a0c10;
+            --bg-panel: #161b22;
+            --border-ui: #30363d;
+            --accent-primary: #58a6ff;
+            --nta-green: #2ea043;
+            --nta-red: #da3633;
+            --nta-gray: #8b949e;
+            --text-white: #f0f6fc;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+            background-color: var(--bg-body);
+            color: var(--text-white);
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* Header */
+        header {
+            background: #fff;
+            color: #1d4ed8;
+            padding: 10px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 3px solid #1d4ed8;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+        }
+
+        .timer-box {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 5px 15px;
+            border-radius: 4px;
+            font-weight: bold;
+            font-size: 1.1rem;
+        }
+
+        /* Layout */
+        main {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+        }
+
+        .test-area {
+            flex: 3;
+            padding: 40px;
+            overflow-y: auto;
+            border-right: 1px solid var(--border-ui);
+        }
+
+        .sidebar {
+            flex: 1;
+            background: var(--bg-panel);
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        /* Question Styles */
+        .q-label {
+            color: var(--accent-primary);
+            font-weight: 600;
+            margin-bottom: 10px;
+            display: block;
+        }
+
+        .question-text {
+            font-size: 1.25rem;
+            margin-bottom: 30px;
+            line-height: 1.6;
+        }
+
+        .options-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .option-card {
+            background: #21262d;
+            border: 1px solid var(--border-ui);
+            padding: 15px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .option-card:hover {
+            border-color: var(--accent-primary);
+            background: #30363d;
+        }
+
+        .option-card.selected {
+            border-color: var(--accent-primary);
+            background: rgba(88, 166, 255, 0.1);
+            box-shadow: 0 0 0 1px var(--accent-primary);
+        }
+
+        /* Palette */
+        .palette-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 10px;
+        }
+
+        .palette-btn {
+            width: 40px;
+            height: 40px;
+            border: 1px solid var(--border-ui);
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.9rem;
+            cursor: pointer;
+            background: #eee;
+            color: #333;
+        }
+
+        .palette-btn.answered { background: var(--nta-green); color: white; border: none; }
+        .palette-btn.current { border: 2px solid var(--accent-primary); font-weight: bold; }
+
+        /* Results Screen */
+        #results-screen {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: var(--bg-body);
+            z-index: 100;
+            padding: 50px;
+            text-align: center;
+        }
+
+        .stats-container {
+            display: flex;
+            gap: 30px;
+            margin: 30px 0;
+        }
+
+        .stat-box {
+            padding: 20px;
+            background: var(--bg-panel);
+            border-radius: 12px;
+            min-width: 150px;
+        }
+
+        .stat-value { font-size: 2rem; font-weight: bold; color: var(--accent-primary); }
+
+        /* Footer */
+        footer {
+            background: var(--bg-panel);
+            padding: 15px 40px;
+            border-top: 1px solid var(--border-ui);
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .btn {
+            padding: 12px 25px;
+            border-radius: 6px;
+            font-weight: bold;
+            cursor: pointer;
+            border: none;
+            transition: 0.2s;
+        }
+
+        .btn-primary { background: var(--nta-green); color: white; }
+        .btn-outline { background: transparent; border: 1px solid var(--border-ui); color: white; }
+        .btn-submit { background: var(--nta-red); color: white; }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    </style>
+</head>
+<body>
+
+<header>
+    <div>
+        <h1 style="margin:0; font-size: 1.4rem;">JEE MAIN MOCK TEST - 2026</h1>
+        <small style="color: #666;">Wavy Curve Method | Class 11th Early Learning</small>
+    </div>
+    <div class="timer-box">Time Left: <span id="time-display">60:00</span></div>
+</header>
+
+<main id="main-exam-content">
+    <section class="test-area" id="question-area">
+        </section>
+
+    <aside class="sidebar">
+        <div style="background: #30363d; padding: 15px; border-radius: 8px; text-align: center;">
+            <div style="width: 60px; height: 60px; background: #58a6ff; border-radius: 50%; margin: 0 auto 10px;"></div>
+            <strong>Aditya Wargis</strong>
+        </div>
+        <div style="font-size: 0.9rem; font-weight: bold; border-bottom: 1px solid var(--border-ui); padding-bottom: 5px;">Question Palette</div>
+        <div class="palette-grid" id="palette">
+            </div>
+        <div style="margin-top: auto; font-size: 0.8rem; line-height: 1.6;">
+            <span style="display:inline-block; width:12px; height:12px; background:var(--nta-green);"></span> Answered<br>
+            <span style="display:inline-block; width:12px; height:12px; background:#eee;"></span> Not Answered
+        </div>
+    </aside>
+</main>
+
+<footer id="footer-controls">
+    <button class="btn btn-outline" onclick="clearResponse()">Clear Response</button>
+    <div>
+        <button class="btn btn-primary" id="save-next-btn" onclick="saveAndNext()">Save & Next</button>
+        <button class="btn btn-submit" style="margin-left: 20px;" onclick="showSubmitConfirm()">Submit Test</button>
+    </div>
+</footer>
+
+<div id="results-screen">
+    <h1 style="color: var(--nta-green);">Test Submitted Successfully!</h1>
+    <div class="stats-container">
+        <div class="stat-box">
+            <div class="stat-label">Total Questions</div>
+            <div class="stat-value" id="total-q">20</div>
+        </div>
+        <div class="stat-box">
+            <div class="stat-label">Correct</div>
+            <div class="stat-value" style="color: var(--nta-green);" id="correct-count">0</div>
+        </div>
+        <div class="stat-box">
+            <div class="stat-label">Incorrect</div>
+            <div class="stat-value" style="color: var(--nta-red);" id="incorrect-count">0</div>
+        </div>
+        <div class="stat-box">
+            <div class="stat-label">Score</div>
+            <div class="stat-value" id="final-score">0</div>
+        </div>
+    </div>
+    
+    <div style="margin-top: 20px;">
+        <h3>Learning Progress</h3>
+        <div style="width: 300px; height: 10px; background: #30363d; border-radius: 5px; margin: 10px auto;">
+            <div id="progress-bar" style="height: 100%; width: 0%; background: var(--nta-green); border-radius: 5px; transition: 1s;"></div>
+        </div>
+        <p id="learning-feedback">Calculating your trajectory...</p>
+    </div>
+
+    <button class="btn btn-primary" style="margin-top: 40px; padding: 15px 40px;" onclick="location.reload()">Take Retest</button>
+</div>
+
+<script>
+    // --- QUESTION BANK ---
+    const questions = [
+        { q: "Solve the inequality: \\((x - 3)(x - 5) > 0\\)", options: ["\\((-\\infty, 3) \\cup (5, \\infty)\\)", "\\((3, 5)\\)", "\\((-\\infty, 5)\\)", "\\((5, \\infty)\\)"], correct: 0 },
+        { q: "Solve the inequality: \\((x - 1)(x - 4) \\le 0\\)", options: ["\\((1, 4)\\)", "\\([1, 4]\\)", "\\((-\\infty, 1] \\cup [4, \\infty)\\)", "\\([4, \\infty)\\)"], correct: 1 },
+        { q: "Solve for \\(x\\): \\(\\frac{x - 2}{x - 6} > 0\\)", options: ["\\((2, 6)\\)", "\\((-\\infty, 2] \\cup [6, \\infty)\\)", "\\((-\\infty, 2) \\cup (6, \\infty)\\)", "\\((-\\infty, 6)\\)"], correct: 2 },
+        { q: "Solve for \\(x\\): \\(\\frac{x + 5}{x - 1} \\le 0\\)", options: ["\\([-5, 1)\\)", "\\([-5, 1]\\)", "\\((-5, 1)\\)", "\\((-\\infty, -5] \\cup (1, \\infty)\\)"], correct: 0 },
+        { q: "Find interval for \\(x\\): \\((x + 2)(x - 2)(x - 5) > 0\\)", options: ["\\((-2, 2) \\cup (5, \\infty)\\)", "\\((-\\infty, -2) \\cup (2, 5)\\)", "\\((-2, 5)\\)", "\\((5, \\infty)\\)"], correct: 0 },
+        { q: "Solve: \\(x^2 - 7x + 10 < 0\\)", options: ["\\((-\\infty, 2) \\cup (5, \\infty)\\)", "\\([2, 5]\\)", "\\((2, 5)\\)", "\\((0, 5)\\)"], correct: 2 },
+        { q: "Solve: \\(\\frac{x(x - 3)}{x + 1} \\ge 0\\)", options: ["\\([-1, 0] \\cup [3, \\infty)\\)", "\\((-1, 0] \\cup [3, \\infty)\\)", "\\((-\\infty, -1) \\cup [0, 3]\\)", "\\([0, 3]\\)"], correct: 1 },
+        { q: "Solve for \\(x\\): \\((2 - x)(x - 4) > 0\\)", options: ["\\((-\\infty, 2) \\cup (4, \\infty)\\)", "\\([2, 4]\\)", "\\((2, 4)\\)", "\\((0, 4)\\)"], correct: 2 },
+        { q: "Solve: \\(\\frac{(x - 1)^2}{x - 3} > 0\\)", options: ["\\((-\\infty, 1) \\cup (3, \\infty)\\)", "\\((3, \\infty)\\)", "\\([1, \\infty)\\)", "\\((1, 3)\\)"], correct: 1 },
+        { q: "Solve: \\(\\frac{x - 5}{(x - 2)(x - 7)} \\le 0\\)", options: ["\\((-\\infty, 2) \\cup [5, 7)\\)", "\\((-\\infty, 2] \\cup [5, 7]\\)", "\\((2, 5] \\cup (7, \\infty)\\)", "\\([5, 7)\\)"], correct: 0 },
+        { q: "Solve: \\((x + 1)^3(x - 2) \\ge 0\\)", options: ["\\([2, \\infty)\\)", "\\([-1, 2]\\)", "\\((-\\infty, -1] \\cup [2, \\infty)\\)", "\\((-\\infty, \\infty)\\)"], correct: 2 },
+        { q: "Solve: \\(\\frac{1}{x - 4} < 0\\)", options: ["\\((-\\infty, 4)\\)", "\\((4, \\infty)\\)", "\\((-\\infty, 4]\\)", "No solution"], correct: 0 },
+        { q: "Solve: \\(\\frac{x^2}{x + 3} \\ge 0\\)", options: ["\\([-3, \\infty)\\)", "\\((-3, \\infty)\\)", "\\((-\\infty, -3)\\)", "\\((-3, 0) \\cup (0, \\infty)\\)"], correct: 1 },
+        { q: "Solve: \\(\\frac{x - 1}{x - 1} > 0\\)", options: ["\\(\\mathbb{R} - \\{1\\}\\)", "\\(\\mathbb{R}\\)", "No solution", "\\((1, \\infty)\\)"], correct: 0 },
+        { q: "Solve: \\((x + 4)(x - 1)(x - 6) \\le 0\\)", options: ["\\([-4, 1] \\cup [6, \\infty)\\)", "\\((-\\infty, -4] \\cup [1, 6]\\)", "\\([-4, 6]\\)", "\\((-\\infty, 1]\\)"], correct: 1 },
+        { q: "Solve: \\(\\frac{(x - 2)(x - 4)}{(x - 1)(x - 5)} < 0\\)", options: ["\\((1, 2) \\cup (4, 5)\\)", "\\((-\\infty, 1) \\cup (2, 4) \\cup (5, \\infty)\\)", "\\([1, 2] \\cup [4, 5]\\)", "\\((2, 4)\\)"], correct: 0 },
+        { q: "Solve: \\(\\frac{x + 3}{x + 3} \\ge 0\\)", options: ["\\((-3, \\infty) \\cup (-\\infty, -3)\\)", "\\([-3, \\infty)\\)", "\\(\\mathbb{R}\\)", "No solution"], correct: 0 },
+        { q: "Solve: \\((x - 1)^2(x - 2)^2 > 0\\)", options: ["\\(\\mathbb{R}\\)", "\\((1, 2)\\)", "\\(\\mathbb{R} - \\{1, 2\\}\\)", "No solution"], correct: 2 },
+        { q: "Solve: \\(\\frac{x - 10}{x + 10} \\ge 0\\)", options: ["\\((-10, 10]\\)", "\\((-\\infty, -10] \\cup [10, \\infty)\\)", "\\((-\\infty, -10) \\cup [10, \\infty)\\)", "\\([10, \\infty)\\)"], correct: 2 },
+        { q: "Solve: \\(x(x - 1)(x - 2)(x - 3) \\ge 0\\)", options: ["\\([0, 1] \\cup [2, 3]\\)", "\\((-\\infty, 0] \\cup [1, 2] \\cup [3, \\infty)\\)", "\\([0, 3]\\)", "\\((-\\infty, 0] \\cup [3, \\infty)\\)"], correct: 1 }
+    ];
+
+    let currentIdx = 0;
+    let userAnswers = new Array(questions.length).fill(null);
+
+    // --- INITIALIZE ---
+    function init() {
+        renderPalette();
+        renderQuestion();
+        startTimer();
+    }
+
+    function renderPalette() {
+        const palette = document.getElementById('palette');
+        palette.innerHTML = '';
+        questions.forEach((_, i) => {
+            const btn = document.createElement('div');
+            btn.className = `palette-btn ${userAnswers[i] !== null ? 'answered' : ''} ${i === currentIdx ? 'current' : ''}`;
+            btn.innerText = i + 1;
+            btn.onclick = () => jumpTo(i);
+            palette.appendChild(btn);
+        });
+    }
+
+    function renderQuestion() {
+        const area = document.getElementById('question-area');
+        const q = questions[currentIdx];
+        
+        area.innerHTML = `
+            <span class="q-label">Question ${currentIdx + 1} of 20</span>
+            <div class="question-text">${q.q}</div>
+            <div class="options-list">
+                ${q.options.map((opt, i) => `
+                    <div class="option-card ${userAnswers[currentIdx] === i ? 'selected' : ''}" onclick="selectOption(${i})">
+                        <input type="radio" name="q-opt" ${userAnswers[currentIdx] === i ? 'checked' : ''}>
+                        <span>${opt}</span>
+                    </div>
+                `).join('')}
+            </div>
+        `;
+        
+        // Trigger MathJax re-render
+        if (window.MathJax) {
+            MathJax.typesetPromise();
+        }
+        renderPalette();
+    }
+
+    function selectOption(optIdx) {
+        userAnswers[currentIdx] = optIdx;
+        renderQuestion();
+    }
+
+    function saveAndNext() {
+        if (currentIdx < questions.length - 1) {
+            currentIdx++;
+            renderQuestion();
+        } else {
+            alert("This was the last question. Click 'Submit Test' to finish.");
+        }
+    }
+
+    function clearResponse() {
+        userAnswers[currentIdx] = null;
+        renderQuestion();
+    }
+
+    function jumpTo(idx) {
+        currentIdx = idx;
+        renderQuestion();
+    }
+
+    function showSubmitConfirm() {
+        if (confirm("Are you sure you want to submit the test?")) {
+            calculateResults();
+        }
+    }
+
+    function calculateResults() {
+        let correct = 0;
+        let incorrect = 0;
+        
+        userAnswers.forEach((ans, i) => {
+            if (ans === questions[i].correct) {
+                correct++;
+            } else if (ans !== null) {
+                incorrect++;
+            }
+        });
+
+        document.getElementById('main-exam-content').style.display = 'none';
+        document.getElementById('footer-controls').style.display = 'none';
+        document.getElementById('results-screen').style.display = 'flex';
+
+        document.getElementById('correct-count').innerText = correct;
+        document.getElementById('incorrect-count').innerText = incorrect;
+        document.getElementById('final-score').innerText = (correct * 4) - (incorrect * 1); // Standard JEE marking
+        
+        const accuracy = (correct / questions.length) * 100;
+        document.getElementById('progress-bar').style.width = accuracy + '%';
+        
+        let feedback = "";
+        if (accuracy > 80) feedback = "Excellent! Your logic on roots and signs is razor-sharp.";
+        else if (accuracy > 50) feedback = "Good start. Review the open/closed interval rules for denominators.";
+        else feedback = "Focus on the sign-alternation rule. Take the retest and try again!";
+        
+        document.getElementById('learning-feedback').innerText = feedback;
+    }
+
+    function startTimer() {
+        let seconds = 3600;
+        const display = document.getElementById('time-display');
+        const interval = setInterval(() => {
+            let m = Math.floor(seconds / 60);
+            let s = seconds % 60;
+            display.innerText = `${m}:${s < 10 ? '0' + s : s}`;
+            if (seconds <= 0) {
+                clearInterval(interval);
+                calculateResults();
+            }
+            seconds--;
+        }, 1000);
+    }
+
+    init();
+</script>
+
+</body>
+</html>
