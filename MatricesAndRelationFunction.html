@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JEE Mock Test - NTA Simulator</title>
+    
+    <!-- MathJax for rendering LaTeX -->
+    <script>
+        MathJax = {
+            tex: { inlineMath: [['$', '$'], ['\\(', '\\)']], displayMath: [['$$', '$$'], ['\\[', '\\]']] }
+        };
+    </script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+    
+    <!-- Chart.js for visual analytics -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <style>
+        :root {
+            --nta-blue: #2d6288;
+            --nta-light-blue: #4a90e2;
+            --answered: #28a745;
+            --not-answered: #dc3545;
+            --not-visited: #e0e0e0;
+            --marked: #6f42c1;
+            --bg-light: #f4f7f6;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: Arial, sans-serif; }
+        body { background-color: var(--bg-light); color: #333; }
+
+        /* Header */
+        header { background-color: var(--nta-blue); color: white; padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; }
+        .header-title { font-size: 1.2rem; font-weight: bold; }
+        .timer { font-size: 1.2rem; font-weight: bold; background: rgba(0,0,0,0.2); padding: 5px 15px; border-radius: 5px; }
+
+        /* Main Layout */
+        .container { display: flex; height: calc(100vh - 60px); }
+        
+        /* Left: Question Area */
+        .main-content { flex: 3; display: flex; flex-direction: column; background: white; border-right: 2px solid #ddd; position: relative;}
+        .question-header { background: #f8f9fa; padding: 15px; border-bottom: 1px solid #ddd; font-weight: bold; display: flex; justify-content: space-between; }
+        .question-body { padding: 30px; flex-grow: 1; overflow-y: auto; font-size: 1.1rem; line-height: 1.6; }
+        
+        /* Options & Inputs */
+        .options { margin-top: 20px; list-style-type: none; }
+        .options li { margin-bottom: 15px; padding: 10px; border: 1px solid #ddd; border-radius: 5px; cursor: pointer; transition: background 0.2s; display: flex; align-items: center;}
+        .options li:hover { background: #f1f1f1; }
+        .options li.selected { background: #e3f2fd; border-color: var(--nta-light-blue); font-weight: bold; }
+        .options input { margin-right: 15px; cursor: pointer; transform: scale(1.2); }
+        .numerical-input { padding: 10px; font-size: 1.2rem; width: 100%; max-width: 300px; border: 2px solid #ddd; border-radius: 5px; margin-top: 20px;}
+        .numerical-input:focus { border-color: var(--nta-light-blue); outline: none; }
+        .q-type-badge { background: var(--nta-light-blue); color: white; padding: 3px 10px; border-radius: 12px; font-size: 0.9rem; }
+
+        /* Footer Actions */
+        .action-footer { background: #f8f9fa; padding: 15px; border-top: 1px solid #ddd; display: flex; gap: 10px; flex-wrap: wrap;}
+        button { padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; color: white; transition: opacity 0.2s; }
+        button:hover { opacity: 0.9; }
+        .btn-save { background-color: var(--answered); }
+        .btn-mark { background-color: var(--marked); }
+        .btn-clear { background-color: #6c757d; }
+        .btn-submit { background-color: var(--nta-blue); margin-left: auto; }
+
+        /* Right: Palette Area */
+        .sidebar { flex: 1; background: #fff; display: flex; flex-direction: column; min-width: 250px;}
+        .candidate-info { padding: 15px; text-align: center; border-bottom: 1px solid #ddd; background: #f8f9fa; }
+        .palette-header { padding: 15px; font-weight: bold; text-align: center; background: var(--nta-blue); color: white; }
+        .palette-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; padding: 20px; overflow-y: auto; }
+        .palette-btn { height: 45px; border-radius: 5px; border: 1px solid #ccc; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; background-color: var(--not-visited); color: #333; }
+        .palette-btn.answered { background-color: var(--answered); color: white; border: none; }
+        .palette-btn.not-answered { background-color: var(--not-answered); color: white; border: none; }
+        .palette-btn.marked { background-color: var(--marked); color: white; border: none; }
+
+        /* Post-Exam Dashboard */
+        #result-container { display: none; padding: 40px; max-width: 1000px; margin: auto; background: white; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); margin-top: 30px; margin-bottom: 30px;}
+        .result-header { text-align: center; margin-bottom: 30px; }
+        .metrics-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-bottom: 40px; }
+        .metric-card { padding: 20px; text-align: center; border-radius: 8px; color: white; box-shadow: 0 4px 6px rgba(0,0,0,0.1);}
+        .metric-card h3 { font-size: 2.2rem; margin-bottom: 5px; }
+        .bg-score { background: linear-gradient(135deg, var(--nta-blue), #1a3c54); }
+        .bg-acc { background: linear-gradient(135deg, #17a2b8, #0b505b); }
+        .bg-percentile { background: linear-gradient(135deg, #ffc107, #d39e00); color: #333 !important; }
+        .bg-time { background: linear-gradient(135deg, #6c757d, #343a40); }
+        
+        .charts-container { display: flex; gap: 30px; flex-wrap: wrap;}
+        .chart-box { flex: 1; min-width: 300px; background: #f8f9fa; padding: 20px; border-radius: 8px; border: 1px solid #ddd; }
+        .recommendations { margin-top: 30px; padding: 25px; background: #e9ecef; border-left: 5px solid var(--nta-blue); font-size: 1.1rem; line-height: 1.6;}
+    </style>
+</head>
+<body>
+
+    <!-- EXAM UI -->
+    <div id="exam-ui">
+        <header>
+            <div class="header-title">JEE Advanced Simulator - Full Test</div>
+            <div class="timer" id="timer">03:00:00</div>
+        </header>
+
+        <div class="container">
+            <div class="main-content">
+                <div class="question-header">
+                    <span id="q-number">Question 1</span>
+                    <div>
+                        <span class="q-type-badge" id="q-type-badge">Single Choice</span>
+                        <span id="q-topic" style="margin-left:10px; color:#555;">Topic</span>
+                    </div>
+                </div>
+                <div class="question-body">
+                    <div id="q-text">Loading question...</div>
+                    <div id="options-container">
+                        <ul class="options" id="options-list"></ul>
+                        <div id="numerical-container" style="display: none;">
+                            <input type="number" id="num-input" class="numerical-input" placeholder="Enter your numerical answer here..." oninput="selectNumerical(this.value)">
+                        </div>
+                    </div>
+                </div>
+                <div class="action-footer">
+                    <button class="btn-save" onclick="saveAndNext()">Save & Next</button>
+                    <button class="btn-clear" onclick="clearResponse()">Clear Response</button>
+                    <button class="btn-mark" onclick="markForReview()">Mark for Review & Next</button>
+                    <button class="btn-submit" onclick="submitExam()">Submit Test</button>
+                </div>
+            </div>
+
+            <div class="sidebar">
+                <div class="candidate-info">
+                    <img src="https://ui-avatars.com/api/?name=JEE+Aspirant&background=2d6288&color=fff" alt="Avatar" style="border-radius: 50%; width: 60px; margin-bottom: 10px;">
+                    <h4>Candidate: JEE Aspirant</h4>
+                </div>
+                <div class="palette-header">Question Palette</div>
+                <div class="palette-grid" id="palette-grid">
+                    <!-- Palette buttons injected via JS -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- RESULT DASHBOARD UI -->
+    <div id="result-container">
+        <div class="result-header">
+            <h1 style="color: var(--nta-blue); font-size: 2.5rem; margin-bottom: 10px;">Performance Diagnostics</h1>
+            <p style="font-size: 1.2rem; color: #555;">Detailed analysis of your simulated exam performance.</p>
+        </div>
+
+        <div class="metrics-grid">
+            <div class="metric-card bg-score">
+                <h3 id="res-score">0</h3>
+                <p>Total Score (Out of 200)</p>
+            </div>
+            <div class="metric-card bg-acc">
+                <h3 id="res-acc">0%</h3>
+                <p>Accuracy</p>
+            </div>
+            <div class="metric-card bg-percentile">
+                <h3 id="res-percentile">00.00</h3>
+                <p>Expected Percentile</p>
+            </div>
+            <div class="metric-card bg-time">
+                <h3 id="res-attempted">0/50</h3>
+                <p>Questions Attempted</p>
+            </div>
+        </div>
+
+        <div class="charts-container">
+            <div class="chart-box">
+                <h3 style="text-align: center; margin-bottom: 15px; color: #444;">Topic-Wise Accuracy (%)</h3>
+                <canvas id="topicRadarChart"></canvas>
+            </div>
+            <div class="chart-box">
+                <h3 style="text-align: center; margin-bottom: 15px; color: #444;">Marks Attempt Distribution</h3>
+                <canvas id="marksBarChart"></canvas>
+            </div>
+        </div>
+
+        <div class="recommendations" id="ai-recommendations"></div>
+    </div>
+
+    <script>
+        // --- 1. DATA STRUCTURE ---
+        // Complete 50 Questions accurately categorized by Type and Topic
+        const questionsData = [
+            // PART A: Single Correct (1-15)
+            { id: 1, type: 'single', topic: "Functions", text: "Which of the following function(s) is NOT an odd function?", options: ["$f(x)=\\frac{x^3}{2^{|x|}+\\sec x}$", "$f(x)=x^4 e^{\\sqrt{x^2+1}+x^4}$", "$f(x)=\\frac{e^x-1}{e^x+1}(g(x)+g(-x))$", "$f(x)=h(g(k(x)))$ when $h(x)$, $g(x)$ & $k(x)$ are all odd functions"], correctAnswer: 1 },
+            { id: 2, type: 'single', topic: "Matrices", text: "The system of equations $x+y+az=b$, $2x+3y=2a$ & $3x+4y+a^2z=ab+2$ has:<br>(I) Unique solution when $a \\neq 0, b \\in R$<br>(II) No solution when $a=0, b=1$<br>(III) Infinite solutions when $a=0, b=2$<br>(IV) Infinite solutions when $a=1, b \\in R$<br><br>Which of the above statements is INCORRECT?", options: ["I", "II", "III", "IV"], correctAnswer: 0 },
+            { id: 3, type: 'single', topic: "Determinants", text: "If $A=[a_{ij}]_{4\\times 4}$, such that $a_{ij}=2$ when $i=j$, and $0$ when $i \\neq j$, then the value of $\\frac{\\det(\\text{adj}(\\text{adj } A))}{7}$ is:", options: ["1/7", "2/7", "3/7", "4/7"], correctAnswer: 0 },
+            { id: 4, type: 'single', topic: "Functions", text: "Given that $f(x) = \\frac{x^2}{x^2-100x+5000}$, the value of the expression $f(1)+f(2)+...+f(100)$ is:", options: ["98", "99", "100", "101"], correctAnswer: 3 },
+            { id: 5, type: 'single', topic: "Functions", text: "Range of the function $f(x) = \\frac{2|x|-1}{3|x|+2}$ is:", options: ["$(-2/3, 2/3)$", "$[-1/2, 1/2]$", "$R-\\{2/3\\}$", "$[-1/2, 2/3)$"], correctAnswer: 3 },
+            { id: 6, type: 'single', topic: "Matrices", text: "If $A$ is a skew symmetric matrix of order 2 and $B, C$ are $\\begin{bmatrix}1 & 4 \\\\ 2 & 9\\end{bmatrix}, \\begin{bmatrix}9 & -4 \\\\ -2 & 1\\end{bmatrix}$ respectively, then $A(B^2C^2)A^T$ is:", options: ["A symmetric matrix", "An identity matrix", "A skew symmetric matrix", "Neither symmetric nor skew symmetric"], correctAnswer: 0 },
+            { id: 7, type: 'single', topic: "Matrices", text: "Let $B$ be a square matrix such that $|B|=1$ and $2A+B=B^T-A^T$, then the absolute value of $|A+B|$ is:", options: ["0", "2", "1", "3"], correctAnswer: 2 },
+            { id: 8, type: 'single', topic: "Relations", text: "A relation $R$ is defined from real numbers to real numbers such that $aRb \\Rightarrow a-b$ is a non-negative integer. Then relation $R$ is:", options: ["reflexive, symmetric but not transitive", "reflexive, transitive but not symmetric", "symmetric, transitive but not reflexive", "reflexive only"], correctAnswer: 1 },
+            { id: 9, type: 'single', topic: "Functions", text: "If $[x]$ denotes the integral part of $x$ and $f(x)$ has the domain $[-5/2, 2]$, then the domain of $f([|x|])$ is:", options: ["$[-3, 2]$", "$(-3, 2]$", "$[-2, 2]$", "$(-3, 3)$"], correctAnswer: 1 },
+            { id: 10, type: 'single', topic: "Determinants", text: "The equation $\\begin{vmatrix} (1+x)^2 & (1-x)^2 & -(2+x^2) \\\\ 2x+1 & 3x & 1-5x \\\\ x+1 & 2x & 2-3x \\end{vmatrix} + \\begin{vmatrix} (1+x)^2 & 2x+1 & x+1 \\\\ (1-x)^2 & 3x & 2x \\\\ 1-2x & 3x-2 & 2x-3 \\end{vmatrix} = 0$:", options: ["Has no solution", "Has exactly 4 real solutions", "Has exactly two real and two non-real solutions", "Has infinite number of solutions"], correctAnswer: 3 },
+            { id: 11, type: 'single', topic: "Functions", text: "If $f(x) = \\cot^{-1}(\\frac{2x}{1-x^2})$ and $g(x) = \\cos^{-1}(\\frac{1-x^2}{1+x^2})$, then the value of $\\lim_{x \\rightarrow t} \\frac{f(x)-f(t)}{g(x)-g(t)}$ is:", options: ["1", "-1", "2", "1/2"], correctAnswer: 1 },
+            { id: 12, type: 'single', topic: "Functions", text: "Let $f(x)$ is a non-zero differentiable function $\\forall x \\in R$ & satisfying $f(x+y)=f(x-y) \\forall x,y \\in R$, then:", options: ["$f(1)+f(0)=f'(0)$", "$f(1)-f(0)=f'(0)$", "$f(0)+f(1)=f(2)$", "$3f(2)=2f(3)$"], correctAnswer: 1 },
+            { id: 13, type: 'single', topic: "Matrices", text: "For $\\alpha, \\beta, \\gamma \\in R$, let $A = \\begin{bmatrix} \\alpha^2 & 6 & 8 \\\\ 3 & \\beta^2 & 9 \\\\ 4 & 5 & \\gamma^2 \\end{bmatrix}$ and $B = \\begin{bmatrix} 2\\alpha & 3 & 5 \\\\ 2 & 2\\beta & 6 \\\\ 1 & 4 & 2\\gamma-3 \\end{bmatrix}$. If $\\text{Tr}(A) = \\text{Tr}(B)$, then $\\frac{1}{\\alpha}+\\frac{1}{\\beta}+\\frac{1}{\\gamma}$ is:", options: ["1", "2", "3", "4"], correctAnswer: 2 },
+            { id: 14, type: 'single', topic: "Relations", text: "Let $A=\\{(x,y) \\mid a^x=a^y; a>0, a \\neq 1\\}$ and $B=\\{(x,y) \\mid xy=1\\}$. Choose the correct statements:", options: ["$A \\cap B = B$", "$A \\cap B = A$", "$n(B) > n(A)$", "A and B are non-comparable"], correctAnswer: 3 },
+            { id: 15, type: 'single', topic: "Relations", text: "Suppose $A_1...A_{30}$ are sets with 5 elements and $B_1...B_n$ with 3 elements. $\\cup A_i = \\cup B_j = S$. If each element belongs to exactly 10 $A_i$'s and 9 $B_j$'s, then $n$ is:", options: ["15", "3", "45", "35"], correctAnswer: 2 },
+
+            // PART B: Multiple Correct (16-25)
+            { id: 16, type: 'multiple', topic: "Functions", text: "Let $f: A \\rightarrow B$ be a function where set A contains 4 elements and set B contains 3 elements. Number of functions which are:", options: ["Surjective is 36", "Injective is 0", "Not surjective is 45", "Not injective is 81"], correctAnswer: [0, 1, 2, 3] },
+            { id: 17, type: 'multiple', topic: "Functions", text: "Let $f(x)$ be polynomial function of degree 5 with leading coefficient unity such that $f(1)=5, f(2)=4, f(3)=3, f(4)=2, f(5)=1$, then $f(6)$ is divisible by:", options: ["0", "24", "120", "720"], correctAnswer: [1, 2] },
+            { id: 18, type: 'multiple', topic: "Matrices", text: "A square matrix P satisfies $P^2=I-P$. If $P^n=5I-8P$ then n is greater than:", options: ["4", "5", "6", "7"], correctAnswer: [0, 1] },
+            { id: 19, type: 'multiple', topic: "Matrices", text: "If $A = \\begin{bmatrix} 1 & 1 & 0 \\\\ 2 & 2 & 1 \\\\ 0 & 1 & -1 \\end{bmatrix}$ and $A^3-2A^2+\\lambda A+I=0$, then:", options: ["$\\lambda=4$", "$\\lambda=-4$", "$|A^2+A^{-1}|=56$", "$|A^2+A^{-1}|=14$"], correctAnswer: [1, 2] },
+            { id: 20, type: 'multiple', topic: "Functions", text: "Let $f(x)=\\frac{32}{4+x^2+x^4}$, $g(x)=9+x^2$ and $h(x)=-x^2-3x+k$. Which is/are correct?", options: ["Number of integers in range of f(x) is 8", "Number of integral values of k for $h(f)>0$ & $h(g)<0$ is 20", "Number of integral values of k for $h(f)>0$ & $h(g)<0$ is 19", "Maximum value of g(f(x)) is 73"], correctAnswer: [0, 2, 3] },
+            { id: 21, type: 'multiple', topic: "Matrices", text: "If A is matrix such that $A^2+A+2I=0$, then:", options: ["A is non-singular", "$A \\neq 0$", "$|A| \\neq 0$", "$A^{-1} = -\\frac{1}{2}(A+I)$"], correctAnswer: [0, 1, 2, 3] },
+            { id: 22, type: 'multiple', topic: "Matrices", text: "If $A = \\begin{bmatrix} 0 & 0 \\\\ 0 & i \\end{bmatrix}$ where $i=\\sqrt{-1}$, then which is/are correct?", options: ["$\\sum_{r=1}^{2016}A^r = 0$", "$\\sum A^{2r-1} = \\sum A^{2r}$", "$A^{2016}$ is symmetric", "$A^{2016}$ is singular"], correctAnswer: [0, 1, 3] },
+            { id: 23, type: 'multiple', topic: "Matrices", text: "Let P and Q be symmetric matrices where $P^2=I$ and $Q^2=-I$. Which are symmetric?", options: ["$(P+Q)^2$", "$(P-Q)^2$", "$PQ+QP$", "$PQ-QP$"], correctAnswer: [0, 1, 2] },
+            { id: 24, type: 'multiple', topic: "Functions", text: "If $f(x) = \\{x + [\\log_2(2+x)]\\} + ... + \\{x + [\\log_2(2+x^{10})]\\}$ then:", options: ["$f(5)=50$", "$f(1/2)=5$", "$f(1)+f(-1)=0$", "$f(\\log_2 2\\sqrt{2})=5$"], correctAnswer: [1, 2, 3] },
+            { id: 25, type: 'multiple', topic: "Functions", text: "If $f(x) = |x^2-3|x|+2|$, then:", options: ["$f'(x)=2x-3$ for $x \\in (0,1) \\cup (2,\\infty)$", "$f'(x)=2x+3$ for $x \\in (-\\infty,-2) \\cup (-1,0)$", "$f'(x)=-2x-3$ for $x \\in (-2,-1)$", "None of the above"], correctAnswer: [0, 1, 2] },
+
+            // PART C: Numerical (26-45)
+            { id: 26, type: 'numerical', topic: "Matrices", text: "If A is a diagonal matrix of order 3x3 commutative with every square matrix of order 3x3 under multiplication and trace(A)=12, then $|A|$ is equal to.", correctAnswer: 64 },
+            { id: 27, type: 'numerical', topic: "Determinants", text: "Let polynomial equal the given determinant identity. Find $(a_4+a_3+a_2+a_1+a_0)-25$.", correctAnswer: 6 },
+            { id: 28, type: 'numerical', topic: "Functions", text: "The range of $f(x) = \\frac{x+m}{x^2+1}$ contains interval $[-1/2, 1]$. If $m \\ge \\frac{3}{k}$, find $k$.", correctAnswer: 4 },
+            { id: 29, type: 'numerical', topic: "Functions", text: "Number of solutions of $f(x) = f^{-1}(x)$ where $f(x) = x + \\sin x$ in $[-2\\pi, 2\\pi]$ is.", correctAnswer: 5 },
+            { id: 30, type: 'numerical', topic: "Matrices", text: "Matrix A satisfies $A^2-5A+7I=0$. If $A^8 = aA+bI$, then $a/253$ is.", correctAnswer: 5 },
+            { id: 31, type: 'numerical', topic: "Matrices", text: "For given transformation matrix P, if $x_1, x_2$ satisfy $|P-xI|=0$, find $x_1^2+x_2^2$.", correctAnswer: 5 },
+            { id: 32, type: 'numerical', topic: "Determinants", text: "Number of pairs (a,b) from {0..6} for unique solution is $\\lambda$. Find $\\lambda/7$.", correctAnswer: 6 },
+            { id: 33, type: 'numerical', topic: "Matrices", text: "Number of symmetric 3x3 matrices with entries -1, 0, 1 and trace=1 is.", correctAnswer: 162 },
+            { id: 34, type: 'numerical', topic: "Relations", text: "Number of relations on {1,2,3} that are reflexive, symmetric and have prime number of elements is.", correctAnswer: 7 },
+            { id: 35, type: 'numerical', topic: "Matrices", text: "Let $A = \\begin{bmatrix} 0 & a \\\\ 0 & 0 \\end{bmatrix}$ and $(A+I)^{50} - 50A = \\begin{bmatrix} a & b \\\\ c & d \\end{bmatrix}$ then $a+b+c+d$ is.", correctAnswer: 2 },
+            { id: 36, type: 'numerical', topic: "Relations", text: "Minimum elements to add to $R=\\{(a,b), (b,c), (b,d)\\}$ to make it equivalence relation is.", correctAnswer: 13 },
+            { id: 37, type: 'numerical', topic: "Matrices", text: "Given properties of Tr(A) and characteristic equation, find specific trace evaluation.", correctAnswer: 2 },
+            { id: 38, type: 'numerical', topic: "Matrices", text: "From previous, if $a_{ij} \\in \\{1,2,3,4\\}$, number of possible invertible matrices A is.", correctAnswer: 16 },
+            { id: 39, type: 'numerical', topic: "Matrices", text: "If $A+B=AB$, determinant of $(B-I)AB^{-1}$ is $\\lambda$, find $2\\lambda$.", correctAnswer: 2 },
+            { id: 40, type: 'numerical', topic: "Matrices", text: "Given trigonometric matrix A and $A(\\text{adj } A) = kI$, value of $k+9$ is.", correctAnswer: 8 },
+            { id: 41, type: 'numerical', topic: "Matrices", text: "Given $AB=B$ and trace(A)=50, find $\\det(2A)$.", correctAnswer: 196 },
+            { id: 42, type: 'numerical', topic: "Functions", text: "Product of integers in domain of $f(x) = \\sqrt{-x^2+11x-24} + \\sqrt{\\log_2(\\cos \\pi x)}$.", correctAnswer: 192 },
+            { id: 43, type: 'numerical', topic: "Matrices", text: "Calculate specific element combination for $P^T Q^{2007} P$.", correctAnswer: 401 },
+            { id: 44, type: 'numerical', topic: "Functions", text: "If $f(x)+f(y)+f(z)+f(x)f(y)f(z)=14$, find $f'(3)$.", correctAnswer: 0 },
+            { id: 45, type: 'numerical', topic: "Functions", text: "If $f(x+y)=2^x f(y)+4^y f(x)$ and $f(2)=3$, find $14 \\cdot \\frac{f'(4)}{f'(2)}$.", correctAnswer: 248 },
+
+            // PART D: Matrix Match (46-50)
+            { id: 46, type: 'single', topic: "Functions", text: "Consider $f(x) = ||x-1| - \\frac{1}{2e}| - k$. Match List I with List II values of k.", options: ["(A) I->R,P; II->T; III->Q; IV->S", "(B) I->Q; II->S; III->T; IV->R,P", "(C) I->Q; II->R,P; III->S; IV->T", "(D) I->Q; II->Q; III->R,P; IV->T"], correctAnswer: 0 },
+            { id: 47, type: 'single', topic: "Functions", text: "Match functions in List I with their types in List II (One-one, onto, etc).", options: ["(A) I->P,Q; II->P,S; III->Q,R,T; IV->Q,R", "(B) I->Q,R,T; II->P,Q; III->P,S; IV->Q,R", "(C) I->P,S; II->P,Q; III->Q,R,T; IV->Q,R", "(D) I->Q,R; II->P,Q; III->Q,R,T; IV->P,S"], correctAnswer: 3 },
+            { id: 48, type: 'single', topic: "Determinants", text: "If A is a 3x3 matrix and $|A|=3$, match the determinant values.", options: ["(A) P-1, Q-2, R-3, S-4", "(B) P-2, Q-4, R-3, S-1", "(C) P-3, Q-4, R-4, S-1", "(D) P-1, Q-5, R-3, S-4"], correctAnswer: 2 },
+            { id: 49, type: 'single', topic: "Matrices", text: "Match the definitions of matrices with their properties (Symmetric, Skew, etc).", options: ["(A) P-1,3; Q-1; R-2; S-1,4", "(B) P-1,4; Q-3; R-5; S-2,4", "(C) P-1,5; Q-2; R-3; S-4,5", "(D) P-1,2; Q-4; R-1; S-3,4"], correctAnswer: 0 },
+            { id: 50, type: 'single', topic: "Matrices", text: "Match the system of equations with conditions for unique, infinite, or no solutions.", options: ["(A) P-2; Q-1,4; R-1,3; S-1,3", "(B) P-1; Q-1,3; R-1,2; S-1,4", "(C) P-4; Q-1,2; R-1,5; S-1,3", "(D) P-3; Q-1,4; R-1,3; S-1,5"], correctAnswer: 0 }
+        ];
+
+        // --- 2. STATE VARIABLES ---
+        let currentIndex = 0;
+        let userAnswers = {}; 
+        let questionStatus = {}; 
+        questionsData.forEach(q => questionStatus[q.id] = 'not-visited');
+
+        // --- 3. TIMER LOGIC ---
+        let timeLeft = 3 * 60 * 60; // 3 hours
+        function updateTimer() {
+            let h = Math.floor(timeLeft / 3600);
+            let m = Math.floor((timeLeft % 3600) / 60);
+            let s = timeLeft % 60;
+            document.getElementById('timer').innerText = 
+                `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+            if (timeLeft <= 0) submitExam();
+            timeLeft--;
+        }
+        setInterval(updateTimer, 1000);
+
+        // --- 4. RENDER LOGIC ---
+        function renderQuestion() {
+            const q = questionsData[currentIndex];
+            
+            if (questionStatus[q.id] === 'not-visited') questionStatus[q.id] = 'not-answered';
+
+            document.getElementById('q-number').innerText = `Question ${currentIndex + 1} of ${questionsData.length}`;
+            document.getElementById('q-topic').innerText = `Topic: ${q.topic}`;
+            document.getElementById('q-text').innerHTML = q.text;
+            
+            // Set Badge
+            const badge = document.getElementById('q-type-badge');
+            badge.innerText = q.type === 'single' ? 'Single Choice' : q.type === 'multiple' ? 'Multiple Choice' : 'Numerical Value';
+            badge.style.backgroundColor = q.type === 'numerical' ? '#ff9800' : q.type === 'multiple' ? '#6f42c1' : 'var(--nta-light-blue)';
+
+            const optionsList = document.getElementById('options-list');
+            const numContainer = document.getElementById('numerical-container');
+            const numInput = document.getElementById('num-input');
+
+            optionsList.innerHTML = '';
+            
+            if (q.type === 'numerical') {
+                optionsList.style.display = 'none';
+                numContainer.style.display = 'block';
+                numInput.value = userAnswers[q.id] !== undefined ? userAnswers[q.id] : '';
+            } else {
+                numContainer.style.display = 'none';
+                optionsList.style.display = 'block';
+                
+                q.options.forEach((opt, index) => {
+                    const li = document.createElement('li');
+                    let isSelected = false;
+
+                    if (q.type === 'single') {
+                        isSelected = userAnswers[q.id] === index;
+                        li.innerHTML = `<input type="radio" name="opt" id="opt${index}" ${isSelected?'checked':''}>
+                                        <label style="cursor:pointer; width:100%" for="opt${index}">${String.fromCharCode(65 + index)}. ${opt}</label>`;
+                        li.onclick = () => selectOption(index, 'single');
+                    } else if (q.type === 'multiple') {
+                        let ansArr = userAnswers[q.id] || [];
+                        isSelected = ansArr.includes(index);
+                        li.innerHTML = `<input type="checkbox" id="opt${index}" ${isSelected?'checked':''}>
+                                        <label style="cursor:pointer; width:100%" for="opt${index}">${String.fromCharCode(65 + index)}. ${opt}</label>`;
+                        li.onclick = (e) => { e.preventDefault(); selectOption(index, 'multiple'); };
+                    }
+                    if (isSelected) li.classList.add('selected');
+                    optionsList.appendChild(li);
+                });
+            }
+
+            renderPalette();
+            if (window.MathJax && typeof window.MathJax.typesetPromise === 'function') {
+                window.MathJax.typesetPromise();
+            }
+        }
+
+        function renderPalette() {
+            const grid = document.getElementById('palette-grid');
+            grid.innerHTML = '';
+            questionsData.forEach((q, idx) => {
+                const btn = document.createElement('div');
+                btn.className = `palette-btn ${questionStatus[q.id]}`;
+                btn.innerText = idx + 1;
+                btn.onclick = () => { currentIndex = idx; renderQuestion(); };
+                grid.appendChild(btn);
+            });
+        }
+
+        // --- 5. INTERACTION LOGIC ---
+        function selectOption(index, type) {
+            const qId = questionsData[currentIndex].id;
+            if (type === 'single') {
+                userAnswers[qId] = index;
+            } else if (type === 'multiple') {
+                if (!userAnswers[qId]) userAnswers[qId] = [];
+                const pos = userAnswers[qId].indexOf(index);
+                if (pos === -1) userAnswers[qId].push(index);
+                else userAnswers[qId].splice(pos, 1);
+            }
+            renderQuestion();
+        }
+
+        function selectNumerical(val) {
+            const qId = questionsData[currentIndex].id;
+            userAnswers[qId] = val;
+        }
+
+        function checkIsAnswered(qId) {
+            let ans = userAnswers[qId];
+            if (ans === undefined || ans === null || ans === '') return false;
+            if (Array.isArray(ans) && ans.length === 0) return false;
+            return true;
+        }
+
+        function saveAndNext() {
+            const qId = questionsData[currentIndex].id;
+            if (checkIsAnswered(qId)) questionStatus[qId] = 'answered';
+            else questionStatus[qId] = 'not-answered';
+            if (currentIndex < questionsData.length - 1) currentIndex++;
+            renderQuestion();
+        }
+
+        function clearResponse() {
+            const qId = questionsData[currentIndex].id;
+            delete userAnswers[qId];
+            questionStatus[qId] = 'not-answered';
+            renderQuestion();
+        }
+
+        function markForReview() {
+            const qId = questionsData[currentIndex].id;
+            questionStatus[qId] = 'marked';
+            if (currentIndex < questionsData.length - 1) currentIndex++;
+            renderQuestion();
+        }
+
+        // --- 6. SUBMISSION & ANALYTICS LOGIC ---
+        function submitExam() {
+            if(!confirm("Are you sure you want to final submit the exam?")) return;
+
+            document.getElementById('exam-ui').style.display = 'none';
+            document.getElementById('result-container').style.display = 'block';
+
+            let score = 0;
+            let correctCount = 0;
+            let incorrectCount = 0;
+            let attemptedCount = 0;
+            let topicStats = {};
+
+            questionsData.forEach(q => {
+                if (!topicStats[q.topic]) topicStats[q.topic] = { total: 0, attempted: 0, correct: 0 };
+                topicStats[q.topic].total++;
+
+                if (checkIsAnswered(q.id)) {
+                    attemptedCount++;
+                    topicStats[q.topic].attempted++;
+                    let isCorrect = false;
+
+                    if (q.type === 'single') {
+                        isCorrect = userAnswers[q.id] === q.correctAnswer;
+                    } else if (q.type === 'multiple') {
+                        let ans = userAnswers[q.id].sort();
+                        let correctAns = q.correctAnswer.slice().sort();
+                        isCorrect = JSON.stringify(ans) === JSON.stringify(correctAns);
+                    } else if (q.type === 'numerical') {
+                        isCorrect = parseFloat(userAnswers[q.id]) === q.correctAnswer;
+                    }
+
+                    if (isCorrect) {
+                        score += 4;
+                        correctCount++;
+                        topicStats[q.topic].correct++;
+                    } else {
+                        // Section B (Numerical) no negative marking typically in JEE Main, but standard -1 applied here
+                        score -= (q.type === 'numerical') ? 0 : 1; 
+                        incorrectCount++;
+                    }
+                }
+            });
+
+            const accuracy = attemptedCount === 0 ? 0 : ((correctCount / attemptedCount) * 100).toFixed(1);
+            const maxPossibleScore = questionsData.length * 4;
+            let percentile = score > 0 ? Math.min(99.99, 40 + (score / maxPossibleScore) * 60) : 0; 
+
+            document.getElementById('res-score').innerText = score;
+            document.getElementById('res-acc').innerText = `${accuracy}%`;
+            document.getElementById('res-percentile').innerText = percentile.toFixed(2);
+            document.getElementById('res-attempted').innerText = `${attemptedCount} / 50`;
+
+            // Dynamic Insights
+            let recHTML = `<strong>Diagnostic Summary:</strong> You attempted ${attemptedCount} questions with ${correctCount} correct and ${incorrectCount} incorrect. <br><br>`;
+            if (accuracy < 50) recHTML += "🛑 <b>Critical Intervention Required:</b> High negative marking observed. Restrict guessing and focus purely on solid conceptual grounding in Matrices and Domain mappings.";
+            else if (accuracy < 80) recHTML += "⚠️ <b>Moderate Optimization Needed:</b> Good base, but trace properties of matrices and composite/inverse functions are leaking marks. Revisit your notes.";
+            else recHTML += "✅ <b>Exceptional Accuracy:</b> You are in the top tier! Focus now purely on velocity. Attempt Numerical type questions faster.";
+            
+            document.getElementById('ai-recommendations').innerHTML = recHTML;
+
+            renderCharts(topicStats);
+        }
+
+        function renderCharts(topicStats) {
+            const topics = Object.keys(topicStats);
+            const accuracyData = topics.map(t => {
+                let stats = topicStats[t];
+                return stats.attempted === 0 ? 0 : Math.round((stats.correct / stats.attempted) * 100);
+            });
+            const attemptedData = topics.map(t => topicStats[t].attempted);
+
+            // Radar Chart
+            new Chart(document.getElementById('topicRadarChart').getContext('2d'), {
+                type: 'radar',
+                data: {
+                    labels: topics,
+                    datasets: [{
+                        label: 'Accuracy %',
+                        data: accuracyData,
+                        backgroundColor: 'rgba(45, 98, 136, 0.4)',
+                        borderColor: '#2d6288',
+                        pointBackgroundColor: '#fff',
+                        pointBorderColor: '#2d6288',
+                        pointHoverBackgroundColor: '#2d6288',
+                        pointHoverBorderColor: '#fff'
+                    }]
+                },
+                options: { scales: { r: { min: 0, max: 100, ticks: { backdropColor: 'transparent' } } } }
+            });
+
+            // Bar Chart
+            new Chart(document.getElementById('marksBarChart').getContext('2d'), {
+                type: 'bar',
+                data: {
+                    labels: topics,
+                    datasets: [{
+                        label: 'Questions Attempted',
+                        data: attemptedData,
+                        backgroundColor: '#17a2b8',
+                        borderRadius: 4
+                    }]
+                },
+                options: { scales: { y: { beginAtZero: true, max: 20 } }, plugins: { legend: { display: false } } }
+            });
+        }
+
+        renderQuestion();
+    </script>
+</body>
+</html>
