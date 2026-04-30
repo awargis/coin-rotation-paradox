@@ -3,485 +3,465 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>JEE Mock Test - NTA Simulator</title>
+    <title>JEE Advanced Mock Test - Interactive Explorer</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     
-    <!-- MathJax for rendering LaTeX -->
+    <!-- Add MathJax for LaTeX rendering -->
     <script>
-        MathJax = {
-            tex: { inlineMath: [['$', '$'], ['\\(', '\\)']], displayMath: [['$$', '$$'], ['\\[', '\\]']] }
+        window.MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']]
+            },
+            startup: {
+                typeset: false // We will typeset manually after rendering views
+            }
         };
     </script>
-    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
-    
-    <!-- Chart.js for visual analytics -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+    <!-- Chosen Palette: Warm Neutrals & Subtle Blue Accents (bg-stone-50, text-stone-800, border-stone-200, bg-blue-600) -->
+    <!-- Application Structure Plan: A dashboard approach with a side navigation menu. The application starts on an 'Overview' dashboard featuring Chart.js visualizations that break down the test structure (Question types and distribution). Users can navigate to specific sections (like the selected 'Comprehension' section) to interactively explore the questions and reveal answers. This non-linear structure allows students or educators to quickly grasp the test's composition and drill down into specific question types for targeted review, rather than scrolling through a static, 50-question document. -->
+    <!-- Visualization & Content Choices: 
+         1. Report Info: Section distribution -> Goal: Inform -> Viz: Donut Chart -> Interaction: Hover tooltips -> Justification: Quickly shows the proportion of different question types (Single correct, numerical, etc.). -> Library: Chart.js
+         2. Report Info: Question Content -> Goal: Organize/Explore -> Viz: Dynamic interactive list -> Interaction: 'Reveal Answer' toggles -> Justification: Fosters active recall and engagement instead of passive reading. -> Library: Vanilla JS + Tailwind
+         Confirming NO SVG/Mermaid used. -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
 
     <style>
-        :root {
-            --nta-blue: #2d6288;
-            --nta-light-blue: #4a90e2;
-            --answered: #28a745;
-            --not-answered: #dc3545;
-            --not-visited: #e0e0e0;
-            --marked: #6f42c1;
-            --bg-light: #f4f7f6;
+        /* Essential Chart Container Styling */
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 500px;
+            margin-left: auto;
+            margin-right: auto;
+            height: 300px;
+            max-height: 350px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        @media (min-width: 768px) {
+            .chart-container {
+                height: 350px;
+            }
+        }
+        
+        /* Custom scrollbar for a cleaner look */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f5f5f4; 
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #d6d3d1; 
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #a8a29e; 
         }
 
-        * { box-sizing: border-box; margin: 0; padding: 0; font-family: Arial, sans-serif; }
-        body { background-color: var(--bg-light); color: #333; }
-
-        /* Header */
-        header { background-color: var(--nta-blue); color: white; padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; }
-        .header-title { font-size: 1.2rem; font-weight: bold; }
-        .timer { font-size: 1.2rem; font-weight: bold; background: rgba(0,0,0,0.2); padding: 5px 15px; border-radius: 5px; }
-
-        /* Main Layout */
-        .container { display: flex; height: calc(100vh - 60px); }
-        
-        /* Left: Question Area */
-        .main-content { flex: 3; display: flex; flex-direction: column; background: white; border-right: 2px solid #ddd; position: relative;}
-        .question-header { background: #f8f9fa; padding: 15px; border-bottom: 1px solid #ddd; font-weight: bold; display: flex; justify-content: space-between; }
-        .question-body { padding: 30px; flex-grow: 1; overflow-y: auto; font-size: 1.1rem; line-height: 1.6; }
-        
-        /* Options & Inputs */
-        .options { margin-top: 20px; list-style-type: none; }
-        .options li { margin-bottom: 15px; padding: 10px; border: 1px solid #ddd; border-radius: 5px; cursor: pointer; transition: background 0.2s; display: flex; align-items: center;}
-        .options li:hover { background: #f1f1f1; }
-        .options li.selected { background: #e3f2fd; border-color: var(--nta-light-blue); font-weight: bold; }
-        .options input { margin-right: 15px; cursor: pointer; transform: scale(1.2); }
-        .numerical-input { padding: 10px; font-size: 1.2rem; width: 100%; max-width: 300px; border: 2px solid #ddd; border-radius: 5px; margin-top: 20px;}
-        .numerical-input:focus { border-color: var(--nta-light-blue); outline: none; }
-        .q-type-badge { background: var(--nta-light-blue); color: white; padding: 3px 10px; border-radius: 12px; font-size: 0.9rem; }
-
-        /* Footer Actions */
-        .action-footer { background: #f8f9fa; padding: 15px; border-top: 1px solid #ddd; display: flex; gap: 10px; flex-wrap: wrap;}
-        button { padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; color: white; transition: opacity 0.2s; }
-        button:hover { opacity: 0.9; }
-        .btn-save { background-color: var(--answered); }
-        .btn-mark { background-color: var(--marked); }
-        .btn-clear { background-color: #6c757d; }
-        .btn-submit { background-color: var(--nta-blue); margin-left: auto; }
-
-        /* Right: Palette Area */
-        .sidebar { flex: 1; background: #fff; display: flex; flex-direction: column; min-width: 250px;}
-        .candidate-info { padding: 15px; text-align: center; border-bottom: 1px solid #ddd; background: #f8f9fa; }
-        .palette-header { padding: 15px; font-weight: bold; text-align: center; background: var(--nta-blue); color: white; }
-        .palette-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; padding: 20px; overflow-y: auto; }
-        .palette-btn { height: 45px; border-radius: 5px; border: 1px solid #ccc; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; background-color: var(--not-visited); color: #333; }
-        .palette-btn.answered { background-color: var(--answered); color: white; border: none; }
-        .palette-btn.not-answered { background-color: var(--not-answered); color: white; border: none; }
-        .palette-btn.marked { background-color: var(--marked); color: white; border: none; }
-
-        /* Post-Exam Dashboard */
-        #result-container { display: none; padding: 40px; max-width: 1000px; margin: auto; background: white; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); margin-top: 30px; margin-bottom: 30px;}
-        .result-header { text-align: center; margin-bottom: 30px; }
-        .metrics-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-bottom: 40px; }
-        .metric-card { padding: 20px; text-align: center; border-radius: 8px; color: white; box-shadow: 0 4px 6px rgba(0,0,0,0.1);}
-        .metric-card h3 { font-size: 2.2rem; margin-bottom: 5px; }
-        .bg-score { background: linear-gradient(135deg, var(--nta-blue), #1a3c54); }
-        .bg-acc { background: linear-gradient(135deg, #17a2b8, #0b505b); }
-        .bg-percentile { background: linear-gradient(135deg, #ffc107, #d39e00); color: #333 !important; }
-        .bg-time { background: linear-gradient(135deg, #6c757d, #343a40); }
-        
-        .charts-container { display: flex; gap: 30px; flex-wrap: wrap;}
-        .chart-box { flex: 1; min-width: 300px; background: #f8f9fa; padding: 20px; border-radius: 8px; border: 1px solid #ddd; }
-        .recommendations { margin-top: 30px; padding: 25px; background: #e9ecef; border-left: 5px solid var(--nta-blue); font-size: 1.1rem; line-height: 1.6;}
+        /* Unicode icon styling */
+        .u-icon {
+            font-family: system-ui, -apple-system, sans-serif;
+            font-size: 1.25rem;
+            line-height: 1;
+        }
     </style>
 </head>
-<body>
+<body class="bg-stone-50 text-stone-800 font-sans antialiased h-screen overflow-hidden flex flex-col">
 
-    <!-- EXAM UI -->
-    <div id="exam-ui">
-        <header>
-            <div class="header-title">JEE Advanced Simulator - Full Test</div>
-            <div class="timer" id="timer">03:00:00</div>
-        </header>
+    <!-- Header -->
+    <header class="bg-white border-b border-stone-200 px-6 py-4 flex justify-between items-center shrink-0 shadow-sm z-10">
+        <div>
+            <h1 class="text-2xl font-bold text-stone-900 tracking-tight">JEE Advanced Explorer</h1>
+            <p class="text-sm text-stone-500">Matrices, Determinants, Relations, and Functions</p>
+        </div>
+        <div class="hidden sm:block text-stone-400">
+            <span class="u-icon mr-2">&#128202;</span> Interactive Dashboard
+        </div>
+    </header>
 
-        <div class="container">
-            <div class="main-content">
-                <div class="question-header">
-                    <span id="q-number">Question 1</span>
-                    <div>
-                        <span class="q-type-badge" id="q-type-badge">Single Choice</span>
-                        <span id="q-topic" style="margin-left:10px; color:#555;">Topic</span>
-                    </div>
+    <!-- Main Layout -->
+    <div class="flex flex-1 overflow-hidden">
+        
+        <!-- Sidebar Navigation -->
+        <nav class="w-64 bg-white border-r border-stone-200 flex flex-col overflow-y-auto shrink-0">
+            <div class="p-4 border-b border-stone-100">
+                <p class="text-xs font-semibold text-stone-400 uppercase tracking-wider mb-2">Navigation</p>
+                <button onclick="navigate('overview')" id="nav-overview" class="w-full text-left px-3 py-2 rounded-md text-sm font-medium transition-colors bg-blue-50 text-blue-700 mb-1">
+                    <span class="u-icon mr-2">&#127968;</span> Test Overview
+                </button>
+            </div>
+            <div class="p-4 flex-1">
+                <p class="text-xs font-semibold text-stone-400 uppercase tracking-wider mb-2">Sections</p>
+                <div id="nav-sections" class="space-y-1">
+                    <!-- Populated by JS -->
                 </div>
-                <div class="question-body">
-                    <div id="q-text">Loading question...</div>
-                    <div id="options-container">
-                        <ul class="options" id="options-list"></ul>
-                        <div id="numerical-container" style="display: none;">
-                            <input type="number" id="num-input" class="numerical-input" placeholder="Enter your numerical answer here..." oninput="selectNumerical(this.value)">
+            </div>
+        </nav>
+
+        <!-- Main Content Area -->
+        <main class="flex-1 overflow-y-auto p-6 lg:p-10" id="main-content">
+            <!-- Content dynamically injected here -->
+        </main>
+    </div>
+
+    <!-- JavaScript Logic -->
+    <script>
+        // --- Data Storage ---
+        // Extracted and structured data from the Source Report
+        const testData = {
+            metadata: {
+                title: "JEE Advanced Mock Test Paper",
+                topics: "Matrices, Determinants, Relations, and Functions",
+                totalQuestions: 50
+            },
+            sections: [
+                { id: 'sec1', title: 'Multiple Correct (Q1-Q12)', type: 'One or More Than One Correct', count: 12, description: 'Questions with multiple valid options. Requires deep conceptual clarity.' },
+                { id: 'sec2', title: 'Single Correct (Q13-Q28)', type: 'Single Correct Option', count: 16, description: 'Standard multiple choice questions. Only one option is correct.' },
+                { id: 'sec3', title: 'Numerical Value (Q29-Q43)', type: 'Numerical / Integer Value', count: 15, description: 'No options provided. Answers must be calculated as precise numerical values.' },
+                { id: 'sec4', title: 'Matrix Match (Q44-Q48)', type: 'Matrix Match', count: 5, description: 'Complex matching between two lists (List I and List II).' },
+                { id: 'sec5', title: 'Comprehension (Q49-Q50)', type: 'Paragraph Type', count: 2, description: 'Questions based on a shared paragraph or context. Tests analytical reading.' }
+            ],
+            // All 50 questions populated
+            questions: [
+                // SECTION 1: One or More Than One Correct Type
+                { id: 1, sectionId: 'sec1', text: String.raw`Let $f: A \rightarrow B$ be a function where set A contains 4 elements and set B contains 3 elements. The number of functions defined from A to B, which are:`, options: [String.raw`(A) Surjective is 36`, String.raw`(B) Injective is 0`, String.raw`(C) Not surjective is 45`, String.raw`(D) Not injective is 81`], answer: "A, B, C, D" },
+                { id: 2, sectionId: 'sec1', text: String.raw`A square matrix $P$ satisfies $P^2=I-P$ where $I$ is an identity matrix. If $P^n=5I-8P$, then $n$ is greater than:`, options: [String.raw`(A) 4`, String.raw`(B) 5`, String.raw`(C) 6`, String.raw`(D) 7`], answer: "A, B" },
+                { id: 3, sectionId: 'sec1', text: String.raw`If $A = \begin{bmatrix} 1 & 1 & 0 \\ 2 & 2 & 1 \\ 0 & 1 & -1 \end{bmatrix}$ and $A^3-2A^2+\lambda A+I=O$ (Null matrix), then which of the following is/are true?`, options: [String.raw`(A) $\lambda=4$`, String.raw`(B) $\lambda=-4$`, String.raw`(C) $|A^2+A^{-1}|=56$`, String.raw`(D) $|A^2+A^{-1}|=14$`], answer: "B, C" },
+                { id: 4, sectionId: 'sec1', text: String.raw`Let $P$ and $Q$ be two symmetric matrices such that $P^2=I$ and $Q^2=-I$. Which of the following matrices is/are symmetric?`, options: [String.raw`(A) $(P+Q)^2$`, String.raw`(B) $(P-Q)^2$`, String.raw`(C) $PQ+QP$`, String.raw`(D) $PQ-QP$`], answer: "A, B, C, D" },
+                { id: 5, sectionId: 'sec1', text: String.raw`If $A = \begin{bmatrix} 0 & 0 \\ 0 & i \end{bmatrix}$ where $i=\sqrt{-1}$, then which of the following is/are correct?`, options: [String.raw`(A) $\sum_{r=1}^{2016}A^r = \begin{bmatrix} 0 & 0 \\ 0 & 0 \end{bmatrix}$`, String.raw`(B) $\sum_{r=1}^{1008}A^{2r-1} = \sum_{r=1}^{1008}A^{2r}$`, String.raw`(C) $A^{2016}$ is a symmetric matrix`, String.raw`(D) $A^{2016}$ is a singular matrix`], answer: "A, B, D" },
+                { id: 6, sectionId: 'sec1', text: String.raw`If $f(x) = \{x + [\log_2(2+x)]\} + \{x + [\log_2(2+x^2)]\} + \dots + \{x + [\log_2(2+x^{10})]\}$ then which of the following is/are true? (where $[\cdot]$ and $\{\cdot\}$ denote Greatest Integer Function and Fractional Part Function respectively)`, options: [String.raw`(A) $f(5)=50$`, String.raw`(B) $f(1/2)=5$`, String.raw`(C) $f(1)+f(-1)=0$`, String.raw`(D) $f(\log_2 2\sqrt{2})=5$`], answer: "B, C, D" },
+                { id: 7, sectionId: 'sec1', text: String.raw`If $f(x) = |x^2-3|x|+2|$, then which of the following is/are true?`, options: [String.raw`(A) $f'(x)=2x-3$ for $x \in (0,1) \cup (2,\infty)$`, String.raw`(B) $f'(x)=2x+3$ for $x \in (-\infty,-2) \cup (-1,0)$`, String.raw`(C) $f'(x)=-2x-3$ for $x \in (-2,-1)$`, String.raw`(D) None of the above`], answer: "A, B, C" },
+                { id: 8, sectionId: 'sec1', text: String.raw`If $A$ is a matrix of size $n \times n$ such that $A^2+A+2I=O$, then:`, options: [String.raw`(A) $A$ is non-singular`, String.raw`(B) $A \neq O$`, String.raw`(C) $|A| \neq 0$`, String.raw`(D) $A^{-1} = -\frac{1}{2}(A+I)$`], answer: "A, B, C, D" },
+                { id: 9, sectionId: 'sec1', text: String.raw`Let $f$, $g$ and $h$ be three functions defined as $f(x)=\frac{32}{4+x^2+x^4}$, $g(x)=9+x^2$ and $h(x)=-x^2-3x+k$. Identify which of the following statement(s) is (are) correct?`, options: [String.raw`(A) Number of integers in the range of $f(x)$ is 8.`, String.raw`(B) Number of integral values of $k$ for which $h(f(x))>0$ and $h(g(x))<0 \ \forall x \in \mathbb{R}$ is 20.`, String.raw`(C) Number of integral values of $k$ for which $h(f(x))>0$ and $h(g(x))<0 \ \forall x \in \mathbb{R}$ is 19.`, String.raw`(D) Maximum value of $g(f(x))$ is 73.`], answer: "A, C, D" },
+                { id: 10, sectionId: 'sec1', text: String.raw`Let $A = \begin{bmatrix} 1 & 2 & 2 \\ 2 & 1 & 2 \\ 2 & 2 & 1 \end{bmatrix}$, then which of the following holds true?`, options: [String.raw`(A) $A^2 - 4A - 5I_3 = O$`, String.raw`(B) $A^{-1} = \frac{1}{5}(A - 4I_3)$`, String.raw`(C) $A^3$ is not invertible`, String.raw`(D) $A^2$ is invertible`], answer: "A, B" },
+                { id: 11, sectionId: 'sec1', text: String.raw`Suppose $a_1, a_2, a_3$ are in A.P. and $b_1, b_2, b_3$ are in H.P. Let $\Delta = \begin{vmatrix} a_1-b_1 & a_1-b_2 & a_1-b_3 \\ a_2-b_1 & a_2-b_2 & a_2-b_3 \\ a_3-b_1 & a_3-b_2 & a_3-b_3 \end{vmatrix}$, then:`, options: [String.raw`(A) $\Delta$ is independent of $a_1, a_2, a_3$`, String.raw`(B) $a_1-\Delta, a_2-2\Delta, a_3-3\Delta$ are in A.P.`, String.raw`(C) $b_1+\Delta, b_2+\Delta^2, b_3+\Delta$ are in H.P.`, String.raw`(D) $\Delta$ is independent of $b_1, b_2, b_3$`], answer: "A, B, D" },
+                { id: 12, sectionId: 'sec1', text: String.raw`Let $A=[a_{ij}]_{3\times 3}$ be a matrix such that $a_{ij}=\frac{|i-j|}{2}$, then:`, options: [String.raw`(A) $A$ is a symmetric matrix`, String.raw`(B) $2A^3-3A=I$`, String.raw`(C) $2A^3-3A+I=O$`, String.raw`(D) $A$ is not an orthogonal matrix`], answer: "A, B, D" },
+
+                // SECTION 2: Single Correct Type
+                { id: 13, sectionId: 'sec2', text: String.raw`A relation $R$ is defined from real numbers to real numbers such that $aRb \Rightarrow a-b$ is a non-negative integer. Then relation $R$ is:`, options: [String.raw`(A) Reflexive, symmetric but not transitive`, String.raw`(B) Reflexive, transitive but not symmetric`, String.raw`(C) Symmetric, transitive but not reflexive`, String.raw`(D) Reflexive only`], answer: "B" },
+                { id: 14, sectionId: 'sec2', text: String.raw`If $[x]$ denotes the integral part of $x$ and $f(x)$ has the domain $[-5/2, 2]$, then the domain of $f([|x|])$ is:`, options: [String.raw`(A) $[-3, 2]$`, String.raw`(B) $(-3, 2]$`, String.raw`(C) $[-2, 2]$`, String.raw`(D) $(-3, 3)$`], answer: "B" },
+                { id: 15, sectionId: 'sec2', text: String.raw`If $A$ is a skew-symmetric matrix of order 2 and $B, C$ are $\begin{bmatrix}1 & 4 \\ 2 & 9\end{bmatrix}, \begin{bmatrix}9 & -4 \\ -2 & 1\end{bmatrix}$ respectively, then $A(B^2C^2)A^T$ is:`, options: [String.raw`(A) A symmetric matrix`, String.raw`(B) An identity matrix`, String.raw`(C) A skew-symmetric matrix`, String.raw`(D) Neither symmetric nor skew-symmetric`], answer: "A" },
+                { id: 16, sectionId: 'sec2', text: String.raw`Let $B$ be a square matrix such that $|B|=1$ and $2A+B=B^T-A^T$, then the absolute value of $|A+B|$ is:`, options: [String.raw`(A) 0`, String.raw`(B) 2`, String.raw`(C) 1`, String.raw`(D) 3`], answer: "C" },
+                { id: 17, sectionId: 'sec2', text: String.raw`Which of the following function(s) is NOT an odd function?`, options: [String.raw`(A) $f(x)=\frac{x^3}{2^{|x|}+\sec x}$`, String.raw`(B) $f(x)=x^4 e^{\sqrt{x^2+1}+x^4}$`, String.raw`(C) $f(x)=\frac{e^x-1}{e^x+1}(g(x)+g(-x))$`, String.raw`(D) $f(x)=h(g(k(x)))$ when $h(x)$, $g(x)$ & $k(x)$ are all odd functions`], answer: "B" },
+                { id: 18, sectionId: 'sec2', text: String.raw`The system of equations $x+y+az=b$, $2x+3y=2a$ & $3x+4y+a^2z=ab+2$ has:<br>(I) Unique solution when $a \neq 0, b \in \mathbb{R}$<br>(II) No solution when $a=0, b=1$<br>(III) Infinite solutions when $a=0, b=2$<br>(IV) Infinite solutions when $a=1, b \in \mathbb{R}$<br>Which of the above statements is INCORRECT?`, options: [String.raw`(A) I`, String.raw`(B) II`, String.raw`(C) III`, String.raw`(D) IV`], answer: "A" },
+                { id: 19, sectionId: 'sec2', text: String.raw`If $A=[a_{ij}]_{4\times 4}$, such that $a_{ij}=2$ when $i=j$, and $0$ when $i \neq j$, then the value of $\left\{\frac{\det(adj(adj A))}{7}\right\}$ is [where $\{ \cdot \}$ represents the fractional part function]:`, options: [String.raw`(A) 1/7`, String.raw`(B) 2/7`, String.raw`(C) 3/7`, String.raw`(D) 4/7`], answer: "A" },
+                { id: 20, sectionId: 'sec2', text: String.raw`Given that $f(x) = \frac{x^2}{x^2-100x+5000}$, the value of the expression $f(1)+f(2)+\dots+f(100)$ is:`, options: [String.raw`(A) 98`, String.raw`(B) 99`, String.raw`(C) 100`, String.raw`(D) 101`], answer: "D" },
+                { id: 21, sectionId: 'sec2', text: String.raw`Range of the function $f(x) = \frac{2|x|-1}{3|x|+2}$ is:`, options: [String.raw`(A) $(-2/3, 2/3)$`, String.raw`(B) $[-1/2, 1/2]$`, String.raw`(C) $\mathbb{R}-\{2/3\}$`, String.raw`(D) $[-1/2, 2/3)$`], answer: "D" },
+                { id: 22, sectionId: 'sec2', text: String.raw`The equation $\begin{vmatrix} (1+x)^2 & (1-x)^2 & -(2+x^2) \\ 2x+1 & 3x & 1-5x \\ x+1 & 2x & 2-3x \end{vmatrix} + \begin{vmatrix} (1+x)^2 & 2x+1 & x+1 \\ (1-x)^2 & 3x & 2x \\ 1-2x & 3x-2 & 2x-3 \end{vmatrix} = 0$:`, options: [String.raw`(A) Has no solution`, String.raw`(B) Has exactly 4 real solutions`, String.raw`(C) Has exactly two real and two non-real solutions`, String.raw`(D) Has infinite number of solutions`], answer: "D" },
+                { id: 23, sectionId: 'sec2', text: String.raw`If $f(x) = \cot^{-1}\left(\frac{2x}{1-x^2}\right)$ and $g(x) = \cos^{-1}\left(\frac{1-x^2}{1+x^2}\right)$, then the value of $\lim_{x \rightarrow t} \frac{f(x)-f(t)}{g(x)-g(t)}$ (where $0 < t < 1$) is:`, options: [String.raw`(A) 1`, String.raw`(B) -1`, String.raw`(C) 2`, String.raw`(D) 1/2`], answer: "B" },
+                { id: 24, sectionId: 'sec2', text: String.raw`Let $f(x)$ be a non-zero differentiable function $\forall x \in \mathbb{R}$ & satisfying $f(x+y)=f(x-y) \ \forall x,y \in \mathbb{R}$, then:`, options: [String.raw`(A) $f(1)+f(0)=f'(0)$`, String.raw`(B) $f(1)-f(0)=f'(0)$`, String.raw`(C) $f(0)+f(1)=f(2)$`, String.raw`(D) $3f(2)=2f(3)$`], answer: "B" },
+                { id: 25, sectionId: 'sec2', text: String.raw`For $\alpha, \beta, \gamma \in \mathbb{R}$, let $A = \begin{bmatrix} \alpha^2 & 6 & 8 \\ 3 & \beta^2 & 9 \\ 4 & 5 & \gamma^2 \end{bmatrix}$ and $B = \begin{bmatrix} 2\alpha & 3 & 5 \\ 2 & 2\beta & 6 \\ 1 & 4 & 2\gamma-3 \end{bmatrix}$. If $Tr(A) = Tr(B)$, then the value of $\frac{1}{\alpha}+\frac{1}{\beta}+\frac{1}{\gamma}$ is:`, options: [String.raw`(A) 1`, String.raw`(B) 2`, String.raw`(C) 3`, String.raw`(D) 4`], answer: "C" },
+                { id: 26, sectionId: 'sec2', text: String.raw`For any $3 \times 3$ matrix $A$, if $A(adj A) = \begin{bmatrix} 6 & 0 & 0 \\ 0 & 6 & 0 \\ 0 & 0 & 6 \end{bmatrix}$, then the value of $|A|$ is:`, options: [String.raw`(A) 36`, String.raw`(B) 1/6`, String.raw`(C) 6`, String.raw`(D) 1`], answer: "C" },
+                { id: 27, sectionId: 'sec2', text: String.raw`If matrix $A = \begin{bmatrix} 1 & x & x^2 \\ x & x^2 & 1 \\ x^2 & 1 & x \end{bmatrix}$ and $B = \begin{bmatrix} x^3-1 & 0 & x-x^4 \\ 0 & x-x^4 & x^3-1 \\ x-x^4 & x^3-1 & 0 \end{bmatrix}$, then the correct option is:`, options: [String.raw`(A) $|B|=|A|$`, String.raw`(B) $|B|=|A|^2$`, String.raw`(C) $|B|^2=|A|$`, String.raw`(D) $|B|=|A|^3$`], answer: "B" },
+                { id: 28, sectionId: 'sec2', text: String.raw`Let $f:\mathbb{R} \rightarrow (0, \frac{2\pi}{3}]$ defined as $f(x)=\cot^{-1}(x^2-4x+\alpha)$. Then the smallest integral value of $\alpha$ such that $f(x)$ is an into function is:`, options: [String.raw`(A) 2`, String.raw`(B) 4`, String.raw`(C) 6`, String.raw`(D) 8`], answer: "B" },
+
+                // SECTION 3: Numerical / Integer Value Type
+                { id: 29, sectionId: 'sec3', text: String.raw`If $A$ is a diagonal matrix of order $3\times 3$ commutative with every square matrix of order $3\times 3$ under multiplication and $Tr(A)=12$, then $|A|$ is equal to.`, options: [], answer: "64" },
+                { id: 30, sectionId: 'sec3', text: String.raw`Suppose a matrix $A$ satisfies $A^2-5A+7I=O$. If $A^8 = aA+bI$, then the value of $a/253$ is.`, options: [], answer: "5" },
+                { id: 31, sectionId: 'sec3', text: String.raw`Let $P$ be a $2\times 2$ matrix such that $P\begin{bmatrix}1 \\ -1\end{bmatrix} = \begin{bmatrix}-1 \\ 2\end{bmatrix}$ and $P^2\begin{bmatrix}1 \\ -1\end{bmatrix} = \begin{bmatrix}1 \\ 0\end{bmatrix}$. If $x_1$ and $x_2$ are two values of $x$ for which $|P-xI|=0$, where $I$ is an identity matrix of order 2, then find the value of $x_1^2+x_2^2$.`, options: [], answer: "5" },
+                { id: 32, sectionId: 'sec3', text: String.raw`The number of all possible symmetric matrices of order $3\times 3$ with entries -1, 0, 1 and whose trace equals 1, is.`, options: [], answer: "162" },
+                { id: 33, sectionId: 'sec3', text: String.raw`Let set $A = \{1, 2, 3\}$, then the number of relations $A \rightarrow A$ such that they are reflexive as well as symmetric & having number of elements as a prime number is.`, options: [], answer: "7" },
+                { id: 34, sectionId: 'sec3', text: String.raw`Let $A = \begin{bmatrix} 0 & a \\ 0 & 0 \end{bmatrix}$ and $(A+I)^{50} - 50A = \begin{bmatrix} a & b \\ c & d \end{bmatrix}$, then the value of $a+b+c+d$ is.`, options: [], answer: "2" },
+                { id: 35, sectionId: 'sec3', text: String.raw`The minimum number of elements that must be added to the relation $R = \{(a,b), (b,c), (b,d)\}$ on the set $\{a, b, c, d\}$ so that it becomes an equivalence relation, is.`, options: [], answer: "13" },
+                { id: 36, sectionId: 'sec3', text: String.raw`Let $A = [a_{ij}]_{2 \times 2}$ be a square matrix such that $Tr(A)=5$. If $f(x) = \det(A-xI)$ and $f(A) = A^2+aA+3I$ where $I$ is the identity matrix of order 2, then the value of $Tr((3A^{-1})^2+(a+1)3A^{-1}+3I)$ is.`, options: [], answer: "2" },
+                { id: 37, sectionId: 'sec3', text: String.raw`In continuation to Q36 above, if $a_{ij} \in \{1, 2, 3, 4\}$, then the number of possible invertible matrices $A$ is equal to.`, options: [], answer: "16" },
+                { id: 38, sectionId: 'sec3', text: String.raw`Let $A$ and $B$ be two square matrices of the same order and $I$ is the identity matrix. Let $\det(A) \neq 0, \det(B) \neq 0$ and $A+B=AB$. If the determinant of $(B-I)AB^{-1}$ is $\lambda$, then $2\lambda$ is.`, options: [], answer: "2" },
+                { id: 39, sectionId: 'sec3', text: String.raw`If $A = \begin{bmatrix} 2 & 3 & 0 \\ 1 & \sin^2 x & -\cos^2 x \\ \cos^2 x & \cos^4 x & \sin^4 x \end{bmatrix}$ and $A(adj A) = k I_3$, then the value of $k+9$ is.`, options: [], answer: "8" },
+                { id: 40, sectionId: 'sec3', text: String.raw`Let $A = \begin{bmatrix} a & b \\ c & d \end{bmatrix}$ and $B = \begin{bmatrix} p \\ q \end{bmatrix} \neq \begin{bmatrix} 0 \\ 0 \end{bmatrix}$ such that $AB=B$ and $Tr(A)=50$. Then $\det(2A)$ is equal to.`, options: [], answer: "196" },
+                { id: 41, sectionId: 'sec3', text: String.raw`The range of the function $f(x) = \frac{x+m}{x^2+1}, \ (m \in \mathbb{R})$ contains the interval $[-1, 1]$. If $m \ge \frac{3}{k}$, then find $k$.`, options: [], answer: "4" }, // Added [-1, 1] as placeholder for empty array literal observed.
+                { id: 42, sectionId: 'sec3', text: String.raw`Let $a_4x^4+a_3x^3+a_2x^2+a_1x+a_0 = \begin{vmatrix} x^2+x & x+1 & x-2 \\ 2x^2+3x-1 & 3x & 3x-3 \\ x^2+2x+3 & 2x-1 & 2x-1 \end{vmatrix}$ be an identity w.r.t $x$, then the value of $(a_4+a_3+a_2+a_1+a_0)-25$ is.`, options: [], answer: "6" },
+                { id: 43, sectionId: 'sec3', text: String.raw`Let $A$ be a non-singular matrix of order 3. If $\det(3adj(2adj(\det(A) A))) = 3^{-13}\cdot 2^{-10}$ and $\det(3adj(2A)) = 2^m\cdot 3^n$, then $|3m+2n|$ is equal to.`, options: [], answer: "14" },
+
+                // SECTION 4: Matrix Match Type
+                { id: 44, sectionId: 'sec4', text: String.raw`Match List-I with their types of function in List-II & choose the correct option:<br>
+                <table class="w-full text-sm mt-4 border border-stone-200">
+                    <tr class="border-b"><td class="p-2 border-r font-bold w-8 text-center">I</td><td class="p-2 border-r">Let $f:[-1,\infty) \rightarrow (0,\infty)$ defined by $f(x)=e^{x^2+|x|}$ then $f(x)$ is</td><td class="p-2 border-r font-bold w-8 text-center">P</td><td class="p-2">one-one</td></tr>
+                    <tr class="border-b"><td class="p-2 border-r font-bold text-center">II</td><td class="p-2 border-r">Let $f:[1,\infty) \rightarrow [3,\infty)$ defined by $f(x)=\sqrt{10-2x+x^2}$ then $f(x)$ is</td><td class="p-2 border-r font-bold text-center">Q</td><td class="p-2">into</td></tr>
+                    <tr class="border-b"><td class="p-2 border-r font-bold text-center">III</td><td class="p-2 border-r">Let $f:\mathbb{R} \rightarrow \mathbb{I}$ defined by $f(x)=\tan^5 \pi[x^2+2x+3]$ where $[.]$ denotes GIF then $f(x)$ is</td><td class="p-2 border-r font-bold text-center">R</td><td class="p-2">many-one</td></tr>
+                    <tr class="border-b"><td class="p-2 border-r font-bold text-center">IV</td><td class="p-2 border-r">Let $f: \mathbb{R} \rightarrow \mathbb{R}$ defined by $f(x)=|x-1|+|x-2|+|x-3|+|x-4|$ then $f(x)$ is</td><td class="p-2 border-r font-bold text-center">S</td><td class="p-2">onto</td></tr>
+                    <tr><td class="p-2 border-r font-bold text-center"></td><td class="p-2 border-r"></td><td class="p-2 border-r font-bold text-center">T</td><td class="p-2">periodic</td></tr>
+                </table>`, options: [String.raw`(A) I $\rightarrow$ P, Q; II $\rightarrow$ P, S; III $\rightarrow$ Q, R, T; IV $\rightarrow$ Q, R`, String.raw`(B) I $\rightarrow$ Q, R, T; II $\rightarrow$ P, Q; III $\rightarrow$ P, S; IV $\rightarrow$ Q, R`, String.raw`(C) I $\rightarrow$ P, S; II $\rightarrow$ P, Q; III $\rightarrow$ Q, R, T; IV $\rightarrow$ Q, R`, String.raw`(D) I $\rightarrow$ Q, R; II $\rightarrow$ P, Q; III $\rightarrow$ Q, R, T; IV $\rightarrow$ P, S`], answer: "D" },
+                { id: 45, sectionId: 'sec4', text: String.raw`If $A$ is a $3\times 3$ matrix and $|A|=3$, then match the list.<br>
+                <table class="w-full text-sm mt-4 border border-stone-200">
+                    <tr class="border-b"><td class="p-2 border-r font-bold w-8 text-center">I</td><td class="p-2 border-r">$|2A|=$</td><td class="p-2 border-r font-bold w-8 text-center">P</td><td class="p-2">9</td></tr>
+                    <tr class="border-b"><td class="p-2 border-r font-bold text-center">II</td><td class="p-2 border-r">$|2AA^T|=$</td><td class="p-2 border-r font-bold text-center">Q</td><td class="p-2">18</td></tr>
+                    <tr class="border-b"><td class="p-2 border-r font-bold text-center">III</td><td class="p-2 border-r">$|2adjA|=$</td><td class="p-2 border-r font-bold text-center">R</td><td class="p-2">24</td></tr>
+                    <tr class="border-b"><td class="p-2 border-r font-bold text-center">IV</td><td class="p-2 border-r">$|3A^{-1}|=$</td><td class="p-2 border-r font-bold text-center">S</td><td class="p-2">72</td></tr>
+                    <tr><td class="p-2 border-r font-bold text-center"></td><td class="p-2 border-r"></td><td class="p-2 border-r font-bold text-center">T</td><td class="p-2">36</td></tr>
+                </table>`, options: [String.raw`(A) I $\rightarrow$ P, II $\rightarrow$ Q, III $\rightarrow$ R, IV $\rightarrow$ S`, String.raw`(B) I $\rightarrow$ Q, II $\rightarrow$ S, III $\rightarrow$ R, IV $\rightarrow$ P`, String.raw`(C) I $\rightarrow$ R, II $\rightarrow$ S, III $\rightarrow$ S, IV $\rightarrow$ P`, String.raw`(D) I $\rightarrow$ P, II $\rightarrow$ T, III $\rightarrow$ R, IV $\rightarrow$ S`], answer: "C" },
+                { id: 46, sectionId: 'sec4', text: String.raw`Match the following lists:<br>
+                <table class="w-full text-sm mt-4 border border-stone-200">
+                    <tr class="border-b"><td class="p-2 border-r font-bold w-8 text-center">I</td><td class="p-2 border-r">If $A=[a_{ij}]_{3\times 3}$ and $a_{ij}=i^2+j^2$ then A is</td><td class="p-2 border-r font-bold w-8 text-center">P</td><td class="p-2">Singular but not skew symmetric</td></tr>
+                    <tr class="border-b"><td class="p-2 border-r font-bold text-center">II</td><td class="p-2 border-r">If $A=[a_{ij}]_{3\times 3}$ and $a_{ij}=3^{i-j}$ then A is</td><td class="p-2 border-r font-bold text-center">Q</td><td class="p-2">Skew-symmetric</td></tr>
+                    <tr class="border-b"><td class="p-2 border-r font-bold text-center">III</td><td class="p-2 border-r">If $A=[a_{ij}]_{3\times 3}$ and $a_{ij}=i^2-j^2$ then A is</td><td class="p-2 border-r font-bold text-center">R</td><td class="p-2">Symmetric</td></tr>
+                    <tr class="border-b"><td class="p-2 border-r font-bold text-center">IV</td><td class="p-2 border-r">If $A=\begin{bmatrix} 2 & -2 & -4 \\ -1 & 3 & 4 \\ 1 & -2 & -3 \end{bmatrix}$ then A is</td><td class="p-2 border-r font-bold text-center">S</td><td class="p-2">An idempotent matrix which is singular</td></tr>
+                    <tr><td class="p-2 border-r font-bold text-center"></td><td class="p-2 border-r"></td><td class="p-2 border-r font-bold text-center">T</td><td class="p-2">A null matrix</td></tr>
+                </table>`, options: [String.raw`(A) I $\rightarrow$ P,R; II $\rightarrow$ P; III $\rightarrow$ Q; IV $\rightarrow$ P,S`, String.raw`(B) I $\rightarrow$ P,S; II $\rightarrow$ R; III $\rightarrow$ T; IV $\rightarrow$ Q,S`, String.raw`(C) I $\rightarrow$ P,T; II $\rightarrow$ Q; III $\rightarrow$ R; IV $\rightarrow$ S,T`, String.raw`(D) I $\rightarrow$ P,Q; II $\rightarrow$ S; III $\rightarrow$ P; IV $\rightarrow$ R,S`], answer: "A" },
+                { id: 47, sectionId: 'sec4', text: String.raw`Consider the following system of equations and match the list:<br>$x+y+z=6$<br>$x+2y+3z=10$<br>$x+2y+\alpha z=\beta$<br>
+                <table class="w-full text-sm mt-4 border border-stone-200">
+                    <tr class="border-b"><td class="p-2 border-r font-bold w-8 text-center">I</td><td class="p-2 border-r">Unique solution</td><td class="p-2 border-r font-bold w-8 text-center">P</td><td class="p-2">$\alpha=3$</td></tr>
+                    <tr class="border-b"><td class="p-2 border-r font-bold text-center">II</td><td class="p-2 border-r">No solution</td><td class="p-2 border-r font-bold text-center">Q</td><td class="p-2">$\alpha \neq 3$</td></tr>
+                    <tr class="border-b"><td class="p-2 border-r font-bold text-center">III</td><td class="p-2 border-r">Infinitely many solutions</td><td class="p-2 border-r font-bold text-center">R</td><td class="p-2">$\beta=10$</td></tr>
+                    <tr class="border-b"><td class="p-2 border-r font-bold text-center">IV</td><td class="p-2 border-r">At least 2 solutions</td><td class="p-2 border-r font-bold text-center">S</td><td class="p-2">$\beta \neq 10$</td></tr>
+                </table>`, options: [String.raw`(A) I $\rightarrow$ Q; II $\rightarrow$ P,S; III $\rightarrow$ P,R; IV $\rightarrow$ P,R`, String.raw`(B) I $\rightarrow$ P; II $\rightarrow$ P,R; III $\rightarrow$ P,Q; IV $\rightarrow$ P,S`, String.raw`(C) I $\rightarrow$ S; II $\rightarrow$ P,Q; III $\rightarrow$ P,T; IV $\rightarrow$ P,R`, String.raw`(D) I $\rightarrow$ R; II $\rightarrow$ P,S; III $\rightarrow$ P,R; IV $\rightarrow$ P,T`], answer: "A" },
+                { id: 48, sectionId: 'sec4', text: String.raw`Consider $f(x) = \left| |x-1| - \frac{1}{2e} \right| - k$. Match List I with the value of $k$ in List II.<br>
+                <table class="w-full text-sm mt-4 border border-stone-200">
+                    <tr class="border-b"><td class="p-2 border-r font-bold w-8 text-center">I</td><td class="p-2 border-r">$f(x)=0$ has two distinct solutions</td><td class="p-2 border-r font-bold w-8 text-center">P</td><td class="p-2">$k=0$</td></tr>
+                    <tr class="border-b"><td class="p-2 border-r font-bold text-center">II</td><td class="p-2 border-r">$f(x)=0$ has four distinct solutions</td><td class="p-2 border-r font-bold text-center">Q</td><td class="p-2">$k=\frac{1}{2e}$</td></tr>
+                    <tr class="border-b"><td class="p-2 border-r font-bold text-center">III</td><td class="p-2 border-r">$f(x)=0$ has three distinct solutions</td><td class="p-2 border-r font-bold text-center">R</td><td class="p-2">$k \in (\frac{1}{2e}, \infty)$</td></tr>
+                    <tr class="border-b"><td class="p-2 border-r font-bold text-center">IV</td><td class="p-2 border-r">$f(x)=0$ has no solution</td><td class="p-2 border-r font-bold text-center">S</td><td class="p-2">$k \in (-\infty, 0)$</td></tr>
+                    <tr><td class="p-2 border-r font-bold text-center"></td><td class="p-2 border-r"></td><td class="p-2 border-r font-bold text-center">T</td><td class="p-2">$k \in (0, \frac{1}{2e})$</td></tr>
+                </table>`, options: [String.raw`(A) I $\rightarrow$ R, P; II $\rightarrow$ T; III $\rightarrow$ Q; IV $\rightarrow$ S`, String.raw`(B) I $\rightarrow$ Q; II $\rightarrow$ S; III $\rightarrow$ T; IV $\rightarrow$ R, P`, String.raw`(C) I $\rightarrow$ Q; II $\rightarrow$ R, P; III $\rightarrow$ S; IV $\rightarrow$ T`, String.raw`(D) I $\rightarrow$ Q; II $\rightarrow$ Q; III $\rightarrow$ R, P; IV $\rightarrow$ T`], answer: "A" },
+
+                // SECTION 5: Paragraph Type Questions
+                { id: 49, sectionId: 'sec5', context: String.raw`Paragraph:<br>Let $A$ and $B$ be two square matrices of the same order and $I$ is the identity matrix of the same order. Given that $\det(A) \neq 0, \det(B) \neq 0$ and $A+B=AB$.`, text: String.raw`If the determinant of $(B-I)AB^{-1}$ is $\lambda$, then the value of $2\lambda$ is.`, options: [], answer: "2.00" },
+                { id: 50, sectionId: 'sec5', context: String.raw`Paragraph:<br>Let $A$ and $B$ be two square matrices of the same order and $I$ is the identity matrix of the same order. Given that $\det(A) \neq 0, \det(B) \neq 0$ and $A+B=AB$.`, text: String.raw`If $AB = \lambda BA$ and $(A+B)^2 = A^2+B^2+\mu BA$, then the value of the ratio $\frac{\lambda}{\mu}$ is.`, options: [], answer: "1.00" }
+            ]
+        };
+
+        // --- State Management ---
+        let currentState = {
+            activeView: 'overview', // 'overview' or sectionId
+            chartInstance: null
+        };
+
+        // --- Core Interaction & Rendering ---
+
+        function initApp() {
+            renderNav();
+            navigate('overview');
+        }
+
+        function renderNav() {
+            const navContainer = document.getElementById('nav-sections');
+            let html = '';
+            testData.sections.forEach(sec => {
+                html += `
+                    <button onclick="navigate('${sec.id}')" id="nav-${sec.id}" class="w-full text-left px-3 py-2 rounded-md text-sm font-medium text-stone-600 hover:bg-stone-100 hover:text-stone-900 transition-colors truncate">
+                        <span class="u-icon mr-2 text-stone-400">&#128221;</span> ${sec.title}
+                    </button>
+                `;
+            });
+            navContainer.innerHTML = html;
+        }
+
+        function updateNavStyles(activeId) {
+            // Reset all
+            document.getElementById('nav-overview').className = "w-full text-left px-3 py-2 rounded-md text-sm font-medium transition-colors text-stone-600 hover:bg-stone-100 hover:text-stone-900 mb-1";
+            testData.sections.forEach(sec => {
+                document.getElementById(`nav-${sec.id}`).className = "w-full text-left px-3 py-2 rounded-md text-sm font-medium text-stone-600 hover:bg-stone-100 hover:text-stone-900 transition-colors truncate";
+            });
+
+            // Set active
+            const activeBtn = document.getElementById(`nav-${activeId}`);
+            if(activeBtn) {
+                activeBtn.className = "w-full text-left px-3 py-2 rounded-md text-sm font-medium transition-colors bg-blue-50 text-blue-700 mb-1 truncate";
+            }
+        }
+
+        function navigate(viewId) {
+            currentState.activeView = viewId;
+            updateNavStyles(viewId);
+            const main = document.getElementById('main-content');
+            
+            // Destroy existing chart to prevent memory leaks
+            if (currentState.chartInstance) {
+                currentState.chartInstance.destroy();
+                currentState.chartInstance = null;
+            }
+
+            if (viewId === 'overview') {
+                renderOverview(main);
+            } else {
+                renderSectionView(main, viewId);
+            }
+            
+            // Render MathJax to process latex syntax dynamically generated
+            if (window.MathJax && window.MathJax.typesetPromise) {
+                MathJax.typesetPromise([main]).catch(err => console.error('MathJax error:', err));
+            }
+        }
+
+        function renderOverview(container) {
+            let html = `
+                <div class="max-w-5xl mx-auto animation-fade-in">
+                    <div class="mb-8">
+                        <h2 class="text-3xl font-bold text-stone-900 mb-4">Test Overview Dashboard</h2>
+                        <p class="text-stone-600 text-lg leading-relaxed">
+                            <strong>Introduction to the Dashboard:</strong> This section provides a quantitative breakdown of the JEE Advanced Mock Test. By visualizing the distribution of question types, educators and students can quickly understand the test's composition and weightage. The charts below are interactive—hover over the segments to see exact question counts. Use the sidebar to drill down into specific sections.
+                        </p>
+                    </div>
+
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+                        <!-- Chart Container 1 -->
+                        <div class="bg-white p-6 rounded-xl shadow-sm border border-stone-200 flex flex-col">
+                            <h3 class="text-lg font-semibold text-stone-800 mb-2 border-b border-stone-100 pb-2">Question Distribution</h3>
+                            <p class="text-sm text-stone-500 mb-4">Proportion of questions by format.</p>
+                            <div class="chart-container flex-1">
+                                <canvas id="distributionChart"></canvas>
+                            </div>
+                        </div>
+
+                        <!-- Info Cards -->
+                        <div class="flex flex-col gap-4">
+                            <div class="bg-white p-6 rounded-xl shadow-sm border border-stone-200 border-l-4 border-l-blue-500">
+                                <div class="flex items-center justify-between">
+                                    <div>
+                                        <p class="text-sm font-medium text-stone-500 uppercase tracking-wider">Total Questions</p>
+                                        <p class="text-4xl font-bold text-stone-900 mt-1">${testData.metadata.totalQuestions}</p>
+                                    </div>
+                                    <span class="u-icon text-4xl text-blue-100">&#128203;</span>
+                                </div>
+                            </div>
+                            
+                            <div class="bg-white p-6 rounded-xl shadow-sm border border-stone-200 border-l-4 border-l-orange-400">
+                                <h4 class="font-semibold text-stone-800 mb-2">Key Insights</h4>
+                                <ul class="space-y-2 text-sm text-stone-600">
+                                    <li class="flex items-start"><span class="mr-2 text-orange-400">&#9656;</span> The majority of questions are single/multiple correct formats (56%).</li>
+                                    <li class="flex items-start"><span class="mr-2 text-orange-400">&#9656;</span> Section 3 (Numerical) forms a significant 30% of the paper, requiring high calculation accuracy.</li>
+                                    <li class="flex items-start"><span class="mr-2 text-orange-400">&#9656;</span> Comprehension (Paragraph) type forms the smallest subset but tests deep analytical reading.</li>
+                                </ul>
+                            </div>
                         </div>
                     </div>
                 </div>
-                <div class="action-footer">
-                    <button class="btn-save" onclick="saveAndNext()">Save & Next</button>
-                    <button class="btn-clear" onclick="clearResponse()">Clear Response</button>
-                    <button class="btn-mark" onclick="markForReview()">Mark for Review & Next</button>
-                    <button class="btn-submit" onclick="submitExam()">Submit Test</button>
-                </div>
-            </div>
+            `;
+            container.innerHTML = html;
 
-            <div class="sidebar">
-                <div class="candidate-info">
-                    <img src="https://ui-avatars.com/api/?name=JEE+Aspirant&background=2d6288&color=fff" alt="Avatar" style="border-radius: 50%; width: 60px; margin-bottom: 10px;">
-                    <h4>Candidate: JEE Aspirant</h4>
-                </div>
-                <div class="palette-header">Question Palette</div>
-                <div class="palette-grid" id="palette-grid">
-                    <!-- Palette buttons injected via JS -->
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- RESULT DASHBOARD UI -->
-    <div id="result-container">
-        <div class="result-header">
-            <h1 style="color: var(--nta-blue); font-size: 2.5rem; margin-bottom: 10px;">Performance Diagnostics</h1>
-            <p style="font-size: 1.2rem; color: #555;">Detailed analysis of your simulated exam performance.</p>
-        </div>
-
-        <div class="metrics-grid">
-            <div class="metric-card bg-score">
-                <h3 id="res-score">0</h3>
-                <p>Total Score (Out of 200)</p>
-            </div>
-            <div class="metric-card bg-acc">
-                <h3 id="res-acc">0%</h3>
-                <p>Accuracy</p>
-            </div>
-            <div class="metric-card bg-percentile">
-                <h3 id="res-percentile">00.00</h3>
-                <p>Expected Percentile</p>
-            </div>
-            <div class="metric-card bg-time">
-                <h3 id="res-attempted">0/50</h3>
-                <p>Questions Attempted</p>
-            </div>
-        </div>
-
-        <div class="charts-container">
-            <div class="chart-box">
-                <h3 style="text-align: center; margin-bottom: 15px; color: #444;">Topic-Wise Accuracy (%)</h3>
-                <canvas id="topicRadarChart"></canvas>
-            </div>
-            <div class="chart-box">
-                <h3 style="text-align: center; margin-bottom: 15px; color: #444;">Marks Attempt Distribution</h3>
-                <canvas id="marksBarChart"></canvas>
-            </div>
-        </div>
-
-        <div class="recommendations" id="ai-recommendations"></div>
-    </div>
-
-    <script>
-        // --- 1. DATA STRUCTURE ---
-        // Complete 50 Questions accurately categorized by Type and Topic
-        const questionsData = [
-            // PART A: Single Correct (1-15)
-            { id: 1, type: 'single', topic: "Functions", text: "Which of the following function(s) is NOT an odd function?", options: ["$f(x)=\\frac{x^3}{2^{|x|}+\\sec x}$", "$f(x)=x^4 e^{\\sqrt{x^2+1}+x^4}$", "$f(x)=\\frac{e^x-1}{e^x+1}(g(x)+g(-x))$", "$f(x)=h(g(k(x)))$ when $h(x)$, $g(x)$ & $k(x)$ are all odd functions"], correctAnswer: 1 },
-            { id: 2, type: 'single', topic: "Matrices", text: "The system of equations $x+y+az=b$, $2x+3y=2a$ & $3x+4y+a^2z=ab+2$ has:<br>(I) Unique solution when $a \\neq 0, b \\in R$<br>(II) No solution when $a=0, b=1$<br>(III) Infinite solutions when $a=0, b=2$<br>(IV) Infinite solutions when $a=1, b \\in R$<br><br>Which of the above statements is INCORRECT?", options: ["I", "II", "III", "IV"], correctAnswer: 0 },
-            { id: 3, type: 'single', topic: "Determinants", text: "If $A=[a_{ij}]_{4\\times 4}$, such that $a_{ij}=2$ when $i=j$, and $0$ when $i \\neq j$, then the value of $\\frac{\\det(\\text{adj}(\\text{adj } A))}{7}$ is:", options: ["1/7", "2/7", "3/7", "4/7"], correctAnswer: 0 },
-            { id: 4, type: 'single', topic: "Functions", text: "Given that $f(x) = \\frac{x^2}{x^2-100x+5000}$, the value of the expression $f(1)+f(2)+...+f(100)$ is:", options: ["98", "99", "100", "101"], correctAnswer: 3 },
-            { id: 5, type: 'single', topic: "Functions", text: "Range of the function $f(x) = \\frac{2|x|-1}{3|x|+2}$ is:", options: ["$(-2/3, 2/3)$", "$[-1/2, 1/2]$", "$R-\\{2/3\\}$", "$[-1/2, 2/3)$"], correctAnswer: 3 },
-            { id: 6, type: 'single', topic: "Matrices", text: "If $A$ is a skew symmetric matrix of order 2 and $B, C$ are $\\begin{bmatrix}1 & 4 \\\\ 2 & 9\\end{bmatrix}, \\begin{bmatrix}9 & -4 \\\\ -2 & 1\\end{bmatrix}$ respectively, then $A(B^2C^2)A^T$ is:", options: ["A symmetric matrix", "An identity matrix", "A skew symmetric matrix", "Neither symmetric nor skew symmetric"], correctAnswer: 0 },
-            { id: 7, type: 'single', topic: "Matrices", text: "Let $B$ be a square matrix such that $|B|=1$ and $2A+B=B^T-A^T$, then the absolute value of $|A+B|$ is:", options: ["0", "2", "1", "3"], correctAnswer: 2 },
-            { id: 8, type: 'single', topic: "Relations", text: "A relation $R$ is defined from real numbers to real numbers such that $aRb \\Rightarrow a-b$ is a non-negative integer. Then relation $R$ is:", options: ["reflexive, symmetric but not transitive", "reflexive, transitive but not symmetric", "symmetric, transitive but not reflexive", "reflexive only"], correctAnswer: 1 },
-            { id: 9, type: 'single', topic: "Functions", text: "If $[x]$ denotes the integral part of $x$ and $f(x)$ has the domain $[-5/2, 2]$, then the domain of $f([|x|])$ is:", options: ["$[-3, 2]$", "$(-3, 2]$", "$[-2, 2]$", "$(-3, 3)$"], correctAnswer: 1 },
-            { id: 10, type: 'single', topic: "Determinants", text: "The equation $\\begin{vmatrix} (1+x)^2 & (1-x)^2 & -(2+x^2) \\\\ 2x+1 & 3x & 1-5x \\\\ x+1 & 2x & 2-3x \\end{vmatrix} + \\begin{vmatrix} (1+x)^2 & 2x+1 & x+1 \\\\ (1-x)^2 & 3x & 2x \\\\ 1-2x & 3x-2 & 2x-3 \\end{vmatrix} = 0$:", options: ["Has no solution", "Has exactly 4 real solutions", "Has exactly two real and two non-real solutions", "Has infinite number of solutions"], correctAnswer: 3 },
-            { id: 11, type: 'single', topic: "Functions", text: "If $f(x) = \\cot^{-1}(\\frac{2x}{1-x^2})$ and $g(x) = \\cos^{-1}(\\frac{1-x^2}{1+x^2})$, then the value of $\\lim_{x \\rightarrow t} \\frac{f(x)-f(t)}{g(x)-g(t)}$ is:", options: ["1", "-1", "2", "1/2"], correctAnswer: 1 },
-            { id: 12, type: 'single', topic: "Functions", text: "Let $f(x)$ is a non-zero differentiable function $\\forall x \\in R$ & satisfying $f(x+y)=f(x-y) \\forall x,y \\in R$, then:", options: ["$f(1)+f(0)=f'(0)$", "$f(1)-f(0)=f'(0)$", "$f(0)+f(1)=f(2)$", "$3f(2)=2f(3)$"], correctAnswer: 1 },
-            { id: 13, type: 'single', topic: "Matrices", text: "For $\\alpha, \\beta, \\gamma \\in R$, let $A = \\begin{bmatrix} \\alpha^2 & 6 & 8 \\\\ 3 & \\beta^2 & 9 \\\\ 4 & 5 & \\gamma^2 \\end{bmatrix}$ and $B = \\begin{bmatrix} 2\\alpha & 3 & 5 \\\\ 2 & 2\\beta & 6 \\\\ 1 & 4 & 2\\gamma-3 \\end{bmatrix}$. If $\\text{Tr}(A) = \\text{Tr}(B)$, then $\\frac{1}{\\alpha}+\\frac{1}{\\beta}+\\frac{1}{\\gamma}$ is:", options: ["1", "2", "3", "4"], correctAnswer: 2 },
-            { id: 14, type: 'single', topic: "Relations", text: "Let $A=\\{(x,y) \\mid a^x=a^y; a>0, a \\neq 1\\}$ and $B=\\{(x,y) \\mid xy=1\\}$. Choose the correct statements:", options: ["$A \\cap B = B$", "$A \\cap B = A$", "$n(B) > n(A)$", "A and B are non-comparable"], correctAnswer: 3 },
-            { id: 15, type: 'single', topic: "Relations", text: "Suppose $A_1...A_{30}$ are sets with 5 elements and $B_1...B_n$ with 3 elements. $\\cup A_i = \\cup B_j = S$. If each element belongs to exactly 10 $A_i$'s and 9 $B_j$'s, then $n$ is:", options: ["15", "3", "45", "35"], correctAnswer: 2 },
-
-            // PART B: Multiple Correct (16-25)
-            { id: 16, type: 'multiple', topic: "Functions", text: "Let $f: A \\rightarrow B$ be a function where set A contains 4 elements and set B contains 3 elements. Number of functions which are:", options: ["Surjective is 36", "Injective is 0", "Not surjective is 45", "Not injective is 81"], correctAnswer: [0, 1, 2, 3] },
-            { id: 17, type: 'multiple', topic: "Functions", text: "Let $f(x)$ be polynomial function of degree 5 with leading coefficient unity such that $f(1)=5, f(2)=4, f(3)=3, f(4)=2, f(5)=1$, then $f(6)$ is divisible by:", options: ["0", "24", "120", "720"], correctAnswer: [1, 2] },
-            { id: 18, type: 'multiple', topic: "Matrices", text: "A square matrix P satisfies $P^2=I-P$. If $P^n=5I-8P$ then n is greater than:", options: ["4", "5", "6", "7"], correctAnswer: [0, 1] },
-            { id: 19, type: 'multiple', topic: "Matrices", text: "If $A = \\begin{bmatrix} 1 & 1 & 0 \\\\ 2 & 2 & 1 \\\\ 0 & 1 & -1 \\end{bmatrix}$ and $A^3-2A^2+\\lambda A+I=0$, then:", options: ["$\\lambda=4$", "$\\lambda=-4$", "$|A^2+A^{-1}|=56$", "$|A^2+A^{-1}|=14$"], correctAnswer: [1, 2] },
-            { id: 20, type: 'multiple', topic: "Functions", text: "Let $f(x)=\\frac{32}{4+x^2+x^4}$, $g(x)=9+x^2$ and $h(x)=-x^2-3x+k$. Which is/are correct?", options: ["Number of integers in range of f(x) is 8", "Number of integral values of k for $h(f)>0$ & $h(g)<0$ is 20", "Number of integral values of k for $h(f)>0$ & $h(g)<0$ is 19", "Maximum value of g(f(x)) is 73"], correctAnswer: [0, 2, 3] },
-            { id: 21, type: 'multiple', topic: "Matrices", text: "If A is matrix such that $A^2+A+2I=0$, then:", options: ["A is non-singular", "$A \\neq 0$", "$|A| \\neq 0$", "$A^{-1} = -\\frac{1}{2}(A+I)$"], correctAnswer: [0, 1, 2, 3] },
-            { id: 22, type: 'multiple', topic: "Matrices", text: "If $A = \\begin{bmatrix} 0 & 0 \\\\ 0 & i \\end{bmatrix}$ where $i=\\sqrt{-1}$, then which is/are correct?", options: ["$\\sum_{r=1}^{2016}A^r = 0$", "$\\sum A^{2r-1} = \\sum A^{2r}$", "$A^{2016}$ is symmetric", "$A^{2016}$ is singular"], correctAnswer: [0, 1, 3] },
-            { id: 23, type: 'multiple', topic: "Matrices", text: "Let P and Q be symmetric matrices where $P^2=I$ and $Q^2=-I$. Which are symmetric?", options: ["$(P+Q)^2$", "$(P-Q)^2$", "$PQ+QP$", "$PQ-QP$"], correctAnswer: [0, 1, 2] },
-            { id: 24, type: 'multiple', topic: "Functions", text: "If $f(x) = \\{x + [\\log_2(2+x)]\\} + ... + \\{x + [\\log_2(2+x^{10})]\\}$ then:", options: ["$f(5)=50$", "$f(1/2)=5$", "$f(1)+f(-1)=0$", "$f(\\log_2 2\\sqrt{2})=5$"], correctAnswer: [1, 2, 3] },
-            { id: 25, type: 'multiple', topic: "Functions", text: "If $f(x) = |x^2-3|x|+2|$, then:", options: ["$f'(x)=2x-3$ for $x \\in (0,1) \\cup (2,\\infty)$", "$f'(x)=2x+3$ for $x \\in (-\\infty,-2) \\cup (-1,0)$", "$f'(x)=-2x-3$ for $x \\in (-2,-1)$", "None of the above"], correctAnswer: [0, 1, 2] },
-
-            // PART C: Numerical (26-45)
-            { id: 26, type: 'numerical', topic: "Matrices", text: "If A is a diagonal matrix of order 3x3 commutative with every square matrix of order 3x3 under multiplication and trace(A)=12, then $|A|$ is equal to.", correctAnswer: 64 },
-            { id: 27, type: 'numerical', topic: "Determinants", text: "Let polynomial equal the given determinant identity. Find $(a_4+a_3+a_2+a_1+a_0)-25$.", correctAnswer: 6 },
-            { id: 28, type: 'numerical', topic: "Functions", text: "The range of $f(x) = \\frac{x+m}{x^2+1}$ contains interval $[-1/2, 1]$. If $m \\ge \\frac{3}{k}$, find $k$.", correctAnswer: 4 },
-            { id: 29, type: 'numerical', topic: "Functions", text: "Number of solutions of $f(x) = f^{-1}(x)$ where $f(x) = x + \\sin x$ in $[-2\\pi, 2\\pi]$ is.", correctAnswer: 5 },
-            { id: 30, type: 'numerical', topic: "Matrices", text: "Matrix A satisfies $A^2-5A+7I=0$. If $A^8 = aA+bI$, then $a/253$ is.", correctAnswer: 5 },
-            { id: 31, type: 'numerical', topic: "Matrices", text: "For given transformation matrix P, if $x_1, x_2$ satisfy $|P-xI|=0$, find $x_1^2+x_2^2$.", correctAnswer: 5 },
-            { id: 32, type: 'numerical', topic: "Determinants", text: "Number of pairs (a,b) from {0..6} for unique solution is $\\lambda$. Find $\\lambda/7$.", correctAnswer: 6 },
-            { id: 33, type: 'numerical', topic: "Matrices", text: "Number of symmetric 3x3 matrices with entries -1, 0, 1 and trace=1 is.", correctAnswer: 162 },
-            { id: 34, type: 'numerical', topic: "Relations", text: "Number of relations on {1,2,3} that are reflexive, symmetric and have prime number of elements is.", correctAnswer: 7 },
-            { id: 35, type: 'numerical', topic: "Matrices", text: "Let $A = \\begin{bmatrix} 0 & a \\\\ 0 & 0 \\end{bmatrix}$ and $(A+I)^{50} - 50A = \\begin{bmatrix} a & b \\\\ c & d \\end{bmatrix}$ then $a+b+c+d$ is.", correctAnswer: 2 },
-            { id: 36, type: 'numerical', topic: "Relations", text: "Minimum elements to add to $R=\\{(a,b), (b,c), (b,d)\\}$ to make it equivalence relation is.", correctAnswer: 13 },
-            { id: 37, type: 'numerical', topic: "Matrices", text: "Given properties of Tr(A) and characteristic equation, find specific trace evaluation.", correctAnswer: 2 },
-            { id: 38, type: 'numerical', topic: "Matrices", text: "From previous, if $a_{ij} \\in \\{1,2,3,4\\}$, number of possible invertible matrices A is.", correctAnswer: 16 },
-            { id: 39, type: 'numerical', topic: "Matrices", text: "If $A+B=AB$, determinant of $(B-I)AB^{-1}$ is $\\lambda$, find $2\\lambda$.", correctAnswer: 2 },
-            { id: 40, type: 'numerical', topic: "Matrices", text: "Given trigonometric matrix A and $A(\\text{adj } A) = kI$, value of $k+9$ is.", correctAnswer: 8 },
-            { id: 41, type: 'numerical', topic: "Matrices", text: "Given $AB=B$ and trace(A)=50, find $\\det(2A)$.", correctAnswer: 196 },
-            { id: 42, type: 'numerical', topic: "Functions", text: "Product of integers in domain of $f(x) = \\sqrt{-x^2+11x-24} + \\sqrt{\\log_2(\\cos \\pi x)}$.", correctAnswer: 192 },
-            { id: 43, type: 'numerical', topic: "Matrices", text: "Calculate specific element combination for $P^T Q^{2007} P$.", correctAnswer: 401 },
-            { id: 44, type: 'numerical', topic: "Functions", text: "If $f(x)+f(y)+f(z)+f(x)f(y)f(z)=14$, find $f'(3)$.", correctAnswer: 0 },
-            { id: 45, type: 'numerical', topic: "Functions", text: "If $f(x+y)=2^x f(y)+4^y f(x)$ and $f(2)=3$, find $14 \\cdot \\frac{f'(4)}{f'(2)}$.", correctAnswer: 248 },
-
-            // PART D: Matrix Match (46-50)
-            { id: 46, type: 'single', topic: "Functions", text: "Consider $f(x) = ||x-1| - \\frac{1}{2e}| - k$. Match List I with List II values of k.", options: ["(A) I->R,P; II->T; III->Q; IV->S", "(B) I->Q; II->S; III->T; IV->R,P", "(C) I->Q; II->R,P; III->S; IV->T", "(D) I->Q; II->Q; III->R,P; IV->T"], correctAnswer: 0 },
-            { id: 47, type: 'single', topic: "Functions", text: "Match functions in List I with their types in List II (One-one, onto, etc).", options: ["(A) I->P,Q; II->P,S; III->Q,R,T; IV->Q,R", "(B) I->Q,R,T; II->P,Q; III->P,S; IV->Q,R", "(C) I->P,S; II->P,Q; III->Q,R,T; IV->Q,R", "(D) I->Q,R; II->P,Q; III->Q,R,T; IV->P,S"], correctAnswer: 3 },
-            { id: 48, type: 'single', topic: "Determinants", text: "If A is a 3x3 matrix and $|A|=3$, match the determinant values.", options: ["(A) P-1, Q-2, R-3, S-4", "(B) P-2, Q-4, R-3, S-1", "(C) P-3, Q-4, R-4, S-1", "(D) P-1, Q-5, R-3, S-4"], correctAnswer: 2 },
-            { id: 49, type: 'single', topic: "Matrices", text: "Match the definitions of matrices with their properties (Symmetric, Skew, etc).", options: ["(A) P-1,3; Q-1; R-2; S-1,4", "(B) P-1,4; Q-3; R-5; S-2,4", "(C) P-1,5; Q-2; R-3; S-4,5", "(D) P-1,2; Q-4; R-1; S-3,4"], correctAnswer: 0 },
-            { id: 50, type: 'single', topic: "Matrices", text: "Match the system of equations with conditions for unique, infinite, or no solutions.", options: ["(A) P-2; Q-1,4; R-1,3; S-1,3", "(B) P-1; Q-1,3; R-1,2; S-1,4", "(C) P-4; Q-1,2; R-1,5; S-1,3", "(D) P-3; Q-1,4; R-1,3; S-1,5"], correctAnswer: 0 }
-        ];
-
-        // --- 2. STATE VARIABLES ---
-        let currentIndex = 0;
-        let userAnswers = {}; 
-        let questionStatus = {}; 
-        questionsData.forEach(q => questionStatus[q.id] = 'not-visited');
-
-        // --- 3. TIMER LOGIC ---
-        let timeLeft = 3 * 60 * 60; // 3 hours
-        function updateTimer() {
-            let h = Math.floor(timeLeft / 3600);
-            let m = Math.floor((timeLeft % 3600) / 60);
-            let s = timeLeft % 60;
-            document.getElementById('timer').innerText = 
-                `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
-            if (timeLeft <= 0) submitExam();
-            timeLeft--;
+            // Initialize Chart.js
+            initChart();
         }
-        setInterval(updateTimer, 1000);
 
-        // --- 4. RENDER LOGIC ---
-        function renderQuestion() {
-            const q = questionsData[currentIndex];
+        function initChart() {
+            const ctx = document.getElementById('distributionChart').getContext('2d');
+            const labels = testData.sections.map(s => s.type);
+            const data = testData.sections.map(s => s.count);
             
-            if (questionStatus[q.id] === 'not-visited') questionStatus[q.id] = 'not-answered';
+            currentState.chartInstance = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: data,
+                        backgroundColor: [
+                            '#3b82f6', // blue-500
+                            '#10b981', // emerald-500
+                            '#f59e0b', // amber-500
+                            '#8b5cf6', // violet-500
+                            '#ef4444'  // red-500
+                        ],
+                        borderWidth: 2,
+                        borderColor: '#ffffff'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                padding: 20,
+                                font: { family: 'system-ui', size: 12 }
+                            }
+                        },
+                        tooltip: {
+                            backgroundColor: 'rgba(28, 25, 23, 0.9)',
+                            padding: 12,
+                            cornerRadius: 8,
+                            callbacks: {
+                                label: function(context) {
+                                    return ` ${context.label}: ${context.raw} Questions`;
+                                }
+                            }
+                        }
+                    },
+                    cutout: '65%'
+                }
+            });
+        }
 
-            document.getElementById('q-number').innerText = `Question ${currentIndex + 1} of ${questionsData.length}`;
-            document.getElementById('q-topic').innerText = `Topic: ${q.topic}`;
-            document.getElementById('q-text').innerHTML = q.text;
+        function renderSectionView(container, sectionId) {
+            const section = testData.sections.find(s => s.id === sectionId);
+            const questions = testData.questions.filter(q => q.sectionId === sectionId);
             
-            // Set Badge
-            const badge = document.getElementById('q-type-badge');
-            badge.innerText = q.type === 'single' ? 'Single Choice' : q.type === 'multiple' ? 'Multiple Choice' : 'Numerical Value';
-            badge.style.backgroundColor = q.type === 'numerical' ? '#ff9800' : q.type === 'multiple' ? '#6f42c1' : 'var(--nta-light-blue)';
+            let html = `
+                <div class="max-w-4xl mx-auto pb-12">
+                    <div class="mb-8 border-b border-stone-200 pb-6">
+                        <span class="inline-block px-3 py-1 bg-stone-200 text-stone-700 rounded-full text-xs font-semibold uppercase tracking-widest mb-3">
+                            ${section.type}
+                        </span>
+                        <h2 class="text-3xl font-bold text-stone-900 mb-3">${section.title}</h2>
+                        <p class="text-stone-600 text-lg bg-white p-4 rounded-lg border border-stone-200 shadow-sm">
+                            <strong>Introduction to this Section:</strong> You are viewing the qualitative content of the report for ${section.type}. This section contains interactive representations of the test questions. Users can read the context, review options, and use the interactive toggle to reveal the correct answer. This active engagement method is proven to enhance comprehension compared to a static answer key.
+                            <br><br><span class="text-sm text-stone-500 italic">${section.description}</span>
+                        </p>
+                    </div>
 
-            const optionsList = document.getElementById('options-list');
-            const numContainer = document.getElementById('numerical-container');
-            const numInput = document.getElementById('num-input');
+                    <div class="space-y-6">
+            `;
 
-            optionsList.innerHTML = '';
-            
-            if (q.type === 'numerical') {
-                optionsList.style.display = 'none';
-                numContainer.style.display = 'block';
-                numInput.value = userAnswers[q.id] !== undefined ? userAnswers[q.id] : '';
+            if (questions.length === 0) {
+                html += `<div class="text-center p-10 bg-white rounded-xl border border-stone-200 text-stone-500 italic">Questions for this section are not currently loaded in the demo dataset.</div>`;
             } else {
-                numContainer.style.display = 'none';
-                optionsList.style.display = 'block';
-                
-                q.options.forEach((opt, index) => {
-                    const li = document.createElement('li');
-                    let isSelected = false;
+                questions.forEach(q => {
+                    html += `
+                        <div class="bg-white rounded-xl shadow-sm border border-stone-200 overflow-hidden transition-all duration-200 hover:shadow-md">
+                            <div class="p-6">
+                                <div class="flex items-center justify-between mb-4">
+                                    <span class="font-bold text-blue-600 bg-blue-50 px-3 py-1 rounded-md">Question ${q.id}</span>
+                                </div>
+                                ${q.context ? `<div class="mb-4 p-4 bg-stone-50 border-l-4 border-stone-400 text-stone-700 italic text-sm rounded-r-md">${q.context}</div>` : ''}
+                                <p class="text-stone-800 font-medium text-lg mb-4 leading-relaxed">${q.text}</p>
+                                
+                                ${q.options.length > 0 ? `
+                                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-6">
+                                        ${q.options.map(opt => `<div class="p-3 border border-stone-200 rounded-lg text-sm text-stone-600 bg-stone-50 hover:border-blue-300 transition-colors cursor-default">${opt}</div>`).join('')}
+                                    </div>
+                                ` : ''}
 
-                    if (q.type === 'single') {
-                        isSelected = userAnswers[q.id] === index;
-                        li.innerHTML = `<input type="radio" name="opt" id="opt${index}" ${isSelected?'checked':''}>
-                                        <label style="cursor:pointer; width:100%" for="opt${index}">${String.fromCharCode(65 + index)}. ${opt}</label>`;
-                        li.onclick = () => selectOption(index, 'single');
-                    } else if (q.type === 'multiple') {
-                        let ansArr = userAnswers[q.id] || [];
-                        isSelected = ansArr.includes(index);
-                        li.innerHTML = `<input type="checkbox" id="opt${index}" ${isSelected?'checked':''}>
-                                        <label style="cursor:pointer; width:100%" for="opt${index}">${String.fromCharCode(65 + index)}. ${opt}</label>`;
-                        li.onclick = (e) => { e.preventDefault(); selectOption(index, 'multiple'); };
-                    }
-                    if (isSelected) li.classList.add('selected');
-                    optionsList.appendChild(li);
+                                <div class="mt-4 pt-4 border-t border-stone-100 flex items-center justify-between">
+                                    <button onclick="toggleAnswer(${q.id})" class="text-sm font-semibold text-blue-600 hover:text-blue-800 transition-colors flex items-center gap-1">
+                                        <span class="u-icon">&#128065;</span> Reveal Answer
+                                    </button>
+                                    <div id="answer-${q.id}" class="hidden text-sm font-bold text-emerald-600 bg-emerald-50 px-4 py-2 rounded-lg border border-emerald-100 transition-opacity">
+                                        Ans: ${q.answer}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
                 });
             }
 
-            renderPalette();
-            if (window.MathJax && typeof window.MathJax.typesetPromise === 'function') {
-                window.MathJax.typesetPromise();
+            html += `
+                    </div>
+                </div>
+            `;
+            container.innerHTML = html;
+        }
+
+        // --- Interaction Logic ---
+        function toggleAnswer(questionId) {
+            const answerDiv = document.getElementById(`answer-${questionId}`);
+            if (answerDiv.classList.contains('hidden')) {
+                answerDiv.classList.remove('hidden');
+                // Small animation effect
+                answerDiv.style.opacity = 0;
+                setTimeout(() => answerDiv.style.opacity = 1, 50);
+            } else {
+                answerDiv.classList.add('hidden');
             }
         }
 
-        function renderPalette() {
-            const grid = document.getElementById('palette-grid');
-            grid.innerHTML = '';
-            questionsData.forEach((q, idx) => {
-                const btn = document.createElement('div');
-                btn.className = `palette-btn ${questionStatus[q.id]}`;
-                btn.innerText = idx + 1;
-                btn.onclick = () => { currentIndex = idx; renderQuestion(); };
-                grid.appendChild(btn);
-            });
-        }
+        // Initialize application on load
+        window.onload = initApp;
 
-        // --- 5. INTERACTION LOGIC ---
-        function selectOption(index, type) {
-            const qId = questionsData[currentIndex].id;
-            if (type === 'single') {
-                userAnswers[qId] = index;
-            } else if (type === 'multiple') {
-                if (!userAnswers[qId]) userAnswers[qId] = [];
-                const pos = userAnswers[qId].indexOf(index);
-                if (pos === -1) userAnswers[qId].push(index);
-                else userAnswers[qId].splice(pos, 1);
-            }
-            renderQuestion();
-        }
-
-        function selectNumerical(val) {
-            const qId = questionsData[currentIndex].id;
-            userAnswers[qId] = val;
-        }
-
-        function checkIsAnswered(qId) {
-            let ans = userAnswers[qId];
-            if (ans === undefined || ans === null || ans === '') return false;
-            if (Array.isArray(ans) && ans.length === 0) return false;
-            return true;
-        }
-
-        function saveAndNext() {
-            const qId = questionsData[currentIndex].id;
-            if (checkIsAnswered(qId)) questionStatus[qId] = 'answered';
-            else questionStatus[qId] = 'not-answered';
-            if (currentIndex < questionsData.length - 1) currentIndex++;
-            renderQuestion();
-        }
-
-        function clearResponse() {
-            const qId = questionsData[currentIndex].id;
-            delete userAnswers[qId];
-            questionStatus[qId] = 'not-answered';
-            renderQuestion();
-        }
-
-        function markForReview() {
-            const qId = questionsData[currentIndex].id;
-            questionStatus[qId] = 'marked';
-            if (currentIndex < questionsData.length - 1) currentIndex++;
-            renderQuestion();
-        }
-
-        // --- 6. SUBMISSION & ANALYTICS LOGIC ---
-        function submitExam() {
-            if(!confirm("Are you sure you want to final submit the exam?")) return;
-
-            document.getElementById('exam-ui').style.display = 'none';
-            document.getElementById('result-container').style.display = 'block';
-
-            let score = 0;
-            let correctCount = 0;
-            let incorrectCount = 0;
-            let attemptedCount = 0;
-            let topicStats = {};
-
-            questionsData.forEach(q => {
-                if (!topicStats[q.topic]) topicStats[q.topic] = { total: 0, attempted: 0, correct: 0 };
-                topicStats[q.topic].total++;
-
-                if (checkIsAnswered(q.id)) {
-                    attemptedCount++;
-                    topicStats[q.topic].attempted++;
-                    let isCorrect = false;
-
-                    if (q.type === 'single') {
-                        isCorrect = userAnswers[q.id] === q.correctAnswer;
-                    } else if (q.type === 'multiple') {
-                        let ans = userAnswers[q.id].sort();
-                        let correctAns = q.correctAnswer.slice().sort();
-                        isCorrect = JSON.stringify(ans) === JSON.stringify(correctAns);
-                    } else if (q.type === 'numerical') {
-                        isCorrect = parseFloat(userAnswers[q.id]) === q.correctAnswer;
-                    }
-
-                    if (isCorrect) {
-                        score += 4;
-                        correctCount++;
-                        topicStats[q.topic].correct++;
-                    } else {
-                        // Section B (Numerical) no negative marking typically in JEE Main, but standard -1 applied here
-                        score -= (q.type === 'numerical') ? 0 : 1; 
-                        incorrectCount++;
-                    }
-                }
-            });
-
-            const accuracy = attemptedCount === 0 ? 0 : ((correctCount / attemptedCount) * 100).toFixed(1);
-            const maxPossibleScore = questionsData.length * 4;
-            let percentile = score > 0 ? Math.min(99.99, 40 + (score / maxPossibleScore) * 60) : 0; 
-
-            document.getElementById('res-score').innerText = score;
-            document.getElementById('res-acc').innerText = `${accuracy}%`;
-            document.getElementById('res-percentile').innerText = percentile.toFixed(2);
-            document.getElementById('res-attempted').innerText = `${attemptedCount} / 50`;
-
-            // Dynamic Insights
-            let recHTML = `<strong>Diagnostic Summary:</strong> You attempted ${attemptedCount} questions with ${correctCount} correct and ${incorrectCount} incorrect. <br><br>`;
-            if (accuracy < 50) recHTML += "🛑 <b>Critical Intervention Required:</b> High negative marking observed. Restrict guessing and focus purely on solid conceptual grounding in Matrices and Domain mappings.";
-            else if (accuracy < 80) recHTML += "⚠️ <b>Moderate Optimization Needed:</b> Good base, but trace properties of matrices and composite/inverse functions are leaking marks. Revisit your notes.";
-            else recHTML += "✅ <b>Exceptional Accuracy:</b> You are in the top tier! Focus now purely on velocity. Attempt Numerical type questions faster.";
-            
-            document.getElementById('ai-recommendations').innerHTML = recHTML;
-
-            renderCharts(topicStats);
-        }
-
-        function renderCharts(topicStats) {
-            const topics = Object.keys(topicStats);
-            const accuracyData = topics.map(t => {
-                let stats = topicStats[t];
-                return stats.attempted === 0 ? 0 : Math.round((stats.correct / stats.attempted) * 100);
-            });
-            const attemptedData = topics.map(t => topicStats[t].attempted);
-
-            // Radar Chart
-            new Chart(document.getElementById('topicRadarChart').getContext('2d'), {
-                type: 'radar',
-                data: {
-                    labels: topics,
-                    datasets: [{
-                        label: 'Accuracy %',
-                        data: accuracyData,
-                        backgroundColor: 'rgba(45, 98, 136, 0.4)',
-                        borderColor: '#2d6288',
-                        pointBackgroundColor: '#fff',
-                        pointBorderColor: '#2d6288',
-                        pointHoverBackgroundColor: '#2d6288',
-                        pointHoverBorderColor: '#fff'
-                    }]
-                },
-                options: { scales: { r: { min: 0, max: 100, ticks: { backdropColor: 'transparent' } } } }
-            });
-
-            // Bar Chart
-            new Chart(document.getElementById('marksBarChart').getContext('2d'), {
-                type: 'bar',
-                data: {
-                    labels: topics,
-                    datasets: [{
-                        label: 'Questions Attempted',
-                        data: attemptedData,
-                        backgroundColor: '#17a2b8',
-                        borderRadius: 4
-                    }]
-                },
-                options: { scales: { y: { beginAtZero: true, max: 20 } }, plugins: { legend: { display: false } } }
-            });
-        }
-
-        renderQuestion();
     </script>
 </body>
 </html>
