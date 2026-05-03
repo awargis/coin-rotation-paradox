@@ -1,0 +1,1167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Set Theory Visual Lab | Cinematic Simulation</title>
+    <style>
+        /* CSS VARIABLES & RESET */
+        :root {
+            --bg-deep: #020617;
+            --bg-light: #0f172a;
+            --primary-blue: #3B82F6;
+            --primary-pink: #EC4899;
+            --accent-green: #10B981;
+            --accent-yellow: #FACC15;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --glass-bg: rgba(15, 23, 42, 0.6);
+            --glass-border: rgba(255, 255, 255, 0.1);
+            --font-main: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            --font-math: 'Courier New', Courier, monospace;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: var(--font-main);
+            background: radial-gradient(circle at center, var(--bg-light) 0%, var(--bg-deep) 100%);
+            color: var(--text-main);
+            overflow-x: hidden;
+            min-height: 100vh;
+            line-height: 1.6;
+        }
+
+        /* BACKGROUND CANVAS */
+        #bg-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            pointer-events: none;
+        }
+
+        /* MAIN LAYOUT */
+        .app-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+            display: flex;
+            flex-direction: column;
+            gap: 2rem;
+            position: relative;
+            z-index: 1;
+        }
+
+        /* HEADER / HERO */
+        header {
+            text-align: center;
+            margin-bottom: 1rem;
+            animation: fadeInDown 1s ease-out;
+        }
+
+        h1 {
+            font-size: clamp(2.5rem, 5vw, 4rem);
+            font-weight: 800;
+            letter-spacing: 2px;
+            background: linear-gradient(to right, var(--primary-blue), var(--primary-pink));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-shadow: 0 0 40px rgba(236, 72, 153, 0.3);
+            margin-bottom: 0.5rem;
+        }
+
+        .subtitle {
+            color: var(--text-muted);
+            font-size: 1.2rem;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+
+        /* TOP BAR (Toggles) */
+        .top-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+
+        .glass-panel {
+            background: var(--glass-bg);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid var(--glass-border);
+            border-radius: 20px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+            padding: 1.5rem;
+        }
+
+        /* GRID LAYOUT */
+        .content-grid {
+            display: grid;
+            grid-template-columns: 1.5fr 1fr;
+            gap: 2rem;
+            align-items: start;
+        }
+
+        /* VISUALIZATION AREA */
+        .visualization-wrapper {
+            position: relative;
+            width: 100%;
+            padding-bottom: 62.5%; /* 16:10 aspect ratio approx */
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: 0 0 50px rgba(0,0,0,0.5) inset, 0 0 20px rgba(59, 130, 246, 0.2);
+            transition: transform 0.2s ease-out;
+        }
+
+        #venn-svg {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+
+        /* SVG STYLES */
+        .u-bg {
+            fill: rgba(255, 255, 255, 0.02);
+            stroke: var(--glass-border);
+            stroke-width: 2;
+        }
+        
+        .grid-pattern line {
+            stroke: rgba(255, 255, 255, 0.05);
+            stroke-width: 1;
+        }
+
+        .u-label {
+            fill: var(--text-muted);
+            font-size: 24px;
+            font-weight: bold;
+            font-family: var(--font-math);
+        }
+
+        .set-outline {
+            fill: transparent;
+            stroke-width: 3;
+            transition: all 0.5s ease;
+            stroke-dasharray: 1000;
+            stroke-dashoffset: 0;
+        }
+
+        .a-outline { stroke: var(--primary-blue); filter: drop-shadow(0 0 8px var(--primary-blue)); }
+        .b-outline { stroke: var(--primary-pink); filter: drop-shadow(0 0 8px var(--primary-pink)); }
+
+        .set-label {
+            fill: white;
+            font-size: 28px;
+            font-weight: 800;
+            text-anchor: middle;
+            text-shadow: 0 2px 10px rgba(0,0,0,0.8);
+            transition: opacity 0.5s;
+        }
+
+        /* SVG Highlights Logic */
+        .highlight-group {
+            opacity: 0;
+            transition: opacity 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+            pointer-events: none;
+        }
+
+        .fill-a { fill: var(--primary-blue); opacity: 0.4; }
+        .fill-b { fill: var(--primary-pink); opacity: 0.4; }
+        .fill-union { fill: #8b5cf6; opacity: 0.4; }
+        .fill-intersection { fill: var(--accent-yellow); opacity: 0.6; }
+        .fill-u { fill: rgba(255, 255, 255, 0.1); }
+        .fill-subset { fill: var(--accent-green); opacity: 0.4; stroke: var(--accent-green); stroke-width: 3; filter: drop-shadow(0 0 10px var(--accent-green)); }
+
+        svg[data-state="union"] #hl-union { opacity: 1; }
+        svg[data-state="intersection"] #hl-intersection { opacity: 1; }
+        svg[data-state="diff-a-b"] #hl-diff-a { opacity: 1; }
+        svg[data-state="diff-b-a"] #hl-diff-b { opacity: 1; }
+        svg[data-state="comp-a"] #hl-comp-a { opacity: 1; }
+        svg[data-state="comp-b"] #hl-comp-b { opacity: 1; }
+        svg[data-state="subset"] #hl-subset { opacity: 1; }
+        svg[data-state="universal"] #hl-universal { opacity: 1; }
+        
+        svg[data-state="subset"] .b-outline,
+        svg[data-state="subset"] .b-label,
+        svg[data-state="subset"] .node-b { opacity: 0.1; }
+
+        /* Nodes */
+        .node circle {
+            fill: white;
+            filter: drop-shadow(0 0 4px white);
+            transition: all 0.5s;
+        }
+        .node text {
+            fill: white;
+            font-size: 14px;
+            text-anchor: middle;
+            alignment-baseline: central;
+            pointer-events: none;
+            opacity: 0.8;
+            font-family: var(--font-math);
+        }
+        .node:hover circle { r: 18; fill: var(--accent-yellow); }
+        .node:hover text { opacity: 1; fill: black; font-weight: bold; }
+
+        /* Animation Classes applied via JS */
+        .pulse-glow { animation: pulseGlow 2s infinite alternate; }
+
+        /* CONTROLS PANEL */
+        .controls-container {
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+
+        .buttons-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 0.8rem;
+        }
+
+        button {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: var(--text-main);
+            padding: 0.8rem 1rem;
+            border-radius: 12px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            position: relative;
+            overflow: hidden;
+        }
+
+        button::before {
+            content: '';
+            position: absolute;
+            top: 0; left: -100%;
+            width: 100%; height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
+            transition: left 0.5s;
+        }
+
+        button:hover {
+            background: rgba(255, 255, 255, 0.1);
+            transform: translateY(-2px);
+            border-color: rgba(255, 255, 255, 0.3);
+        }
+
+        button:hover::before { left: 100%; }
+
+        button.active {
+            background: rgba(59, 130, 246, 0.2);
+            border-color: var(--primary-blue);
+            box-shadow: 0 0 15px rgba(59, 130, 246, 0.4), inset 0 0 10px rgba(59, 130, 246, 0.2);
+            color: white;
+            text-shadow: 0 0 8px rgba(255,255,255,0.5);
+        }
+
+        /* Special Buttons */
+        .btn-play {
+            background: linear-gradient(135deg, rgba(16, 185, 129, 0.2), rgba(16, 185, 129, 0.05));
+            border-color: var(--accent-green);
+            color: var(--accent-green);
+            grid-column: 1 / -1;
+            padding: 1rem;
+            font-size: 1.1rem;
+        }
+        .btn-play:hover { background: rgba(16, 185, 129, 0.3); color: white; }
+
+        /* INFO PANEL */
+        .info-card {
+            min-height: 200px;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            border-top: 4px solid var(--primary-blue);
+            transition: border-color 0.5s;
+        }
+
+        .info-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: white;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .info-text {
+            color: var(--text-muted);
+            font-size: 1.1rem;
+            line-height: 1.6;
+            min-height: 80px;
+        }
+
+        .formula-box {
+            background: rgba(0, 0, 0, 0.5);
+            padding: 1rem;
+            border-radius: 8px;
+            font-family: var(--font-math);
+            color: var(--accent-yellow);
+            font-size: 1.2rem;
+            border: 1px solid rgba(250, 204, 21, 0.2);
+            position: relative;
+        }
+
+        /* Typing Cursor */
+        .cursor::after {
+            content: '|';
+            animation: blink 1s infinite;
+        }
+
+        /* TOGGLES */
+        .toggle-container {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+        
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 50px;
+            height: 26px;
+        }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-color: rgba(255,255,255,0.1);
+            transition: .4s;
+            border-radius: 34px;
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 18px; width: 18px;
+            left: 3px; bottom: 3px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+        input:checked + .slider {
+            background-color: var(--primary-pink);
+            border-color: var(--primary-pink);
+            box-shadow: 0 0 10px var(--primary-pink);
+        }
+        input:checked + .slider:before { transform: translateX(24px); }
+
+        /* QUIZ MODAL */
+        #quiz-panel {
+            display: none;
+            animation: scaleIn 0.3s ease-out;
+            border-top: 4px solid var(--primary-pink);
+        }
+        .quiz-option {
+            width: 100%;
+            text-align: left;
+            margin-bottom: 0.5rem;
+            justify-content: flex-start;
+        }
+        .quiz-feedback { margin-top: 1rem; font-weight: bold; min-height: 24px; }
+        .correct { color: var(--accent-green); text-shadow: 0 0 5px var(--accent-green); }
+        .wrong { color: var(--primary-pink); text-shadow: 0 0 5px var(--primary-pink); }
+
+        /* ANIMATIONS */
+        @keyframes fadeInDown {
+            from { opacity: 0; transform: translateY(-20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes scaleIn {
+            from { opacity: 0; transform: scale(0.95); }
+            to { opacity: 1; transform: scale(1); }
+        }
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0; }
+        }
+        @keyframes float {
+            0%, 100% { transform: translateY(0) translateX(0); }
+            33% { transform: translateY(-5px) translateX(3px); }
+            66% { transform: translateY(3px) translateX(-4px); }
+        }
+        @keyframes pulseGlow {
+            from { filter: drop-shadow(0 0 5px currentColor); }
+            to { filter: drop-shadow(0 0 20px currentColor); }
+        }
+
+        /* RESPONSIVE */
+        @media (max-width: 968px) {
+            .content-grid { grid-template-columns: 1fr; }
+            .visualization-wrapper { padding-bottom: 70%; }
+        }
+        @media (max-width: 600px) {
+            h1 { font-size: 2rem; }
+            .buttons-grid { grid-template-columns: 1fr 1fr; }
+            .top-bar { flex-direction: column; gap: 1rem; align-items: stretch; }
+        }
+    </style>
+</head>
+<body>
+    <!-- Canvas for ambient background particles -->
+    <canvas id="bg-canvas"></canvas>
+
+    <div class="app-container">
+        <header>
+            <h1>SET THEORY VISUAL LAB</h1>
+            <p class="subtitle">Interactive Mathematics Simulation</p>
+        </header>
+
+        <div class="top-bar">
+            <div class="toggle-container glass-panel" style="padding: 0.8rem 1.5rem;">
+                <span id="mode-label-abstract" style="color: white; font-weight: bold;">Abstract Mode</span>
+                <label class="switch">
+                    <input type="checkbox" id="context-toggle">
+                    <span class="slider"></span>
+                </label>
+                <span id="mode-label-real" style="color: var(--text-muted);">Real-Life Example</span>
+            </div>
+            
+            <div class="toggle-container glass-panel" style="padding: 0.8rem 1.5rem;">
+                <span>Sound Effects</span>
+                <label class="switch">
+                    <input type="checkbox" id="sound-toggle" checked>
+                    <span class="slider"></span>
+                </label>
+            </div>
+        </div>
+
+        <main class="content-grid">
+            <!-- Left Side: Visualizer -->
+            <section class="visualization-wrapper glass-panel" id="viz-wrapper">
+                <svg viewBox="0 0 800 500" id="venn-svg" data-state="set">
+                    <defs>
+                        <!-- Grid Pattern -->
+                        <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+                            <line x1="40" y1="0" x2="40" y2="40" />
+                            <line x1="0" y1="40" x2="40" y2="40" />
+                        </pattern>
+
+                        <!-- Masks for Complex Regions -->
+                        <mask id="mask-not-a">
+                            <rect width="100%" height="100%" fill="white"/>
+                            <circle cx="300" cy="250" r="148" fill="black" />
+                        </mask>
+                        <mask id="mask-not-b">
+                            <rect width="100%" height="100%" fill="white"/>
+                            <circle cx="500" cy="250" r="148" fill="black" />
+                        </mask>
+                        
+                        <!-- Clip Paths -->
+                        <clipPath id="clip-a">
+                            <circle cx="300" cy="250" r="150" />
+                        </clipPath>
+                    </defs>
+
+                    <!-- Background & Universal Label -->
+                    <rect width="100%" height="100%" rx="20" class="u-bg" />
+                    <rect width="100%" height="100%" rx="20" fill="url(#grid)" />
+                    <text x="30" y="45" class="u-label">U</text>
+                    <text x="30" y="70" class="u-label" style="font-size: 14px; opacity: 0.7; font-family: var(--font-main);" id="u-desc">Universal Set</text>
+
+                    <!-- Highlights (Behind Outlines) -->
+                    <g id="hl-universal" class="highlight-group">
+                        <rect width="100%" height="100%" rx="20" class="fill-u" />
+                    </g>
+                    
+                    <g id="hl-union" class="highlight-group">
+                        <circle cx="300" cy="250" r="150" class="fill-union"/>
+                        <circle cx="500" cy="250" r="150" class="fill-union"/>
+                    </g>
+
+                    <g id="hl-intersection" class="highlight-group">
+                        <circle cx="500" cy="250" r="150" class="fill-intersection" clip-path="url(#clip-a)"/>
+                    </g>
+
+                    <g id="hl-diff-a" class="highlight-group">
+                        <circle cx="300" cy="250" r="150" class="fill-a" mask="url(#mask-not-b)"/>
+                    </g>
+
+                    <g id="hl-diff-b" class="highlight-group">
+                        <circle cx="500" cy="250" r="150" class="fill-b" mask="url(#mask-not-a)"/>
+                    </g>
+
+                    <g id="hl-comp-a" class="highlight-group">
+                        <rect width="100%" height="100%" rx="20" class="fill-u" mask="url(#mask-not-a)"/>
+                    </g>
+
+                    <g id="hl-comp-b" class="highlight-group">
+                        <rect width="100%" height="100%" rx="20" class="fill-u" mask="url(#mask-not-b)"/>
+                    </g>
+
+                    <g id="hl-subset" class="highlight-group">
+                        <circle cx="280" cy="250" r="70" class="fill-subset"/>
+                        <text x="280" y="220" fill="var(--accent-green)" font-weight="bold" text-anchor="middle" font-size="20">B</text>
+                    </g>
+
+                    <!-- Base Set Outlines -->
+                    <circle cx="300" cy="250" r="150" class="set-outline a-outline" />
+                    <circle cx="500" cy="250" r="150" class="set-outline b-outline" />
+                    
+                    <!-- Labels -->
+                    <text x="200" y="120" class="set-label a-label" id="label-a">A</text>
+                    <text x="600" y="120" class="set-label b-label" id="label-b">B</text>
+
+                    <!-- Elements Container -->
+                    <g id="nodes-container"></g>
+                </svg>
+            </section>
+
+            <!-- Right Side: Controls & Info -->
+            <section class="controls-container">
+                <!-- Concept Info Card -->
+                <div class="info-card glass-panel" id="main-info-panel">
+                    <div class="info-title">
+                        <span id="title-icon">🔵</span>
+                        <span id="concept-title" class="cursor">Set Definition</span>
+                    </div>
+                    <div class="formula-box">
+                        <span id="concept-formula" class="cursor">A = {x, y, z...}</span>
+                    </div>
+                    <div class="info-text" id="concept-desc">
+                        A well-defined collection of distinct objects. Here, circles A and B represent sets containing individual elements floating within them.
+                    </div>
+                </div>
+
+                <!-- Quiz Panel (Hidden initially) -->
+                <div class="info-card glass-panel" id="quiz-panel">
+                    <div class="info-title">🧠 Knowledge Check</div>
+                    <div class="info-text" id="quiz-question" style="min-height: auto; margin-bottom: 1rem;">
+                        Question goes here
+                    </div>
+                    <div id="quiz-options">
+                        <!-- Buttons injected via JS -->
+                    </div>
+                    <div class="quiz-feedback" id="quiz-feedback"></div>
+                    <button id="btn-next-quiz" style="margin-top: 1rem; display: none;">Next Question ➔</button>
+                    <button id="btn-exit-quiz" style="margin-top: 1rem; background: rgba(255,255,255,0.1);">Exit Quiz</button>
+                </div>
+
+                <!-- Concept Buttons -->
+                <div class="glass-panel" id="buttons-panel">
+                    <h3 style="margin-bottom: 1rem; font-size: 0.9rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px;">Operations</h3>
+                    <div class="buttons-grid">
+                        <button class="concept-btn active" data-concept="set">Basic Sets</button>
+                        <button class="concept-btn" data-concept="universal">Universal Set</button>
+                        <button class="concept-btn" data-concept="union">Union (A ∪ B)</button>
+                        <button class="concept-btn" data-concept="intersection">Intersection (A ∩ B)</button>
+                        <button class="concept-btn" data-concept="diff-a-b">Diff (A − B)</button>
+                        <button class="concept-btn" data-concept="diff-b-a">Diff (B − A)</button>
+                        <button class="concept-btn" data-concept="comp-a">Complement (A')</button>
+                        <button class="concept-btn" data-concept="subset">Subset (B ⊂ A)</button>
+                        <button class="btn-play" id="btn-autoplay">▶ Start Lecture Mode</button>
+                        <button class="btn-play" id="btn-start-quiz" style="background: linear-gradient(135deg, rgba(236, 72, 153, 0.2), rgba(236, 72, 153, 0.05)); border-color: var(--primary-pink); color: var(--primary-pink);">📝 Take Mini Quiz</button>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script>
+        // --- 1. AUDIO ENGINE ---
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        let audioCtx;
+        
+        function initAudio() {
+            if (!audioCtx) {
+                audioCtx = new AudioContext();
+            }
+        }
+
+        function playTone(freq, type = 'sine', duration = 0.1, vol = 0.1) {
+            const toggle = document.getElementById('sound-toggle');
+            if (!toggle.checked) return;
+            
+            if (!audioCtx) initAudio();
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+
+            const osc = audioCtx.createOscillator();
+            const gainNode = audioCtx.createGain();
+            
+            osc.type = type;
+            osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+            
+            gainNode.gain.setValueAtTime(vol, audioCtx.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+            
+            osc.connect(gainNode);
+            gainNode.connect(audioCtx.destination);
+            
+            osc.start();
+            osc.stop(audioCtx.currentTime + duration);
+        }
+
+        // Sound profiles
+        const sounds = {
+            click: () => playTone(600, 'sine', 0.1, 0.05),
+            hover: () => playTone(800, 'triangle', 0.05, 0.02),
+            success: () => { playTone(440, 'sine', 0.1); setTimeout(() => playTone(660, 'sine', 0.2), 100); },
+            error: () => playTone(150, 'sawtooth', 0.3, 0.1),
+            transition: () => playTone(300, 'sine', 0.4, 0.03)
+        };
+
+        // --- 2. DATA STRUCTURES ---
+        
+        // Content dictionaries for both modes
+        const content = {
+            abstract: {
+                labels: { a: 'A', b: 'B', u: 'Universal Set U' },
+                nodes: {
+                    a_only: ['1', '2', '3', 'a', 'b'],
+                    b_only: ['7', '8', '9', 'x', 'y'],
+                    both: ['4', '5', '6'],
+                    u_only: ['10', '11', 'z', 'w', '12']
+                },
+                concepts: {
+                    'set': { 
+                        icon: '🔵', title: 'Basic Sets', formula: 'A = {1, 2, 3, 4, 5, 6, a, b}', 
+                        text: 'A set is a well-defined collection of distinct objects. The elements belong to specific regions. Hover over nodes to see them interact.' 
+                    },
+                    'universal': { 
+                        icon: '🌌', title: 'Universal Set (U)', formula: 'U = {all elements in view}', 
+                        text: 'The master set containing all objects under consideration. Everything you see here is a subset of U.' 
+                    },
+                    'union': { 
+                        icon: '∪', title: 'Union (A ∪ B)', formula: 'A ∪ B = {x : x ∈ A or x ∈ B}', 
+                        text: 'Combines all elements present in A, in B, or in both. The entire colored region represents the Union.' 
+                    },
+                    'intersection': { 
+                        icon: '∩', title: 'Intersection (A ∩ B)', formula: 'A ∩ B = {4, 5, 6}', 
+                        text: 'Contains only the elements that exist in BOTH set A and set B simultaneously. The glowing middle region.' 
+                    },
+                    'diff-a-b': { 
+                        icon: '➖', title: 'Difference (A − B)', formula: 'A − B = {1, 2, 3, a, b}', 
+                        text: 'Elements that belong exclusively to set A, removing anything that is also in set B. "A only".' 
+                    },
+                    'diff-b-a': { 
+                        icon: '➖', title: 'Difference (B − A)', formula: 'B − A = {7, 8, 9, x, y}', 
+                        text: 'Elements that belong exclusively to set B, removing anything that is also in set A. "B only".' 
+                    },
+                    'comp-a': { 
+                        icon: "'", title: "Complement of A (A')", formula: "A' = U − A", 
+                        text: 'Everything in the Universal Set that is NOT in set A. Notice how set A is completely dark.' 
+                    },
+                    'subset': { 
+                        icon: '⊂', title: 'Proper Subset (B ⊂ A)', formula: 'B ⊂ A ⇒ ∀x(x ∈ B → x ∈ A)', 
+                        text: 'Imagine a new set B completely contained within A. Every element of B is in A, but A has extra elements.' 
+                    }
+                }
+            },
+            real: {
+                labels: { a: 'Maths', b: 'Cricket', u: 'Class 11 Students' },
+                nodes: {
+                    a_only: ['Rahul', 'Priya', 'Amit', 'Neha'],
+                    b_only: ['Karan', 'Simran', 'Raj', 'Pooja'],
+                    both: ['Vikram', 'Anjali', 'Ravi'],
+                    u_only: ['Sneha', 'Kabir', 'Tara']
+                },
+                concepts: {
+                    'set': { 
+                        icon: '👥', title: 'Groups of Students', formula: 'Sets based on interests', 
+                        text: 'Let circle A be students who like Maths, and circle B be students who like Cricket.' 
+                    },
+                    'universal': { 
+                        icon: '🏫', title: 'Class 11 Students', formula: 'U = All Students', 
+                        text: 'The Universal set represents the entire Class 11. Everyone falls inside this rectangle.' 
+                    },
+                    'union': { 
+                        icon: '🤝', title: 'Maths OR Cricket', formula: 'Likes Maths ∪ Likes Cricket', 
+                        text: 'Students who like AT LEAST ONE of the two. They could like Maths, Cricket, or both.' 
+                    },
+                    'intersection': { 
+                        icon: '⭐', title: 'Maths AND Cricket', formula: 'Likes Maths ∩ Likes Cricket', 
+                        text: 'These are the all-rounders! Students who enjoy both Maths and Cricket.' 
+                    },
+                    'diff-a-b': { 
+                        icon: '📚', title: 'ONLY Maths', formula: 'Maths − Cricket', 
+                        text: 'Students who are pure Maths enthusiasts. They like Maths but do NOT like Cricket.' 
+                    },
+                    'diff-b-a': { 
+                        icon: '🏏', title: 'ONLY Cricket', formula: 'Cricket − Maths', 
+                        text: 'Students who are pure Cricket fans. They like Cricket but do NOT like Maths.' 
+                    },
+                    'comp-a': { 
+                        icon: '🚫', title: 'Not Maths Fans', formula: "(Likes Maths)'", 
+                        text: 'Everyone in the class who does NOT like Maths. This includes pure Cricket fans and those who like neither.' 
+                    },
+                    'subset': { 
+                        icon: '🎯', title: 'Advanced Maths Team', formula: 'Adv. Maths ⊂ All Maths', 
+                        text: 'If we form an Advanced Maths team (green circle), all its members automatically belong to the "Likes Maths" set.' 
+                    }
+                }
+            }
+        };
+
+        const quizData = [
+            {
+                q: "If Set A is 'Even Numbers' and Set B is 'Prime Numbers', what is contained in A ∩ B?",
+                options: ["All numbers", "{2}", "Empty Set (∅)", "All prime numbers"],
+                ans: 1,
+                hint: "What is the only number that is both even AND prime?"
+            },
+            {
+                q: "Look at the visualizer. Which region represents the formula A - B?",
+                options: ["The entire blue and pink area", "The overlapping middle section", "The blue crescent on the left", "The space outside both circles"],
+                ans: 2,
+                hint: "A - B means elements in A but NOT in B. Think about cutting B out of A."
+            },
+            {
+                q: "If B ⊂ A (B is a proper subset of A), which statement is ALWAYS true?",
+                options: ["A and B have the same elements", "A ∪ B = B", "A ∩ B = B", "A - B is an empty set"],
+                ans: 2,
+                hint: "If B is entirely inside A, the overlap between them is just B itself."
+            }
+        ];
+
+        // --- 3. STATE MANAGEMENT ---
+        let currentMode = 'abstract'; // 'abstract' or 'real'
+        let currentConcept = 'set';
+        let autoplayTimer = null;
+        let isTyping = false;
+        let typingTimeouts = [];
+        let currentQuizIndex = 0;
+
+        // --- 4. DOM ELEMENTS ---
+        const svg = document.getElementById('venn-svg');
+        const nodesContainer = document.getElementById('nodes-container');
+        const buttons = document.querySelectorAll('.concept-btn');
+        const titleEl = document.getElementById('concept-title');
+        const formulaEl = document.getElementById('concept-formula');
+        const descEl = document.getElementById('concept-desc');
+        const iconEl = document.getElementById('title-icon');
+        const contextToggle = document.getElementById('context-toggle');
+        const btnAutoplay = document.getElementById('btn-autoplay');
+        
+        // Theme Colors
+        const themeColor = document.documentElement.style;
+
+        // --- 5. INITIALIZATION ---
+        function init() {
+            generateNodes();
+            initParticles();
+            setupEventListeners();
+            updateUI(currentConcept);
+            
+            // Initial animation pop
+            setTimeout(() => {
+                document.querySelector('.a-outline').style.strokeDashoffset = '0';
+                document.querySelector('.b-outline').style.strokeDashoffset = '0';
+            }, 100);
+        }
+
+        // --- 6. SVG NODE GENERATION MATH ---
+        function generateNodes() {
+            nodesContainer.innerHTML = ''; // Clear existing
+            const data = content[currentMode].nodes;
+            
+            // Helper to place text in specific SVG bounds safely
+            const placeNodes = (array, regionType) => {
+                array.forEach(text => {
+                    let x, y, valid = false, attempts = 0;
+                    while (!valid && attempts < 200) {
+                        x = Math.random() * 800;
+                        y = Math.random() * 500;
+                        
+                        const distA = Math.hypot(x - 300, y - 250);
+                        const distB = Math.hypot(x - 500, y - 250);
+                        // Buffer to keep away from edges
+                        const inA = distA < 125; 
+                        const inB = distB < 125;
+
+                        if (regionType === 'a_only' && inA && !inB) valid = true;
+                        if (regionType === 'b_only' && !inA && inB) valid = true;
+                        if (regionType === 'both' && inA && inB) valid = true;
+                        // Avoid U label area top left
+                        if (regionType === 'u_only' && !inA && !inB && x > 100 && x < 750 && y > 100 && y < 450) valid = true;
+                        
+                        attempts++;
+                    }
+                    
+                    if (valid) {
+                        const g = document.createElementNS("http://www.w3.org/2000/svg", "g");
+                        g.setAttribute("class", `node node-${regionType.split('_')[0]}`);
+                        // Add floating animation delay
+                        g.style.animation = `float ${3 + Math.random()*2}s ease-in-out ${Math.random()}s infinite`;
+                        
+                        const circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+                        circle.setAttribute("cx", x);
+                        circle.setAttribute("cy", y);
+                        circle.setAttribute("r", currentMode === 'abstract' ? "6" : "4");
+                        
+                        const textEl = document.createElementNS("http://www.w3.org/2000/svg", "text");
+                        textEl.setAttribute("x", x);
+                        textEl.setAttribute("y", y - 15);
+                        textEl.textContent = text;
+                        if(currentMode === 'abstract') {
+                            textEl.setAttribute("y", y); // Center abstract chars
+                        }
+
+                        g.appendChild(circle);
+                        g.appendChild(textEl);
+                        nodesContainer.appendChild(g);
+                    }
+                });
+            };
+
+            placeNodes(data.a_only, 'a_only');
+            placeNodes(data.b_only, 'b_only');
+            placeNodes(data.both, 'both');
+            placeNodes(data.u_only, 'u_only');
+            
+            // Update labels
+            document.getElementById('label-a').textContent = content[currentMode].labels.a;
+            document.getElementById('label-b').textContent = content[currentMode].labels.b;
+            document.getElementById('u-desc').textContent = content[currentMode].labels.u;
+        }
+
+        // --- 7. CORE LOGIC: CONCEPT SWITCHING ---
+        function setConcept(conceptId) {
+            if (currentConcept === conceptId && !isTyping) return; // Ignore if same
+            
+            sounds.transition();
+            currentConcept = conceptId;
+            
+            // Update buttons
+            buttons.forEach(btn => {
+                btn.classList.remove('active');
+                if (btn.dataset.concept === conceptId) btn.classList.add('active');
+            });
+
+            // Update SVG State for CSS targeting
+            svg.setAttribute('data-state', conceptId);
+            
+            // Manage UI colors based on concept to make it dynamic
+            if(conceptId === 'diff-a-b' || conceptId === 'comp-b') {
+                themeColor.setProperty('--glass-border', 'rgba(59, 130, 246, 0.3)');
+                document.querySelector('.info-card').style.borderColor = 'var(--primary-blue)';
+            } else if (conceptId === 'diff-b-a' || conceptId === 'comp-a') {
+                themeColor.setProperty('--glass-border', 'rgba(236, 72, 153, 0.3)');
+                document.querySelector('.info-card').style.borderColor = 'var(--primary-pink)';
+            } else if (conceptId === 'intersection') {
+                themeColor.setProperty('--glass-border', 'rgba(250, 204, 21, 0.3)');
+                document.querySelector('.info-card').style.borderColor = 'var(--accent-yellow)';
+            } else if (conceptId === 'union') {
+                themeColor.setProperty('--glass-border', 'rgba(139, 92, 246, 0.3)');
+                document.querySelector('.info-card').style.borderColor = '#8b5cf6';
+            } else {
+                themeColor.setProperty('--glass-border', 'rgba(255, 255, 255, 0.1)');
+                document.querySelector('.info-card').style.borderColor = 'var(--primary-blue)';
+            }
+
+            // Node visual logic based on state
+            const allNodes = document.querySelectorAll('.node');
+            allNodes.forEach(n => n.classList.remove('pulse-glow'));
+            
+            if(conceptId === 'intersection') {
+                document.querySelectorAll('.node-both').forEach(n => n.classList.add('pulse-glow'));
+            }
+
+            updateUI(conceptId);
+        }
+
+        function updateUI(conceptId) {
+            const data = content[currentMode].concepts[conceptId];
+            iconEl.textContent = data.icon;
+            
+            typeWriter(titleEl, data.title, 30);
+            typeWriter(formulaEl, data.formula, 40);
+            typeWriter(descEl, data.text, 15);
+        }
+
+        // --- 8. TYPING EFFECT ---
+        function typeWriter(element, text, speed) {
+            // Clear existing timeouts for this element to prevent overlapping
+            if (!element.timeouts) element.timeouts = [];
+            element.timeouts.forEach(clearTimeout);
+            element.timeouts = [];
+            
+            element.textContent = '';
+            element.classList.add('cursor');
+            
+            let i = 0;
+            function type() {
+                if (i < text.length) {
+                    element.textContent += text.charAt(i);
+                    i++;
+                    element.timeouts.push(setTimeout(type, speed));
+                } else {
+                    element.classList.remove('cursor');
+                }
+            }
+            type();
+        }
+
+        // --- 9. EVENT LISTENERS ---
+        function setupEventListeners() {
+            // Concept Buttons
+            buttons.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    sounds.click();
+                    stopAutoplay();
+                    setConcept(btn.dataset.concept);
+                });
+                btn.addEventListener('mouseenter', sounds.hover);
+            });
+
+            // Mode Toggle
+            contextToggle.addEventListener('change', (e) => {
+                sounds.click();
+                currentMode = e.target.checked ? 'real' : 'abstract';
+                document.getElementById('mode-label-abstract').style.color = e.target.checked ? 'var(--text-muted)' : 'white';
+                document.getElementById('mode-label-abstract').style.fontWeight = e.target.checked ? 'normal' : 'bold';
+                document.getElementById('mode-label-real').style.color = e.target.checked ? 'white' : 'var(--text-muted)';
+                document.getElementById('mode-label-real').style.fontWeight = e.target.checked ? 'bold' : 'normal';
+                
+                generateNodes();
+                updateUI(currentConcept);
+            });
+
+            // Autoplay Button
+            btnAutoplay.addEventListener('click', () => {
+                sounds.click();
+                if (autoplayTimer) {
+                    stopAutoplay();
+                } else {
+                    startAutoplay();
+                }
+            });
+
+            // Quiz Buttons
+            document.getElementById('btn-start-quiz').addEventListener('click', startQuiz);
+            document.getElementById('btn-exit-quiz').addEventListener('click', exitQuiz);
+            document.getElementById('btn-next-quiz').addEventListener('click', loadNextQuestion);
+
+            // Parallax Effect
+            const vizWrapper = document.getElementById('viz-wrapper');
+            document.addEventListener('mousemove', (e) => {
+                // Only if mouse is over top half of screen to not disrupt button clicks too much
+                if(e.clientY < window.innerHeight * 0.7) {
+                    const x = (e.clientX / window.innerWidth - 0.5) * 15;
+                    const y = (e.clientY / window.innerHeight - 0.5) * 15;
+                    vizWrapper.style.transform = `translate(${x}px, ${y}px)`;
+                } else {
+                    vizWrapper.style.transform = `translate(0px, 0px)`;
+                }
+            });
+            
+            // Ensure audio ctx is ready on first interaction
+            document.body.addEventListener('click', initAudio, { once: true });
+        }
+
+        // --- 10. AUTOPLAY LOGIC ---
+        const sequence = ['set', 'universal', 'union', 'intersection', 'diff-a-b', 'comp-a', 'subset'];
+        
+        function startAutoplay() {
+            exitQuiz(); // Close quiz if open
+            btnAutoplay.innerHTML = '⏸ Stop Lecture';
+            btnAutoplay.style.background = 'rgba(236, 72, 153, 0.2)';
+            btnAutoplay.style.color = 'white';
+            
+            let i = sequence.indexOf(currentConcept);
+            if (i === -1 || i === sequence.length - 1) i = -1; // Start from beginning if at end
+
+            const nextStep = () => {
+                i = (i + 1) % sequence.length;
+                setConcept(sequence[i]);
+                autoplayTimer = setTimeout(nextStep, 6000); // 6 seconds per concept
+            };
+            
+            nextStep();
+        }
+
+        function stopAutoplay() {
+            if (autoplayTimer) {
+                clearTimeout(autoplayTimer);
+                autoplayTimer = null;
+                btnAutoplay.innerHTML = '▶ Start Lecture Mode';
+                btnAutoplay.style.background = ''; // reset
+                btnAutoplay.style.color = '';
+            }
+        }
+
+        // --- 11. QUIZ LOGIC ---
+        function startQuiz() {
+            sounds.click();
+            stopAutoplay();
+            document.getElementById('main-info-panel').style.display = 'none';
+            document.getElementById('buttons-panel').style.display = 'none';
+            document.getElementById('quiz-panel').style.display = 'flex';
+            currentQuizIndex = 0;
+            loadNextQuestion();
+            svg.setAttribute('data-state', 'set'); // Reset visualizer
+        }
+
+        function loadNextQuestion() {
+            const qData = quizData[currentQuizIndex];
+            const qEl = document.getElementById('quiz-question');
+            const optContainer = document.getElementById('quiz-options');
+            const feedback = document.getElementById('quiz-feedback');
+            const nextBtn = document.getElementById('btn-next-quiz');
+
+            typeWriter(qEl, `Q${currentQuizIndex + 1}: ${qData.q}`, 20);
+            optContainer.innerHTML = '';
+            feedback.textContent = '';
+            feedback.className = 'quiz-feedback';
+            nextBtn.style.display = 'none';
+
+            // Slight delay before showing options
+            setTimeout(() => {
+                qData.options.forEach((opt, idx) => {
+                    const btn = document.createElement('button');
+                    btn.className = 'quiz-option';
+                    btn.textContent = `${['A','B','C','D'][idx]}. ${opt}`;
+                    btn.onclick = () => handleAnswer(idx, qData.ans, btn, qData.hint);
+                    optContainer.appendChild(btn);
+                });
+            }, qData.q.length * 20 + 200);
+        }
+
+        function handleAnswer(selectedIdx, correctIdx, btnEl, hint) {
+            const buttons = document.querySelectorAll('.quiz-option');
+            buttons.forEach(b => b.disabled = true); // Disable all
+            
+            const feedback = document.getElementById('quiz-feedback');
+            const nextBtn = document.getElementById('btn-next-quiz');
+
+            if (selectedIdx === correctIdx) {
+                sounds.success();
+                btnEl.style.background = 'rgba(16, 185, 129, 0.3)';
+                btnEl.style.borderColor = 'var(--accent-green)';
+                feedback.textContent = "Correct! Excellent understanding.";
+                feedback.className = 'quiz-feedback correct';
+                
+                // Visual reward
+                svg.setAttribute('data-state', 'universal');
+                setTimeout(() => svg.setAttribute('data-state', 'set'), 1000);
+                
+                currentQuizIndex++;
+                if (currentQuizIndex < quizData.length) {
+                    nextBtn.style.display = 'block';
+                } else {
+                    nextBtn.textContent = 'Finish & View Visualizer';
+                    nextBtn.style.display = 'block';
+                    nextBtn.onclick = exitQuiz;
+                }
+            } else {
+                sounds.error();
+                btnEl.style.background = 'rgba(236, 72, 153, 0.3)';
+                btnEl.style.borderColor = 'var(--primary-pink)';
+                buttons[correctIdx].style.border = '2px solid var(--accent-green)'; // Show correct
+                
+                feedback.textContent = `Incorrect. Hint: ${hint}`;
+                feedback.className = 'quiz-feedback wrong';
+                
+                currentQuizIndex++;
+                if (currentQuizIndex < quizData.length) {
+                    nextBtn.style.display = 'block';
+                } else {
+                    nextBtn.textContent = 'Finish & View Visualizer';
+                    nextBtn.style.display = 'block';
+                    nextBtn.onclick = exitQuiz;
+                }
+            }
+        }
+
+        function exitQuiz() {
+            sounds.click();
+            document.getElementById('quiz-panel').style.display = 'none';
+            document.getElementById('main-info-panel').style.display = 'flex';
+            document.getElementById('buttons-panel').style.display = 'block';
+            setConcept('set'); // Reset UI
+            document.getElementById('btn-next-quiz').onclick = loadNextQuestion; // Reset handler
+            document.getElementById('btn-next-quiz').textContent = 'Next Question ➔';
+        }
+
+        // --- 12. CANVAS PARTICLE BACKGROUND ---
+        function initParticles() {
+            const canvas = document.getElementById('bg-canvas');
+            const ctx = canvas.getContext('2d');
+            let particles = [];
+            
+            function resize() {
+                canvas.width = window.innerWidth;
+                canvas.height = window.innerHeight;
+            }
+            window.addEventListener('resize', resize);
+            resize();
+
+            class Particle {
+                constructor() {
+                    this.x = Math.random() * canvas.width;
+                    this.y = Math.random() * canvas.height;
+                    this.vx = (Math.random() - 0.5) * 0.5;
+                    this.vy = (Math.random() - 0.5) * 0.5;
+                    this.r = Math.random() * 2;
+                }
+                update() {
+                    this.x += this.vx;
+                    this.y += this.vy;
+                    if (this.x < 0 || this.x > canvas.width) this.vx *= -1;
+                    if (this.y < 0 || this.y > canvas.height) this.vy *= -1;
+                }
+                draw() {
+                    ctx.beginPath();
+                    ctx.arc(this.x, this.y, this.r, 0, Math.PI * 2);
+                    ctx.fillStyle = 'rgba(59, 130, 246, 0.3)';
+                    ctx.fill();
+                }
+            }
+
+            for(let i=0; i<50; i++) particles.push(new Particle());
+
+            function animateCanvas() {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                
+                particles.forEach(p => {
+                    p.update();
+                    p.draw();
+                });
+
+                // Connect nearby particles
+                ctx.lineWidth = 0.5;
+                for(let i=0; i<particles.length; i++) {
+                    for(let j=i+1; j<particles.length; j++) {
+                        const dx = particles[i].x - particles[j].x;
+                        const dy = particles[i].y - particles[j].y;
+                        const dist = Math.sqrt(dx*dx + dy*dy);
+                        
+                        if(dist < 150) {
+                            ctx.beginPath();
+                            ctx.strokeStyle = `rgba(59, 130, 246, ${0.1 * (1 - dist/150)})`;
+                            ctx.moveTo(particles[i].x, particles[i].y);
+                            ctx.lineTo(particles[j].x, particles[j].y);
+                            ctx.stroke();
+                        }
+                    }
+                }
+                requestAnimationFrame(animateCanvas);
+            }
+            animateCanvas();
+        }
+
+        // Start everything
+        window.onload = init;
+
+    </script>
+</body>
+</html>
