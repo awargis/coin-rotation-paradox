@@ -1,0 +1,668 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Elite EdTech: Hyper-Realistic Cathode Ray Tube | Lorentz Force Simulation</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            font-family: 'Segoe UI', 'Orbitron', 'Courier New', monospace;
+        }
+
+        /* Glassmorphic HUD - Cyberpunk Lab Style */
+        .glass-panel {
+            position: absolute;
+            background: rgba(10, 10, 20, 0.65);
+            backdrop-filter: blur(12px);
+            border-radius: 20px;
+            border: 1px solid rgba(0, 255, 255, 0.3);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), 0 0 15px rgba(0, 255, 255, 0.2);
+            color: #00ffff;
+            padding: 15px 20px;
+            font-weight: 500;
+            letter-spacing: 0.5px;
+            transition: all 0.2s ease;
+            z-index: 10;
+            pointer-events: auto;
+        }
+
+        .glass-panel h3 {
+            margin: 0 0 8px 0;
+            font-size: 1.2rem;
+            border-left: 3px solid #0ff;
+            padding-left: 10px;
+            font-family: 'Orbitron', monospace;
+        }
+
+        .control-group {
+            margin-bottom: 15px;
+        }
+
+        .control-group label {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.8rem;
+            margin-bottom: 6px;
+            text-transform: uppercase;
+            font-weight: bold;
+            color: #ccf;
+        }
+
+        input {
+            width: 100%;
+            cursor: pointer;
+            background: #111;
+            border: 1px solid #0ff;
+            border-radius: 8px;
+            height: 4px;
+            accent-color: #0ff;
+        }
+
+        .value-display {
+            font-family: monospace;
+            font-size: 0.75rem;
+            background: #000000aa;
+            padding: 2px 6px;
+            border-radius: 6px;
+            color: #0f0;
+        }
+
+        .coordinate-panel {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            text-align: right;
+            font-size: 0.9rem;
+            min-width: 180px;
+        }
+
+        .coordinate-panel p {
+            margin: 4px 0;
+            font-family: 'Courier New', monospace;
+            text-shadow: 0 0 5px #0f0;
+        }
+
+        .recording-btn {
+            background: linear-gradient(45deg, #0ff, #0a8);
+            border: none;
+            color: #050505;
+            font-weight: bold;
+            padding: 8px 16px;
+            border-radius: 40px;
+            cursor: pointer;
+            margin-top: 10px;
+            font-family: 'Orbitron', monospace;
+            transition: 0.2s;
+            box-shadow: 0 0 8px cyan;
+        }
+
+        .recording-btn:hover {
+            transform: scale(1.02);
+            box-shadow: 0 0 18px cyan;
+        }
+
+        .status-led {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background-color: #0f0;
+            box-shadow: 0 0 8px #0f0;
+            margin-right: 6px;
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 0.4; transform: scale(0.8);}
+            100% { opacity: 1; transform: scale(1.2);}
+        }
+
+        #controls-left {
+            top: 20px;
+            left: 20px;
+            width: 260px;
+        }
+
+        #controls-right {
+            top: 20px;
+            right: 20px;
+            width: 220px;
+            text-align: center;
+        }
+
+        .glow-text {
+            color: #0ff;
+            font-weight: bold;
+        }
+
+        @media (max-width: 700px) {
+            .glass-panel { padding: 10px 15px; width: 220px; font-size: 0.7rem; }
+            .control-group label { font-size: 0.7rem; }
+        }
+    </style>
+</head>
+<body>
+    <div id="controls-left" class="glass-panel">
+        <h3>⚡ CATHODE RAY LAB <span class="status-led"></span> <span style="font-size:0.7rem;">ELITE EdTech</span></h3>
+        <div class="control-group">
+            <label>🔋 ANODE VOLTAGE <span id="voltageVal" class="value-display">5.0 kV</span></label>
+            <input type="range" id="voltage" min="0" max="10" step="0.05" value="5.0">
+        </div>
+        <div class="control-group">
+            <label>📀 PRESSURE (Mean Free Path) <span id="pressureVal" class="value-display">0.02 Torr</span></label>
+            <input type="range" id="pressure" min="0" max="1" step="0.005" value="0.02">
+            <div style="font-size:0.7rem; color:#8af;">Low Pressure → Sharp Ray | High Pressure → Diffuse</div>
+        </div>
+        <div class="control-group">
+            <label>🧲 ELECTRIC FIELD (E) <span id="eFieldVal" class="value-display">0.00</span></label>
+            <input type="range" id="efield" min="-1.5" max="1.5" step="0.01" value="0.0">
+        </div>
+        <div class="control-group">
+            <label>🌀 MAGNETIC FIELD (B) <span id="bFieldVal" class="value-display">0.00</span></label>
+            <input type="range" id="bfield" min="-1.2" max="1.2" step="0.01" value="0.0">
+        </div>
+        <button id="recordBtn" class="recording-btn">📝 RECORD DATA (CSV)</button>
+        <div style="font-size:0.7rem; margin-top:8px; color:#aff;">Lorentz: F = q(E + v × B)</div>
+    </div>
+
+    <div id="controls-right" class="glass-panel coordinate-panel" style="right:20px; top:auto; bottom:20px; left:auto; text-align:left;">
+        <h3>📊 VISUAL PROOF</h3>
+        <p>🎯 FLUORESCENCE SPOT</p>
+        <p>X: <span id="spotX" class="glow-text">0.00</span> &nbsp; Y: <span id="spotY" class="glow-text">0.00</span></p>
+        <p>⚡ Deflection (mm): <span id="deflectionMag" class="glow-text">0.00</span></p>
+        <p style="font-size:0.7rem;">🔬 Derivation-ready | JEE/NEET</p>
+        <div id="recordStatus" style="font-size:0.7rem; color:#8f8; margin-top:5px;"></div>
+    </div>
+
+    <!-- Three.js libraries -->
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.128.0/build/three.module.js",
+                "three/addons/": "https://unpkg.com/three@0.128.0/examples/jsm/"
+            }
+        }
+    </script>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+        import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+        import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+        import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+        import { FilmPass } from 'three/addons/postprocessing/FilmPass.js';
+        import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
+
+        // --- setup scene, camera, renderer (Deep Obsidian #050505)
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x050505);
+        scene.fog = new THREE.FogExp2(0x050505, 0.008); // subtle depth
+
+        const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.set(5, 3, 7);
+        camera.lookAt(0, 0, 0);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(window.devicePixelRatio);
+        renderer.toneMapping = THREE.ReinhardToneMapping;
+        renderer.toneMappingExposure = 1.2;
+        renderer.shadowMap.enabled = true; // subtle shadows for electrodes
+        document.body.appendChild(renderer.domElement);
+
+        // controls for interactivity
+        const controls = new OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.05;
+        controls.autoRotate = false;
+        controls.enableZoom = true;
+        controls.zoomSpeed = 1.2;
+        controls.target.set(0, 0.2, 0);
+
+        // --- Postprocessing: Netflix Documentary Cinematic
+        const renderScene = new RenderPass(scene, camera);
+        const bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 1.2, 0.3, 0.85);
+        bloomPass.threshold = 0.1;
+        bloomPass.strength = 1.4;
+        bloomPass.radius = 0.8;
+        
+        // Film grain for documentary texture
+        const filmPass = new FilmPass(0.25, 0.5, 2048, false);
+        filmPass.renderToScreen = false;
+        
+        // Custom Vignette shader
+        const vignetteShader = {
+            uniforms: { tDiffuse: { value: null }, offset: { value: 1.0 }, darkness: { value: 1.2 } },
+            vertexShader: `varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
+            fragmentShader: `
+                uniform sampler2D tDiffuse;
+                uniform float offset;
+                uniform float darkness;
+                varying vec2 vUv;
+                void main() {
+                    vec4 color = texture2D(tDiffuse, vUv);
+                    float dist = distance(vUv, vec2(0.5));
+                    float vignette = 1.0 - smoothstep(0.2, offset * 1.2, dist) * darkness;
+                    gl_FragColor = vec4(color.rgb * vignette, color.a);
+                }
+            `
+        };
+        const vignettePass = new ShaderPass(vignetteShader);
+        vignettePass.renderToScreen = true;
+        
+        const effectComposer = new EffectComposer(renderer);
+        effectComposer.addPass(renderScene);
+        effectComposer.addPass(bloomPass);
+        effectComposer.addPass(filmPass);
+        effectComposer.addPass(vignettePass);
+        filmPass.renderToScreen = false;
+        
+        // --- Lighting for Cyberpunk Aesthetic
+        const ambientLight = new THREE.AmbientLight(0x111122);
+        scene.add(ambientLight);
+        const mainLight = new THREE.DirectionalLight(0xffffff, 0.8);
+        mainLight.position.set(2, 5, 3);
+        scene.add(mainLight);
+        const fillLight = new THREE.PointLight(0x2266ff, 0.4);
+        fillLight.position.set(-1, 2, 2);
+        scene.add(fillLight);
+        const backLight = new THREE.PointLight(0xff44aa, 0.3);
+        backLight.position.set(0, 1, -3);
+        scene.add(backLight);
+        
+        // --- Create Glass Tube (MeshPhysicalTransmissionMaterial style)
+        const tubeGeo = new THREE.CylinderGeometry(1.2, 1.2, 8.5, 64, 64);
+        const glassMaterial = new THREE.MeshPhysicalMaterial({
+            color: 0xaaffff,
+            metalness: 0.9,
+            roughness: 0.05,
+            transparent: true,
+            opacity: 0.32,
+            clearcoat: 1,
+            clearcoatRoughness: 0.1,
+            reflectivity: 0.5,
+            ior: 1.5,
+            side: THREE.DoubleSide
+        });
+        const glassTube = new THREE.Mesh(tubeGeo, glassMaterial);
+        glassTube.castShadow = true;
+        glassTube.receiveShadow = false;
+        glassTube.position.y = 0;
+        scene.add(glassTube);
+        
+        // metal rings (neon-pulse accents)
+        const ringGeo = new THREE.TorusGeometry(1.28, 0.05, 64, 200);
+        const neonMaterial = new THREE.MeshStandardMaterial({ color: 0x00ffff, emissive: 0x00aaff, emissiveIntensity: 0.7 });
+        const ring1 = new THREE.Mesh(ringGeo, neonMaterial);
+        ring1.position.set(0, 0, -3);
+        scene.add(ring1);
+        const ring2 = new THREE.Mesh(ringGeo, neonMaterial);
+        ring2.position.set(0, 0, 3);
+        scene.add(ring2);
+        const ring3 = new THREE.Mesh(ringGeo, neonMaterial);
+        ring3.position.set(0, 0, 0);
+        scene.add(ring3);
+        
+        // Cathode (Electric Blue Glow)
+        const cathodeGeo = new THREE.SphereGeometry(0.45, 32, 32);
+        const cathodeMat = new THREE.MeshStandardMaterial({ color: 0x0088ff, emissive: 0x00aaff, emissiveIntensity: 1.2, metalness: 0.7 });
+        const cathode = new THREE.Mesh(cathodeGeo, cathodeMat);
+        cathode.position.set(0, 0, -3.8);
+        scene.add(cathode);
+        
+        // Anode ring
+        const anodeGeo = new THREE.TorusGeometry(0.65, 0.08, 32, 64);
+        const anodeMat = new THREE.MeshStandardMaterial({ color: 0xccaa66, metalness: 0.9, roughness: 0.3 });
+        const anode = new THREE.Mesh(anodeGeo, anodeMat);
+        anode.position.set(0, 0, -2.2);
+        scene.add(anode);
+        
+        // Phosphor Screen (High-intensity Green)
+        const screenGeo = new THREE.CylinderGeometry(1.45, 1.45, 0.1, 32);
+        const screenMat = new THREE.MeshStandardMaterial({ color: 0x00aa44, emissive: 0x22ff66, emissiveIntensity: 0.6, metalness: 0.2 });
+        const screen = new THREE.Mesh(screenGeo, screenMat);
+        screen.position.set(0, 0, 4.25);
+        scene.add(screen);
+        
+        // Electric field plates (visual)
+        const plateMat = new THREE.MeshStandardMaterial({ color: 0x88aaff, metalness: 0.7, roughness: 0.4 });
+        const topPlate = new THREE.Mesh(new THREE.BoxGeometry(2.4, 0.08, 2.0), plateMat);
+        topPlate.position.set(0, 0.9, 0.5);
+        scene.add(topPlate);
+        const bottomPlate = new THREE.Mesh(new THREE.BoxGeometry(2.4, 0.08, 2.0), plateMat);
+        bottomPlate.position.set(0, -0.9, 0.5);
+        scene.add(bottomPlate);
+        
+        // Magnetic coils (neon-pulse)
+        const coilMat = new THREE.MeshStandardMaterial({ color: 0xff44cc, emissive: 0xff22aa, emissiveIntensity: 0.5 });
+        const coilGeo = new THREE.TorusGeometry(1.4, 0.1, 32, 64);
+        const leftCoil = new THREE.Mesh(coilGeo, coilMat);
+        leftCoil.position.set(-1.6, 0, 0.2);
+        scene.add(leftCoil);
+        const rightCoil = new THREE.Mesh(coilGeo, coilMat);
+        rightCoil.position.set(1.6, 0, 0.2);
+        scene.add(rightCoil);
+        
+        // --- Particle System: Instanced approach with tails (Linesegments + Points) 
+        const PARTICLE_COUNT = 8500;
+        const positions = new Float32Array(PARTICLE_COUNT * 3);
+        const prevPositions = new Float32Array(PARTICLE_COUNT * 3);
+        const velocities = new Float32Array(PARTICLE_COUNT * 3);
+        const active = new Array(PARTICLE_COUNT).fill(true);
+        
+        // initialization
+        for (let i = 0; i < PARTICLE_COUNT; i++) {
+            // start near cathode with small radial spread
+            positions[i*3] = (Math.random() - 0.5) * 0.4;
+            positions[i*3+1] = (Math.random() - 0.5) * 0.4;
+            positions[i*3+2] = -3.6 + Math.random() * 0.3;
+            prevPositions[i*3] = positions[i*3];
+            prevPositions[i*3+1] = positions[i*3+1];
+            prevPositions[i*3+2] = positions[i*3+2] - 0.05;
+            // initial velocity towards screen (z+)
+            const speedBase = 2.2;
+            velocities[i*3] = (Math.random() - 0.5) * 0.2;
+            velocities[i*3+1] = (Math.random() - 0.5) * 0.2;
+            velocities[i*3+2] = speedBase + Math.random() * 0.5;
+        }
+        
+        // Points for glowing heads
+        const pointGeo = new THREE.BufferGeometry();
+        pointGeo.setAttribute('position', new THREE.BufferAttribute(positions.slice(), 3));
+        const pointMaterial = new THREE.PointsMaterial({ color: 0x88ff88, size: 0.055, transparent: true, blending: THREE.AdditiveBlending });
+        const particlePoints = new THREE.Points(pointGeo, pointMaterial);
+        scene.add(particlePoints);
+        
+        // LineSegments for motion blur tails
+        const lineGeo = new THREE.BufferGeometry();
+        const linePositions = new Float32Array(PARTICLE_COUNT * 6); // 2 points per segment
+        lineGeo.setAttribute('position', new THREE.BufferAttribute(linePositions, 3));
+        const lineMaterial = new THREE.LineBasicMaterial({ color: 0x44ff88, transparent: true, opacity: 0.45, blending: THREE.AdditiveBlending });
+        const trailLines = new THREE.LineSegments(lineGeo, lineMaterial);
+        scene.add(trailLines);
+        
+        // Physics constants: q/m (relative, negative for electron)
+        const qm = -1.2;   // scaled for visual deflection
+        
+        // UI elements
+        const voltageSlider = document.getElementById('voltage');
+        const pressureSlider = document.getElementById('pressure');
+        const eFieldSlider = document.getElementById('efield');
+        const bFieldSlider = document.getElementById('bfield');
+        const voltageVal = document.getElementById('voltageVal');
+        const pressureVal = document.getElementById('pressureVal');
+        const eFieldVal = document.getElementById('eFieldVal');
+        const bFieldVal = document.getElementById('bFieldVal');
+        const spotXSpan = document.getElementById('spotX');
+        const spotYSpan = document.getElementById('spotY');
+        const deflectionSpan = document.getElementById('deflectionMag');
+        const recordBtn = document.getElementById('recordBtn');
+        const recordStatusDiv = document.getElementById('recordStatus');
+        
+        let E_field = 0.0;
+        let B_field = 0.0;
+        let voltage = 5.0;
+        let pressure = 0.02;
+        
+        // Data recording array
+        let recordedData = [];
+        
+        function updateUI() {
+            voltageVal.innerText = voltage.toFixed(2) + " kV";
+            pressureVal.innerText = pressure.toFixed(3) + " Torr";
+            eFieldVal.innerText = E_field.toFixed(2);
+            bFieldVal.innerText = B_field.toFixed(2);
+        }
+        
+        voltageSlider.addEventListener('input', (e) => { voltage = parseFloat(e.target.value); updateUI(); });
+        pressureSlider.addEventListener('input', (e) => { pressure = parseFloat(e.target.value); updateUI(); });
+        eFieldSlider.addEventListener('input', (e) => { E_field = parseFloat(e.target.value); updateUI(); });
+        bFieldSlider.addEventListener('input', (e) => { B_field = parseFloat(e.target.value); updateUI(); });
+        
+        // Helper: compute deflection spot average
+        let hitSumX = 0, hitSumY = 0, hitCount = 0;
+        let avgSpotX = 0, avgSpotY = 0;
+        
+        // Record data
+        recordBtn.addEventListener('click', () => {
+            const timestamp = new Date().toISOString();
+            const dataPoint = {
+                timestamp, voltage, pressure, E_field, B_field,
+                spotX: avgSpotX.toFixed(3), spotY: avgSpotY.toFixed(3),
+                deflection: Math.hypot(avgSpotX, avgSpotY).toFixed(3)
+            };
+            recordedData.push(dataPoint);
+            let csv = "Timestamp,Voltage(kV),Pressure(Torr),E_field(V/m),B_field(T),Spot_X,Spot_Y,Deflection\n";
+            recordedData.forEach(d => {
+                csv += `${d.timestamp},${d.voltage},${d.pressure},${d.E_field},${d.B_field},${d.spotX},${d.spotY},${d.deflection}\n`;
+            });
+            console.log(csv);
+            recordStatusDiv.innerText = `✓ Data recorded (${recordedData.length} entries). Check console.`;
+            setTimeout(() => { if(recordStatusDiv) recordStatusDiv.innerText = ""; }, 2000);
+            // optional download: create blob
+            const blob = new Blob([csv], {type: "text/csv"});
+            const a = document.createElement('a');
+            const url = URL.createObjectURL(blob);
+            a.href = url;
+            a.download = `crt_data_${Date.now()}.csv`;
+            a.click();
+            URL.revokeObjectURL(url);
+        });
+        
+        // Update glow spot on screen (visual proof)
+        const spotGlow = new THREE.PointLight(0x33ff88, 1.2, 5);
+        spotGlow.color.setHex(0x66ff99);
+        scene.add(spotGlow);
+        const spotSpriteMat = new THREE.SpriteMaterial({ map: createGlowTexture(), color: 0x88ff88, blending: THREE.AdditiveBlending });
+        const spotSprite = new THREE.Sprite(spotSpriteMat);
+        spotSprite.scale.set(0.4, 0.4, 1);
+        scene.add(spotSprite);
+        
+        function createGlowTexture() {
+            const canvas = document.createElement('canvas');
+            canvas.width = 32;
+            canvas.height = 32;
+            const ctx = canvas.getContext('2d');
+            ctx.fillStyle = '#00ff88';
+            ctx.arc(16, 16, 14, 0, 2*Math.PI);
+            ctx.fill();
+            ctx.globalCompositeOperation = 'source-over';
+            ctx.shadowBlur = 0;
+            return new THREE.CanvasTexture(canvas);
+        }
+        
+        // --- Physics + particle update loop
+        let lastTime = performance.now();
+        let deltaTime = 1/60;
+        
+        function updateParticles() {
+            const now = performance.now();
+            let dt = Math.min(0.033, (now - lastTime) / 1000);
+            if (dt <= 0) dt = 0.016;
+            lastTime = now;
+            
+            const speedFactor = Math.sqrt(voltage / 5.0); // voltage influences initial speed magnitude
+            const eFieldVec = new THREE.Vector3(0, E_field, 0);
+            const bFieldVec = new THREE.Vector3(0, 0, B_field);
+            
+            let totalHitX = 0, totalHitY = 0, totalHits = 0;
+            
+            // update each particle: Euler integration + scattering due to pressure
+            for (let i = 0; i < PARTICLE_COUNT; i++) {
+                const ix = i*3, iy = i*3+1, iz = i*3+2;
+                let px = positions[ix];
+                let py = positions[iy];
+                let pz = positions[iz];
+                let vx = velocities[ix];
+                let vy = velocities[iy];
+                let vz = velocities[iz];
+                
+                // save previous pos for line segments
+                prevPositions[ix] = px;
+                prevPositions[iy] = py;
+                prevPositions[iz] = pz;
+                
+                // Lorentz acceleration: a = q/m * (E + v x B)
+                const crossX = vy * B_field;    // v x B (since B along Z)
+                const crossY = -vx * B_field;
+                const ax = qm * (eFieldVec.x + crossX);
+                const ay = qm * (eFieldVec.y + crossY);
+                const az = qm * (eFieldVec.z + 0);  // no Bz contribution along z
+                
+                vx += ax * dt;
+                vy += ay * dt;
+                vz += az * dt;
+                // Voltage effect: ensure minimal forward energy
+                const targetForwardSpeed = 2.0 * speedFactor;
+                if (vz < 0.5) vz = 0.8;
+                vz = vz * 0.995 + targetForwardSpeed * 0.005;
+                
+                px += vx * dt;
+                py += vy * dt;
+                pz += vz * dt;
+                
+                // Pressure scattering: probability based on pressure (mean free path reduction)
+                const scatterProb = Math.min(0.35, pressure * 1.2);
+                if (Math.random() < scatterProb) {
+                    // random scattering angle, mimics gas collisions
+                    vx += (Math.random() - 0.5) * 0.9;
+                    vy += (Math.random() - 0.5) * 0.9;
+                    vz += (Math.random() - 0.5) * 0.7;
+                    // limit magnitude
+                    const maxSp = 4.5;
+                    vx = Math.min(maxSp, Math.max(-maxSp, vx));
+                    vy = Math.min(maxSp, Math.max(-maxSp, vy));
+                    vz = Math.min(maxSp, Math.max(0.5, vz));
+                }
+                
+                // Boundary & screen hit detection
+                let resetFlag = false;
+                if (pz >= 4.2) {
+                    // hit screen: record impact point for fluorescence
+                    totalHitX += px;
+                    totalHitY += py;
+                    totalHits++;
+                    resetFlag = true;
+                } else if (Math.hypot(px, py) > 1.55 || pz < -3.9 || pz > 4.5) {
+                    resetFlag = true;
+                }
+                
+                if (resetFlag) {
+                    // respawn at cathode region with initial velocity based on voltage
+                    px = (Math.random() - 0.5) * 0.45;
+                    py = (Math.random() - 0.5) * 0.45;
+                    pz = -3.7 + Math.random() * 0.2;
+                    const baseV = 1.9 * speedFactor;
+                    vx = (Math.random() - 0.5) * 0.2;
+                    vy = (Math.random() - 0.5) * 0.2;
+                    vz = baseV + Math.random() * 0.6;
+                    // also reset prev pos for consistent trail
+                    prevPositions[ix] = px;
+                    prevPositions[iy] = py;
+                    prevPositions[iz] = pz - 0.04;
+                }
+                
+                positions[ix] = px;
+                positions[iy] = py;
+                positions[iz] = pz;
+                velocities[ix] = vx;
+                velocities[iy] = vy;
+                velocities[iz] = vz;
+            }
+            
+            // update average spot coordinate (visual proof)
+            if (totalHits > 0) {
+                avgSpotX = totalHitX / totalHits;
+                avgSpotY = totalHitY / totalHits;
+                spotXSpan.innerText = avgSpotX.toFixed(3);
+                spotYSpan.innerText = avgSpotY.toFixed(3);
+                const defl = Math.hypot(avgSpotX, avgSpotY);
+                deflectionSpan.innerText = defl.toFixed(3);
+                // update glow sprite and light position
+                spotSprite.position.set(avgSpotX, avgSpotY, 4.28);
+                spotGlow.position.set(avgSpotX, avgSpotY, 4.25);
+                // intensity based on beam current and pressure
+                const intensity = Math.min(1.8, 0.8 + (1 - pressure) * 1.2);
+                spotGlow.intensity = intensity;
+                spotSprite.material.color.setHex(0x88ff88);
+            } else {
+                spotSprite.position.set(0, 0, 4.28);
+                spotGlow.intensity = 0.3;
+            }
+            
+            // update geometry buffers for points and lines
+            pointGeo.attributes.position.array.set(positions);
+            pointGeo.attributes.position.needsUpdate = true;
+            
+            // build line segments (previous->current)
+            const linePosArray = trailLines.geometry.attributes.position.array;
+            for (let i = 0; i < PARTICLE_COUNT; i++) {
+                const ix = i*3;
+                const ixp = i*6;
+                linePosArray[ixp] = prevPositions[ix];
+                linePosArray[ixp+1] = prevPositions[ix+1];
+                linePosArray[ixp+2] = prevPositions[ix+2];
+                linePosArray[ixp+3] = positions[ix];
+                linePosArray[ixp+4] = positions[ix+1];
+                linePosArray[ixp+5] = positions[ix+2];
+            }
+            trailLines.geometry.attributes.position.needsUpdate = true;
+            
+            // Add neon pulse effect to rings
+            const time = performance.now() * 0.005;
+            const pulse = 0.5 + Math.sin(time) * 0.3;
+            neonMaterial.emissiveIntensity = 0.5 + pulse * 0.4;
+            coilMat.emissiveIntensity = 0.4 + Math.sin(time * 1.7) * 0.3;
+        }
+        
+        // animation loop
+        function animate() {
+            updateParticles();
+            controls.update(); // smooth orbit
+            effectComposer.render();
+            requestAnimationFrame(animate);
+        }
+        
+        // helper neon wiring: add some glowing lines around tube
+        const wireMat = new THREE.LineBasicMaterial({ color: 0x00ffff });
+        const points = [];
+        for (let ang = 0; ang <= Math.PI * 2; ang += 0.3) {
+            const x = Math.cos(ang) * 1.35;
+            const y = Math.sin(ang) * 1.35;
+            points.push(new THREE.Vector3(x, y, -3.2));
+            points.push(new THREE.Vector3(x, y, 3.8));
+        }
+        const wireGeo = new THREE.BufferGeometry().setFromPoints(points);
+        const wireLines = new THREE.LineSegments(wireGeo, wireMat);
+        scene.add(wireLines);
+        
+        // additional neon accents
+        const glowWireMat = new THREE.LineBasicMaterial({ color: 0xff66ff });
+        const arcPoints = [];
+        for (let t = -3; t <= 3.5; t+=0.4) {
+            arcPoints.push(new THREE.Vector3(1.5, 0.3, t));
+            arcPoints.push(new THREE.Vector3(1.5, -0.3, t));
+        }
+        const arcGeo = new THREE.BufferGeometry().setFromPoints(arcPoints);
+        const arcLines = new THREE.LineSegments(arcGeo, glowWireMat);
+        scene.add(arcLines);
+        
+        // start simulation
+        updateUI();
+        animate();
+        
+        // window resize handling
+        window.addEventListener('resize', onWindowResize, false);
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            effectComposer.setSize(window.innerWidth, window.innerHeight);
+        }
+        
+        console.log("CRT Simulation: Lorentz Force, Motion blur trails, Glassmorphic UI | Elite EdTech");
+    </script>
+</body>
+</html>
