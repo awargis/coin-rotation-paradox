@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Strategic Ranker | Wavy Curve & Modulus</title>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script>
+        window.MathJax = {
+            tex: { inlineMath: [['$', '$'], ['\\(', '\\)']] }
+        };
+    </script>
+    <style>
+        :root {
+            --bg-color: #0b0f19;
+            --glass-bg: rgba(20, 30, 48, 0.6);
+            --glass-border: rgba(0, 243, 255, 0.2);
+            --neon-cyan: #00f3ff;
+            --neon-purple: #bc13fe;
+            --text-main: #e2e8f0;
+            --text-muted: #94a3b8;
+            --correct: #10b981;
+            --incorrect: #ef4444;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+
+        body {
+            background: var(--bg-color);
+            background-image: radial-gradient(circle at 15% 50%, rgba(188, 19, 254, 0.05), transparent 25%),
+                              radial-gradient(circle at 85% 30%, rgba(0, 243, 255, 0.05), transparent 25%);
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Navbar */
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 30px;
+            background: rgba(11, 15, 25, 0.8);
+            backdrop-filter: blur(12px);
+            border-bottom: 1px solid var(--glass-border);
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.5);
+        }
+        
+        .logo { font-size: 1.2rem; font-weight: bold; color: var(--neon-cyan); letter-spacing: 1px; text-transform: uppercase;}
+        .timer { font-family: monospace; font-size: 1.2rem; color: var(--neon-purple); text-shadow: 0 0 8px rgba(188, 19, 254, 0.5); }
+        .submit-btn {
+            background: transparent;
+            color: var(--neon-cyan);
+            border: 1px solid var(--neon-cyan);
+            padding: 8px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            font-weight: bold;
+        }
+        .submit-btn:hover { background: var(--neon-cyan); color: #000; box-shadow: 0 0 15px var(--neon-cyan); }
+
+        /* Main Layout */
+        .container {
+            display: flex;
+            flex: 1;
+            padding: 20px;
+            gap: 20px;
+            max-width: 1400px;
+            margin: 0 auto;
+            width: 100%;
+        }
+
+        /* Question Area */
+        .question-area {
+            flex: 3;
+            background: var(--glass-bg);
+            backdrop-filter: blur(16px);
+            border: 1px solid var(--glass-border);
+            border-radius: 12px;
+            padding: 30px;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+
+        .q-header { display: flex; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 15px; margin-bottom: 25px;}
+        .q-number { font-size: 1.5rem; font-weight: 600; color: var(--neon-cyan); }
+        .q-text { font-size: 1.2rem; line-height: 1.6; margin-bottom: 30px; }
+
+        .options-grid { display: flex; flex-direction: column; gap: 15px; }
+        .option {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 15px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            transition: all 0.2s;
+            font-size: 1.1rem;
+        }
+        .option:hover { border-color: var(--neon-cyan); background: rgba(0, 243, 255, 0.05); }
+        .option.selected { border-color: var(--neon-cyan); background: rgba(0, 243, 255, 0.1); box-shadow: inset 0 0 10px rgba(0, 243, 255, 0.2); }
+
+        .controls { margin-top: auto; display: flex; justify-content: space-between; padding-top: 20px; border-top: 1px solid rgba(255,255,255,0.1); }
+        .btn {
+            background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.2);
+            color: var(--text-main); padding: 10px 25px; border-radius: 6px; cursor: pointer; transition: 0.3s;
+        }
+        .btn:hover { background: rgba(255, 255, 255, 0.1); }
+        .btn-primary { background: var(--neon-purple); border: none; color: white; }
+        .btn-primary:hover { background: #d03cfc; box-shadow: 0 0 15px rgba(188, 19, 254, 0.4); }
+
+        /* Palette Area */
+        .palette-area {
+            flex: 1;
+            background: var(--glass-bg);
+            backdrop-filter: blur(16px);
+            border: 1px solid var(--glass-border);
+            border-radius: 12px;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+        }
+        .palette-title { font-size: 1.1rem; margin-bottom: 15px; color: var(--text-muted); text-align: center; }
+        .grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; }
+        .p-btn {
+            aspect-ratio: 1;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: var(--text-main);
+            border-radius: 50%;
+            display: flex; justify-content: center; align-items: center;
+            cursor: pointer; transition: 0.2s; font-weight: bold;
+        }
+        .p-btn.answered { background: var(--correct); border-color: var(--correct); color: #000; }
+        .p-btn.active { border-color: var(--neon-cyan); box-shadow: 0 0 10px var(--neon-cyan); }
+
+        /* Results Modal */
+        #results-modal {
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.85); backdrop-filter: blur(10px);
+            justify-content: center; align-items: center; z-index: 1000;
+        }
+        .modal-content {
+            background: #111827; border: 1px solid var(--neon-cyan);
+            border-radius: 12px; padding: 40px; max-width: 600px; width: 90%;
+            box-shadow: 0 0 40px rgba(0, 243, 255, 0.2);
+            text-align: center;
+        }
+        .score-display { font-size: 3rem; font-weight: bold; color: var(--neon-cyan); margin: 20px 0; text-shadow: 0 0 15px rgba(0,243,255,0.4); }
+        .percentile { font-size: 1.5rem; color: var(--neon-purple); margin-bottom: 20px; }
+        .analysis { text-align: left; background: rgba(255,255,255,0.05); padding: 20px; border-radius: 8px; margin-top: 20px;}
+        .analysis h3 { color: #facc15; margin-bottom: 10px; font-size: 1.1rem;}
+        .analysis ul { list-style: none; padding-left: 0; color: var(--text-muted); line-height: 1.6;}
+        .analysis ul li::before { content: "►"; color: var(--neon-purple); margin-right: 8px; font-size: 0.8em;}
+    </style>
+</head>
+<body>
+
+    <header>
+        <div class="logo">Strategic Ranker Dashboard</div>
+        <div class="timer" id="timer">60:00</div>
+        <button class="submit-btn" onclick="submitTest()">Final Submit</button>
+    </header>
+
+    <div class="container">
+        <div class="question-area">
+            <div class="q-header">
+                <div class="q-number" id="q-num">Question 1</div>
+                <div style="color: var(--text-muted);">Single Choice Type</div>
+            </div>
+            <div class="q-text" id="q-text">Loading question...</div>
+            <div class="options-grid" id="options-grid">
+                <!-- Options injected here -->
+            </div>
+            
+            <div class="controls">
+                <button class="btn" onclick="prevQuestion()">Previous</button>
+                <button class="btn" onclick="clearResponse()">Clear</button>
+                <button class="btn btn-primary" onclick="saveAndNext()">Save & Next</button>
+            </div>
+        </div>
+
+        <div class="palette-area">
+            <div class="palette-title">Question Palette</div>
+            <div class="grid" id="palette-grid">
+                <!-- Palette buttons injected here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Results Modal -->
+    <div id="results-modal">
+        <div class="modal-content">
+            <h2 style="color: white;">Test Analysis Complete</h2>
+            <div class="score-display" id="final-score">0 / 100</div>
+            <div class="percentile" id="final-percentile">Expected Percentile: --</div>
+            
+            <div style="display: flex; justify-content: space-around; margin: 20px 0; color: var(--text-muted);">
+                <div>Correct: <span id="stat-c" style="color: var(--correct)">0</span></div>
+                <div>Incorrect: <span id="stat-i" style="color: var(--incorrect)">0</span></div>
+                <div>Unattempted: <span id="stat-u" style="color: white">0</span></div>
+            </div>
+
+            <div class="analysis">
+                <h3>Priority Areas for Improvement</h3>
+                <ul id="weak-areas">
+                    <!-- Weak areas injected here -->
+                </ul>
+            </div>
+            <button class="btn btn-primary" style="margin-top: 25px; width: 100%;" onclick="location.reload()">Restart Session</button>
+        </div>
+    </div>
+
+    <script>
+        // Database
+        const questions = [
+            { q: "Solve the inequality: $(x-1)(x-2) < 0$", opts: ["$(1, 2)$", "$[1, 2]$", "$(-\\infty, 1) \\cup (2, \\infty)$", "$(-\\infty, 1]$"], ans: 0, topic: "Wavy Curve Basics" },
+            { q: "Solve the inequality: $(x-1)^2(x-3) > 0$", opts: ["$(3, \\infty)$", "$(1, 3) \\cup (3, \\infty)$", "$(-\\infty, 1) \\cup (1, \\infty)$", "$[3, \\infty)$"], ans: 0, topic: "Wavy Curve (Even Powers)" },
+            { q: "Solve for $x$: $\\frac{2-x}{x+1} \\ge 0$", opts: ["$(-1, 2]$", "$[-1, 2]$", "$(-\\infty, -1) \\cup [2, \\infty)$", "$(-1, 2)$"], ans: 0, topic: "Rational Inequalities" },
+            { q: "Find the number of integer solutions for: $\\frac{x^2 - 4}{x^2 - 1} < 0$", opts: ["$0$", "$1$", "$2$", "$4$"], ans: 0, topic: "Rational Inequalities" },
+            { q: "Solve the inequality: $x^3 - x \\ge 0$", opts: ["$[-1, 0] \\cup [1, \\infty)$", "$[-1, 1]$", "$[0, \\infty)$", "$(-\\infty, -1] \\cup [0, 1]$"], ans: 0, topic: "Wavy Curve Basics" },
+            { q: "Solve: $\\frac{1}{x} < 1$", opts: ["$(-\\infty, 0) \\cup (1, \\infty)$", "$(1, \\infty)$", "$(0, 1)$", "$(-\\infty, 1)$"], ans: 0, topic: "Rational Inequalities" },
+            { q: "Solve the inequality: $x^2 \\le x$", opts: ["$[0, 1]$", "$(-\\infty, 1]$", "$[1, \\infty)$", "$(-1, 1)$"], ans: 0, topic: "Wavy Curve Basics" },
+            { q: "Solve the inequality: $(x+2)^3(x-1)^4(x-3)^5 \\le 0$", opts: ["$[-2, 3]$", "$[-2, 1) \\cup (1, 3]$", "$(-\\infty, -2] \\cup [3, \\infty)$", "$[-2, 1]$"], ans: 0, topic: "Wavy Curve (Higher Powers)" },
+            { q: "Solve for $x$: $|x-3| = -5$", opts: ["No solution", "$\\{-2, 8\\}$", "$-2$", "$8$"], ans: 0, topic: "Modulus Definitions" },
+            { q: "Solve for $x$: $|x-2| = x-2$", opts: ["$[2, \\infty)$", "$(2, \\infty)$", "$\\{2\\}$", "$(-\\infty, 2]$"], ans: 0, topic: "Modulus Properties" },
+            { q: "Solve for $x$: $|x^2 - 4| = 4 - x^2$", opts: ["$[-2, 2]$", "$(-\\infty, -2] \\cup [2, \\infty)$", "$\\{-2, 2\\}$", "No solution"], ans: 0, topic: "Modulus Properties" },
+            { q: "Solve for $x$: $|x-1| + |x-3| = 2$", opts: ["$[1, 3]$", "$\\{1, 3\\}$", "$2$", "No solution"], ans: 0, topic: "Modulus Distance Geometry" },
+            { q: "Solve the inequality: $|x+1| < 3$", opts: ["$(-4, 2)$", "$[-4, 2]$", "$(-\\infty, -4) \\cup (2, \\infty)$", "$(-2, 4)$"], ans: 0, topic: "Basic Modulus Inequalities" },
+            { q: "Solve the inequality: $|2x - 3| \\ge 5$", opts: ["$(-\\infty, -1] \\cup [4, \\infty)$", "$[-1, 4]$", "$(4, \\infty)$", "$(-\\infty, -4] \\cup [1, \\infty)$"], ans: 0, topic: "Basic Modulus Inequalities" },
+            { q: "Solve for $x$: $||x| - 2| \\le 1$", opts: ["$[-3, -1] \\cup [1, 3]$", "$[1, 3]$", "$[-3, 3]$", "$[-1, 1]$"], ans: 0, topic: "Nested Modulus" },
+            { q: "Solve the equation: $\\frac{|x|}{x} = -1$", opts: ["$(-\\infty, 0)$", "$(0, \\infty)$", "$(-\\infty, 0]$", "$\\{-1\\}$"], ans: 0, topic: "Modulus Definitions" },
+            { q: "Solve the inequality: $|x-2| < |x-4|$", opts: ["$(-\\infty, 3)$", "$(3, \\infty)$", "$(2, 4)$", "$(-\\infty, 2)$"], ans: 0, topic: "Modulus Distance Geometry" },
+            { q: "Find the number of real solutions for the equation: $x^2 - 5|x| + 6 = 0$", opts: ["$4$", "$2$", "$0$", "$1$"], ans: 0, topic: "Quadratic Modulus Equations" },
+            { q: "Solve the inequality: $x^2 - |x| - 6 < 0$", opts: ["$(-3, 3)$", "$(-2, 3)$", "$(-\\infty, -3) \\cup (3, \\infty)$", "$(-3, 2)$"], ans: 0, topic: "Quadratic Modulus Inequalities" },
+            { q: "Solve the inequality: $\\frac{|x-1|}{x+2} > 0$", opts: ["$(-2, 1) \\cup (1, \\infty)$", "$(-2, \\infty)$", "$(-\\infty, -2)$", "$(1, \\infty)$"], ans: 0, topic: "Mixed Modulus & Wavy Curve" },
+            { q: "Solve the equation: $|x^2 - x| = x^2 - x$", opts: ["$(-\\infty, 0] \\cup [1, \\infty)$", "$[0, 1]$", "$\\{0, 1\\}$", "$(0, 1)$"], ans: 0, topic: "Modulus Properties" },
+            { q: "Find the number of real solutions for: $|x-2| + |x-4| = 1$", opts: ["$0$", "$1$", "$2$", "Infinite"], ans: 0, topic: "Modulus Distance Geometry" },
+            { q: "Solve the equation: $|x-1| - |x-2| + |x-3| = 2$", opts: ["$\\{0, 2, 4\\}$", "$\\{0, 4\\}$", "$\\{2\\}$", "$\\{1, 2, 3\\}$"], ans: 0, topic: "Piecewise Modulus Equations" },
+            { q: "Solve the inequality: $\\frac{|x-2| - 1}{|x-2| - 2} \\le 0$", opts: ["$(0, 1] \\cup [3, 4)$", "$[1, 2)$", "$[3, 4)$", "$(0, 4)$"], ans: 0, topic: "Mixed Modulus & Wavy Curve" },
+            { q: "Find the number of integral solutions of the inequality: $|x^2 - 3x - 4| < 6$", opts: ["$4$", "$3$", "$5$", "$6$"], ans: 0, topic: "Quadratic Modulus Inequalities" }
+        ];
+
+        // Ensure answers aren't always 'A' visually (Shuffle mapping)
+        const optionLabels = ["A", "B", "C", "D"];
+        let userResponses = new Array(25).fill(null);
+        let currentQ = 0;
+
+        // Initialize Palette
+        const palette = document.getElementById('palette-grid');
+        for(let i = 0; i < 25; i++) {
+            let btn = document.createElement('div');
+            btn.className = 'p-btn';
+            btn.innerText = i + 1;
+            btn.onclick = () => loadQuestion(i);
+            palette.appendChild(btn);
+        }
+
+        function renderMath() {
+            if(window.MathJax) { MathJax.typesetPromise(); }
+        }
+
+        function loadQuestion(index) {
+            currentQ = index;
+            document.getElementById('q-num').innerText = `Question ${index + 1}`;
+            document.getElementById('q-text').innerHTML = questions[index].q;
+            
+            const optsGrid = document.getElementById('options-grid');
+            optsGrid.innerHTML = '';
+            
+            questions[index].opts.forEach((opt, i) => {
+                let div = document.createElement('div');
+                div.className = `option ${userResponses[index] === i ? 'selected' : ''}`;
+                div.innerHTML = `<strong>${optionLabels[i]}.</strong> &nbsp; ${opt}`;
+                div.onclick = () => selectOption(i);
+                optsGrid.appendChild(div);
+            });
+
+            // Update Palette Active State
+            document.querySelectorAll('.p-btn').forEach((btn, i) => {
+                btn.classList.remove('active');
+                if(i === index) btn.classList.add('active');
+            });
+            
+            renderMath();
+        }
+
+        function selectOption(optIndex) {
+            userResponses[currentQ] = optIndex;
+            loadQuestion(currentQ); // Refresh UI
+        }
+
+        function clearResponse() {
+            userResponses[currentQ] = null;
+            document.querySelectorAll('.p-btn')[currentQ].classList.remove('answered');
+            loadQuestion(currentQ);
+        }
+
+        function saveAndNext() {
+            if(userResponses[currentQ] !== null) {
+                document.querySelectorAll('.p-btn')[currentQ].classList.add('answered');
+            }
+            if(currentQ < 24) loadQuestion(currentQ + 1);
+        }
+
+        function prevQuestion() {
+            if(currentQ > 0) loadQuestion(currentQ - 1);
+        }
+
+        // Timer Logic
+        let time = 3600; // 60 mins
+        setInterval(() => {
+            time--;
+            let m = Math.floor(time / 60).toString().padStart(2, '0');
+            let s = (time % 60).toString().padStart(2, '0');
+            document.getElementById('timer').innerText = `${m}:${s}`;
+            if(time <= 0) submitTest();
+        }, 1000);
+
+        // Evaluation Logic
+        function submitTest() {
+            let score = 0, correct = 0, incorrect = 0, unattempted = 0;
+            let weakTopics = {};
+
+            userResponses.forEach((res, i) => {
+                if(res === null) {
+                    unattempted++;
+                } else if(res === questions[i].ans) {
+                    correct++;
+                    score += 4;
+                } else {
+                    incorrect++;
+                    score -= 1;
+                    let topic = questions[i].topic;
+                    weakTopics[topic] = (weakTopics[topic] || 0) + 1;
+                }
+            });
+
+            // Calculate Mock Percentile (JEE Logic Mockup)
+            let percentile = 0;
+            if(score > 90) percentile = 99.5 + (score-90)*0.05;
+            else if(score > 75) percentile = 98.0 + (score-75)*0.1;
+            else if(score > 50) percentile = 90.0 + (score-50)*0.32;
+            else if(score > 25) percentile = 75.0 + (score-25)*0.6;
+            else percentile = Math.max(0, 50 + score);
+
+            document.getElementById('final-score').innerText = `${score} / 100`;
+            document.getElementById('final-percentile').innerText = `Expected Percentile: ${percentile.toFixed(2)}%ile`;
+            document.getElementById('stat-c').innerText = correct;
+            document.getElementById('stat-i').innerText = incorrect;
+            document.getElementById('stat-u').innerText = unattempted;
+
+            // Generate Actionable Feedback
+            const weakAreasList = document.getElementById('weak-areas');
+            weakAreasList.innerHTML = '';
+            
+            let sortedWeaknesses = Object.keys(weakTopics).sort((a,b) => weakTopics[b] - weakTopics[a]);
+            
+            if(sortedWeaknesses.length === 0 && score > 0) {
+                weakAreasList.innerHTML = "<li>Outstanding accuracy! Focus on maintaining speed.</li>";
+            } else if (score <= 0 && unattempted === 25) {
+                weakAreasList.innerHTML = "<li>No questions attempted.</li>";
+            } else {
+                sortedWeaknesses.slice(0, 3).forEach(topic => {
+                    weakAreasList.innerHTML += `<li>Review: <strong>${topic}</strong> (${weakTopics[topic]} incorrect)</li>`;
+                });
+            }
+
+            document.getElementById('results-modal').style.display = 'flex';
+        }
+
+        // Init
+        loadQuestion(0);
+    </script>
+</body>
+</html>
