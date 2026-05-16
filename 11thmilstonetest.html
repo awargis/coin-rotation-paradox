@@ -1,0 +1,678 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Elite Paper Architect - JEE Mathematics</title>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script>
+        window.MathJax = {
+            tex: { inlineMath: [['$', '$'], ['\\(', '\\)']], displayMath: [['$$', '$$'], ['\\[', '\\]']] },
+            chtml: { scale: 1.1 }
+        };
+    </script>
+    <style>
+        :root {
+            --bg-color: #0b0c10;
+            --glass-bg: rgba(255, 255, 255, 0.05);
+            --glass-border: rgba(255, 255, 255, 0.1);
+            --accent-cyan: #66fcf1;
+            --accent-dark: #45a29e;
+            --text-main: #c5c6c7;
+            --text-light: #ffffff;
+            --answered: #28a745;
+            --not-answered: #dc3545;
+            --not-visited: #6c757d;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        header {
+            background: rgba(11, 12, 16, 0.8);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid var(--glass-border);
+            padding: 15px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.5);
+            z-index: 10;
+        }
+
+        header h1 {
+            margin: 0;
+            font-size: 1.4rem;
+            color: var(--accent-cyan);
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            text-shadow: 0 0 10px rgba(102, 252, 241, 0.3);
+        }
+
+        #timer {
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: var(--accent-cyan);
+            background: var(--glass-bg);
+            padding: 8px 20px;
+            border-radius: 8px;
+            border: 1px solid var(--accent-dark);
+            box-shadow: 0 0 15px rgba(69, 162, 158, 0.2);
+        }
+
+        .tabs {
+            display: flex;
+            background: var(--glass-bg);
+            border-bottom: 1px solid var(--glass-border);
+        }
+
+        .tab {
+            padding: 15px 30px;
+            cursor: pointer;
+            font-weight: 600;
+            border: none;
+            background: none;
+            color: var(--text-main);
+            font-size: 1rem;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .tab.active {
+            color: var(--accent-cyan);
+        }
+
+        .tab.active::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 3px;
+            background: var(--accent-cyan);
+            box-shadow: 0 0 10px var(--accent-cyan);
+        }
+
+        .main-container {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+        }
+
+        .left-panel {
+            flex: 3;
+            padding: 30px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            background: radial-gradient(circle at top left, rgba(69,162,158,0.05), transparent);
+        }
+
+        .right-panel {
+            flex: 1;
+            background: var(--glass-bg);
+            backdrop-filter: blur(15px);
+            border-left: 1px solid var(--glass-border);
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+        }
+
+        .question-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            border-bottom: 1px solid var(--glass-border);
+            padding-bottom: 10px;
+        }
+
+        .question-header h2 {
+            margin: 0;
+            color: var(--text-light);
+            font-size: 1.5rem;
+        }
+
+        .question-type {
+            background: var(--glass-bg);
+            padding: 5px 10px;
+            border-radius: 4px;
+            font-size: 0.9rem;
+            color: var(--accent-cyan);
+            border: 1px solid var(--glass-border);
+        }
+
+        .question-box {
+            font-size: 1.25rem;
+            margin-bottom: 30px;
+            line-height: 1.8;
+            color: var(--text-light);
+        }
+
+        .options-box {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .option-label {
+            display: flex;
+            align-items: center;
+            font-size: 1.1rem;
+            cursor: pointer;
+            padding: 15px 20px;
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            border-radius: 8px;
+            transition: all 0.2s;
+        }
+
+        .option-label:hover {
+            border-color: var(--accent-cyan);
+            background: rgba(102, 252, 241, 0.05);
+        }
+
+        .option-label input[type="radio"] {
+            margin-right: 20px;
+            transform: scale(1.3);
+            accent-color: var(--accent-cyan);
+        }
+
+        .integer-input {
+            padding: 15px;
+            font-size: 1.2rem;
+            width: 250px;
+            background: var(--glass-bg);
+            border: 1px solid var(--accent-dark);
+            color: var(--text-light);
+            border-radius: 8px;
+            outline: none;
+            transition: box-shadow 0.3s;
+        }
+
+        .integer-input:focus {
+            box-shadow: 0 0 15px rgba(102, 252, 241, 0.3);
+            border-color: var(--accent-cyan);
+        }
+
+        .btn-container {
+            margin-top: auto;
+            padding-top: 30px;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        button {
+            padding: 12px 25px;
+            font-size: 1.1rem;
+            font-weight: bold;
+            cursor: pointer;
+            border: none;
+            border-radius: 8px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            transition: all 0.3s ease;
+        }
+
+        .btn-save {
+            background-color: var(--accent-cyan);
+            color: #000;
+            box-shadow: 0 0 15px rgba(102, 252, 241, 0.4);
+        }
+
+        .btn-save:hover {
+            background-color: #fff;
+            box-shadow: 0 0 20px rgba(255, 255, 255, 0.6);
+        }
+
+        .btn-clear {
+            background-color: transparent;
+            color: var(--text-main);
+            border: 1px solid var(--text-main);
+        }
+
+        .btn-clear:hover {
+            background-color: var(--glass-bg);
+            color: #fff;
+            border-color: #fff;
+        }
+
+        .btn-submit {
+            background: linear-gradient(45deg, #ff0055, #ff0033);
+            color: white;
+            width: 100%;
+            margin-top: 30px;
+            box-shadow: 0 0 15px rgba(255, 0, 85, 0.4);
+        }
+
+        .palette {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .palette-btn {
+            padding: 10px 0;
+            font-size: 1rem;
+            border-radius: 6px;
+            background: var(--glass-bg);
+            color: var(--text-light);
+            border: 1px solid var(--glass-border);
+        }
+
+        .palette-btn.answered {
+            background: var(--answered);
+            border-color: var(--answered);
+            box-shadow: 0 0 10px rgba(40, 167, 69, 0.4);
+        }
+
+        .palette-btn.not-answered {
+            background: var(--not-answered);
+            border-color: var(--not-answered);
+        }
+
+        .palette-btn.active {
+            border: 2px solid var(--accent-cyan);
+            box-shadow: 0 0 15px rgba(102, 252, 241, 0.5);
+            transform: scale(1.1);
+        }
+
+        .legend {
+            font-size: 0.9rem;
+            margin-bottom: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .legend-color {
+            width: 15px;
+            height: 15px;
+            border-radius: 3px;
+        }
+
+        #result-screen {
+            display: none;
+            text-align: center;
+            padding: 60px;
+            background: var(--bg-color);
+            height: 100vh;
+            overflow-y: auto;
+        }
+
+        .hud-display {
+            background: var(--glass-bg);
+            border: 1px solid var(--accent-cyan);
+            border-radius: 15px;
+            padding: 40px;
+            max-width: 600px;
+            margin: 0 auto;
+            box-shadow: 0 0 30px rgba(102, 252, 241, 0.2);
+            backdrop-filter: blur(10px);
+        }
+
+        .hud-display h2 {
+            color: var(--text-light);
+            font-size: 2.5rem;
+            margin-top: 0;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+        }
+
+        .score-val {
+            font-size: 4rem;
+            color: var(--accent-cyan);
+            font-weight: bold;
+            text-shadow: 0 0 20px rgba(102, 252, 241, 0.5);
+            margin: 20px 0;
+        }
+
+        .percentile-val {
+            font-size: 2.5rem;
+            color: #ff0055;
+            font-weight: bold;
+            text-shadow: 0 0 15px rgba(255, 0, 85, 0.4);
+        }
+        
+        .math-opt-content {
+            display: inline-block;
+            margin-left: 10px;
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: var(--bg-color); }
+        ::-webkit-scrollbar-thumb { background: var(--accent-dark); border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--accent-cyan); }
+    </style>
+</head>
+<body>
+
+<header>
+    <h1>Elite Paper Architect: Analytics Engine</h1>
+    <div id="timer">T-MINUS 180:00</div>
+</header>
+
+<div class="tabs" id="section-tabs">
+    <button class="tab active" onclick="switchSection(0)">Phase-01</button>
+    <button class="tab" onclick="switchSection(1)">Phase-02</button>
+    <button class="tab" onclick="switchSection(2)">Phase-03</button>
+</div>
+
+<div class="main-container" id="exam-screen">
+    <div class="left-panel">
+        <div class="question-header">
+            <h2>Question <span id="q-num">51</span></h2>
+            <div class="question-type" id="q-type">Single Correct</div>
+        </div>
+        <div class="question-box" id="question-text"></div>
+        <div class="options-box" id="options-container"></div>
+        
+        <div class="btn-container">
+            <button class="btn-clear" onclick="clearResponse()">Clear Matrix</button>
+            <button class="btn-save" onclick="saveAndNext()">Save & Advance</button>
+        </div>
+    </div>
+    
+    <div class="right-panel">
+        <h3 style="color: var(--text-light); text-transform: uppercase; letter-spacing: 1px;">Navigation Array</h3>
+        <div class="legend">
+            <div class="legend-item"><div class="legend-color" style="background: var(--answered);"></div> Answer Locked</div>
+            <div class="legend-item"><div class="legend-color" style="background: var(--not-answered);"></div> Visited, Pending</div>
+            <div class="legend-item"><div class="legend-color" style="background: var(--glass-bg); border: 1px solid var(--glass-border);"></div> Unexplored</div>
+        </div>
+        <div class="palette" id="palette-container"></div>
+        <button class="btn-submit" onclick="submitExam()">Terminate & Evaluate</button>
+    </div>
+</div>
+
+<div id="result-screen">
+    <div class="hud-display">
+        <h2>Simulation Complete</h2>
+        <div style="color: var(--text-main); font-size: 1.2rem; margin-top: 20px;">Cumulative Score</div>
+        <div class="score-val"><span id="final-score">0</span><span style="font-size: 1.5rem; color: #666;"> / 300</span></div>
+        <div style="color: var(--text-main); font-size: 1.2rem;">Projected NTA Percentile</div>
+        <div class="percentile-val"><span id="final-percentile">0.000</span>%ile</div>
+        <p style="margin-top: 30px; font-size: 0.9rem; color: #888;">*Percentile algorithm calibrated to standardized high-variance bell curves (+4/-1 mapping).</p>
+    </div>
+</div>
+
+<script>
+    const allQuestions = [
+        // PHASE 1
+        { s:0, id: 51, t: "mcq", q: "Value of $x$ satisfying $\\log_{3}(x+1)=2$ is", o: ["$x=10$", "$x=9$", "$x=8$", "$x=11$"], a: 2 },
+        { s:0, id: 52, t: "mcq", q: "Value of $\\log_{243}81+\\log_{625}125$ is equal to", o: ["$\\frac{31}{20}$", "$7$", "$\\frac{17}{12}$", "$\\frac{1}{12}$"], a: 0 },
+        { s:0, id: 53, t: "mcq", q: "Value of $\\log(\\frac{9}{20})+\\log(\\frac{25}{18})+\\log(\\frac{8}{5})$ is", o: ["$0$", "$1$", "$\\log 1800$", "$2$"], a: 0 },
+        { s:0, id: 54, t: "mcq", q: "Complete set of values of $x$ for which $\\log_{3}(|x|-5)$ is defined is", o: ["$x\\in(-\\infty,-5]\\cup[5,\\infty)$", "$x\\in(5,\\infty)$", "$x\\in(-5,5)$", "$x\\in(-\\infty,-5)\\cup(5,\\infty)$"], a: 3 },
+        { s:0, id: 55, t: "mcq", q: "Match column I with column II<br><br><b>Column-I:</b><br>A. $(x-3)(x-5)>0$<br>B. $x(x^{2}-4)\\le0$<br>C. $(2-x)(x-5)\\ge0$<br>D. $x(x-5)\\ge6$<br><br><b>Column-II:</b><br>P. $x\\in[2,5]$<br>Q. $x\\in(-\\infty,-1]\\cup[6,\\infty)$<br>R. $x\\in(-\\infty,3)\\cup(5,\\infty)$<br>S. $(-\\infty,-2]\\cup[0,2]$", o: ["A-P, B-Q, C-R, D-S", "A-R, B-S, C-P, D-Q", "A-Q, B-P, C-S, D-R", "A-R, B-S, C-Q, D-P"], a: 1 },
+        { s:0, id: 56, t: "mcq", q: "Statement I: $||x+1|-4|=5$ has 4 real solutions<br>Statement II: The sum of solutions of $||x+1|-4|=5$ is -2", o: ["Both statements are correct", "Both statements are incorrect", "Statement I is incorrect, Statement II is correct", "Statement I is correct, Statement II is incorrect"], a: 2 },
+        { s:0, id: 57, t: "mcq", q: "Solution of $\\frac{(x-4)}{x^{2}-10x+26}\\ge0$, is $[a, \\infty)$, then the value of $a$ is", o: ["$\\frac{1}{3}$", "$2$", "$1$", "$4$"], a: 3 },
+        { s:0, id: 58, t: "mcq", q: "If $(\\frac{x^{b}}{x^{c}})^{b+c}(\\frac{x^{c}}{x^{a}})^{c+a}(\\frac{x^{a}}{x^{b}})^{a+b}=x^{n(a^{2}+b^{2}+c^{2})}$, the value of $n$ is ($a, b, c\\in R-\\{0\\}$)", o: ["$0$", "$1$", "$2$", "$3$"], a: 0 },
+        { s:0, id: 59, t: "mcq", q: "If equation $|x-4|+|2x+3|=\\lambda$ has two solutions, then", o: ["$\\lambda>11/2$", "$\\lambda=11/2$", "$\\lambda<11/2$", "$\\lambda=-11/2$"], a: 0 },
+        { s:0, id: 60, t: "mcq", q: "Complete solution of inequality $\\frac{(x+1)(x+5)}{(x+3)}>0$, is", o: ["$x\\in(-5,-3)$", "$x\\in(-5,-3)\\cup(-1,\\infty)$", "$x\\in(-5,-3)\\cup(-3,-1)$", "$x\\in(-\\infty,-1)$"], a: 1 },
+        { s:0, id: 61, t: "mcq", q: "All values of $x$ for $\\frac{x-1}{2-x}\\ge0$, is", o: ["$x\\in[1,2]$", "$x\\in[1,2)$", "$x\\in(-\\infty,1]\\cup(2,\\infty)$", "$x\\in(1,2)$"], a: 1 },
+        { s:0, id: 62, t: "mcq", q: "Complete solution of inequality $\\frac{|x|^{2}+5}{|x|^{2}+1}\\ge0$ is", o: ["$x\\in(-\\infty,-5]\\cup[-1,1]\\cup[5,\\infty)$", "$x\\in(-\\infty,-5]\\cup(-1,1)\\cup[5,\\infty)$", "$x\\in R$", "$x\\in(-\\infty,-5)\\cup(-1,1)\\cup(5,\\infty)$"], a: 2 },
+        { s:0, id: 63, t: "mcq", q: "Value of $\\log_{9}(\\log_{5}125)$ is", o: ["$\\frac{1}{2}$", "$2$", "$-2$", "$-\\frac{1}{2}$"], a: 0 },
+        { s:0, id: 64, t: "mcq", q: "If $\\sqrt[3]{a}+\\sqrt[3]{b}+\\sqrt[3]{c}=0$ then $(a+b+c)^{3}$ is equal to", o: ["$abc$", "$3abc$", "$9abc$", "$27abc$"], a: 3 },
+        { s:0, id: 65, t: "mcq", q: "Given $\\log_{10}2=a$ and $\\log_{10}3=b$. If $3^{x+2}=45$, then the value of $\\frac{1-a}{b}$ is equal to", o: ["$x/2$", "$x$", "$2x$", "$x/6$"], a: 1 },
+        { s:0, id: 66, t: "mcq", q: "Complete set of values of $x$ satisfying: $-1<\\frac{2x}{x-1}\\le4$ are", o: ["$x\\in(-\\infty,\\frac{1}{3})\\cup(1,\\infty)\\cup\\{0\\}$", "$x\\in(-\\infty,\\frac{1}{3})\\cup(2,\\infty)$", "$x\\in(-\\infty,\\frac{1}{3})\\cup[2,\\infty)$", "$x\\in(-\\infty,\\frac{1}{3})\\cup[2,\\infty)\\cup\\{1\\}$"], a: 2 },
+        { s:0, id: 67, t: "mcq", q: "All value of $x$ satisfying the equation $|x+1|+|x-1|=2$, is", o: ["$x\\in(-1,1)$", "$x\\in[-1,1]$", "$x\\in[1,2]$", "$x\\in(1,2)$"], a: 1 },
+        { s:0, id: 68, t: "mcq", q: "All the values of $x$ if $|x+3|>|2x-1|$ is", o: ["$(-\\frac{2}{3},4)$", "$(-\\frac{2}{3},\\infty)$", "$(-2,4)$", "$(-3,\\frac{1}{2})$"], a: 0 },
+        { s:0, id: 69, t: "mcq", q: "Complete solution of $|1+\\frac{3}{x}|>2$ is", o: ["$x\\in(-1,0)\\cup[0,3)$", "$x\\in(-1,0)\\cup(0,3)$", "$x\\in[-1,0]\\cup[0,3)$", "$x\\in(-1,0)\\cup(0,3]$"], a: 1 },
+        { s:0, id: 70, t: "mcq", q: "If $\\log_{2a}a=x$, $\\log_{3a}2a=y$ and $\\log_{4a}3a=z$, then absolute value of $(xyz-2yz)$ is equal to", o: ["$-1$", "$1$", "$2$", "$-2$"], a: 1 },
+        { s:0, id: 71, t: "int", q: "If $a+b+c=0, a^{2}+b^{2}+c^{2}=2$ then $a^{4}+b^{4}+c^{4}$ is equal to", a: 2 },
+        { s:0, id: 72, t: "int", q: "$\\frac{(x-3)^{\\frac{|x|}{x}}\\sqrt{(x-4)^{2}}(17-x)}{\\sqrt{-x(-x^{2}+x-1)(|x|-32)}}<0$. Then number of integers $x$ satisfying the inequality is:", a: 31 },
+        { s:0, id: 73, t: "int", q: "The sum of all real values of $x$ satisfying the equation $(x^{2}-5x+5)^{x^{2}+4x-60}=1$ is", a: 3 },
+        { s:0, id: 74, t: "int", q: "The value of $\\frac{1}{\\log_{2}36}+\\frac{1}{\\log_{3}36}$ is $A$, then value of $(\\frac{1}{A})$ is", a: 2 },
+        { s:0, id: 75, t: "int", q: "If $\\sqrt{x+3-4\\sqrt{x-1}}+\\sqrt{x+8-6\\sqrt{x-1}}=1$ then complete solution set of equation is $[a, b]$ then $a+b$ is", a: 15 },
+        
+        // PHASE 2
+        { s:1, id: 51, t: "mcq", q: "Solution of inequality $\\frac{x-8}{2}\\le5$ is", o: ["$x<2$", "$x\\ge18$", "$x\\le18$", "$x\\ge2$"], a: 2 },
+        { s:1, id: 52, t: "mcq", q: "Solution of inequality $2x-3>0$ and $4-3x<0$ is", o: ["$x>\\frac{4}{3}$", "$x<\\frac{4}{3}$", "$x>\\frac{3}{2}$", "$x<\\frac{3}{2}$"], a: 2 },
+        { s:1, id: 53, t: "mcq", q: "Solution of $|3x-2|=x$ is", o: ["$x=\\frac{1}{2} \\text{ or } x=1$", "$x=\\frac{1}{2} \\text{ or } x=-1$", "$x=1 \\text{ or } x=-1$", "$x=2 \\text{ or } x=-2$"], a: 0 },
+        { s:1, id: 54, t: "mcq", q: "$(2d^{2}e^{-1})^{3}\\times(\\frac{d^{3}}{e})^{-2}$ is equal to", o: ["$8e^{-2}$", "$8e^{-3}$", "$8e^{-1}$", "$8e^{-4}$"], a: 2 },
+        { s:1, id: 55, t: "mcq", q: "$\\log_{7}\\log_{7}\\sqrt{7(\\sqrt{7\\sqrt{7}})}$ is equal to", o: ["$3\\log_{2}7$", "$1-3\\log_{3}7$", "$1-3\\log_{7}2$", "$1-10\\log_{2}7$"], a: 2 },
+        { s:1, id: 56, t: "mcq", q: "Value of $\\frac{1}{\\log_{3}12}+\\frac{1}{\\log_{8}12}+\\frac{1}{\\log_{6}12}$ is equal to", o: ["$-1$", "$1$", "$0$", "$2$"], a: 3 },
+        { s:1, id: 57, t: "mcq", q: "Values of $x$ satisfying $7\\le|x|+4<10$ is", o: ["$x\\in[-3,3]$", "$x\\in[3,6)$", "$x\\in(-6,-3]\\cup[3,6)$", "$x\\in(-6,-3]$"], a: 2 },
+        { s:1, id: 58, t: "mcq", q: "Match the column-I with column II and choose the correct option<br><br>A. The value of $3(\\sqrt{8+2\\sqrt{7}}-\\sqrt{8-2\\sqrt{7}})$ is equal to<br>B. The value of $\\log_{10}32\\cdot \\log_{32}125\\cdot \\log_{125}1000$ is equal to<br>C. If $A=\\sqrt{3+2\\sqrt{2}}$ and $B=\\sqrt{3-2\\sqrt{2}}$ then the value of $A-B$ is equal to<br>D. If $A=\\log_{\\sqrt{2}}(\\frac{(\\sqrt{7+4\\sqrt{3}})\\cdot(2-\\sqrt{3})}{\\sqrt{16}})$, then the value of $(A+5)$ is equal to<br><br>P. 3, Q. 12, R. 1, S. 6, T. 2", o: ["A-Q, B-S, C-T, D-P", "A-S, B-P, C-T, D-R", "A-P, B-R, C-S, D-Q", "A-T, B-Q, C-R, D-S"], a: 1 },
+        { s:1, id: 59, t: "mcq", q: "Value of $\\log_{3}(\\log_{2}512)$ is equal to", o: ["$\\frac{1}{2}$", "$2$", "$-2$", "$-\\frac{1}{2}$"], a: 1 },
+        { s:1, id: 60, t: "mcq", q: "$(\\frac{x^{b}}{x^{c}})^{b+c-a}(\\frac{x^{c}}{x^{a}})^{c+a-b}(\\frac{x^{a}}{x^{b}})^{a+b-c}$ equals", o: ["$x^{abc}$", "$1$", "$x^{ab+bc+ca}$", "$x^{a+b+c}$"], a: 1 },
+        { s:1, id: 61, t: "mcq", q: "Values of $x$ satisfying $\\frac{x^{2}+x-2}{x^{2}-x-12}\\ge0$ are", o: ["$x\\in(-\\infty,-3]\\cup[-2,1]\\cup[4,\\infty)$", "$x\\in(-\\infty,-3)\\cup[-2,1]\\cup(4,\\infty)$", "$x\\in(-3,4)$", "$x\\in(-3,-2]\\cup(4,\\infty)$"], a: 1 },
+        { s:1, id: 62, t: "mcq", q: "The complete solution set of inequality $x^{2}(x-1)(x+2)\\ge0$ is", o: ["$x\\in(-\\infty,-2]\\cup[1,\\infty)$", "$x\\in(-\\infty,-2)\\cup\\{0\\}\\cup(1,\\infty)$", "$x\\in(-\\infty,-2)\\cup(1,\\infty)$", "$x\\in(-\\infty,-2]\\cup\\{0\\}\\cup[1,\\infty)$"], a: 3 },
+        { s:1, id: 63, t: "mcq", q: "Complete set of values of $x$ for which $\\log_{x}(x+3)$ is always defined is", o: ["$x\\in(-3,\\infty)$", "$x\\in(0,\\infty)$", "$x\\in(0,\\infty)-\\{1\\}$", "$x\\in(-3,0)$"], a: 2 },
+        { s:1, id: 64, t: "mcq", q: "Solution set of equation $||x-1|-2|=1$ is", o: ["$\\{-1, 0, 1, 4\\}$", "$\\{-2, 0, 2, 3\\}$", "$\\{-2, 0, 3, 4\\}$", "$\\{-2, 0, 2, 4\\}$"], a: 3 },
+        { s:1, id: 65, t: "mcq", q: "Statement I: $\\log_{2}3\\log_{3}5\\log_{5}7\\log_{7}8=3$. <br>Statement II: $\\log x^{2}=2\\log x$", o: ["Both correct", "Both incorrect", "Statement I correct, II incorrect", "Statement I incorrect, II correct"], a: 2 },
+        { s:1, id: 66, t: "mcq", q: "Value of $(81)^{\\frac{1}{2\\log_{256}2}}$ is", o: ["$9$", "$3$", "$1/3$", "$1/9$"], a: 1 },
+        { s:1, id: 67, t: "mcq", q: "Which of the following statements is not always true?", o: ["Rational + rational = rational", "Irrational + rational = irrational", "Integer + rational = rational", "Irrational + irrational = Irrational"], a: 3 },
+        { s:1, id: 68, t: "mcq", q: "If $x+y=a$ and $x^{2}+y^{2}=b$, then value of $(x^{3}+y^{3})$, is", o: ["$ab$", "$a^{2}+b$", "$\\frac{a+b^{2}}{2}$", "$\\frac{3ab-a^{3}}{2}$"], a: 3 },
+        { s:1, id: 69, t: "mcq", q: "$(\\frac{5}{6})^{3/4}$ when divided by $(\\frac{5}{6})^{7/6}$ becomes $(\\frac{5}{6})^{7-x}$, the value of $x$ is", o: ["$\\frac{7}{12}$", "$\\frac{89}{12}$", "$\\frac{8}{12}$", "$\\frac{10}{12}$"], a: 1 },
+        { s:1, id: 70, t: "mcq", q: "If $\\log_{2}(4+\\log_{3}(x))=3$, then sum of digits of $x$ is", o: ["$3$", "$6$", "$9$", "$18$"], a: 2 },
+        { s:1, id: 71, t: "int", q: "The number of positive integers $x$ satisfying $x^{3}<2^{3\\log_{2}3}$ is equal to", a: 2 },
+        { s:1, id: 72, t: "int", q: "Sum of values of $x$ satisfying $\\log_{3}(|x|-1)=2$ is", a: 0 },
+        { s:1, id: 73, t: "int", q: "Value of $x$ for $\\log_{2}(\\log_{4}\\log_{5}x)=0$, is $p^{4}$, then value of $p$ is", a: 5 },
+        { s:1, id: 74, t: "int", q: "Value of $\\log_{2}(\\sqrt{15}-\\sqrt{7})+\\log_{2}(\\sqrt{15}+\\sqrt{7})$ is", a: 3 },
+        { s:1, id: 75, t: "int", q: "If $\\log_{x}\\log_{18}(\\sqrt{2}+\\sqrt{8})=\\frac{1}{3}$, then the value of $1000x$ is", a: 125 },
+
+        // PHASE 3
+        { s:2, id: 51, t: "mcq", q: "Which of the following is the empty set", o: ["$\\{x: x \\text{ is a real number and } x^{2}-4=0\\}$", "$\\{x: x \\text{ is a real number and } x^{2}+3=0\\}$", "$\\{x: x \\text{ is a real number and } x^{2}-9=0\\}$", "$\\{x: x \\text{ is a real number and } x^{2}=x+2\\}$"], a: 1 },
+        { s:2, id: 52, t: "mcq", q: "If $k=(x^{b-c})^{b+c-a}(x^{c-a})^{c+a-b}(x^{a-b})^{a+b-c}$ Then the value of $\\log_{10}k$ is", o: ["$x^{abc}$", "$1$", "$x^{ab+bc+ca}$", "$0$"], a: 3 },
+        { s:2, id: 53, t: "mcq", q: "The set $A=\\{x:x\\in R, x^{2}-5x+6=0 \\text{ and } 2x=6\\}$ is", o: ["Infinite set", "Null set", "Singleton set", "not a well defined collection"], a: 2 },
+        { s:2, id: 54, t: "mcq", q: "Solution of inequality $\\frac{(x-2)(x-7)}{(x-3)^{2}}>0$ is", o: ["$x\\in(3,5)$", "$x\\in(1,3)\\cup(7,\\infty)$", "$x\\in(5,\\infty)$", "$x\\in(-\\infty,2)\\cup(7,\\infty)$"], a: 3 },
+        { s:2, id: 55, t: "mcq", q: "The number of subsets of the power set of set $A=\\{a, b, c\\}$ is $k$. Then $k$ is not divisible by", o: ["$32$", "$16$", "$64$", "$3$"], a: 3 },
+        { s:2, id: 56, t: "mcq", q: "If $x^{2}-7|x|-8=0$ then the sum of value(s) of $x$ satisfying the equation is", o: ["$3$", "$0$", "$1$", "$2$"], a: 1 },
+        { s:2, id: 57, t: "mcq", q: "Given the sets $A=\\{1,2,3\\}, B=\\{3,4\\}, C=\\{4,5,6\\}$, then $A\\cap(B\\cup C)$ is", o: ["$\\{3\\}$", "$\\{1,2,3,4\\}$", "$\\{1,2,4,5\\}$", "$\\{1, 2, 3, 4, 5, 6\\}$"], a: 0 },
+        { s:2, id: 58, t: "mcq", q: "If $a^{2}+4b^{2}=12ab$, then $\\log(a-2b)=$", o: ["$\\frac{1}{2}(\\log a+\\log b-2)$", "$\\log\\frac{a}{2}+\\log\\frac{b}{2}+\\log 2$", "$\\frac{1}{2}(\\log a+\\log b+3 \\log 2)$", "$\\frac{1}{2}(\\log a-\\log b+4 \\log 2)$"], a: 2 },
+        { s:2, id: 59, t: "mcq", q: "If $A=\\{2,3,4,8,10\\}, B=\\{3,4,5,10,12\\}, C=\\{4,5,6,12,14\\}$ then $(A \\cap B) \\cup (A \\cap C)$ is equal to", o: ["$\\{3, 4, 10\\}$", "$\\{2, 8, 10\\}$", "$\\{4,5,6\\}$", "$\\{3,5, 14\\}$"], a: 0 },
+        { s:2, id: 60, t: "mcq", q: "Complete solution of inequality $\\frac{|x|^{2}+2024}{|x|^{2}+2025}\\ge0$ is", o: ["$x\\in(-\\infty,-4]\\cup[-3,3]\\cup[4,\\infty)$", "$x\\in(-\\infty,-4]\\cup(-3,3)\\cup[4,\\infty)$", "$x\\in R$", "Not possible"], a: 2 },
+        { s:2, id: 61, t: "mcq", q: "Which of the following venn-diagrams best represents the sets of females, mothers and doctors?", o: ["Disjoint circles", "Intersecting rings", "Concentric rings", "Mother inside Female, intersecting Doctor"], a: 3 },
+        { s:2, id: 62, t: "mcq", q: "If $\\frac{(x-5)^{9}(x^{2}-2x+7)}{(x^{2}+5)^{3}(x-9)^{5}}>0$, then the value of $x$ does not exists between", o: ["$-5$ and $9$", "$5$ and $-9$", "$-5$ and $-9$", "$5$ and $9$"], a: 3 },
+        { s:2, id: 63, t: "mcq", q: "In a city 20 percent of the population travels by car, 50 percent travels by bus and 10 percent travels by both car and bus. Then persons travelling by car or bus is", o: ["80 percent", "40 percent", "60 percent", "70 percent"], a: 2 },
+        { s:2, id: 64, t: "mcq", q: "If $a^{\\frac{1}{3}}+b^{\\frac{1}{3}}=-c^{\\frac{1}{3}}$ then $(a+b+c)^{3}-3abc$ is equal to", o: ["$abc$", "$3abc$", "$24abc$", "$27abc$"], a: 2 },
+        { s:2, id: 65, t: "mcq", q: "If a set contains $m$ elements and another set contains $n$ elements. If 144 is the sum of number of subsets of both sets then $(m+n)$ can be", o: ["10", "9", "11", "13"], a: 2 },
+        { s:2, id: 66, t: "mcq", q: "Statement I: The sum of solutions of $||x+2|+3|=6$ is -4<br>Statement II: The sum of solutions of $||x+1|-4|=5$ is -2", o: ["Both statements are correct", "Both statements are incorrect", "Statement I is incorrect, Statement II is correct", "Statement I is correct, Statement II is incorrect"], a: 0 },
+        { s:2, id: 67, t: "mcq", q: "Match the column-I with column II<br>A. The value of $2(\\sqrt{8+2\\sqrt{7}}-\\sqrt{8-2\\sqrt{7}})$ is equal to<br>B. The value of $\\log_{10}32\\cdot \\log_{32}5^{3}\\cdot \\log_{125}10^{3}$ is equal to $k$. Then $k^{2}+3$ is<br>C. If $P=\\sqrt{3+2\\sqrt{2}}$ and $Q=\\sqrt{3-2\\sqrt{2}}$, then the value of $P-Q$ is equal to<br>D. If $A=\\log_{\\sqrt{2}}(\\frac{(\\sqrt{7+4\\sqrt{3}})\\cdot(2-\\sqrt{3})}{\\sqrt{16}})$, then the value of $(A+5)$ is equal to<br><br>P. 3, Q. 12, R. 1, S. 4, T. 2", o: ["A-Q, B-T, C-P, D-R", "A-S, B-Q, C-T, D-R", "A-Q, B-R, C-S, D-P", "A-S, B-P, C-T, D-R"], a: 1 },
+        { s:2, id: 68, t: "mcq", q: "In a certain town 25% families own a cell phone, 15% families own a scooter and 65% families own neither a cell phone nor a scooter. If 1500 families own both a cell phone and a scooter, then the total number of families in the town is not divisible by", o: ["10000", "15000", "30000", "40000"], a: 3 },
+        { s:2, id: 69, t: "mcq", q: "If $A=\\{4^{n}-3n-1:n\\in N\\}$ and $B=\\{9(n-1):n\\in N\\}$, where $N$ is the set of natural numbers, then $A\\cap B$ is equal to", o: ["$B$", "$A$", "$N$", "$B-A$"], a: 1 },
+        { s:2, id: 70, t: "mcq", q: "The value of $5^{\\log_{1/5}(\\frac{1}{2})}+\\log_{\\sqrt{2}}4-\\log_{\\sqrt{2}}(\\sqrt{7}+\\sqrt{3})+\\log_{\\frac{1}{2}}\\frac{1}{(\\sqrt{7}+\\sqrt{3})^{2}}$ is", o: ["$4$", "$5$", "$6$", "$8$"], a: 2 },
+        { s:2, id: 71, t: "int", q: "Sets $A$ and $B$ have 3 and 6 elements respectively. What can be the minimum number of elements in $A \\cup B$?", a: 6 },
+        { s:2, id: 72, t: "int", q: "The solutions of the equation $|(x-1)|+|x^{2}+3x+2|=|(x+2)^{2}-3|$, lies in $[a, b] \\cup [c, \\infty)$. Then the value of $|a+b-c|$ is", a: 4 },
+        { s:2, id: 73, t: "int", q: "If $y=7-|3x-2|$ $(x\\in R)$ then maximum value of $y$ is", a: 7 },
+        { s:2, id: 74, t: "int", q: "31 candidates appeared for an examination, 15 candidates passed in English, 15 candidates passed in Hindi, 20 candidates passed in Sanskrit. 3 candidates passed only in English. 4 candidates passed only in Hindi, 7 candidates passed only in Sanskrit. 2 candidates passed in all the three subjects. How many candidates passed only in two subjects?", a: 15 },
+        { s:2, id: 75, t: "int", q: "In a group of 90 people, 60 like coffee, 52 like tea and each person like at least one of two drinks, then how many people like both coffee and tea?", a: 22 }
+    ];
+
+    let currentSection = 0; 
+    let currentQuestionIndex = 0; 
+    let userResponses = new Array(75).fill(null);
+    let questionStates = new Array(75).fill("not-visited");
+
+    function getAbsoluteIndex(sec, relativeIdx) {
+        return (sec * 25) + relativeIdx;
+    }
+
+    function init() {
+        switchSection(0);
+        startTimer(180 * 60); 
+    }
+
+    function switchSection(sec) {
+        currentSection = sec;
+        document.querySelectorAll('.tab').forEach((tab, idx) => {
+            tab.classList.toggle('active', idx === sec);
+        });
+        loadQuestion(getAbsoluteIndex(sec, 0));
+    }
+
+    function renderPalette() {
+        const container = document.getElementById("palette-container");
+        container.innerHTML = "";
+        
+        for (let i = 0; i < 25; i++) {
+            const absIdx = getAbsoluteIndex(currentSection, i);
+            const btn = document.createElement("button");
+            btn.className = `palette-btn ${questionStates[absIdx]}`;
+            if (absIdx === currentQuestionIndex) btn.classList.add("active");
+            btn.innerText = 51 + i;
+            btn.onclick = () => loadQuestion(absIdx);
+            container.appendChild(btn);
+        }
+    }
+
+    function loadQuestion(absIdx) {
+        if (questionStates[currentQuestionIndex] === "not-visited") {
+            questionStates[currentQuestionIndex] = "not-answered";
+        }
+        
+        currentQuestionIndex = absIdx;
+        if (questionStates[currentQuestionIndex] === "not-visited") {
+            questionStates[currentQuestionIndex] = "not-answered";
+        }
+
+        const q = allQuestions[absIdx];
+        document.getElementById("q-num").innerText = q.id;
+        document.getElementById("q-type").innerText = q.t === "mcq" ? "Single Correct Type" : "Integer Type";
+        document.getElementById("question-text").innerHTML = q.q;
+        
+        const optionsContainer = document.getElementById("options-container");
+        optionsContainer.innerHTML = "";
+
+        if (q.t === "mcq") {
+            q.o.forEach((opt, i) => {
+                const label = document.createElement("label");
+                label.className = "option-label";
+                const isChecked = userResponses[absIdx] === i ? "checked" : "";
+                label.innerHTML = `<input type="radio" name="q_option" value="${i}" ${isChecked}> <div class="math-opt-content">${opt}</div>`;
+                optionsContainer.appendChild(label);
+            });
+        } else if (q.t === "int") {
+            const val = userResponses[absIdx] !== null ? userResponses[absIdx] : "";
+            optionsContainer.innerHTML = `<input type="number" id="int-answer" class="integer-input" placeholder="Input Value..." value="${val}">`;
+        }
+
+        renderPalette();
+        if (window.MathJax) {
+            MathJax.typesetPromise();
+        }
+    }
+
+    function saveCurrentResponse() {
+        const q = allQuestions[currentQuestionIndex];
+        if (q.t === "mcq") {
+            const selected = document.querySelector('input[name="q_option"]:checked');
+            if (selected) {
+                userResponses[currentQuestionIndex] = parseInt(selected.value);
+                questionStates[currentQuestionIndex] = "answered";
+            } else {
+                userResponses[currentQuestionIndex] = null;
+                questionStates[currentQuestionIndex] = "not-answered";
+            }
+        } else if (q.t === "int") {
+            const val = document.getElementById("int-answer").value.trim();
+            if (val !== "") {
+                userResponses[currentQuestionIndex] = val;
+                questionStates[currentQuestionIndex] = "answered";
+            } else {
+                userResponses[currentQuestionIndex] = null;
+                questionStates[currentQuestionIndex] = "not-answered";
+            }
+        }
+    }
+
+    function saveAndNext() {
+        saveCurrentResponse();
+        const relativeIdx = currentQuestionIndex % 25;
+        if (relativeIdx < 24) {
+            loadQuestion(currentQuestionIndex + 1);
+        } else {
+            renderPalette();
+        }
+    }
+
+    function clearResponse() {
+        userResponses[currentQuestionIndex] = null;
+        questionStates[currentQuestionIndex] = "not-answered";
+        loadQuestion(currentQuestionIndex);
+    }
+
+    function submitExam() {
+        if (!confirm("Confirm termination and evaluation?")) return;
+        saveCurrentResponse();
+        
+        let score = 0;
+
+        allQuestions.forEach((q, i) => {
+            if (userResponses[i] !== null) {
+                if (q.t === "mcq") {
+                    if (userResponses[i] === q.a) score += 4;
+                    else score -= 1;
+                } else if (q.t === "int") {
+                    if (userResponses[i] == q.a) score += 4;
+                }
+            }
+        });
+
+        document.getElementById("section-tabs").style.display = "none";
+        document.getElementById("exam-screen").style.display = "none";
+        document.getElementById("result-screen").style.display = "block";
+        document.getElementById("final-score").innerText = score;
+        
+        let expectedPercentile = 0;
+        if (score <= 0) {
+            expectedPercentile = Math.max(0, 10 + score);
+        } else if (score >= 230) {
+            expectedPercentile = 99.0 + ((score - 230) / 70); 
+        } else {
+            if(score < 50) expectedPercentile = 20 + score * 0.8;
+            else if(score < 100) expectedPercentile = 60 + (score-50) * 0.5;
+            else if(score < 150) expectedPercentile = 85 + (score-100) * 0.16;
+            else if(score < 200) expectedPercentile = 93 + (score-150) * 0.1;
+            else expectedPercentile = 98 + (score-200) * 0.0333;
+        }
+        
+        expectedPercentile = Math.min(99.999, Math.max(0, expectedPercentile));
+        document.getElementById("final-percentile").innerText = expectedPercentile.toFixed(3);
+    }
+
+    function startTimer(duration) {
+        let timer = duration, hours, minutes, seconds;
+        const display = document.getElementById('timer');
+        setInterval(function () {
+            hours = parseInt(timer / 3600, 10);
+            minutes = parseInt((timer % 3600) / 60, 10);
+            seconds = parseInt(timer % 60, 10);
+
+            hours = hours < 10 ? "0" + hours : hours;
+            minutes = minutes < 10 ? "0" + minutes : minutes;
+            seconds = seconds < 10 ? "0" + seconds : seconds;
+
+            display.textContent = `T-MINUS ${hours}:${minutes}:${seconds}`;
+
+            if (--timer < 0) {
+                submitExam();
+            }
+        }, 1000);
+    }
+
+    window.onload = init;
+</script>
+
+</body>
+</html>
