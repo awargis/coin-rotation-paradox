@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Solid State: Hexagonal Close Packing (HCP)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { margin: 0; overflow: hidden; background-color: #0f172a; font-family: 'Inter', sans-serif; }
+        #canvas-container { width: 100vw; height: 100vh; position: absolute; top: 0; left: 0; z-index: 1; }
+        #ui-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 10; display: flex; flex-direction: column; justify-content: space-between; padding: 2rem; box-sizing: border-box; }
+        .glass-panel { background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.1); pointer-events: auto; }
+        .btn-animate { transition: all 0.3s ease; }
+        .btn-animate:hover { transform: translateY(-2px); box-shadow: 0 10px 25px -5px rgba(59, 130, 246, 0.5); }
+        .btn-animate:active { transform: translateY(1px); }
+        .loader { border: 4px solid rgba(255,255,255,0.1); border-left-color: #3b82f6; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    </style>
+    <!-- Import Maps for Modern Three.js -->
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+                "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/",
+                "gsap": "https://unpkg.com/gsap@3.12.5/index.js"
+            }
+        }
+    </script>
+</head>
+<body class="text-slate-100">
+
+    <!-- Loading Screen -->
+    <div id="loading" class="absolute inset-0 z-50 flex flex-col items-center justify-center bg-slate-900 transition-opacity duration-500">
+        <div class="loader mb-4"></div>
+        <h2 class="text-xl font-semibold tracking-wider text-blue-400">COMPILING LATTICE</h2>
+        <p class="text-slate-400 text-sm mt-2">Generating PBR Shaders...</p>
+    </div>
+
+    <!-- WebGL Container -->
+    <div id="canvas-container"></div>
+
+    <!-- Interactive UI Overlay -->
+    <div id="ui-layer">
+        <!-- Header -->
+        <div class="glass-panel rounded-2xl p-6 max-w-lg shadow-2xl">
+            <h1 class="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-emerald-400 mb-2">Hexagonal Close Packing (HCP)</h1>
+            <p class="text-slate-300 text-sm leading-relaxed">
+                Explore the ABAB... 3D arrangement. Notice how the 2nd layer (B) occupies the alternating triangular voids of the 1st layer (A).
+            </p>
+            <div class="mt-4 flex gap-4 text-xs font-mono text-slate-400">
+                <span class="flex items-center gap-1"><div class="w-3 h-3 rounded-full bg-red-500"></div> Layer A (Z=4)</span>
+                <span class="flex items-center gap-1"><div class="w-3 h-3 rounded-full bg-green-500"></div> Layer B</span>
+                <span class="flex items-center gap-1"><div class="w-3 h-3 rounded-full bg-blue-400"></div> Unit Cell</span>
+            </div>
+        </div>
+
+        <!-- Controls -->
+        <div class="glass-panel rounded-2xl p-4 self-end max-w-sm w-full shadow-2xl flex flex-col gap-3">
+            <h3 class="text-sm font-semibold text-slate-400 uppercase tracking-widest mb-1">Animation Sequence</h3>
+            
+            <button id="btn-reset" class="btn-animate bg-slate-800 hover:bg-slate-700 text-white py-3 px-4 rounded-xl text-left font-medium flex items-center justify-between border border-slate-600">
+                <span>0. Clear Canvas</span>
+                <svg class="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+            </button>
+
+            <button id="btn-layerA" class="btn-animate bg-gradient-to-r from-red-900 to-red-800 hover:from-red-800 hover:to-red-700 border border-red-600 text-white py-3 px-4 rounded-xl text-left font-medium flex items-center justify-between">
+                <span>1. Form Layer A (Base)</span>
+                <div class="w-4 h-4 rounded-full bg-red-500 shadow-[0_0_10px_rgba(239,68,68,0.8)]"></div>
+            </button>
+
+            <button id="btn-layerB" class="btn-animate bg-gradient-to-r from-green-900 to-green-800 hover:from-green-800 hover:to-green-700 border border-green-600 text-white py-3 px-4 rounded-xl text-left font-medium flex items-center justify-between opacity-50 cursor-not-allowed transition-opacity">
+                <span>2. Drop Layer B (Voids)</span>
+                <div class="w-4 h-4 rounded-full bg-green-500 shadow-[0_0_10px_rgba(34,197,94,0.8)]"></div>
+            </button>
+
+            <button id="btn-layerA2" class="btn-animate bg-gradient-to-r from-red-900 to-red-800 hover:from-red-800 hover:to-red-700 border border-red-600 text-white py-3 px-4 rounded-xl text-left font-medium flex items-center justify-between opacity-50 cursor-not-allowed transition-opacity">
+                <span>3. Form Layer A' (ABAB)</span>
+                <div class="w-4 h-4 rounded-full bg-red-500 shadow-[0_0_10px_rgba(239,68,68,0.8)]"></div>
+            </button>
+
+            <button id="btn-unitCell" class="btn-animate bg-gradient-to-r from-blue-900 to-blue-800 hover:from-blue-800 hover:to-blue-700 border border-blue-600 text-white py-3 px-4 rounded-xl text-left font-medium flex items-center justify-between mt-2 opacity-50 cursor-not-allowed transition-opacity">
+                <span>4. Isolate Unit Cell</span>
+                <svg class="w-5 h-5 text-blue-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 10l-2 1m0 0l-2-1m2 1v2.5M20 7l-2 1m2-1l-2-1m2 1v2.5M14 4l-2-1-2 1M4 7l2-1M4 7l2 1M4 7v2.5M12 21l-2-1m2 1l2-1m-2 1v-2.5M6 18l-2-1v-2.5M18 18l2-1v-2.5"></path></svg>
+            </button>
+        </div>
+    </div>
+
+    <!-- Application Logic -->
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+        import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+        import gsap from 'gsap';
+
+        // --- 1. CORE SCENE SETUP ---
+        const container = document.getElementById('canvas-container');
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x0a0f18);
+
+        const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
+        camera.position.set(12, 10, 15);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        renderer.setPixelRatio(window.devicePixelRatio);
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        renderer.toneMapping = THREE.ACESFilmicToneMapping;
+        renderer.toneMappingExposure = 1.2;
+        container.appendChild(renderer.domElement);
+
+        const controls = new OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.05;
+        controls.maxDistance = 30;
+        controls.target.set(0, 2, 0);
+
+        // --- 2. HYPER-REALISTIC LIGHTING & ENVIRONMENT ---
+        const pmremGenerator = new THREE.PMREMGenerator(renderer);
+        scene.environment = pmremGenerator.fromScene(new RoomEnvironment(), 0.04).texture;
+
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.2);
+        scene.add(ambientLight);
+
+        const dirLight = new THREE.DirectionalLight(0xffffff, 2);
+        dirLight.position.set(10, 20, 10);
+        dirLight.castShadow = true;
+        dirLight.shadow.mapSize.width = 2048;
+        dirLight.shadow.mapSize.height = 2048;
+        scene.add(dirLight);
+
+        const fillLight = new THREE.DirectionalLight(0x90b0d0, 1);
+        fillLight.position.set(-10, 0, -10);
+        scene.add(fillLight);
+
+        // Floor for shadows
+        const floorGeo = new THREE.PlaneGeometry(50, 50);
+        const floorMat = new THREE.ShadowMaterial({ opacity: 0.4 });
+        const floor = new THREE.Mesh(floorGeo, floorMat);
+        floor.rotation.x = -Math.PI / 2;
+        floor.position.y = -1;
+        floor.receiveShadow = true;
+        scene.add(floor);
+
+        // --- 3. MATERIALS (PBR) ---
+        const atomRadius = 1;
+        const sphereGeo = new THREE.SphereGeometry(atomRadius, 64, 64);
+
+        const matRed = new THREE.MeshPhysicalMaterial({
+            color: 0xef4444, // Tailwind Red 500
+            metalness: 0.1,
+            roughness: 0.2,
+            clearcoat: 1.0,
+            clearcoatRoughness: 0.1,
+            transmission: 0.2, // slight glass feel
+            thickness: 1.5
+        });
+
+        const matGreen = new THREE.MeshPhysicalMaterial({
+            color: 0x22c55e, // Tailwind Green 500
+            metalness: 0.1,
+            roughness: 0.2,
+            clearcoat: 1.0,
+            clearcoatRoughness: 0.1,
+            transmission: 0.2,
+            thickness: 1.5
+        });
+
+        const matGhost = new THREE.MeshPhysicalMaterial({
+            color: 0xffffff,
+            metalness: 0.1,
+            roughness: 0.5,
+            transparent: true,
+            opacity: 0.15,
+            depthWrite: false
+        });
+
+        // --- 4. MATHEMATICAL ATOM PLACEMENT (HCP) ---
+        // Hexagonal logic based on 2r distance.
+        const h = 2 * Math.sqrt(2/3); // Height between layers
+        const sq3 = Math.sqrt(3);
+
+        const atomsA = [];
+        const atomsB = [];
+        const atomsA2 = [];
+        const allAtoms = [];
+
+        function createAtom(x, y, z, material, array, isUnitCellCore = false) {
+            const mesh = new THREE.Mesh(sphereGeo, material);
+            mesh.position.set(x, y, z);
+            mesh.castShadow = true;
+            mesh.receiveShadow = true;
+            mesh.scale.set(0, 0, 0); // Start hidden
+            mesh.userData = { 
+                targetPos: new THREE.Vector3(x, y, z),
+                originalMat: material,
+                isCore: isUnitCellCore 
+            };
+            scene.add(mesh);
+            array.push(mesh);
+            allAtoms.push(mesh);
+            return mesh;
+        }
+
+        // Generate a larger patch, but tag the specific 17 atoms forming the main HCP hexagonal prism unit cell
+        // LAYER A (Bottom, Y = 0)
+        // Core 7 for Unit Cell
+        createAtom(0, 0, 0, matRed, atomsA, true); // Center
+        createAtom(2, 0, 0, matRed, atomsA, true);
+        createAtom(1, 0, sq3, matRed, atomsA, true);
+        createAtom(-1, 0, sq3, matRed, atomsA, true);
+        createAtom(-2, 0, 0, matRed, atomsA, true);
+        createAtom(-1, 0, -sq3, matRed, atomsA, true);
+        createAtom(1, 0, -sq3, matRed, atomsA, true);
+        // Surrounding atoms (for context)
+        createAtom(4, 0, 0, matRed, atomsA);
+        createAtom(-4, 0, 0, matRed, atomsA);
+        createAtom(2, 0, 2*sq3, matRed, atomsA);
+        createAtom(-2, 0, 2*sq3, matRed, atomsA);
+        createAtom(3, 0, sq3, matRed, atomsA);
+        createAtom(-3, 0, sq3, matRed, atomsA);
+
+        // LAYER B (Middle, Y = h)
+        // Sitting in upward triangles of the core
+        // Core 3 for Unit Cell
+        createAtom(1, h, sq3/3, matGreen, atomsB, true);
+        createAtom(-1, h, sq3/3, matGreen, atomsB, true);
+        createAtom(0, h, -2*sq3/3, matGreen, atomsB, true);
+        // Surrounding B atoms
+        createAtom(3, h, sq3/3, matGreen, atomsB);
+        createAtom(2, h, -2*sq3/3, matGreen, atomsB);
+        createAtom(-2, h, -2*sq3/3, matGreen, atomsB);
+        createAtom(0, h, 4*sq3/3, matGreen, atomsB);
+
+        // LAYER A' (Top, Y = 2h)
+        // Exact copy of Layer A positions, translated up
+        // Core 7 for Unit Cell
+        createAtom(0, 2*h, 0, matRed, atomsA2, true);
+        createAtom(2, 2*h, 0, matRed, atomsA2, true);
+        createAtom(1, 2*h, sq3, matRed, atomsA2, true);
+        createAtom(-1, 2*h, sq3, matRed, atomsA2, true);
+        createAtom(-2, 2*h, 0, matRed, atomsA2, true);
+        createAtom(-1, 2*h, -sq3, matRed, atomsA2, true);
+        createAtom(1, 2*h, -sq3, matRed, atomsA2, true);
+        // Surrounding
+        createAtom(4, 2*h, 0, matRed, atomsA2);
+        createAtom(-4, 2*h, 0, matRed, atomsA2);
+
+        // --- 5. UNIT CELL WIREFRAME ---
+        const wireframeGroup = new THREE.Group();
+        wireframeGroup.visible = false;
+        scene.add(wireframeGroup);
+
+        const lineMat = new THREE.LineBasicMaterial({ color: 0x60a5fa, linewidth: 3, transparent: true, opacity: 0.8 });
+        
+        function addLine(p1, p2) {
+            const pts = [p1, p2];
+            const geo = new THREE.BufferGeometry().setFromPoints(pts);
+            const line = new THREE.Line(geo, lineMat);
+            wireframeGroup.add(line);
+        }
+
+        // Draw the Hexagonal Prism outline based on Core Atoms
+        const cA = atomsA.filter(a => a.userData.isCore);
+        const cA2 = atomsA2.filter(a => a.userData.isCore);
+        
+        // Bottom Hexagon (a1 to a6 are indices 1-6)
+        for(let i=1; i<=6; i++) {
+            let next = (i === 6) ? 1 : i+1;
+            addLine(cA[i].position, cA[next].position);
+            // Top Hexagon
+            addLine(cA2[i].position, cA2[next].position);
+            // Vertical Struts
+            addLine(cA[i].position, cA2[i].position);
+        }
+        // Center Axis
+        addLine(cA[0].position, cA2[0].position);
+
+
+        // --- 6. ANIMATION CONTROLLERS (GSAP) ---
+        let currentStep = 0;
+        const btnReset = document.getElementById('btn-reset');
+        const btnLayerA = document.getElementById('btn-layerA');
+        const btnLayerB = document.getElementById('btn-layerB');
+        const btnLayerA2 = document.getElementById('btn-layerA2');
+        const btnUnitCell = document.getElementById('btn-unitCell');
+
+        function updateBtnStates() {
+            btnLayerB.classList.toggle('opacity-50', currentStep < 1);
+            btnLayerB.classList.toggle('cursor-not-allowed', currentStep < 1);
+            btnLayerA2.classList.toggle('opacity-50', currentStep < 2);
+            btnLayerA2.classList.toggle('cursor-not-allowed', currentStep < 2);
+            btnUnitCell.classList.toggle('opacity-50', currentStep < 3);
+            btnUnitCell.classList.toggle('cursor-not-allowed', currentStep < 3);
+        }
+
+        function resetScene() {
+            currentStep = 0;
+            wireframeGroup.visible = false;
+            gsap.to(allAtoms.map(a => a.scale), { x: 0, y: 0, z: 0, duration: 0.5, stagger: 0.01, ease: "back.in(1.5)" });
+            
+            // Restore materials
+            allAtoms.forEach(a => {
+                a.material = a.userData.originalMat;
+            });
+            updateBtnStates();
+        }
+
+        function animLayerA() {
+            if(currentStep !== 0) resetScene();
+            setTimeout(() => {
+                currentStep = 1;
+                // Pop up from center
+                gsap.fromTo(atomsA.map(a => a.scale), 
+                    { x: 0, y: 0, z: 0 }, 
+                    { x: 1, y: 1, z: 1, duration: 0.8, stagger: 0.05, ease: "elastic.out(1, 0.5)" }
+                );
+                updateBtnStates();
+            }, currentStep !== 0 ? 600 : 0);
+        }
+
+        function animLayerB() {
+            if(currentStep < 1) return;
+            currentStep = 2;
+            
+            // Drop down from above
+            atomsB.forEach((a, i) => {
+                a.position.set(a.userData.targetPos.x, a.userData.targetPos.y + 10, a.userData.targetPos.z);
+                a.scale.set(1,1,1);
+            });
+
+            gsap.to(atomsB.map(a => a.position), {
+                y: (i) => atomsB[i].userData.targetPos.y,
+                duration: 1,
+                stagger: 0.1,
+                ease: "bounce.out"
+            });
+            updateBtnStates();
+        }
+
+        function animLayerA2() {
+            if(currentStep < 2) return;
+            currentStep = 3;
+            
+            // Drop down from above
+            atomsA2.forEach((a, i) => {
+                a.position.set(a.userData.targetPos.x, a.userData.targetPos.y + 15, a.userData.targetPos.z);
+                a.scale.set(1,1,1);
+            });
+
+            gsap.to(atomsA2.map(a => a.position), {
+                y: (i) => atomsA2[i].userData.targetPos.y,
+                duration: 1.2,
+                stagger: 0.1,
+                ease: "bounce.out"
+            });
+            updateBtnStates();
+        }
+
+        function animUnitCell() {
+            if(currentStep < 3) return;
+            currentStep = 4;
+            
+            // Ghost non-core atoms
+            allAtoms.forEach(a => {
+                if(!a.userData.isCore) {
+                    a.material = matGhost;
+                }
+            });
+
+            // Show wireframe with fade in
+            wireframeGroup.visible = true;
+            wireframeGroup.children.forEach(child => {
+                child.material.opacity = 0;
+                gsap.to(child.material, { opacity: 0.8, duration: 1 });
+            });
+
+            // Animate Camera to focus on Unit Cell
+            gsap.to(camera.position, {
+                x: 8, y: 8, z: 12,
+                duration: 1.5,
+                ease: "power2.inOut"
+            });
+            gsap.to(controls.target, {
+                x: 0, y: h, z: 0,
+                duration: 1.5,
+                ease: "power2.inOut"
+            });
+        }
+
+        // Bind Events
+        btnReset.addEventListener('click', resetScene);
+        btnLayerA.addEventListener('click', animLayerA);
+        btnLayerB.addEventListener('click', animLayerB);
+        btnLayerA2.addEventListener('click', animLayerA2);
+        btnUnitCell.addEventListener('click', animUnitCell);
+
+        // --- 7. RENDER LOOP & RESIZE ---
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        // Remove loading screen once initialized
+        window.onload = () => {
+            const loader = document.getElementById('loading');
+            loader.style.opacity = '0';
+            setTimeout(() => loader.remove(), 500);
+            
+            // Initial animation loop
+            renderer.setAnimationLoop(() => {
+                controls.update();
+                renderer.render(scene, camera);
+            });
+
+            // Start first layer automatically after load
+            setTimeout(animLayerA, 800);
+        };
+
+    </script>
+</body>
+</html>
