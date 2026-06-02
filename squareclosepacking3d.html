@@ -1,0 +1,538 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Solid State Chemistry: 3D Packing Visualization</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { 
+            margin: 0; 
+            overflow: hidden; 
+            background: radial-gradient(circle at center, #2a313b 0%, #0d1117 100%);
+            color: #e2e8f0; 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+        }
+        #canvas-container { width: 100vw; height: 100vh; position: absolute; top: 0; left: 0; z-index: 1; }
+        
+        #ui-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 10; pointer-events: none; display: flex; justify-content: space-between; padding: 2rem; box-sizing: border-box; }
+        
+        .panel { 
+            background: rgba(255, 255, 255, 0.05); 
+            backdrop-filter: blur(16px); 
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.1); 
+            border-radius: 16px; 
+            padding: 1.5rem; 
+            pointer-events: auto; 
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.15); 
+        }
+        
+        .controls { display: flex; flex-direction: column; gap: 1rem; width: 320px; }
+        .info-panel { width: 380px; display: flex; flex-direction: column; gap: 1rem; }
+        
+        h1 { font-size: 1.5rem; font-weight: 600; color: #ffffff; letter-spacing: 1px; margin-bottom: 0.5rem; }
+        h2 { font-size: 1.2rem; color: #f8fafc; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 0.5rem; }
+        
+        button { 
+            background: rgba(255, 255, 255, 0.08); 
+            border: 1px solid rgba(255, 255, 255, 0.15); 
+            color: #e2e8f0; 
+            padding: 0.8rem 1.2rem; 
+            border-radius: 8px; 
+            cursor: pointer; 
+            font-weight: 500; 
+            transition: all 0.3s ease; 
+            text-align: left; 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+        }
+        button:hover { 
+            background: rgba(255, 255, 255, 0.15); 
+            border-color: rgba(255, 255, 255, 0.3);
+            box-shadow: 0 0 10px rgba(255, 255, 255, 0.05); 
+        }
+        button.active { 
+            background: rgba(255, 255, 255, 0.9); 
+            color: #0f172a; 
+            font-weight: 600;
+            box-shadow: 0 0 15px rgba(255, 255, 255, 0.2); 
+        }
+        
+        .math-block { 
+            background: rgba(0, 0, 0, 0.3); 
+            padding: 1rem; 
+            border-radius: 8px; 
+            font-family: monospace; 
+            font-size: 1.1rem; 
+            color: #cbd5e1; 
+            border-left: 3px solid #94a3b8; 
+        }
+        .highlight-copper { color: #d48b59; font-weight: bold; }
+        .highlight-silver { color: #f1f5f9; font-weight: bold; }
+        
+        .loading-screen { position: absolute; inset: 0; background: #0d1117; z-index: 50; display: flex; justify-content: center; align-items: center; color: #cbd5e1; font-size: 1.5rem; letter-spacing: 2px; transition: opacity 1s; }
+    </style>
+    <!-- Import Maps for Three.js -->
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+                "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+            }
+        }
+    </script>
+    <!-- GSAP for smooth animations -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+</head>
+<body>
+
+    <div id="loading" class="loading-screen">INITIALIZING LAB ENVIRONMENT...</div>
+    <div id="canvas-container"></div>
+
+    <div id="ui-layer">
+        <div class="controls panel">
+            <h1>Lattice Controls</h1>
+            <p class="text-sm text-gray-400 mb-2">Use mouse to rotate, pan, and zoom.</p>
+            
+            <button id="btn-2d" class="active">
+                <span>1. 2D Square Packing</span>
+                <span class="text-xs opacity-70">AA Type</span>
+            </button>
+            <button id="btn-sc">
+                <span>2. 3D Simple Cubic</span>
+                <span class="text-xs opacity-70">AAA Stacking</span>
+            </button>
+            <button id="btn-bcc">
+                <span>3. 3D Body Centered</span>
+                <span class="text-xs opacity-70">ABAB Stacking</span>
+            </button>
+            
+            <div class="h-px bg-slate-700 my-2 opacity-50"></div>
+            
+            <button id="btn-isolate" style="display: none; border-color: rgba(255,255,255,0.4);">
+                <span>Isolate Unit Cell</span>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path></svg>
+            </button>
+            <button id="btn-slice" style="display: none; background: #d48b59; border-color: #d48b59; color: #000;">
+                <span>Slice Atoms (CSG)</span>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="22" y1="12" x2="2" y2="12"></line></svg>
+            </button>
+        </div>
+
+        <div class="info-panel panel" id="info-display">
+            <!-- Dynamic Content Injected Here -->
+        </div>
+    </div>
+
+<script type="module">
+    import * as THREE from 'three';
+    import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+    // --- SCENE SETUP ---
+    const container = document.getElementById('canvas-container');
+    const scene = new THREE.Scene();
+    // Subtle fog matching the dark slate background
+    scene.fog = new THREE.FogExp2(0x1a1e24, 0.015);
+
+    const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+    camera.position.set(0, 15, 20);
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2)); // optimize for hi-res
+    // Use standard physically correct lighting setup
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.0;
+    renderer.localClippingEnabled = true; // CRITICAL FOR SLICING
+    container.appendChild(renderer.domElement);
+
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.05;
+    controls.target.set(0, 0, 0);
+
+    // --- REALISTIC STUDIO LIGHTING ---
+    const ambientLight = new THREE.AmbientLight(0xffffff, 1.2);
+    scene.add(ambientLight);
+
+    const mainLight = new THREE.DirectionalLight(0xffffff, 2.5);
+    mainLight.position.set(10, 20, 15);
+    scene.add(mainLight);
+
+    const fillLight = new THREE.DirectionalLight(0xfff0dd, 1.0);
+    fillLight.position.set(-15, 10, -10);
+    scene.add(fillLight);
+
+    const rimLight = new THREE.DirectionalLight(0x88bbff, 1.5);
+    rimLight.position.set(0, -10, -20);
+    scene.add(rimLight);
+
+    // --- MATERIALS & CLIPPING PLANES ---
+    // Planes for slicing the unit cell. Initially wide open.
+    const clipPlanes = [
+        new THREE.Plane(new THREE.Vector3(1, 0, 0), 10),  // Right
+        new THREE.Plane(new THREE.Vector3(-1, 0, 0), 10), // Left
+        new THREE.Plane(new THREE.Vector3(0, 1, 0), 10),  // Top
+        new THREE.Plane(new THREE.Vector3(0, -1, 0), 10), // Bottom
+        new THREE.Plane(new THREE.Vector3(0, 0, 1), 10),  // Front
+        new THREE.Plane(new THREE.Vector3(0, 0, -1), 10)  // Back
+    ];
+
+    const atomGeo = new THREE.SphereGeometry(1, 64, 64);
+    
+    // Material for 'A' layers (Brushed Silver/Steel)
+    const matA = new THREE.MeshPhysicalMaterial({
+        color: 0xcccccc, 
+        metalness: 0.6, 
+        roughness: 0.45,
+        clearcoat: 0.1,
+        clearcoatRoughness: 0.2,
+        clippingPlanes: clipPlanes, 
+        clipIntersection: false
+    });
+
+    // Material for 'B' layers (Polished Copper/Bronze)
+    const matB = new THREE.MeshPhysicalMaterial({
+        color: 0xc87d55, 
+        metalness: 0.7, 
+        roughness: 0.3,
+        clearcoat: 0.3,
+        clearcoatRoughness: 0.1,
+        clippingPlanes: clipPlanes, 
+        clipIntersection: false
+    });
+
+    // Invisible material for slicing caps (gives the solid cut illusion)
+    const capMatA = new THREE.MeshBasicMaterial({ color: 0x999999, side: THREE.BackSide, clippingPlanes: clipPlanes });
+    const capMatB = new THREE.MeshBasicMaterial({ color: 0x995533, side: THREE.BackSide, clippingPlanes: clipPlanes });
+
+    // --- LATTICE CONSTRUCTION ---
+    const atomRadius = 1;
+    const diameter = 2;
+    const bccHeight = Math.sqrt(2) * diameter; // Distance between layers in BCC
+
+    const masterGroup = new THREE.Group();
+    scene.add(masterGroup);
+
+    const layers = {
+        layerA1: new THREE.Group(),
+        layerA2_SC: new THREE.Group(),
+        layerA3_SC: new THREE.Group(),
+        layerB_BCC: new THREE.Group(),
+        layerA2_BCC: new THREE.Group()
+    };
+    
+    Object.values(layers).forEach(layer => masterGroup.add(layer));
+
+    let allAtoms = [];
+    let unitCellAtomsSC = [];
+    let unitCellAtomsBCC = [];
+
+    function createAtom(x, y, z, isB = false) {
+        const material = isB ? matB : matA;
+        const mesh = new THREE.Mesh(atomGeo, material);
+        mesh.position.set(x, y, z);
+        
+        // Add backface for solid cut illusion
+        const cap = new THREE.Mesh(atomGeo, isB ? capMatB : capMatA);
+        mesh.add(cap);
+        
+        allAtoms.push(mesh);
+        
+        // Identify atoms that make up the central unit cell
+        // SC unit cell is from x=0 to 2, y=0 to 2, z=0 to 2
+        if(!isB && [0, 2].includes(x) && [0, 2].includes(y) && [0, 2].includes(z)) {
+            unitCellAtomsSC.push(mesh);
+        }
+        // BCC unit cell uses A atoms at y=0, y=2.828, and B atom in center
+        if(!isB && [0, 2].includes(x) && [0, bccHeight*2].includes(Math.round(y*1000)/1000) && [0, 2].includes(z)) {
+            unitCellAtomsBCC.push(mesh);
+        }
+        if(isB && x===1 && z===1) {
+            unitCellAtomsBCC.push(mesh);
+        }
+
+        return mesh;
+    }
+
+    // Build 3x3 grids (Centers at -2, 0, 2)
+    const gridRange = [-2, 0, 2];
+    
+    // Layer A1 (Base)
+    gridRange.forEach(x => {
+        gridRange.forEach(z => {
+            layers.layerA1.add(createAtom(x, 0, z, false));
+        });
+    });
+
+    // Layer A2 & A3 for Simple Cubic (y = 2, 4)
+    gridRange.forEach(x => {
+        gridRange.forEach(z => {
+            layers.layerA2_SC.add(createAtom(x, 2, z, false));
+            layers.layerA3_SC.add(createAtom(x, 4, z, false));
+        });
+    });
+
+    // Layer B for BCC (2x2 grid resting in the depressions of A)
+    // Depressions are at (-1, -1), (1, -1), (-1, 1), (1, 1)
+    const bGrid = [-1, 1];
+    bGrid.forEach(x => {
+        bGrid.forEach(z => {
+            layers.layerB_BCC.add(createAtom(x, bccHeight, z, true));
+        });
+    });
+
+    // Layer A2 for BCC (Top layer)
+    gridRange.forEach(x => {
+        gridRange.forEach(z => {
+            layers.layerA2_BCC.add(createAtom(x, bccHeight * 2, z, false));
+        });
+    });
+
+    // Initial State
+    layers.layerA2_SC.visible = false;
+    layers.layerA3_SC.visible = false;
+    layers.layerB_BCC.visible = false;
+    layers.layerA2_BCC.visible = false;
+
+    // Unit Cell Wireframe
+    const wireGeoSC = new THREE.BoxGeometry(2, 2, 2);
+    const wireMat = new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0 });
+    const wireframeBox = new THREE.LineSegments(new THREE.EdgesGeometry(wireGeoSC), wireMat);
+    wireframeBox.position.set(1, 1, 1); 
+    masterGroup.add(wireframeBox);
+
+    controls.target.set(0, 1, 0);
+
+    // --- STATE MANAGEMENT & ANIMATION LOGIC ---
+    let currentState = '2d'; 
+    let isIsolated = false;
+    let isSliced = false;
+
+    const infoData = {
+        '2d': `
+            <h2>2D Square Close Packing</h2>
+            <p>Atoms are arranged in rows and columns exactly above one another. This forms an <strong>AA... type</strong> arrangement.</p>
+            <div class="math-block">
+                Coordination No. = <span class="highlight-silver">4</span><br>
+                Shape = Square
+            </div>
+            <p class="text-sm text-gray-400">Notice the large square voids between the atoms. This is less efficient than hexagonal 2D packing.</p>
+        `,
+        'sc': `
+            <h2>3D Simple Cubic (SC)</h2>
+            <p>Generated by stacking 2D square-packed layers directly over each other. <strong>AAA... Pattern</strong>.</p>
+            <div class="math-block">
+                Z (Effective Atoms) = 8 × ⅛ = <span class="highlight-silver">1</span><br>
+                Packing Efficiency = <span class="highlight-silver">52.4%</span><br>
+                C.N. = 6
+            </div>
+            <p class="text-sm text-gray-400">A very loose packing structure. Polonium (Po) is the only metal known to crystallize in a simple cubic structure.</p>
+        `,
+        'bcc': `
+            <h2>3D Body Centered Cubic (BCC)</h2>
+            <p>The second layer (<span class="highlight-copper">B layer</span>) drops into the depressions of the first layer. <strong>ABAB... Pattern</strong>.</p>
+            <div class="math-block">
+                Z = (8 × ⅛) + 1 = <span class="highlight-silver">2</span><br>
+                Packing Efficiency = <span class="highlight-silver">68%</span><br>
+                C.N. = 8
+            </div>
+            <p class="text-sm text-gray-400">More efficiently packed than Simple Cubic. Common in alkali metals like Lithium and Sodium.</p>
+        `
+    };
+
+    function updateInfoPanel(state) {
+        const panel = document.getElementById('info-display');
+        panel.innerHTML = infoData[state];
+        gsap.fromTo(panel, {opacity: 0, x: 20}, {opacity: 1, x: 0, duration: 0.5});
+    }
+
+    function resetClipping() {
+        gsap.to(clipPlanes[0], { constant: 10, duration: 1 });
+        gsap.to(clipPlanes[1], { constant: 10, duration: 1 });
+        gsap.to(clipPlanes[2], { constant: 10, duration: 1 });
+        gsap.to(clipPlanes[3], { constant: 10, duration: 1 });
+        gsap.to(clipPlanes[4], { constant: 10, duration: 1 });
+        gsap.to(clipPlanes[5], { constant: 10, duration: 1 });
+        isSliced = false;
+        document.getElementById('btn-slice').innerHTML = `<span>Slice Atoms (CSG)</span><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="22" y1="12" x2="2" y2="12"></line></svg>`;
+    }
+
+    function resetIsolation() {
+        allAtoms.forEach(a => {
+            gsap.to(a.material, { opacity: 1, transparent: true, duration: 0.5 });
+        });
+        gsap.to(wireMat, { opacity: 0, duration: 0.5 });
+        isIsolated = false;
+        document.getElementById('btn-isolate').innerHTML = `<span>Isolate Unit Cell</span><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path></svg>`;
+        document.getElementById('btn-slice').style.display = 'none';
+        resetClipping();
+    }
+
+    function setMode2D() {
+        if(currentState === '2d') return;
+        currentState = '2d';
+        updateInfoPanel('2d');
+        resetIsolation();
+        document.getElementById('btn-isolate').style.display = 'none';
+
+        gsap.to(camera.position, {x: 0, y: 15, z: 0, duration: 1.5, ease: "power2.inOut"});
+        
+        gsap.to(layers.layerA2_SC.position, {y: 10, duration: 1});
+        gsap.to(layers.layerA3_SC.position, {y: 12, duration: 1, onComplete: () => {
+            layers.layerA2_SC.visible = false;
+            layers.layerA3_SC.visible = false;
+        }});
+        
+        gsap.to(layers.layerB_BCC.position, {y: 10, duration: 1});
+        gsap.to(layers.layerA2_BCC.position, {y: 12, duration: 1, onComplete: () => {
+            layers.layerB_BCC.visible = false;
+            layers.layerA2_BCC.visible = false;
+        }});
+    }
+
+    function setModeSC() {
+        if(currentState === 'sc') return;
+        currentState = 'sc';
+        updateInfoPanel('sc');
+        resetIsolation();
+        document.getElementById('btn-isolate').style.display = 'flex';
+
+        gsap.to(camera.position, {x: 10, y: 8, z: 12, duration: 1.5, ease: "power2.inOut"});
+        controls.target.set(0, 2, 0);
+
+        layers.layerB_BCC.visible = false;
+        layers.layerA2_BCC.visible = false;
+
+        layers.layerA2_SC.visible = true;
+        layers.layerA3_SC.visible = true;
+        
+        layers.layerA2_SC.position.y = 5;
+        layers.layerA3_SC.position.y = 10;
+        
+        gsap.to(layers.layerA2_SC.position, {y: 0, duration: 1, ease: "bounce.out", delay: 0.2});
+        gsap.to(layers.layerA3_SC.position, {y: 0, duration: 1, ease: "bounce.out", delay: 0.4});
+
+        wireframeBox.scale.set(1, 1, 1);
+        wireframeBox.position.set(1, 1, 1);
+    }
+
+    function setModeBCC() {
+        if(currentState === 'bcc') return;
+        currentState = 'bcc';
+        updateInfoPanel('bcc');
+        resetIsolation();
+        document.getElementById('btn-isolate').style.display = 'flex';
+
+        gsap.to(camera.position, {x: 10, y: 8, z: 12, duration: 1.5, ease: "power2.inOut"});
+        controls.target.set(0, bccHeight, 0);
+
+        layers.layerA2_SC.visible = false;
+        layers.layerA3_SC.visible = false;
+
+        layers.layerB_BCC.visible = true;
+        layers.layerA2_BCC.visible = true;
+
+        layers.layerB_BCC.position.y = 5;
+        layers.layerA2_BCC.position.y = 10;
+
+        gsap.to(layers.layerB_BCC.position, {y: 0, duration: 1, ease: "power2.out", delay: 0.2});
+        gsap.to(layers.layerA2_BCC.position, {y: 0, duration: 1, ease: "bounce.out", delay: 0.6});
+
+        wireframeBox.scale.set(1, bccHeight, 1);
+        wireframeBox.position.set(1, bccHeight, 1);
+    }
+
+    function toggleIsolate() {
+        isIsolated = !isIsolated;
+        const btn = document.getElementById('btn-isolate');
+        const sliceBtn = document.getElementById('btn-slice');
+
+        if(isIsolated) {
+            btn.innerHTML = `<span>Show Full Lattice</span><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>`;
+            sliceBtn.style.display = 'flex';
+            gsap.fromTo(sliceBtn, {opacity:0, y:-10}, {opacity:1, y:0, duration: 0.3});
+
+            const activeUnitAtoms = currentState === 'sc' ? unitCellAtomsSC : unitCellAtomsBCC;
+            
+            allAtoms.forEach(a => {
+                if(!activeUnitAtoms.includes(a)) {
+                    gsap.to(a.material, { opacity: 0.05, transparent: true, duration: 0.5 });
+                }
+            });
+            gsap.to(wireMat, { opacity: 1, duration: 0.5 });
+        } else {
+            resetIsolation();
+        }
+    }
+
+    function toggleSlice() {
+        if(!isIsolated) return;
+        isSliced = !isSliced;
+        const btn = document.getElementById('btn-slice');
+
+        if(isSliced) {
+            btn.innerHTML = `<span>Restore Spheres</span><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path></svg>`;
+            
+            const yMax = currentState === 'sc' ? 2 : bccHeight * 2;
+
+            gsap.to(clipPlanes[0], { constant: 2, duration: 1.5, ease: "power2.inOut" });  // x < 2
+            gsap.to(clipPlanes[1], { constant: 0, duration: 1.5, ease: "power2.inOut" });  // x > 0
+            gsap.to(clipPlanes[2], { constant: yMax, duration: 1.5, ease: "power2.inOut" }); // y < yMax
+            gsap.to(clipPlanes[3], { constant: 0, duration: 1.5, ease: "power2.inOut" });  // y > 0
+            gsap.to(clipPlanes[4], { constant: 2, duration: 1.5, ease: "power2.inOut" });  // z < 2
+            gsap.to(clipPlanes[5], { constant: 0, duration: 1.5, ease: "power2.inOut" });  // z > 0
+
+        } else {
+            resetClipping();
+        }
+    }
+
+    // --- EVENT LISTENERS ---
+    const buttons = [document.getElementById('btn-2d'), document.getElementById('btn-sc'), document.getElementById('btn-bcc')];
+    
+    function setActiveBtn(activeBtn) {
+        buttons.forEach(b => b.classList.remove('active'));
+        activeBtn.classList.add('active');
+    }
+
+    document.getElementById('btn-2d').addEventListener('click', (e) => { setActiveBtn(e.currentTarget); setMode2D(); });
+    document.getElementById('btn-sc').addEventListener('click', (e) => { setActiveBtn(e.currentTarget); setModeSC(); });
+    document.getElementById('btn-bcc').addEventListener('click', (e) => { setActiveBtn(e.currentTarget); setModeBCC(); });
+    document.getElementById('btn-isolate').addEventListener('click', toggleIsolate);
+    document.getElementById('btn-slice').addEventListener('click', toggleSlice);
+
+    window.addEventListener('resize', () => {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+
+    // Initialize UI
+    updateInfoPanel('2d');
+    gsap.to(camera.position, {x: 0, y: 15, z: 0, duration: 0}); // Force Top down initially
+    
+    setTimeout(() => {
+        const loader = document.getElementById('loading');
+        loader.style.opacity = '0';
+        setTimeout(() => loader.remove(), 1000);
+    }, 1000);
+
+    // --- RENDER LOOP ---
+    function animate() {
+        requestAnimationFrame(animate);
+        controls.update();
+        
+        const time = Date.now() * 0.001;
+        masterGroup.position.y = Math.sin(time) * 0.1; // Gentle breathing animation
+        
+        // Simple direct render (No Bloom) for clean lab aesthetic
+        renderer.render(scene, camera);
+    }
+    animate();
+
+</script>
+</body>
+</html>
