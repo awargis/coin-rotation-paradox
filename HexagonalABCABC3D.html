@@ -1,0 +1,572 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The ABCABC Masterclass: CCP & FCC</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { 
+            margin: 0; 
+            overflow: hidden; 
+            background: radial-gradient(circle at center, #1e2129 0%, #080a0f 100%);
+            color: #e2e8f0; 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+        }
+        #canvas-container { width: 100vw; height: 100vh; position: absolute; top: 0; left: 0; z-index: 1; }
+        
+        #ui-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 10; pointer-events: none; display: flex; justify-content: space-between; padding: 2rem; box-sizing: border-box; }
+        
+        .panel { 
+            background: rgba(15, 20, 28, 0.6); 
+            backdrop-filter: blur(20px); 
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.08); 
+            border-radius: 16px; 
+            padding: 1.5rem; 
+            pointer-events: auto; 
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5); 
+        }
+        
+        .controls { display: flex; flex-direction: column; gap: 0.75rem; width: 340px; }
+        .info-panel { width: 400px; display: flex; flex-direction: column; gap: 1rem; max-height: 90vh; overflow-y: auto;}
+        
+        h1 { font-size: 1.4rem; font-weight: 700; color: #ffffff; letter-spacing: 1px; margin-bottom: 0.2rem; }
+        h2 { font-size: 1.1rem; color: #94a3b8; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 0.5rem; margin-bottom: 0.5rem;}
+        
+        button { 
+            background: rgba(255, 255, 255, 0.05); 
+            border: 1px solid rgba(255, 255, 255, 0.1); 
+            color: #cbd5e1; 
+            padding: 0.8rem 1rem; 
+            border-radius: 8px; 
+            cursor: pointer; 
+            font-weight: 500; 
+            transition: all 0.3s ease; 
+            text-align: left; 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+        }
+        button:hover { 
+            background: rgba(255, 255, 255, 0.1); 
+            border-color: rgba(255, 255, 255, 0.3);
+        }
+        button.active { 
+            background: linear-gradient(135deg, rgba(255,255,255,0.15) 0%, rgba(255,255,255,0.05) 100%);
+            border-color: rgba(255, 255, 255, 0.5);
+            color: #ffffff; 
+            font-weight: 600;
+            box-shadow: 0 0 15px rgba(255, 255, 255, 0.1); 
+        }
+
+        .slider-container {
+            margin-top: 1rem;
+            padding-top: 1rem;
+            border-top: 1px solid rgba(255,255,255,0.1);
+        }
+        
+        input[type=range] {
+            width: 100%;
+            accent-color: #60a5fa;
+            cursor: pointer;
+        }
+
+        .action-btn {
+            background: rgba(96, 165, 250, 0.15);
+            border-color: #3b82f6;
+            color: #93c5fd;
+            justify-content: center;
+            font-weight: 600;
+            margin-top: 0.5rem;
+        }
+        .action-btn:hover {
+            background: #3b82f6;
+            color: white;
+            box-shadow: 0 0 20px rgba(59, 130, 246, 0.4);
+        }
+        
+        .math-block { 
+            background: rgba(0, 0, 0, 0.4); 
+            padding: 1rem; 
+            border-radius: 8px; 
+            font-family: monospace; 
+            font-size: 1.05rem; 
+            color: #e2e8f0; 
+            border-left: 3px solid #3b82f6; 
+            line-height: 1.6;
+        }
+        
+        .c-red { color: #ff4444; font-weight: bold; }
+        .c-green { color: #22cc66; font-weight: bold; }
+        .c-blue { color: #4488ff; font-weight: bold; }
+        
+        .loading-screen { position: absolute; inset: 0; background: #080a0f; z-index: 50; display: flex; justify-content: center; align-items: center; color: #94a3b8; font-size: 1.2rem; letter-spacing: 3px; text-transform: uppercase; transition: opacity 1s; }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 3px; }
+    </style>
+    <!-- Import Maps -->
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+                "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+            }
+        }
+    </script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+</head>
+<body>
+
+    <div id="loading" class="loading-screen">Assembling Quantum Workbench...</div>
+    <div id="canvas-container"></div>
+
+    <div id="ui-layer">
+        <div class="controls panel">
+            <h1>ABCABC Stacking</h1>
+            <h2>Cubic Close Packing (CCP)</h2>
+            
+            <button id="btn-1" class="active">
+                <span>1. The Base Layer (A)</span>
+                <span class="w-3 h-3 rounded-full bg-red-600"></span>
+            </button>
+            <button id="btn-2">
+                <span>2. First Overlap (B)</span>
+                <span class="w-3 h-3 rounded-full bg-green-500"></span>
+            </button>
+            <button id="btn-3">
+                <span>3. The Divergence (C)</span>
+                <span class="w-3 h-3 rounded-full bg-blue-500"></span>
+            </button>
+            <button id="btn-4">
+                <span>4. Closing the Loop (A')</span>
+                <span class="w-3 h-3 rounded-full bg-red-600"></span>
+            </button>
+
+            <div class="slider-container">
+                <label class="text-sm text-gray-400 flex justify-between mb-2">
+                    <span>Explode Stack (Z-Axis View)</span>
+                    <span id="slider-val">0.0</span>
+                </label>
+                <input type="range" id="explode-slider" min="0" max="3" step="0.1" value="0">
+            </div>
+            
+            <button id="btn-reveal" class="action-btn">
+                <svg class="mr-2" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>
+                Reveal FCC Unit Cell
+            </button>
+        </div>
+
+        <div class="info-panel panel" id="info-display">
+            <!-- Content injected dynamically -->
+        </div>
+    </div>
+
+<script type="module">
+    import * as THREE from 'three';
+    import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+    // ==========================================
+    // 1. SCENE SETUP (The Quantum Workbench)
+    // ==========================================
+    const container = document.getElementById('canvas-container');
+    const scene = new THREE.Scene();
+    
+    const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+    camera.position.set(0, 18, 12);
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.1;
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    container.appendChild(renderer.domElement);
+
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.05;
+    controls.target.set(0, 2.5, 0);
+
+    // ==========================================
+    // 2. LIGHTING & ENVIRONMENT
+    // ==========================================
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
+    scene.add(ambientLight);
+
+    const keyLight = new THREE.DirectionalLight(0xffffff, 3.5);
+    keyLight.position.set(10, 20, 15);
+    keyLight.castShadow = true;
+    keyLight.shadow.mapSize.width = 2048;
+    keyLight.shadow.mapSize.height = 2048;
+    keyLight.shadow.camera.near = 0.5;
+    keyLight.shadow.camera.far = 50;
+    keyLight.shadow.camera.left = -10;
+    keyLight.shadow.camera.right = 10;
+    keyLight.shadow.camera.top = 10;
+    keyLight.shadow.camera.bottom = -10;
+    keyLight.shadow.bias = -0.001;
+    scene.add(keyLight);
+
+    const fillLight = new THREE.DirectionalLight(0x4488ff, 1.2);
+    fillLight.position.set(-15, 5, -10);
+    scene.add(fillLight);
+
+    const rimLight = new THREE.DirectionalLight(0xffaa00, 2.0);
+    rimLight.position.set(0, 5, -20);
+    scene.add(rimLight);
+
+    // The Desk (Reflective Floor)
+    const floorGeo = new THREE.PlaneGeometry(100, 100);
+    const floorMat = new THREE.MeshPhysicalMaterial({
+        color: 0x050608,
+        metalness: 0.9,
+        roughness: 0.1,
+        clearcoat: 1.0,
+        clearcoatRoughness: 0.05
+    });
+    const floor = new THREE.Mesh(floorGeo, floorMat);
+    floor.rotation.x = -Math.PI / 2;
+    floor.position.y = -1.05; // Slightly below spheres
+    floor.receiveShadow = true;
+    scene.add(floor);
+
+    // ==========================================
+    // 3. PBR MATERIALS
+    // ==========================================
+    const basePBR = { metalness: 0.5, roughness: 0.15, clearcoat: 0.8, clearcoatRoughness: 0.1 };
+    
+    // Layer A (Ruby Red)
+    const matA = new THREE.MeshPhysicalMaterial({ color: 0xc8102e, ...basePBR });
+    // Layer B (Emerald Green)
+    const matB = new THREE.MeshPhysicalMaterial({ color: 0x009b77, ...basePBR });
+    // Layer C (Sapphire Blue)
+    const matC = new THREE.MeshPhysicalMaterial({ color: 0x0f52ba, ...basePBR });
+
+    const ghostMat = new THREE.MeshPhysicalMaterial({
+        color: 0xffffff, metalness: 0.1, roughness: 0.1,
+        transparent: true, opacity: 0.08, depthWrite: false
+    });
+
+    const atomGeo = new THREE.SphereGeometry(1, 64, 64);
+
+    // ==========================================
+    // 4. MATHEMATICAL GENERATION (The Rotation Trick)
+    // ==========================================
+    // We generate a true FCC lattice, and rotate it so the [111] body diagonal is vertical.
+    // This perfectly aligns the (111) planes into horizontal A, B, C layers!
+    
+    const r = 1;
+    const a = 2 * Math.sqrt(2) * r; // Lattice constant for FCC where touching atoms r=1
+    const h = Math.sqrt(8/3) * r;   // Vertical distance between close-packed layers
+
+    // Quaternion to rotate (1,1,1) to (0,1,0)
+    const quat = new THREE.Quaternion().setFromUnitVectors(
+        new THREE.Vector3(1, 1, 1).normalize(),
+        new THREE.Vector3(0, 1, 0)
+    );
+
+    const layerGroups = [new THREE.Group(), new THREE.Group(), new THREE.Group(), new THREE.Group()];
+    scene.add(layerGroups[0], layerGroups[1], layerGroups[2], layerGroups[3]);
+
+    const allAtoms = [];
+    const atomsMap = new Map();
+
+    // Generate a block of FCC unit cells
+    for(let ix = -2; ix <= 2; ix++) {
+        for(let iy = -2; iy <= 2; iy++) {
+            for(let iz = -2; iz <= 2; iz++) {
+                
+                const isCenterCell = (ix === 0 && iy === 0 && iz === 0);
+                
+                // The 14 defining points of an FCC unit cell (relative to origin)
+                const points = [
+                    [0,0,0], [a,0,0], [0,a,0], [a,a,0], [0,0,a], [a,0,a], [0,a,a], [a,a,a], // 8 corners
+                    [a/2,a/2,0], [a/2,0,a/2], [0,a/2,a/2], [a,a/2,a/2], [a/2,a,a/2], [a/2,a/2,a] // 6 face centers
+                ];
+
+                points.forEach(pr => {
+                    const px = ix*a + pr[0];
+                    const py = iy*a + pr[1];
+                    const pz = iz*a + pr[2];
+
+                    // Round to avoid floating point duplication at boundaries
+                    const key = `${px.toFixed(2)},${py.toFixed(2)},${pz.toFixed(2)}`;
+
+                    if(!atomsMap.has(key)) {
+                        const originalVec = new THREE.Vector3(px, py, pz);
+                        const rotatedVec = originalVec.clone().applyQuaternion(quat);
+
+                        // Determine layer based on Y coordinate
+                        let layerIdx = -1;
+                        const ry = rotatedVec.y;
+                        if(Math.abs(ry - 0) < 0.1) layerIdx = 0;
+                        else if(Math.abs(ry - h) < 0.1) layerIdx = 1;
+                        else if(Math.abs(ry - 2*h) < 0.1) layerIdx = 2;
+                        else if(Math.abs(ry - 3*h) < 0.1) layerIdx = 3;
+
+                        // Create a cylindrical boundary for visual cleanliness
+                        const radiusSq = rotatedVec.x * rotatedVec.x + rotatedVec.z * rotatedVec.z;
+
+                        if((layerIdx >= 0 && radiusSq < 35) || isCenterCell) {
+                            atomsMap.set(key, { pos: rotatedVec, isCore: isCenterCell, layer: layerIdx });
+                        }
+                    } else if (isCenterCell) {
+                        atomsMap.get(key).isCore = true;
+                    }
+                });
+            }
+        }
+    }
+
+    // Build the meshes
+    atomsMap.forEach((data) => {
+        let mat = matA;
+        if(data.layer === 1) mat = matB;
+        if(data.layer === 2) mat = matC;
+        
+        const mesh = new THREE.Mesh(atomGeo, mat);
+        
+        // We set local position. Y is 0 because the Group itself will be positioned at Y
+        mesh.position.set(data.pos.x, 0, data.pos.z);
+        mesh.castShadow = true;
+        mesh.receiveShadow = true;
+        
+        // Store original data
+        mesh.userData = { 
+            isCore: data.isCore, 
+            layer: data.layer,
+            originalMat: mat
+        };
+        
+        allAtoms.push(mesh);
+        layerGroups[data.layer].add(mesh);
+    });
+
+    // Set Group Y positions
+    layerGroups[0].position.y = 0;
+    layerGroups[1].position.y = h;
+    layerGroups[2].position.y = 2*h;
+    layerGroups[3].position.y = 3*h;
+
+    // FCC Wireframe Generation
+    const boxGeo = new THREE.BoxGeometry(a, a, a);
+    boxGeo.translate(a/2, a/2, a/2); // Move geometry corner to origin
+    const boxMat = new THREE.LineBasicMaterial({ color: 0xffffff, linewidth: 2, transparent: true, opacity: 0 });
+    const wireframeBox = new THREE.LineSegments(new THREE.EdgesGeometry(boxGeo), boxMat);
+    wireframeBox.setRotationFromQuaternion(quat);
+    scene.add(wireframeBox);
+
+    // Initial State
+    layerGroups[1].visible = false;
+    layerGroups[2].visible = false;
+    layerGroups[3].visible = false;
+
+    // ==========================================
+    // 5. NARRATIVE & UI LOGIC
+    // ==========================================
+    
+    const infoData = {
+        1: `
+            <h2>1. The Base Layer (Layer A)</h2>
+            <p>We begin with a single 2D sheet of <span class="c-red">Ruby Red</span> atoms packed as tightly as possible (Hexagonal Close Packing).</p>
+            <p class="mt-2 text-sm text-gray-400">Notice the triangular depressions (voids) between the spheres. Half of these voids point "Up" (△) and half point "Down" (▽).</p>
+        `,
+        2: `
+            <h2>2. The First Overlap (Layer B)</h2>
+            <p>The <span class="c-green">Emerald Green</span> Layer B smoothly descends, nesting perfectly into ONLY the "Up" (△) pointing voids of Layer A.</p>
+            <div class="mt-4 p-3 bg-white/5 border border-white/10 rounded-lg text-sm">
+                <strong>New Voids Formed:</strong><br>
+                • <strong>Tetrahedral (T)</strong>: Green sphere directly over a Red sphere.<br>
+                • <strong>Octahedral (O)</strong>: The empty "Down" voids where you can see straight through both layers to the floor.
+            </div>
+        `,
+        3: `
+            <h2>3. The Divergence (Layer C)</h2>
+            <p>This is the crucial step. Instead of placing the third layer over the T-voids (which creates ABAB Hexagonal packing), the <span class="c-blue">Sapphire Blue</span> spheres specifically target the deep <strong>Octahedral (O) Voids</strong>.</p>
+            <p class="mt-2 text-sm text-gray-400">Layer C aligns perfectly with the open holes where you could see the floor. It occupies a unique spatial coordinate distinct from A and B.</p>
+        `,
+        4: `
+            <h2>4. Closing the Loop (Layer A')</h2>
+            <p>A fourth layer of <span class="c-red">Ruby Red</span> spheres is added. These atoms vertically align perfectly with the original bottom layer.</p>
+            <div class="math-block mt-4">
+                Pattern = A - B - C - A - B - C<br>
+                Coordination No. = 12<br>
+                Packing Efficiency = 74%
+            </div>
+        `
+    };
+
+    let currentState = 1;
+    let isRevealed = false;
+
+    function updateInfo(step) {
+        const panel = document.getElementById('info-display');
+        panel.innerHTML = infoData[step];
+        gsap.fromTo(panel, {opacity: 0, y: 10}, {opacity: 1, y: 0, duration: 0.4});
+    }
+
+    function resetReveal() {
+        if(!isRevealed) return;
+        isRevealed = false;
+        document.getElementById('btn-reveal').innerHTML = `<svg class="mr-2" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg> Reveal FCC Unit Cell`;
+        document.getElementById('btn-reveal').classList.remove('bg-blue-600', 'text-white');
+        
+        allAtoms.forEach(mesh => {
+            mesh.material = mesh.userData.originalMat;
+        });
+        gsap.to(boxMat, {opacity: 0, duration: 0.5});
+    }
+
+    function setScene(step) {
+        currentState = step;
+        updateInfo(step);
+        resetReveal();
+        document.getElementById('explode-slider').value = 0;
+        updateExplosion(0);
+
+        [1, 2, 3, 4].forEach(i => document.getElementById(`btn-${i}`).classList.remove('active'));
+        document.getElementById(`btn-${step}`).classList.add('active');
+
+        // Scene 1 Setup
+        if(step === 1) {
+            gsap.to(camera.position, {x: 0, y: 18, z: 12, duration: 1.5, ease: "power2.inOut"});
+            controls.target.set(0, 0, 0);
+            layerGroups[1].visible = false; layerGroups[2].visible = false; layerGroups[3].visible = false;
+        }
+        
+        // Scene 2 Setup
+        if(step === 2) {
+            gsap.to(camera.position, {x: 6, y: 14, z: 10, duration: 1.5, ease: "power2.inOut"});
+            controls.target.set(0, h/2, 0);
+            layerGroups[1].visible = true; layerGroups[2].visible = false; layerGroups[3].visible = false;
+            
+            // Drop animation
+            gsap.fromTo(layerGroups[1].position, {y: h + 5}, {y: h, duration: 1, ease: "bounce.out"});
+        }
+
+        // Scene 3 Setup
+        if(step === 3) {
+            gsap.to(camera.position, {x: 2, y: 16, z: 8, duration: 1.5, ease: "power2.inOut"});
+            controls.target.set(0, h, 0);
+            layerGroups[1].visible = true; layerGroups[2].visible = true; layerGroups[3].visible = false;
+            
+            gsap.fromTo(layerGroups[2].position, {y: 2*h + 5}, {y: 2*h, duration: 1, ease: "bounce.out"});
+        }
+
+        // Scene 4 Setup
+        if(step === 4) {
+            gsap.to(camera.position, {x: 10, y: 12, z: 14, duration: 1.5, ease: "power2.inOut"});
+            controls.target.set(0, 1.5*h, 0);
+            layerGroups[1].visible = true; layerGroups[2].visible = true; layerGroups[3].visible = true;
+            
+            gsap.fromTo(layerGroups[3].position, {y: 3*h + 5}, {y: 3*h, duration: 1, ease: "bounce.out"});
+        }
+    }
+
+    function toggleFCCReveal() {
+        if(currentState !== 4) {
+            setScene(4); // Force layer 4 to be visible
+        }
+
+        isRevealed = !isRevealed;
+        const btn = document.getElementById('btn-reveal');
+
+        if(isRevealed) {
+            btn.innerHTML = `<svg class="mr-2" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg> Restore Full Lattice`;
+            btn.classList.add('bg-blue-600', 'text-white');
+
+            // Fade non-core atoms
+            allAtoms.forEach(mesh => {
+                if(!mesh.userData.isCore) {
+                    mesh.material = ghostMat;
+                }
+            });
+
+            // Show wireframe
+            gsap.to(boxMat, {opacity: 1, duration: 1});
+
+            // Rotate camera to show the cubic nature clearly
+            gsap.to(camera.position, {x: 8, y: 8, z: 15, duration: 2, ease: "power2.inOut"});
+            controls.target.set(0, 1.5*h, 0);
+
+            const panel = document.getElementById('info-display');
+            panel.innerHTML = `
+                <h2>5. The "Aha!" Moment</h2>
+                <p>By fading the surrounding atoms, the underlying truth is revealed: <strong>Cubic Close Packing is identical to Face-Centered Cubic (FCC).</strong></p>
+                <p class="mt-2 text-sm text-gray-300">The ABCABC layers are simply the (111) diagonal planes of an FCC cube standing on its corner.</p>
+                <div class="math-block mt-4">
+                    FCC Unit Cell:<br>
+                    8 Corners × ⅛ = 1 atom<br>
+                    6 Faces × ½ = 3 atoms<br>
+                    <strong>Z (Total) = 4 atoms</strong>
+                </div>
+            `;
+            gsap.fromTo(panel, {opacity: 0, x: 20}, {opacity: 1, x: 0, duration: 0.5});
+
+            // Close explosion if open
+            document.getElementById('explode-slider').value = 0;
+            updateExplosion(0);
+
+        } else {
+            setScene(4); // Resets everything to standard view 4
+        }
+    }
+
+    function updateExplosion(val) {
+        document.getElementById('slider-val').innerText = parseFloat(val).toFixed(1);
+        layerGroups[1].position.y = h + val;
+        layerGroups[2].position.y = 2*h + (val * 2);
+        layerGroups[3].position.y = 3*h + (val * 3);
+    }
+
+    // Event Listeners
+    document.getElementById('btn-1').addEventListener('click', () => setScene(1));
+    document.getElementById('btn-2').addEventListener('click', () => setScene(2));
+    document.getElementById('btn-3').addEventListener('click', () => setScene(3));
+    document.getElementById('btn-4').addEventListener('click', () => setScene(4));
+    
+    document.getElementById('btn-reveal').addEventListener('click', toggleFCCReveal);
+
+    document.getElementById('explode-slider').addEventListener('input', (e) => {
+        if(isRevealed) resetReveal();
+        updateExplosion(parseFloat(e.target.value));
+        
+        // Ensure all layers are visible if exploding
+        if(currentState < 4) {
+             [1,2,3,4].forEach(i => layerGroups[i-1].visible = true);
+        }
+    });
+
+    window.addEventListener('resize', () => {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+
+    // Initialize UI
+    updateInfo(1);
+    
+    setTimeout(() => {
+        const loader = document.getElementById('loading');
+        loader.style.opacity = '0';
+        setTimeout(() => loader.remove(), 1000);
+    }, 1200);
+
+    // ==========================================
+    // 6. RENDER LOOP
+    // ==========================================
+    function animate() {
+        requestAnimationFrame(animate);
+        controls.update();
+        renderer.render(scene, camera);
+    }
+    animate();
+
+</script>
+</body>
+</html>
