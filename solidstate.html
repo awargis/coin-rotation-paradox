@@ -1,0 +1,1694 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Solid State Chemistry — 3D Crystal Packing Explorer</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap');
+
+:root {
+  --bg: #03060f;
+  --bg2: #070d1a;
+  --bg3: #0d1525;
+  --border: rgba(100,160,255,0.12);
+  --border2: rgba(100,160,255,0.22);
+  --text: #e8eef8;
+  --text2: #7a90b0;
+  --text3: #4a5870;
+  --accent: #4a9eff;
+  --accent2: #7c3aed;
+  --accent3: #10b981;
+  --accent4: #f59e0b;
+  --sq: #4a9eff;
+  --hex: #a855f7;
+  --uc: #10b981;
+  --vd: #f59e0b;
+  --glow-sq: 0 0 30px rgba(74,158,255,0.4);
+  --glow-hex: 0 0 30px rgba(168,85,247,0.4);
+  --glow-uc: 0 0 30px rgba(16,185,129,0.4);
+  --glow-vd: 0 0 30px rgba(245,158,11,0.4);
+}
+
+* { margin:0; padding:0; box-sizing:border-box; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Space Grotesk', sans-serif;
+  overflow: hidden;
+  height: 100vh;
+  width: 100vw;
+  touch-action: none; /* Prevents default browser zooming/scrolling on mobile */
+}
+
+#canvas-container {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+}
+
+#canvas-container canvas {
+  display: block;
+}
+
+/* ── TOP BAR ── */
+#topbar {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 24px;
+  height: 56px;
+  background: rgba(3,6,15,0.85);
+  backdrop-filter: blur(20px);
+  border-bottom: 1px solid var(--border);
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.brand-icon {
+  width: 32px; height: 32px;
+  background: linear-gradient(135deg, var(--accent), var(--accent2));
+  border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 16px;
+}
+
+.brand-text {
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: -0.3px;
+  background: linear-gradient(90deg, var(--accent), var(--accent2));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.brand-sub {
+  font-size: 11px;
+  color: var(--text3);
+  letter-spacing: 0.5px;
+}
+
+/* MODULE TABS */
+#module-tabs {
+  display: flex;
+  gap: 4px;
+  background: rgba(255,255,255,0.04);
+  border-radius: 10px;
+  padding: 4px;
+  border: 1px solid var(--border);
+}
+
+.tab {
+  padding: 6px 14px;
+  border-radius: 7px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  color: var(--text2);
+  white-space: nowrap;
+  user-select: none;
+  border: 1px solid transparent;
+}
+
+.tab:hover { color: var(--text); background: rgba(255,255,255,0.06); }
+
+.tab.active[data-mod="1"] { background: rgba(74,158,255,0.18); color: var(--sq); border-color: rgba(74,158,255,0.35); box-shadow: var(--glow-sq); }
+.tab.active[data-mod="2"] { background: rgba(168,85,247,0.18); color: var(--hex); border-color: rgba(168,85,247,0.35); box-shadow: var(--glow-hex); }
+.tab.active[data-mod="3"] { background: rgba(16,185,129,0.18); color: var(--uc); border-color: rgba(16,185,129,0.35); box-shadow: var(--glow-uc); }
+.tab.active[data-mod="4"] { background: rgba(245,158,11,0.18); color: var(--vd); border-color: rgba(245,158,11,0.35); box-shadow: var(--glow-vd); }
+
+/* ── LEFT PANEL ── */
+#left-panel {
+  position: fixed;
+  left: 20px;
+  top: 76px;
+  bottom: 20px;
+  width: 260px;
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.panel-card {
+  background: rgba(7,13,26,0.88);
+  backdrop-filter: blur(20px);
+  border-radius: 14px;
+  border: 1px solid var(--border);
+  padding: 16px;
+  transition: border-color 0.3s;
+}
+
+.panel-card.m1 { border-color: rgba(74,158,255,0.2); }
+.panel-card.m2 { border-color: rgba(168,85,247,0.2); }
+.panel-card.m3 { border-color: rgba(16,185,129,0.2); }
+.panel-card.m4 { border-color: rgba(245,158,11,0.2); }
+
+.panel-title {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1.2px;
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.dot-sq { width:8px;height:8px;border-radius:2px;background:var(--sq);flex-shrink:0; }
+.dot-hex { width:8px;height:8px;border-radius:2px;background:var(--hex);flex-shrink:0; }
+.dot-uc { width:8px;height:8px;border-radius:2px;background:var(--uc);flex-shrink:0; }
+.dot-vd { width:8px;height:8px;border-radius:2px;background:var(--vd);flex-shrink:0; }
+
+/* Buttons */
+.btn {
+  width: 100%;
+  padding: 9px 14px;
+  border-radius: 8px;
+  border: 1px solid var(--border2);
+  background: rgba(255,255,255,0.04);
+  color: var(--text);
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-align: left;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.btn:last-child { margin-bottom: 0; }
+
+.btn:hover { background: rgba(255,255,255,0.08); border-color: rgba(255,255,255,0.2); transform: translateX(2px); }
+
+.btn.sq { border-color: rgba(74,158,255,0.35); }
+.btn.sq:hover { background: rgba(74,158,255,0.12); box-shadow: var(--glow-sq); color: var(--sq); }
+.btn.hex { border-color: rgba(168,85,247,0.35); }
+.btn.hex:hover { background: rgba(168,85,247,0.12); box-shadow: var(--glow-hex); color: var(--hex); }
+.btn.uc { border-color: rgba(16,185,129,0.35); }
+.btn.uc:hover { background: rgba(16,185,129,0.12); box-shadow: var(--glow-uc); color: var(--uc); }
+.btn.vd { border-color: rgba(245,158,11,0.35); }
+.btn.vd:hover { background: rgba(245,158,11,0.12); box-shadow: var(--glow-vd); color: var(--vd); }
+
+.btn-icon { font-size: 14px; }
+
+/* Stats */
+.stat-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 7px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 12px;
+}
+.stat-row:last-child { border-bottom: none; padding-bottom: 0; }
+.stat-label { color: var(--text2); }
+.stat-value {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  font-weight: 600;
+}
+.stat-value.sq { color: var(--sq); }
+.stat-value.hex { color: var(--hex); }
+.stat-value.uc { color: var(--uc); }
+.stat-value.vd { color: var(--vd); }
+
+/* PE bar */
+.pe-container { margin-top: 10px; }
+.pe-label-row { display:flex; justify-content:space-between; margin-bottom:6px; font-size:11px; }
+.pe-bar-bg { height:6px; background:rgba(255,255,255,0.08); border-radius:99px; overflow:hidden; }
+.pe-bar-fill { height:100%; border-radius:99px; transition: width 1.5s cubic-bezier(0.16,1,0.3,1); }
+.pe-bar-fill.sq { background: linear-gradient(90deg, var(--sq), #7cb9ff); }
+.pe-bar-fill.hex { background: linear-gradient(90deg, var(--hex), #c084fc); }
+.pe-bar-fill.uc { background: linear-gradient(90deg, var(--uc), #34d399); }
+
+/* Slider */
+.slider-container { margin-top: 8px; }
+.slider-label { font-size: 11px; color: var(--text2); margin-bottom: 6px; display:flex; justify-content:space-between; }
+input[type=range] {
+  width: 100%;
+  height: 4px;
+  -webkit-appearance: none;
+  background: rgba(255,255,255,0.1);
+  border-radius: 99px;
+  outline: none;
+}
+input[type=range]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 14px; height: 14px;
+  border-radius: 50%;
+  background: var(--vd);
+  cursor: pointer;
+  box-shadow: 0 0 8px rgba(245,158,11,0.6);
+}
+input[type=range].hex-slider::-webkit-slider-thumb {
+  background: var(--hex);
+  box-shadow: 0 0 8px rgba(168,85,247,0.6);
+}
+
+/* ── RIGHT PANEL ── */
+#right-panel {
+  position: fixed;
+  right: 20px;
+  top: 76px;
+  width: 220px;
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* Legend */
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 12px;
+  color: var(--text2);
+}
+.legend-item:last-child { border-bottom: none; }
+.legend-sphere {
+  width: 14px; height: 14px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+/* ── BOTTOM BAR ── */
+#bottom-bar {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 100;
+  background: rgba(7,13,26,0.9);
+  backdrop-filter: blur(20px);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 10px 20px;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  max-width: 700px;
+  width: calc(100vw - 600px);
+}
+
+.info-text {
+  font-size: 12px;
+  color: var(--text2);
+  line-height: 1.5;
+  flex: 1;
+}
+
+.info-text strong { color: var(--text); }
+
+/* ── NOTIFICATION ── */
+#notif {
+  position: fixed;
+  top: 72px;
+  left: 50%;
+  transform: translateX(-50%) translateY(-20px);
+  z-index: 200;
+  background: rgba(7,13,26,0.95);
+  border: 1px solid var(--border2);
+  border-radius: 10px;
+  padding: 10px 20px;
+  font-size: 13px;
+  font-weight: 500;
+  opacity: 0;
+  pointer-events: none;
+  transition: all 0.4s cubic-bezier(0.16,1,0.3,1);
+  white-space: nowrap;
+}
+
+#notif.show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+/* CN highlight badge */
+#cn-badge {
+  position: fixed;
+  bottom: 90px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 100;
+  padding: 8px 20px;
+  border-radius: 99px;
+  font-size: 14px;
+  font-weight: 700;
+  font-family: 'JetBrains Mono', monospace;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.4s;
+  letter-spacing: 1px;
+}
+
+/* Loading screen */
+#loading {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: var(--bg);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+}
+
+.load-title {
+  font-size: 28px;
+  font-weight: 700;
+  background: linear-gradient(90deg, var(--accent), var(--accent2), var(--accent3));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  letter-spacing: -1px;
+}
+
+.load-sub { font-size: 13px; color: var(--text3); }
+
+.load-bar-bg {
+  width: 200px; height: 2px;
+  background: rgba(255,255,255,0.08);
+  border-radius: 99px;
+  overflow: hidden;
+}
+
+.load-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent), var(--accent2));
+  border-radius: 99px;
+  width: 0;
+  animation: loadprogress 1.2s cubic-bezier(0.16,1,0.3,1) forwards;
+}
+
+@keyframes loadprogress { to { width: 100%; } }
+
+/* Void type selector */
+.void-selector {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+.void-btn {
+  flex: 1;
+  padding: 6px 8px;
+  border-radius: 7px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text2);
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-align: center;
+}
+.void-btn:hover { background: rgba(245,158,11,0.1); color: var(--vd); }
+.void-btn.active { background: rgba(245,158,11,0.18); color: var(--vd); border-color: rgba(245,158,11,0.4); }
+
+/* Cell type selector */
+.cell-selector {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+.cell-btn {
+  flex: 1;
+  padding: 6px 4px;
+  border-radius: 7px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text2);
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-align: center;
+}
+.cell-btn:hover { background: rgba(16,185,129,0.1); color: var(--uc); }
+.cell-btn.active { background: rgba(16,185,129,0.18); color: var(--uc); border-color: rgba(16,185,129,0.4); }
+</style>
+</head>
+<body>
+
+<!-- LOADING -->
+<div id="loading">
+  <div class="load-title">⬡ Crystal Packing</div>
+  <div class="load-sub">Initialising 3D lattice engine...</div>
+  <div class="load-bar-bg"><div class="load-bar-fill"></div></div>
+</div>
+
+<!-- CANVAS -->
+<div id="canvas-container"></div>
+
+<!-- TOP BAR -->
+<div id="topbar">
+  <div class="brand">
+    <div class="brand-icon">⬡</div>
+    <div>
+      <div class="brand-text">Crystal Packing Explorer</div>
+      <div class="brand-sub">Solid State Chemistry · 3D Interactive</div>
+    </div>
+  </div>
+  <div id="module-tabs">
+    <div class="tab active" data-mod="1" onclick="switchModule(1)">⬛ Square Packing</div>
+    <div class="tab" data-mod="2" onclick="switchModule(2)">⬡ Hexagonal Packing</div>
+    <div class="tab" data-mod="3" onclick="switchModule(3)">📦 Unit Cell Theater</div>
+    <div class="tab" data-mod="4" onclick="switchModule(4)">⚗ Voids Explorer</div>
+  </div>
+  <div style="font-size:11px;color:var(--text3);text-align:right;">
+    <div class="hidden sm:block">Drag to orbit</div>
+    <div class="hidden sm:block">Scroll/Pinch to zoom</div>
+  </div>
+</div>
+
+<!-- LEFT PANEL -->
+<div id="left-panel">
+  <!-- Module 1 panel -->
+  <div class="panel-card m1" id="panel-m1">
+    <div class="panel-title"><div class="dot-sq"></div><span style="color:var(--sq)">Square Close Packing</span></div>
+    <button class="btn sq" onclick="buildSquareLayers()" ><span class="btn-icon">▶</span> Build Layer by Layer</button>
+    <button class="btn sq" onclick="showCNSquare()"><span class="btn-icon">✦</span> Show CN = 6</button>
+    <button class="btn sq" onclick="resetModule1()"><span class="btn-icon">↺</span> Reset</button>
+    <div style="margin-top:12px">
+      <div class="stat-row"><span class="stat-label">Arrangement</span><span class="stat-value sq">AA··· type</span></div>
+      <div class="stat-row"><span class="stat-label">Coord. Number</span><span class="stat-value sq">CN = 6</span></div>
+      <div class="stat-row"><span class="stat-label">Unit cell</span><span class="stat-value sq">Simple Cubic</span></div>
+      <div class="stat-row"><span class="stat-label">Z (eff. atoms)</span><span class="stat-value sq">1</span></div>
+    </div>
+    <div class="pe-container">
+      <div class="pe-label-row"><span style="color:var(--text2);font-size:11px">Packing Efficiency</span><span style="color:var(--sq);font-family:'JetBrains Mono',monospace;font-size:11px" id="pe1-val">0%</span></div>
+      <div class="pe-bar-bg"><div class="pe-bar-fill sq" id="pe1-bar" style="width:0%"></div></div>
+    </div>
+  </div>
+
+  <!-- Module 2 panel -->
+  <div class="panel-card m2" id="panel-m2" style="display:none">
+    <div class="panel-title"><div class="dot-hex"></div><span style="color:var(--hex)">Hexagonal & Cubic Packing</span></div>
+    <button class="btn hex" id="btn-build-hcp" onclick="buildHexLayers('hcp')"><span class="btn-icon">▶</span> Build HCP (ABABAB)</button>
+    <button class="btn hex" id="btn-build-ccp" onclick="buildHexLayers('ccp')"><span class="btn-icon">▶</span> Build CCP/FCC (ABCABC)</button>
+    <button class="btn hex" onclick="showCNHex()"><span class="btn-icon">✦</span> Show CN = 12</button>
+    <button class="btn hex" onclick="resetModule2()"><span class="btn-icon">↺</span> Reset</button>
+    <div style="margin-top:12px">
+      <div class="stat-row"><span class="stat-label">Arrangement</span><span class="stat-value hex" id="hex-arrange">ABAB···</span></div>
+      <div class="stat-row"><span class="stat-label">Coord. Number</span><span class="stat-value hex">CN = 12</span></div>
+      <div class="stat-row"><span class="stat-label">Unit cell</span><span class="stat-value hex" id="hex-cell">HCP</span></div>
+      <div class="stat-row"><span class="stat-label">Z (eff. atoms)</span><span class="stat-value hex" id="hex-z">6 (HCP)</span></div>
+    </div>
+    <div class="pe-container">
+      <div class="pe-label-row"><span style="color:var(--text2);font-size:11px">Packing Efficiency</span><span style="color:var(--hex);font-family:'JetBrains Mono',monospace;font-size:11px" id="pe2-val">0%</span></div>
+      <div class="pe-bar-bg"><div class="pe-bar-fill hex" id="pe2-bar" style="width:0%"></div></div>
+    </div>
+    <div class="slider-container" style="margin-top:15px;">
+      <div class="slider-label"><span>Atom Radius</span><span id="hex-slider-val" style="color:var(--hex)">1.00</span></div>
+      <input type="range" min="20" max="100" value="100" id="hex-radius-slider" class="hex-slider" oninput="updateHexRadius(this.value)">
+    </div>
+  </div>
+
+  <!-- Module 3 panel -->
+  <div class="panel-card m3" id="panel-m3" style="display:none">
+    <div class="panel-title"><div class="dot-uc"></div><span style="color:var(--uc)">Unit Cell Theater</span></div>
+    <div class="cell-selector">
+      <button class="cell-btn active" id="sc-btn" onclick="selectCell('sc')">SC</button>
+      <button class="cell-btn" id="bcc-btn" onclick="selectCell('bcc')">BCC</button>
+      <button class="cell-btn" id="fcc-btn" onclick="selectCell('fcc')">FCC</button>
+    </div>
+    <button class="btn uc" onclick="revealUnitCell()"><span class="btn-icon">👁️</span> X-Ray Reveal</button>
+    <button class="btn uc" onclick="showAtomFractions()"><span class="btn-icon">⅛</span> Show Atom Fractions</button>
+    <button class="btn uc" onclick="resetModule3()"><span class="btn-icon">↺</span> Reset Lattice</button>
+    <div style="margin-top:12px">
+      <div class="stat-row"><span class="stat-label">Cell type</span><span class="stat-value uc" id="cell-type-label">Simple Cubic</span></div>
+      <div class="stat-row"><span class="stat-label">Corner atoms</span><span class="stat-value uc">8 × ⅛ = 1</span></div>
+      <div class="stat-row"><span class="stat-label">Z (effective)</span><span class="stat-value uc" id="z-label">1</span></div>
+      <div class="stat-row"><span class="stat-label">PE</span><span class="stat-value uc" id="pe3-label">52.4%</span></div>
+    </div>
+  </div>
+
+  <!-- Module 4 panel -->
+  <div class="panel-card m4" id="panel-m4" style="display:none">
+    <div class="panel-title"><div class="dot-vd"></div><span style="color:var(--vd)">Voids Explorer</span></div>
+    <div class="void-selector">
+      <button class="void-btn active" id="vb-tet" onclick="selectVoid('tet')">Tetrahedral</button>
+      <button class="void-btn" id="vb-oct" onclick="selectVoid('oct')">Octahedral</button>
+    </div>
+    <button class="btn vd" onclick="pulseVoids()"><span class="btn-icon">◉</span> Pulse Energy</button>
+    <button class="btn vd" onclick="resetModule4()"><span class="btn-icon">↺</span> Reset</button>
+    <div style="margin-top:12px">
+      <div class="stat-row"><span class="stat-label">Void type</span><span class="stat-value vd" id="void-type-label">Tetrahedral</span></div>
+      <div class="stat-row"><span class="stat-label">CN of void</span><span class="stat-value vd" id="void-cn">4</span></div>
+      <div class="stat-row"><span class="stat-label">r/R ratio</span><span class="stat-value vd" id="void-ratio">0.225</span></div>
+      <div class="stat-row"><span class="stat-label">No. per cell</span><span class="stat-value vd" id="void-count">8 (FCC)</span></div>
+    </div>
+    <div class="slider-container">
+      <div class="slider-label"><span>Interstitial radius</span><span id="slider-val" style="color:var(--vd)">0.0</span></div>
+      <input type="range" min="0" max="100" value="0" id="radius-slider" oninput="updateInterstitialRadius(this.value)">
+    </div>
+  </div>
+</div>
+
+<!-- RIGHT PANEL -->
+<div id="right-panel">
+  <div class="panel-card" id="legend-card">
+    <div class="panel-title" style="color:var(--text2)">Legend</div>
+    <div id="legend-items">
+      <div class="legend-item"><div class="legend-sphere" style="background:radial-gradient(circle at 35% 35%,#7ec8ff,#1a5aa0)"></div>Layer A atoms</div>
+      <div class="legend-item"><div class="legend-sphere" style="background:radial-gradient(circle at 35% 35%,#fbbf24,#92400e)"></div>Layer B atoms</div>
+      <div class="legend-item"><div class="legend-sphere" style="background:radial-gradient(circle at 35% 35%,#86efac,#166534)"></div>Layer C atoms</div>
+    </div>
+  </div>
+  <div class="panel-card" id="formula-card">
+    <div class="panel-title" style="color:var(--text2)">Formula</div>
+    <div id="formula-display" style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text2);line-height:1.8">
+      PE = (Z × 4/3πr³) / a³ × 100<br>
+      SC: a = 2r<br>
+      PE = π/6 × 100<br>
+      <span style="color:var(--sq);font-weight:700">= 52.4%</span>
+    </div>
+  </div>
+</div>
+
+<!-- BOTTOM BAR -->
+<div id="bottom-bar">
+  <div class="info-text" id="info-text">
+    <strong>Module 1 — Square Close Packing (3D)</strong><br>
+    Click "Build Layer by Layer" to watch the AA··· type 3D lattice form. Then explore the unit cell!
+  </div>
+</div>
+
+<!-- NOTIFICATION -->
+<div id="notif"></div>
+
+<!-- CN BADGE -->
+<div id="cn-badge"></div>
+
+<script>
+// ═══════════════════════════════════════════════════════════
+// SCENE SETUP
+// ═══════════════════════════════════════════════════════════
+const container = document.getElementById('canvas-container');
+const W = window.innerWidth, H = window.innerHeight;
+
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
+renderer.setSize(W, H);
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.setClearColor(0x03060f);
+container.appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+scene.fog = new THREE.FogExp2(0x03060f, 0.025);
+
+const camera = new THREE.PerspectiveCamera(55, W/H, 0.1, 200);
+camera.position.set(8, 6, 14);
+camera.lookAt(0, 0, 0);
+
+// Lighting
+const ambientLight = new THREE.AmbientLight(0x334466, 0.6);
+scene.add(ambientLight);
+const dirLight = new THREE.DirectionalLight(0x6699ff, 1.2);
+dirLight.position.set(10, 15, 10);
+dirLight.castShadow = true;
+scene.add(dirLight);
+const rimLight = new THREE.DirectionalLight(0xaa44ff, 0.4);
+rimLight.position.set(-8, 5, -10);
+scene.add(rimLight);
+const fillLight = new THREE.DirectionalLight(0x44ffaa, 0.2);
+fillLight.position.set(0, -10, 5);
+scene.add(fillLight);
+
+// Point lights for drama
+const pLight1 = new THREE.PointLight(0x4a9eff, 2, 20);
+pLight1.position.set(0, 8, 0);
+scene.add(pLight1);
+
+// ── ORBIT CONTROLS (Multi-touch support & Dynamic Camera Panning) ──
+let isDragging = false, prevMouse = {x:0,y:0};
+let prevPinchDistance = -1;
+
+// Adding current and target LookAt for smooth panning
+let currentLookAt = new THREE.Vector3(0, 0, 0);
+let targetLookAt = new THREE.Vector3(0, 0, 0);
+let spherical = { theta: 0.5, phi: 1.0, r: 16 };
+let targetSpherical = { theta: 0.5, phi: 1.0, r: 16 };
+
+// Mouse support
+container.addEventListener('mousedown', e => { isDragging = true; prevMouse = {x:e.clientX, y:e.clientY}; });
+container.addEventListener('mousemove', e => {
+  if (!isDragging) return;
+  const dx = (e.clientX - prevMouse.x) * 0.008;
+  const dy = (e.clientY - prevMouse.y) * 0.008;
+  targetSpherical.theta -= dx;
+  targetSpherical.phi = Math.max(0.2, Math.min(Math.PI-0.2, targetSpherical.phi + dy));
+  prevMouse = {x:e.clientX, y:e.clientY};
+});
+container.addEventListener('mouseup', () => isDragging = false);
+container.addEventListener('wheel', e => {
+  targetSpherical.r = Math.max(2, Math.min(30, targetSpherical.r + e.deltaY * 0.02));
+});
+
+// Multi-Touch support (Orbit & Pinch-to-zoom)
+container.addEventListener('touchstart', e => { 
+  if (e.touches.length === 1) {
+    isDragging = true; 
+    prevMouse = {x:e.touches[0].clientX, y:e.touches[0].clientY}; 
+  } else if (e.touches.length === 2) {
+    isDragging = false; // Disable rotation when zooming
+    const dx = e.touches[0].clientX - e.touches[1].clientX;
+    const dy = e.touches[0].clientY - e.touches[1].clientY;
+    prevPinchDistance = Math.hypot(dx, dy);
+  }
+}, {passive: false});
+
+container.addEventListener('touchmove', e => {
+  if (e.touches.length === 1 && isDragging) {
+    const dx = (e.touches[0].clientX - prevMouse.x) * 0.012;
+    const dy = (e.touches[0].clientY - prevMouse.y) * 0.012;
+    targetSpherical.theta -= dx;
+    targetSpherical.phi = Math.max(0.2, Math.min(Math.PI-0.2, targetSpherical.phi + dy));
+    prevMouse = {x:e.touches[0].clientX, y:e.touches[0].clientY};
+  } else if (e.touches.length === 2) {
+    const dx = e.touches[0].clientX - e.touches[1].clientX;
+    const dy = e.touches[0].clientY - e.touches[1].clientY;
+    const currentPinchDistance = Math.hypot(dx, dy);
+    
+    if (prevPinchDistance > 0) {
+      const pinchDelta = prevPinchDistance - currentPinchDistance;
+      targetSpherical.r = Math.max(2, Math.min(30, targetSpherical.r + pinchDelta * 0.05));
+    }
+    prevPinchDistance = currentPinchDistance;
+  }
+}, {passive: false});
+
+container.addEventListener('touchend', e => { 
+  if (e.touches.length === 0) {
+    isDragging = false; 
+  } else if (e.touches.length === 1) {
+    isDragging = true;
+    prevMouse = {x:e.touches[0].clientX, y:e.touches[0].clientY};
+  }
+  prevPinchDistance = -1;
+});
+
+// ── MATERIALS ──
+function makeMat(color, emissive=0x000000, roughness=0.25, metalness=0.1) {
+  return new THREE.MeshStandardMaterial({ color, emissive, roughness, metalness });
+}
+
+const matA = makeMat(0x2a7acc, 0x0a2050, 0.2, 0.3);   // Layer A - blue
+const matB = makeMat(0xb87a10, 0x4a2a00, 0.2, 0.4);   // Layer B - gold
+const matC = makeMat(0x1a8050, 0x062010, 0.2, 0.3);   // Layer C - green
+const matUC = makeMat(0x22c55e, 0x062010, 0.15, 0.5); // Unit cell - bright green
+const matVoid_tet = makeMat(0xf59e0b, 0x4a2a00, 0.1, 0.0); // Void tet - amber
+const matVoid_oct = makeMat(0x818cf8, 0x1a1060, 0.1, 0.0); // Void oct - indigo
+
+const sphereGeo = new THREE.SphereGeometry(0.48, 32, 32);
+
+// ── STATE ──
+let currentModule = 1;
+let allSpheres = [];
+let unitCellSpheres = [];
+let voidSpheres = [];
+let voidMarkers = [];
+let edges = [];
+let buildTimeouts = []; // Track timeouts to prevent overlaps if spammed
+let hexMode = 'hcp'; // 'hcp' or 'ccp'
+let currentCellType = 'sc';
+let currentVoidType = 'tet';
+let interstitialSphere = null;
+let autoRotate = true;
+let layerCount = 0;
+let cnHighlights = [];
+let fccAtoms = [];   // Track FCC atoms for voids module
+let voidCages = [];  // Track glowing coordination cages
+let isRevealing = false; // Replaced shattering for pedagogical X-Ray state
+
+// ═══════════════════════════════════════════════════════════
+// HELPERS
+// ═══════════════════════════════════════════════════════════
+function notify(msg, color='#4a9eff') {
+  const el = document.getElementById('notif');
+  el.textContent = msg;
+  el.style.borderColor = color;
+  el.style.color = color;
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 2800);
+}
+
+function showCNBadge(cn, color) {
+  const el = document.getElementById('cn-badge');
+  el.textContent = `CN = ${cn}`;
+  el.style.background = color + '22';
+  el.style.color = color;
+  el.style.border = `1px solid ${color}55`;
+  el.style.opacity = '1';
+  setTimeout(() => { el.style.opacity = '0'; }, 3000);
+}
+
+function clearScene() {
+  buildTimeouts.forEach(t => clearTimeout(t));
+  buildTimeouts = [];
+  
+  [...allSpheres, ...voidSpheres, ...voidMarkers, ...edges, ...cnHighlights, ...voidCages].forEach(o => {
+    scene.remove(o);
+    if(o.geometry) o.geometry.dispose();
+  });
+  if (interstitialSphere) { scene.remove(interstitialSphere); interstitialSphere = null; }
+  allSpheres = []; voidSpheres = []; voidMarkers = []; edges = []; cnHighlights = []; voidCages = [];
+  unitCellSpheres = []; fccAtoms = [];
+  layerCount = 0;
+}
+
+function addSphere(x,y,z, mat, scale=1) {
+  const mesh = new THREE.Mesh(sphereGeo, mat.clone());
+  mesh.scale.setScalar(scale);
+  mesh.position.set(x,y,z);
+  mesh.castShadow = true;
+  scene.add(mesh);
+  allSpheres.push(mesh);
+  return mesh;
+}
+
+function animateSphereIn(mesh, delay=0, fromY=null) {
+  const fy = fromY !== null ? fromY : mesh.position.y + 8;
+  const ty = mesh.position.y;
+  mesh.position.y = fy;
+  mesh.scale.setScalar(0.01);
+  gsap.to(mesh.position, { y: ty, duration: 0.7, delay, ease:'bounce.out' });
+  gsap.to(mesh.scale, { x:1, y:1, z:1, duration: 0.5, delay, ease:'back.out(1.5)' });
+}
+
+function makeEdges(positions, color=0x4a9eff, opacity=0.6) {
+  const pts = positions.map(p => new THREE.Vector3(...p));
+  const indices = [
+    0,1, 1,2, 2,3, 3,0, // bottom
+    4,5, 5,6, 6,7, 7,4, // top
+    0,4, 1,5, 2,6, 3,7  // verticals
+  ];
+  const geo = new THREE.BufferGeometry();
+  const verts = [];
+  for(let i=0;i<indices.length;i+=2){
+    verts.push(...pts[indices[i]].toArray(), ...pts[indices[i+1]].toArray());
+  }
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(verts,3));
+  const mat = new THREE.LineBasicMaterial({ color, transparent:true, opacity });
+  const line = new THREE.LineSegments(geo, mat);
+  scene.add(line);
+  edges.push(line);
+  return line;
+}
+
+function animatePE(barId, valId, target, color, duration=1.5) {
+  const bar = document.getElementById(barId);
+  const val = document.getElementById(valId);
+  let current = 0;
+  const step = target / (duration * 60);
+  const timer = setInterval(() => {
+    current = Math.min(current + step, target);
+    bar.style.width = current.toFixed(1) + '%';
+    val.textContent = current.toFixed(1) + '%';
+    if(current >= target) clearInterval(timer);
+  }, 1000/60);
+}
+
+// ═══════════════════════════════════════════════════════════
+// MODULE 1 — SQUARE CLOSE PACKING
+// ═══════════════════════════════════════════════════════════
+const SQ = 1.0; 
+const N = 5;    
+
+function buildSquareLayers() {
+  clearScene();
+  layerCount = 0;
+  document.getElementById('pe1-bar').style.width = '0%';
+  document.getElementById('pe1-val').textContent = '0%';
+  
+  addSquareLayer(0, 0, matA, 0);
+  document.getElementById('info-text').innerHTML = '<strong>Layer 1 (A)</strong> — Square arrangement forming. Each atom touches 4 neighbours in the plane.';
+  notify('Layer A forming — square arrangement', '#4a9eff');
+  
+  buildTimeouts.push(setTimeout(() => { addSquareLayer(1, SQ, matA, 0); }, 1400));
+  buildTimeouts.push(setTimeout(() => {
+    addSquareLayer(2, 2*SQ, matA, 0);
+    document.getElementById('info-text').innerHTML = '<strong>3 Layers stacked (AA··· type)</strong> — Atoms stack directly above each other. Simple cubic structure emerging!';
+  }, 2800));
+  buildTimeouts.push(setTimeout(() => {
+    const x0 = -SQ/2, y0 = -SQ/2, z0 = -SQ/2;
+    const s = SQ;
+    makeEdges([
+      [x0,y0,z0],[x0+s,y0,z0],[x0+s,y0,z0+s],[x0,y0,z0+s],
+      [x0,y0+s,z0],[x0+s,y0+s,z0],[x0+s,y0+s,z0+s],[x0,y0+s,z0+s]
+    ], 0x4a9eff, 0.8);
+    animatePE('pe1-bar','pe1-val', 52.4, '#4a9eff');
+    notify('Unit cell highlighted — Simple Cubic (SC)', '#4a9eff');
+    document.getElementById('info-text').innerHTML = '<strong>Simple Cubic Unit Cell</strong> — 8 corner atoms × ⅛ each = <strong>Z = 1</strong>. Packing efficiency = 52.4%.';
+  }, 4200));
+}
+
+function addSquareLayer(layerIdx, yPos, mat, baseDelay) {
+  layerCount++;
+  const offset = 0; 
+  for(let i=0;i<N;i++) for(let j=0;j<N;j++) {
+    const x = (i - (N-1)/2) * SQ + offset;
+    const z = (j - (N-1)/2) * SQ + offset;
+    const mesh = addSphere(x, yPos - (N-1)/2 * SQ * 0.5, z, mat);
+    const delay = baseDelay + (i+j) * 0.04;
+    animateSphereIn(mesh, delay, yPos + 5);
+  }
+}
+
+function showCNSquare() {
+  if(allSpheres.length === 0) { notify('Build the lattice first!', '#ff6b6b'); return; }
+  
+  const centre = allSpheres[Math.floor(allSpheres.length/2)];
+  const sorted = allSpheres.filter(s=>s!==centre).map(s => ({s, d:centre.position.distanceTo(s.position)})).sort((a,b)=>a.d-b.d);
+  const nearest6 = sorted.slice(0,6).map(n => n.s);
+  
+  cnHighlights.forEach(o=>{scene.remove(o);});
+  cnHighlights = [];
+  
+  const involved = new Set([centre, ...nearest6]);
+
+  allSpheres.forEach(mesh => {
+    if (!involved.has(mesh)) {
+      mesh.material.transparent = true;
+      mesh.material.depthWrite = false;
+      mesh.material.blending = THREE.AdditiveBlending;
+      gsap.to(mesh.material, { opacity: 0.08, duration: 1.5, ease: 'power2.inOut' });
+      gsap.to(mesh.material.color, { r:0.2, g:0.4, b:0.8, duration: 1.5 });
+      gsap.to(mesh.material.emissive, { r:0.0, g:0.1, b:0.3, duration: 1.5 });
+      gsap.to(mesh.scale, { x:0.5, y:0.5, z:0.5, duration: 1.5, ease: 'power2.inOut' });
+    } else {
+      mesh.material.transparent = false;
+      mesh.material.depthWrite = true;
+      mesh.material.blending = THREE.NormalBlending;
+      gsap.to(mesh.material, { opacity: 1.0, duration: 0.5 });
+    }
+  });
+
+  gsap.to(centre.material, { emissiveIntensity:1.5, duration:0.5 });
+  centre.material.emissive.set(0x4a9eff);
+  gsap.to(centre.scale, { x:1.15, y:1.15, z:1.15, duration: 0.5, ease: 'back.out(2)' });
+  
+  nearest6.forEach((s, i) => {
+    s.material.emissive.set(0xff6600);
+    gsap.to(s.material, { emissiveIntensity: 1.2, duration:0.5, delay: i*0.1 });
+    gsap.to(s.scale, { x:1.05, y:1.05, z:1.05, duration: 0.5, delay: i*0.1, ease: 'back.out(2)' });
+    
+    const geo = new THREE.BufferGeometry().setFromPoints([centre.position, s.position]);
+    const line = new THREE.Line(geo, new THREE.LineBasicMaterial({color:0xff6600,transparent:true,opacity:0}));
+    scene.add(line);
+    cnHighlights.push(line);
+    gsap.to(line.material, { opacity: 0.8, duration: 0.5, delay: i*0.1 + 0.5 });
+  });
+  
+  showCNBadge(6, '#4a9eff');
+  notify('CN = 6 — 2 same layer + 2 above + 2 below', '#4a9eff');
+  document.getElementById('info-text').innerHTML = '<strong>Coordination Number = 6</strong><br>Orange: 6 nearest neighbours highlighted. Surrounding lattice fades to X-Ray to reveal the core geometry.';
+}
+
+function resetModule1() {
+  clearScene();
+  document.getElementById('pe1-bar').style.width='0%';
+  document.getElementById('pe1-val').textContent='0%';
+  document.getElementById('info-text').innerHTML = '<strong>Module 1 — Square Close Packing (3D)</strong><br>Click "Build Layer by Layer" to watch the AA··· type 3D lattice form.';
+}
+
+// ═══════════════════════════════════════════════════════════
+// MODULE 2 — HEXAGONAL CLOSE PACKING & CCP
+// ═══════════════════════════════════════════════════════════
+const HR = 1.0; 
+const DX = HR;
+const DZ = HR * Math.sqrt(3);
+const DY = HR * Math.sqrt(8/3); 
+let hexLayers = [];
+
+function hexGridPositions(rows, offsetX, offsetZ) {
+  const pts = [];
+  for(let i=0;i<rows;i++) for(let j=0;j<rows;j++) {
+    const x = (i - (rows-1)/2)*DX*2 + (j%2)*DX + offsetX;
+    const z = (j - (rows-1)/2)*DZ + offsetZ;
+    pts.push([x,z]);
+  }
+  return pts;
+}
+
+function buildHexLayers(mode = 'hcp') {
+  hexMode = mode;
+  clearScene();
+  hexLayers = [];
+  document.getElementById('pe2-bar').style.width='0%';
+  document.getElementById('pe2-val').textContent='0%';
+  document.getElementById('hex-radius-slider').value = 100;
+  document.getElementById('hex-slider-val').textContent = '1.00';
+
+  const rows = 5;
+  const layerA_xz = hexGridPositions(rows, 0, 0);
+  const layerB_xz = hexGridPositions(rows, DX, DZ/3);     
+  const layerC_xz = hexGridPositions(rows, 0, DZ*2/3);    
+
+  const isHCP = hexMode === 'hcp';
+  const startY = -DY * 2.5; 
+  
+  const sequence = isHCP 
+    ? [ { id: 'A', xz: layerA_xz, mat: matA }, { id: 'B', xz: layerB_xz, mat: matB }, { id: 'A', xz: layerA_xz, mat: matA }, { id: 'B', xz: layerB_xz, mat: matB }, { id: 'A', xz: layerA_xz, mat: matA }, { id: 'B', xz: layerB_xz, mat: matB } ]
+    : [ { id: 'A', xz: layerA_xz, mat: matA }, { id: 'B', xz: layerB_xz, mat: matB }, { id: 'C', xz: layerC_xz, mat: matC }, { id: 'A', xz: layerA_xz, mat: matA }, { id: 'B', xz: layerB_xz, mat: matB }, { id: 'C', xz: layerC_xz, mat: matC } ];
+
+  document.getElementById('hex-arrange').textContent = isHCP ? 'ABABAB···' : 'ABCABC···';
+  document.getElementById('hex-cell').textContent = isHCP ? 'Hexagonal' : 'FCC / Cubic';
+  document.getElementById('hex-z').textContent = isHCP ? '6 (HCP)' : '4 (FCC)';
+  document.getElementById('formula-display').innerHTML = isHCP
+    ? 'HCP: ABAB stacking<br>PE = 74.05%<br>CN = 12<br><span style="color:var(--hex)">Z = 6 (HCP cell)</span>'
+    : 'CCP/FCC: ABCABC<br>PE = 74.05%<br>CN = 12<br><span style="color:var(--hex)">Z = 4 (FCC cell)</span>';
+
+  document.getElementById('btn-build-hcp').style.borderColor = isHCP ? 'var(--hex)' : 'var(--border2)';
+  document.getElementById('btn-build-ccp').style.borderColor = !isHCP ? 'var(--hex)' : 'var(--border2)';
+
+  notify(isHCP ? 'Building HCP (ABABAB) layers' : 'Building CCP (ABCABC) layers', '#a855f7');
+  
+  sequence.forEach((seq, idx) => {
+    const timeoutId = setTimeout(() => {
+      if (currentModule !== 2) return; 
+
+      const y = startY + idx * DY;
+      seq.xz.forEach(([x,z], i) => {
+        const mesh = addSphere(x, y, z, seq.mat);
+        animateSphereIn(mesh, i*0.015, y+10);
+        hexLayers.push({mesh, layer:seq.id, y:y, index:idx});
+      });
+      
+      if (idx === 0) document.getElementById('info-text').innerHTML = `<strong>Layer ${seq.id}</strong> — Base hexagonal close-packed layer.`;
+      else if (idx === 1) document.getElementById('info-text').innerHTML = `<strong>Layer ${seq.id}</strong> — Nestles into the triangular depressions of layer A.`;
+      else if (idx === 2 && !isHCP) document.getElementById('info-text').innerHTML = `<strong>Layer C</strong> — Unique third position. Atoms drop into the remaining unoccupied voids. This forms the ABC sequence (FCC)!`;
+      else if (idx === 2 && isHCP) document.getElementById('info-text').innerHTML = `<strong>Layer A (Repeat)</strong> — Atoms sit exactly above the first Layer A.`;
+      else if (idx === sequence.length - 1) {
+        document.getElementById('info-text').innerHTML = isHCP ? '<strong>ABABAB stacking (HCP)</strong> — Layers perfectly align every 2nd layer. PE = 74.05%!' : '<strong>ABCABC stacking (CCP/FCC)</strong> — Three unique positions before repeating (Layer A perfectly aligns with Layer 4). PE = 74.05%!';
+        animatePE('pe2-bar','pe2-val', 74.05, '#a855f7');
+      }
+    }, idx * 1200);
+    buildTimeouts.push(timeoutId);
+  });
+}
+
+function showCNHex() {
+  if(hexLayers.length === 0) { notify('Build hexagonal layers first!', '#ff6b6b'); return; }
+  
+  const middleLayers = hexLayers.filter(l => Math.abs(l.y) < DY * 0.6);
+  if(middleLayers.length === 0) return;
+  
+  middleLayers.sort((a,b) => {
+    const dA = a.mesh.position.x**2 + a.mesh.position.z**2;
+    const dB = b.mesh.position.x**2 + b.mesh.position.z**2;
+    return dA - dB;
+  });
+  
+  const centre = middleLayers[0].mesh;
+  const sorted = hexLayers.filter(l=>l.mesh!==centre).map(l=>({s:l.mesh,d:centre.position.distanceTo(l.mesh.position)})).sort((a,b)=>a.d-b.d);
+  const nearest12 = sorted.slice(0,12).map(n => n.s);
+  
+  cnHighlights.forEach(o=>scene.remove(o));
+  cnHighlights = [];
+  
+  const involved = new Set([centre, ...nearest12]);
+  const currentScale = parseFloat(document.getElementById('hex-radius-slider').value) / 100;
+
+  hexLayers.forEach(l => {
+    const mesh = l.mesh;
+    if (!involved.has(mesh)) {
+      l.isXray = true; 
+      mesh.material.transparent = true;
+      mesh.material.depthWrite = false;
+      mesh.material.blending = THREE.AdditiveBlending;
+      gsap.to(mesh.material, { opacity: 0.08, duration: 1.5, ease: 'power2.inOut' });
+      gsap.to(mesh.material.color, { r:0.2, g:0.4, b:0.8, duration: 1.5 });
+      gsap.to(mesh.material.emissive, { r:0.0, g:0.1, b:0.3, duration: 1.5 });
+      gsap.to(mesh.scale, { x: currentScale * 0.5, y: currentScale * 0.5, z: currentScale * 0.5, duration: 1.5, ease: 'power2.inOut' });
+    } else {
+      l.isXray = false;
+      mesh.material.transparent = false;
+      mesh.material.depthWrite = true;
+      mesh.material.blending = THREE.NormalBlending;
+      gsap.to(mesh.material, { opacity: 1.0, duration: 0.5 });
+    }
+  });
+
+  gsap.to(centre.material, { emissiveIntensity:1.5, duration: 0.5 });
+  centre.material.emissive.set(0xa855f7);
+  gsap.to(centre.scale, { x: currentScale * 1.15, y: currentScale * 1.15, z: currentScale * 1.15, duration: 0.5, ease: 'back.out(2)' });
+  
+  nearest12.forEach((s,i) => {
+    s.material.emissive.set(0xff8800);
+    gsap.to(s.material, { emissiveIntensity: 1.2, duration:0.5, delay: i*0.05 });
+    gsap.to(s.scale, { x: currentScale * 1.05, y: currentScale * 1.05, z: currentScale * 1.05, duration: 0.5, delay: i*0.05, ease: 'back.out(2)' });
+
+    const geo = new THREE.BufferGeometry().setFromPoints([centre.position, s.position]);
+    const line = new THREE.Line(geo, new THREE.LineBasicMaterial({color:0xff8800,transparent:true,opacity:0}));
+    scene.add(line); 
+    cnHighlights.push(line);
+    gsap.to(line.material, { opacity: 0.8, duration: 0.5, delay: i*0.05 + 0.5 });
+  });
+  
+  showCNBadge(12, '#a855f7');
+  notify('CN = 12 — 6 same layer + 3 above + 3 below', '#a855f7');
+  document.getElementById('info-text').innerHTML = '<strong>CN = 12</strong> — Most efficient packing! Surrounding lattice fades to reveal the 12 nearest neighbours.';
+}
+
+function resetModule2() {
+  clearScene();
+  hexLayers = [];
+  document.getElementById('pe2-bar').style.width='0%';
+  document.getElementById('pe2-val').textContent='0%';
+  document.getElementById('hex-radius-slider').value = 100;
+  document.getElementById('hex-slider-val').textContent = '1.00';
+  document.getElementById('btn-build-hcp').style.borderColor = 'var(--border2)';
+  document.getElementById('btn-build-ccp').style.borderColor = 'var(--border2)';
+  document.getElementById('info-text').innerHTML = '<strong>Module 2 — Hexagonal Close Packing</strong><br>Click "Build HCP" or "Build CCP/FCC" to watch the close packing layers assemble.';
+}
+
+function updateHexRadius(val) {
+  const scale = val / 100;
+  document.getElementById('hex-slider-val').textContent = scale.toFixed(2);
+  hexLayers.forEach(item => {
+    const finalScale = item.isXray ? scale * 0.5 : scale;
+    gsap.to(item.mesh.scale, {x: finalScale, y: finalScale, z: finalScale, duration: 0.1});
+  });
+}
+
+// ═══════════════════════════════════════════════════════════
+// MODULE 3 — UNIT CELL THEATER (UPGRADED X-RAY PEDAGOGY)
+// ═══════════════════════════════════════════════════════════
+let fullLattice = [];
+let isolatedCell = [];
+let cellType = 'sc';
+
+const cellInfo = {
+  sc:  { name:'Simple Cubic',     Z:1,   PE:'52.4%', formula:'a = 2r' },
+  bcc: { name:'Body Centred Cubic', Z:2,   PE:'68.0%', formula:'a = 4r/√3' },
+  fcc: { name:'Face Centred Cubic', Z:4,   PE:'74.05%', formula:'a = 2√2·r' },
+};
+
+function selectCell(type) {
+  currentCellType = type;
+  ['sc','bcc','fcc'].forEach(t => document.getElementById(t+'-btn').classList.toggle('active', t===type));
+  const info = cellInfo[type];
+  document.getElementById('cell-type-label').textContent = info.name;
+  document.getElementById('z-label').textContent = info.Z;
+  document.getElementById('pe3-label').textContent = info.PE;
+  document.getElementById('formula-display').innerHTML = `${info.name}<br>Z = ${info.Z}<br>PE = ${info.PE}<br><span style="color:var(--uc)">${info.formula}</span>`;
+  notify(`Selected: ${info.name}`, '#10b981');
+  buildFullLattice();
+  
+  if(window.autoRevealTimer) clearTimeout(window.autoRevealTimer);
+  window.autoRevealTimer = setTimeout(() => {
+    if(currentModule === 3 && currentCellType === type && !isRevealing && isolatedCell.length === 0) {
+        revealUnitCell();
+    }
+  }, 2500);
+}
+
+function buildFullLattice() {
+  clearScene();
+  fullLattice = [];
+  isolatedCell = [];
+  
+  const G = 2.0; 
+  const r = 0.45; 
+  window.latticeSpacingG = G;
+
+  const halves = [-1.5, -0.5, 0.5, 1.5]; 
+  const ints = [-1, 0, 1];               
+
+  halves.forEach(x => {
+    halves.forEach(y => {
+      halves.forEach(z => {
+        const px = x * G;
+        const py = y * G;
+        const pz = z * G;
+        const mat = matA.clone();
+        mat.color.set(0x3a8cff); 
+        
+        const isCentralCorner = Math.abs(x) === 0.5 && Math.abs(y) === 0.5 && Math.abs(z) === 0.5;
+        
+        const mesh = addSphere(px, py, pz, mat, r);
+        animateSphereIn(mesh, (x+y+z+4.5)*0.03);
+        fullLattice.push({ mesh, px, py, pz, role: 'corner', isCentral: isCentralCorner });
+      });
+    });
+  });
+
+  if (currentCellType === 'bcc') {
+    ints.forEach(x => {
+      ints.forEach(y => {
+        ints.forEach(z => {
+          const px = x * G;
+          const py = y * G;
+          const pz = z * G;
+          const mat = matC.clone();
+          mat.color.set(0xf59e0b); 
+          
+          const isCentralBody = x === 0 && y === 0 && z === 0;
+          
+          const mesh = addSphere(px, py, pz, mat, r);
+          animateSphereIn(mesh, (x+y+z+3)*0.03 + 0.4);
+          fullLattice.push({ mesh, px, py, pz, role: 'body', isCentral: isCentralBody });
+        });
+      });
+    });
+  }
+
+  if (currentCellType === 'fcc') {
+    const addFaceAtoms = (xList, yList, zList, facePlane) => {
+      xList.forEach(x => {
+        yList.forEach(y => {
+          zList.forEach(z => {
+            if (Math.abs(x) > 1 || Math.abs(y) > 1 || Math.abs(z) > 1) return;
+
+            const px = x * G;
+            const py = y * G;
+            const pz = z * G;
+            const mat = matC.clone();
+            mat.color.set(0x10b981); 
+            
+            let isCentralFace = false;
+            if (facePlane === 'x') isCentralFace = Math.abs(x) === 0.5 && y === 0 && z === 0;
+            if (facePlane === 'y') isCentralFace = x === 0 && Math.abs(y) === 0.5 && z === 0;
+            if (facePlane === 'z') isCentralFace = x === 0 && y === 0 && Math.abs(z) === 0.5;
+
+            const mesh = addSphere(px, py, pz, mat, r);
+            animateSphereIn(mesh, 0.5);
+            fullLattice.push({ mesh, px, py, pz, role: 'face', isCentral: isCentralFace });
+          });
+        });
+      });
+    };
+
+    addFaceAtoms(halves, ints, ints, 'x'); 
+    addFaceAtoms(ints, halves, ints, 'y'); 
+    addFaceAtoms(ints, ints, halves, 'z'); 
+  }
+
+  document.getElementById('info-text').innerHTML = `<strong>${cellInfo[currentCellType].name}</strong> — Full 3D lattice built perfectly. Applying X-Ray vision to isolate the repeating unit cell...`;
+}
+
+function revealUnitCell() {
+  if(isRevealing || isolatedCell.length > 0) return;
+  isRevealing = true;
+  if(window.autoRevealTimer) clearTimeout(window.autoRevealTimer);
+  
+  notify('👁️ Activating X-Ray Vision!', '#10b981');
+  document.getElementById('info-text').innerHTML = '<strong>X-Ray Unit Cell Revealed!</strong> — Surrounding lattice faded to x-ray. The core atoms perfectly define the mathematical unit cell.';
+
+  const G = window.latticeSpacingG || 2.0;
+
+  fullLattice.forEach(atom => {
+    if(!atom.isCentral) {
+      atom.mesh.material.transparent = true;
+      atom.mesh.material.depthWrite = false;
+      atom.mesh.material.blending = THREE.AdditiveBlending;
+      
+      gsap.to(atom.mesh.material, { opacity: 0.08, duration: 2.0, ease: 'power2.inOut' });
+      gsap.to(atom.mesh.material.color, { r:0.2, g:0.4, b:0.8, duration: 2.0 });
+      gsap.to(atom.mesh.material.emissive, { r:0.0, g:0.1, b:0.3, duration: 2.0 });
+      gsap.to(atom.mesh.scale, { x:0.65, y:0.65, z:0.65, duration: 2.0, ease: 'power2.inOut' });
+      
+    } else {
+      let tgtColor = { r:0.2, g:0.5, b:1.0 }; 
+      let tgtEmiss = { r:0.1, g:0.2, b:0.6 };
+      
+      if (atom.role === 'body') {
+        tgtColor = { r:1.0, g:0.6, b:0.0 }; 
+        tgtEmiss = { r:0.6, g:0.2, b:0.0 };
+      } else if (atom.role === 'face') {
+        tgtColor = { r:0.0, g:0.8, b:0.4 }; 
+        tgtEmiss = { r:0.0, g:0.3, b:0.1 };
+      }
+
+      gsap.to(atom.mesh.material.color, { r: tgtColor.r, g: tgtColor.g, b: tgtColor.b, duration:1.5 });
+      gsap.to(atom.mesh.material.emissive, { r: tgtEmiss.r, g: tgtEmiss.g, b: tgtEmiss.b, duration:1.5 });
+      gsap.to(atom.mesh.material, { emissiveIntensity: 1.5, duration:1.5 });
+      gsap.to(atom.mesh.scale, { x:1.15, y:1.15, z:1.15, duration:1.5, ease:'elastic.out(1, 0.4)' });
+      
+      isolatedCell.push(atom);
+    }
+  });
+
+  setTimeout(() => {
+    const h = G/2;
+    makeEdges([
+      [-h,-h,-h],[h,-h,-h],[h,-h,h],[-h,-h,h],
+      [-h,h,-h],[h,h,-h],[h,h,h],[-h,h,h]
+    ], 0x10b981, 0.8);
+    isRevealing = false;
+  }, 1400);
+}
+
+function showAtomFractions() {
+  if(isolatedCell.length === 0) { notify('Reveal unit cell first!', '#ff6b6b'); return; }
+  notify('Highlighting fractional contributions', '#10b981');
+  
+  isolatedCell.forEach((atom, i) => {
+    const mesh = atom.mesh;
+    const origColor = mesh.material.color.clone();
+    const origEmissive = mesh.material.emissive.clone();
+    
+    gsap.to(mesh.material.color, { r:1, g:0.8, b:0.1, duration:0.4, delay:i*0.1, yoyo:true, repeat:3, 
+      onComplete: () => { gsap.to(mesh.material.color, { r:origColor.r, g:origColor.g, b:origColor.b, duration:0.5 }); }
+    });
+    gsap.to(mesh.material.emissive, { r:0.8, g:0.4, b:0, duration:0.4, delay:i*0.1, yoyo:true, repeat:3,
+      onComplete: () => { gsap.to(mesh.material.emissive, { r:origEmissive.r, g:origEmissive.g, b:origEmissive.b, duration:0.5 }); }
+    });
+    gsap.to(mesh.scale, { x:0.75, y:0.75, z:0.75, duration:0.4, delay:i*0.1, yoyo:true, repeat:3,
+      onComplete: () => { gsap.to(mesh.scale, { x:1.15, y:1.15, z:1.15, duration:0.5 }); }
+    });
+  });
+  
+  document.getElementById('info-text').innerHTML = `<strong>Atom Fractions</strong> — Corner: ⅛ each × 8 = 1. ${currentCellType==='fcc'?'Face: ½ each × 6 = 3. Total Z = 4.':''}${currentCellType==='bcc'?'Body: 1 × 1 = 1. Total Z = 2.':'Total Z = 1.'}`;
+}
+
+function resetModule3() {
+  if(window.autoRevealTimer) clearTimeout(window.autoRevealTimer);
+  clearScene();
+  isolatedCell = [];
+  isRevealing = false;
+  buildFullLattice();
+}
+
+// ═══════════════════════════════════════════════════════════
+// MODULE 4 — VOIDS EXPLORER (Cinematic Teaching Mode)
+// ═══════════════════════════════════════════════════════════
+const voidInfo = {
+  tet: { cn:4, ratio:'0.225', count:'8 per cell', name:'Tetrahedral', color:0xf59e0b },
+  oct: { cn:6, ratio:'0.414', count:'13 positions (4 eff.)', name:'Octahedral', color:0x818cf8 },
+};
+
+function buildFCCForVoids() {
+  clearScene();
+  fccAtoms = [];
+  const a = 1.6;
+  const h = a/2;
+  const cornerPos = [
+    [-h,-h,-h],[h,-h,-h],[h,-h,h],[-h,-h,h],
+    [-h,h,-h],[h,h,-h],[h,h,h],[-h,h,h]
+  ];
+  const facePos = [
+    [0,-h,0],[0,h,0],[-h,0,0],[h,0,0],[0,0,-h],[0,0,h]
+  ];
+
+  [...cornerPos,...facePos].forEach(([x,y,z],i) => {
+    const mat = matA.clone();
+    mat.color.set(0x2a7acc);
+    mat.transparent = true; // Setup for ghosting
+    const mesh = addSphere(x,y,z,mat);
+    animateSphereIn(mesh, i*0.04);
+    
+    // Store structural role for later pedagogical coloring
+    mesh.userData = {
+        role: (Math.abs(x) === h && Math.abs(y) === h && Math.abs(z) === h) ? 'corner' : 'face'
+    };
+    
+    fccAtoms.push(mesh);
+  });
+
+  makeEdges([...cornerPos.slice(0,4), ...cornerPos.slice(0,4)].slice(0,8).map(p=>p), 0x4a9eff, 0.5);
+  const [a0,a1,a2,a3,a4,a5,a6,a7] = cornerPos;
+  makeEdges([a0,a1,a2,a3,a4,a5,a6,a7], 0x4a9eff, 0.5);
+  
+  document.getElementById('info-text').innerHTML = `<strong>FCC Lattice</strong> — This is the base structure for evaluating interstitial voids. Select a void type to begin.`;
+}
+
+function selectVoid(type) {
+  currentVoidType = type;
+  ['tet','oct'].forEach(t => document.getElementById('vb-'+t).classList.toggle('active', t===type));
+  const info = voidInfo[type];
+  document.getElementById('void-type-label').textContent = info.name;
+  document.getElementById('void-cn').textContent = info.cn;
+  document.getElementById('void-ratio').textContent = info.ratio;
+  document.getElementById('void-count').textContent = info.count;
+  
+  // ALWAYS trigger the void visualizer on click for seamless teaching
+  showVoids();
+}
+
+function showVoids() {
+  voidMarkers.forEach(o=>scene.remove(o)); voidMarkers = [];
+  voidCages.forEach(o=>scene.remove(o)); voidCages = [];
+
+  const a = 1.6; const h = a/2;
+  const isOct = currentVoidType === 'oct';
+
+  // 1. Determine pedagogical focus void position
+  // Octahedral: Perfect center of the FCC cell
+  // Tetrahedral: Inside one of the 8 mini-cubes
+  const focusPos = isOct ? new THREE.Vector3(0, 0, 0) : new THREE.Vector3(h/2, h/2, h/2);
+
+  // 2. Animate camera to focus perfectly on the selected void
+  targetLookAt.copy(focusPos);
+  targetSpherical.r = isOct ? 6.5 : 5.0; // Zoom deeply in
+  targetSpherical.theta = Math.PI / 4;
+  targetSpherical.phi = Math.PI / 3;
+  isDragging = false; 
+  autoRotate = true; // Enable slow dramatic rotation around the void
+
+  // 3. Find the exact atoms involved in creating this specific void
+  const sortedAtoms = [...fccAtoms].sort((atomA, atomB) => atomA.position.distanceTo(focusPos) - atomB.position.distanceTo(focusPos));
+  const involvedCount = isOct ? 6 : 4;
+  const focusAtoms = new Set(sortedAtoms.slice(0, involvedCount));
+
+  // 4. Color & X-Ray Logic
+  fccAtoms.forEach(mesh => {
+    if (focusAtoms.has(mesh)) {
+      // Pedagogical Color Coding
+      let atomColor = new THREE.Color();
+      let emissiveColor = new THREE.Color();
+      
+      if (isOct) {
+          // Octahedral void is formed by 6 face centers. 
+          // Color Top/Bottom differently from the Equatorial 4
+          if (Math.abs(mesh.position.y) > 0.1) {
+              atomColor.set(0xff4a9e); // Pink Top/Bottom
+              emissiveColor.set(0x800a40);
+          } else {
+              atomColor.set(0x3ab8ff); // Blue Equatorial Ring
+              emissiveColor.set(0x0a4080);
+          }
+      } else {
+          // Tetrahedral void formed by 1 Corner and 3 adjacent Faces
+          if (mesh.userData.role === 'corner') {
+              atomColor.set(0x10b981); // Emerald Green Corner
+              emissiveColor.set(0x064020);
+          } else {
+              atomColor.set(0x3ab8ff); // Blue Faces
+              emissiveColor.set(0x0a4080);
+          }
+      }
+
+      mesh.material.transparent = true;
+      mesh.material.depthWrite = true;
+      mesh.material.blending = THREE.NormalBlending;
+      gsap.to(mesh.material, { opacity: 0.95, duration: 1.5 });
+      gsap.to(mesh.material.color, { r: atomColor.r, g: atomColor.g, b: atomColor.b, duration: 1.5 });
+      gsap.to(mesh.material.emissive, { r: emissiveColor.r, g: emissiveColor.g, b: emissiveColor.b, duration: 1.5 });
+      gsap.to(mesh.scale, { x: 0.85, y: 0.85, z: 0.85, duration: 1.5, ease: 'back.out(1.5)'});
+    } else {
+      // Ghost out the irrelevant lattice elements
+      mesh.material.transparent = true;
+      mesh.material.depthWrite = false;
+      mesh.material.blending = THREE.AdditiveBlending;
+      gsap.to(mesh.material, { opacity: 0.04, duration: 1.5 });
+      gsap.to(mesh.material.color, { r: 0.2, g: 0.3, b: 0.4, duration: 1.5 });
+      gsap.to(mesh.material.emissive, { r: 0, g: 0, b: 0, duration: 1.5 });
+      gsap.to(mesh.scale, { x: 0.5, y: 0.5, z: 0.5, duration: 1.5 });
+    }
+  });
+
+  // 5. Generate Void Markers
+  let positions = [];
+  if(!isOct) {
+    positions = [
+      [h/2,h/2,h/2],[-h/2,h/2,h/2],[h/2,-h/2,h/2],[h/2,h/2,-h/2],
+      [-h/2,-h/2,h/2],[-h/2,h/2,-h/2],[h/2,-h/2,-h/2],[-h/2,-h/2,-h/2]
+    ];
+  } else {
+    positions = [ [0,0,0] ]; // Focus Body center
+    const edges = [
+      [h, h, 0], [h, -h, 0], [-h, h, 0], [-h, -h, 0],
+      [h, 0, h], [h, 0, -h], [-h, 0, h], [-h, 0, -h],
+      [0, h, h], [0, h, -h], [0, -h, h], [0, -h, -h]
+    ];
+    positions.push(...edges);
+  }
+
+  const coreMat = new THREE.MeshStandardMaterial({
+    color: isOct ? 0x818cf8 : 0xf59e0b,
+    emissive: isOct ? 0x3b2aff : 0xcc4400,
+    emissiveIntensity: 1.5, roughness: 0.1, metalness: 0.5
+  });
+  const glowMat = new THREE.MeshBasicMaterial({
+    color: isOct ? 0x818cf8 : 0xf59e0b,
+    transparent: true, opacity: 0.35, blending: THREE.AdditiveBlending, depthWrite: false
+  });
+  const cageMat = new THREE.LineBasicMaterial({
+    color: isOct ? 0x818cf8 : 0xf59e0b,
+    transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false
+  });
+
+  positions.forEach(([x,y,z], i) => {
+    const isFocus = Math.abs(x - focusPos.x) < 0.01 && Math.abs(y - focusPos.y) < 0.01 && Math.abs(z - focusPos.z) < 0.01;
+    
+    // Core geometry
+    const geo = isOct ? new THREE.OctahedronGeometry(0.12) : new THREE.TetrahedronGeometry(0.12);
+    const mesh = new THREE.Mesh(geo, coreMat.clone());
+    mesh.position.set(x,y,z);
+    
+    if (!isOct) {
+        mesh.rotation.x = Math.PI/4;
+        mesh.rotation.z = Math.PI/4;
+    }
+    scene.add(mesh);
+    voidMarkers.push(mesh);
+
+    // Glowing Halo
+    const glowGeo = new THREE.SphereGeometry(isOct ? 0.25 : 0.20, 16, 16);
+    const glowMesh = new THREE.Mesh(glowGeo, glowMat);
+    mesh.add(glowMesh);
+
+    // Dramatic entrance for the focused void
+    if (isFocus) {
+      mesh.scale.setScalar(0.01);
+      gsap.to(mesh.scale, {x: 1.4, y: 1.4, z: 1.4, duration: 1.5, delay: 0.6, ease: 'elastic.out(1, 0.4)'});
+      gsap.to(mesh.material, {emissiveIntensity: 3.5, duration: 1.5, delay: 0.6, yoyo: true, repeat: 1});
+    } else {
+      gsap.from(mesh.scale, {x:0, y:0, z:0, duration: 0.8, delay: i*0.04, ease: 'back.out(1.5)'});
+      gsap.to(mesh.material, {opacity: 0.2, duration: 1.0}); // dim non-focused voids
+      glowMesh.visible = false;
+    }
+
+    // Connect Coordination Cages
+    const nearbyAtoms = [...fccAtoms].sort((a,b) => a.position.distanceTo(mesh.position) - b.position.distanceTo(mesh.position)).slice(0, isOct ? 6 : 4);
+    
+    const lineGeo = new THREE.BufferGeometry();
+    const pts = [];
+    if (!isOct) {
+      for(let j=0; j<4; j++) for(let k=j+1; k<4; k++) pts.push(nearbyAtoms[j].position, nearbyAtoms[k].position);
+    } else {
+      for(let j=0; j<6; j++) for(let k=j+1; k<6; k++) {
+        if (nearbyAtoms[j].position.distanceTo(nearbyAtoms[k].position) < 1.3) pts.push(nearbyAtoms[j].position, nearbyAtoms[k].position);
+      }
+    }
+    lineGeo.setFromPoints(pts);
+    const cageLine = new THREE.LineSegments(lineGeo, cageMat.clone());
+    scene.add(cageLine);
+    voidCages.push(cageLine);
+
+    if (isFocus) {
+        gsap.to(cageLine.material, { opacity: 0.8, duration: 1.5, delay: 0.6 });
+    } else {
+        gsap.to(cageLine.material, { opacity: 0.05, duration: 1.0, delay: 0.4 + i*0.04 });
+    }
+  });
+
+  notify(`Focusing on one ${isOct ? 'Octahedral' : 'Tetrahedral'} Void`, isOct ? '#818cf8' : '#f59e0b');
+  
+  if (isOct) {
+      document.getElementById('info-text').innerHTML = '<strong>Octahedral Void (CN=6)</strong> — Pink atoms sit above and below. Blue atoms form the equatorial square. Together, they create an octahedron!';
+  } else {
+      document.getElementById('info-text').innerHTML = '<strong>Tetrahedral Void (CN=4)</strong> — The Green corner atom and the 3 adjacent Blue face atoms surround the gap to form a tetrahedron!';
+  }
+}
+
+function pulseVoids() {
+  if (voidMarkers.length === 0) { notify('Show voids first!', '#ff6b6b'); return; }
+
+  voidMarkers.forEach((m, i) => {
+    gsap.to(m.scale, {x:1.8, y:1.8, z:1.8, duration:0.5, delay:i*0.03, yoyo:true, repeat:3, ease:'sine.inOut'});
+    gsap.to(m.material, {emissiveIntensity: 4, duration:0.5, delay:i*0.03, yoyo:true, repeat:3});
+  });
+
+  voidCages.forEach((c, i) => {
+    gsap.to(c.material, {opacity: 1.0, duration:0.5, delay:i*0.03, yoyo:true, repeat:3});
+  });
+
+  notify('Energy pulsating through voids!', currentVoidType === 'oct' ? '#818cf8' : '#f59e0b');
+}
+
+let interstitialR = 0;
+function updateInterstitialRadius(val) {
+  const ratio = val/100;
+  const maxR = currentVoidType === 'tet' ? 0.225 : 0.414;
+  const r = ratio * maxR * 0.48 * 2.5;
+  document.getElementById('slider-val').textContent = (ratio * maxR).toFixed(3);
+
+  if(!interstitialSphere) {
+    const geo = new THREE.SphereGeometry(1, 16, 16);
+    interstitialSphere = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({
+      color: 0xff4444, emissive:0x440000, transparent:true, opacity:0.85, roughness:0.2
+    }));
+    
+    // Spawn inside the focus void
+    const h = 1.6 / 2;
+    const focusPos = currentVoidType === 'oct' ? new THREE.Vector3(0, 0, 0) : new THREE.Vector3(h/2, h/2, h/2);
+    interstitialSphere.position.copy(focusPos);
+    
+    scene.add(interstitialSphere);
+  }
+  gsap.to(interstitialSphere.scale, {x:r,y:r,z:r, duration:0.1});
+
+  const tooLarge = ratio > 0.95;
+  interstitialSphere.material.color.set(tooLarge ? 0xff2222 : 0x22ff88);
+  interstitialSphere.material.emissive.set(tooLarge ? 0x440000 : 0x004422);
+}
+
+function resetModule4() {
+  voidMarkers.forEach(o=>scene.remove(o)); voidMarkers=[];
+  voidCages.forEach(o=>scene.remove(o)); voidCages=[];
+  
+  targetLookAt.set(0,0,0);
+  targetSpherical.r = 16;
+  autoRotate = false;
+  
+  fccAtoms.forEach(mesh => {
+    gsap.to(mesh.material, { opacity: 1, duration: 0.5 });
+    mesh.material.blending = THREE.NormalBlending;
+    mesh.material.depthWrite = true;
+    gsap.to(mesh.material.color, { r: 0.164, g: 0.478, b: 0.8, duration: 0.5 }); // base matA blue
+    gsap.to(mesh.material.emissive, { r: 0.039, g: 0.125, b: 0.313, duration: 0.5 });
+    gsap.to(mesh.scale, { x: 1, y: 1, z: 1, duration: 0.5 });
+  });
+
+  if(interstitialSphere){scene.remove(interstitialSphere);interstitialSphere=null;}
+  document.getElementById('radius-slider').value=0;
+  document.getElementById('slider-val').textContent='0.0';
+  document.getElementById('info-text').innerHTML = '<strong>Module 4 — Voids Explorer</strong><br>Select a void type to initiate cinematic visualization inside the lattice.';
+  notify('Module 4 reset', '#f59e0b');
+}
+
+// ═══════════════════════════════════════════════════════════
+// MODULE SWITCHING
+// ═══════════════════════════════════════════════════════════
+function switchModule(mod) {
+  currentModule = mod;
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelector(`.tab[data-mod="${mod}"]`).classList.add('active');
+  ['m1','m2','m3','m4'].forEach((id,i) => {
+    document.getElementById('panel-'+id).style.display = (i+1===mod) ? 'block' : 'none';
+  });
+
+  clearScene();
+
+  const infos = {
+    1: '<strong>Module 1 — Square Close Packing</strong><br>Click "Build Layer by Layer" to watch AA··· stacking form the Simple Cubic structure.',
+    2: '<strong>Module 2 — Hexagonal Close Packing</strong><br>Click "Build HCP" or "Build CCP/FCC" to watch the close packing layers assemble.',
+    3: '<strong>Module 3 — Unit Cell Theater</strong><br>Select SC / BCC / FCC, then "Shatter & Reveal" to isolate the unit cell dramatically!',
+    4: '<strong>Module 4 — Voids Explorer</strong><br>See tetrahedral and octahedral voids glow inside FCC packing. Use the radius slider to explore ionic crystals.',
+  };
+
+  const formulas = {
+    1: 'PE = (Z × 4/3πr³) / a³ × 100<br>SC: a = 2r<br>PE = π/6 × 100<br><span style="color:var(--sq);font-weight:700">= 52.4%</span>',
+    2: 'HCP / CCP: ABAB or ABCABC<br>PE = 74.05%<br>CN = 12<br><span style="color:var(--hex);font-weight:700">Most efficient!</span>',
+    3: 'SC: Z=1, PE=52.4%<br>BCC: Z=2, PE=68%<br>FCC: Z=4, PE=74.05%<br><span style="color:var(--uc)">a·4r/√3 (BCC)</span>',
+    4: 'Tet: r/R = 0.225, CN=4<br>Oct: r/R = 0.414, CN=6<br>FCC: 8 tet + 4 oct voids<br><span style="color:var(--vd)">per unit cell</span>',
+  };
+
+  document.getElementById('info-text').innerHTML = infos[mod];
+  document.getElementById('formula-display').innerHTML = formulas[mod];
+
+  if(mod === 3) { buildFullLattice(); }
+  if(mod === 4) { buildFCCForVoids(); }
+
+  autoRotate = true;
+  targetLookAt.set(0,0,0);
+  targetSpherical = { theta: 0.5, phi: 1.0, r: 16 };
+}
+
+// ═══════════════════════════════════════════════════════════
+// BACKGROUND PARTICLES
+// ═══════════════════════════════════════════════════════════
+const particleCount = 300;
+const particleGeo = new THREE.BufferGeometry();
+const pPositions = new Float32Array(particleCount * 3);
+for(let i=0;i<particleCount;i++){
+  pPositions[i*3]   = (Math.random()-0.5)*80;
+  pPositions[i*3+1] = (Math.random()-0.5)*80;
+  pPositions[i*3+2] = (Math.random()-0.5)*80;
+}
+particleGeo.setAttribute('position', new THREE.BufferAttribute(pPositions,3));
+const particleMat = new THREE.PointsMaterial({color:0x336699, size:0.06, transparent:true, opacity:0.4});
+const particles = new THREE.Points(particleGeo, particleMat);
+scene.add(particles);
+
+// ═══════════════════════════════════════════════════════════
+// RENDER LOOP
+// ═══════════════════════════════════════════════════════════
+let t = 0;
+function animate() {
+  requestAnimationFrame(animate);
+  t += 0.005;
+
+  // Smooth camera orbit & dynamic panning
+  currentLookAt.lerp(targetLookAt, 0.05);
+  spherical.theta += (targetSpherical.theta - spherical.theta) * 0.08;
+  spherical.phi   += (targetSpherical.phi   - spherical.phi)   * 0.08;
+  spherical.r     += (targetSpherical.r     - spherical.r)     * 0.08;
+
+  if(autoRotate && !isDragging) targetSpherical.theta += 0.003;
+
+  camera.position.x = currentLookAt.x + spherical.r * Math.sin(spherical.phi) * Math.sin(spherical.theta);
+  camera.position.y = currentLookAt.y + spherical.r * Math.cos(spherical.phi);
+  camera.position.z = currentLookAt.z + spherical.r * Math.sin(spherical.phi) * Math.cos(spherical.theta);
+  camera.lookAt(currentLookAt);
+
+  // Pulsing point light
+  pLight1.intensity = 1.5 + Math.sin(t*2)*0.5;
+  pLight1.position.x = Math.sin(t)*5;
+  pLight1.position.z = Math.cos(t)*5;
+
+  // Rotate particles slowly
+  particles.rotation.y = t * 0.03;
+
+  // Rotate the geometric void cores for a realistic sci-fi effect
+  voidMarkers.forEach((m, i) => {
+      m.rotation.x += 0.01 + (i*0.001);
+      m.rotation.y += 0.015 + (i*0.001);
+  });
+
+  renderer.render(scene, camera);
+}
+
+// ═══════════════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════════════
+window.addEventListener('resize', () => {
+  camera.aspect = window.innerWidth/window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+
+setTimeout(() => {
+  document.getElementById('loading').style.opacity = '0';
+  document.getElementById('loading').style.transition = 'opacity 0.6s';
+  setTimeout(() => { document.getElementById('loading').style.display='none'; }, 600);
+  animate();
+  // Start module 1
+  setTimeout(() => buildSquareLayers(), 400);
+}, 1300);
+</script>
+</body>
+</html>
