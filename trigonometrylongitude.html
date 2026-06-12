@@ -1,0 +1,642 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Latitude Arc Length: Pittsburgh to Miami | Interactive 3D Math Lesson</title>
+    <!-- Google Fonts & CSS Reset -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700&display=swap" rel="stylesheet">
+    <!-- MathJax for beautiful math rendering -->
+    <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js" id="MathJax-script" async></script>
+    <!-- Three.js core and add-ons -->
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.128.0/build/three.module.js",
+                "three/addons/": "https://unpkg.com/three@0.128.0/examples/jsm/"
+            }
+        }
+    </script>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            font-family: 'Inter', sans-serif;
+        }
+        /* UI Panel - Glassmorphism */
+        .ui-panel {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            right: 20px;
+            max-width: 380px;
+            background: rgba(20, 25, 40, 0.75);
+            backdrop-filter: blur(12px);
+            border-radius: 28px;
+            border: 1px solid rgba(255,255,255,0.2);
+            box-shadow: 0 15px 35px rgba(0,0,0,0.3);
+            padding: 18px 22px;
+            color: #f0f3fa;
+            z-index: 10;
+            transition: all 0.3s ease;
+            pointer-events: auto;
+        }
+        .ui-panel h2 {
+            margin: 0 0 8px 0;
+            font-weight: 600;
+            font-size: 1.5rem;
+            letter-spacing: -0.3px;
+            background: linear-gradient(135deg, #fff, #8bb9ff);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+        .problem-text {
+            font-size: 0.9rem;
+            line-height: 1.45;
+            margin-bottom: 14px;
+            opacity: 0.9;
+        }
+        .highlight-values {
+            background: rgba(0,0,0,0.4);
+            border-radius: 16px;
+            padding: 8px 12px;
+            margin: 12px 0;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            font-size: 0.85rem;
+            font-weight: 500;
+        }
+        .highlight-values span {
+            background: rgba(255,215,0,0.2);
+            padding: 4px 10px;
+            border-radius: 40px;
+            border-left: 3px solid #ffb347;
+        }
+        .controls {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 15px;
+            margin-bottom: 12px;
+        }
+        button {
+            background: rgba(30,40,60,0.9);
+            border: 1px solid rgba(255,255,255,0.25);
+            color: white;
+            padding: 6px 14px;
+            border-radius: 40px;
+            font-size: 0.75rem;
+            font-weight: 500;
+            cursor: pointer;
+            backdrop-filter: blur(4px);
+            transition: 0.2s;
+            font-family: 'Inter', sans-serif;
+        }
+        button:hover {
+            background: #2c3e66;
+            border-color: #80b3ff;
+            transform: scale(1.02);
+        }
+        .slider-container {
+            margin-top: 12px;
+            background: rgba(0,0,0,0.4);
+            border-radius: 24px;
+            padding: 8px 12px;
+        }
+        .slider-container label {
+            font-size: 0.75rem;
+            font-weight: 500;
+            display: flex;
+            justify-content: space-between;
+        }
+        input {
+            width: 100%;
+            margin-top: 5px;
+            cursor: pointer;
+            background: #1e2a3a;
+            accent-color: #3b82f6;
+        }
+        .distance-display {
+            background: #00000055;
+            border-radius: 20px;
+            padding: 10px;
+            margin-top: 12px;
+            text-align: center;
+            font-weight: 600;
+            font-size: 1rem;
+        }
+        .math-display {
+            font-size: 0.85rem;
+            font-family: monospace;
+            background: #0a0e1a80;
+            padding: 6px;
+            border-radius: 14px;
+            text-align: center;
+        }
+        .close-btn {
+            position: absolute;
+            top: 16px;
+            right: 20px;
+            background: none;
+            border: none;
+            font-size: 20px;
+            cursor: pointer;
+            color: #ccc;
+        }
+        .note {
+            font-size: 0.7rem;
+            text-align: center;
+            margin-top: 10px;
+            opacity: 0.6;
+        }
+        @media (max-width: 700px) {
+            .ui-panel { max-width: 320px; padding: 14px; top: 10px; left: 10px; }
+            button { padding: 4px 10px; font-size: 0.7rem; }
+        }
+    </style>
+</head>
+<body>
+    <div class="ui-panel" id="infoPanel">
+        <button class="close-btn" id="minimizeBtn">−</button>
+        <h2>📐 Problem: Arc Distance via Latitude</h2>
+        <div class="problem-text">
+            Pittsburgh, Pennsylvania, and Miami, Florida, lie approximately on the same meridian. 
+            Pittsburgh has a latitude of <strong>40.5°N</strong>, and Miami has a latitude of <strong>25.5°N</strong>. 
+            Find the distance between these two cities. (Earth radius = 3960 mi)
+        </div>
+        <div class="highlight-values">
+            <span>📍 Pittsburgh: 40.5°N</span>
+            <span>📍 Miami: 25.5°N</span>
+            <span>🌍 R = 3960 mi</span>
+        </div>
+        <div class="controls">
+            <button id="rotateBtn">⟳ Rotate Earth</button>
+            <button id="latLinesToggle">📐 Show Latitude Lines</button>
+            <button id="mathModelToggle">🧠 Mathematical Model</button>
+            <button id="calcToggle">📐 Show Calculation</button>
+        </div>
+        <div class="slider-container">
+            <label>🧪 Explore Latitude Difference (θ) <span id="thetaDegVal">15.0</span>°</label>
+            <input type="range" id="thetaSlider" min="0" max="30" step="0.5" value="15">
+            <div class="distance-display" id="arcDistancePanel">
+                📏 Arc Distance (s) = <strong id="distanceValue">1037</strong> miles
+            </div>
+            <div id="mathJaxPreview" class="math-display" style="font-size:0.8rem;">
+                \( s = R \cdot \theta_{\text{rad}} \)
+            </div>
+        </div>
+        <div class="note">💡 Interactive: Slider changes Dynamic City latitude → central angle & arc length update</div>
+    </div>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+        import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
+        import gsap from 'https://unpkg.com/gsap@3.12.5/index.js';
+
+        // --- Setup Scene, Cameras, Renderers ---
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x030318);
+        scene.fog = new THREE.FogExp2(0x030318, 0.0008);
+
+        const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.set(0, 1.2, 12);
+        
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(window.devicePixelRatio);
+        renderer.shadowMap.enabled = true;
+        document.body.appendChild(renderer.domElement);
+        
+        // CSS2 renderer for labels
+        const labelRenderer = new CSS2DRenderer();
+        labelRenderer.setSize(window.innerWidth, window.innerHeight);
+        labelRenderer.domElement.style.position = 'absolute';
+        labelRenderer.domElement.style.top = '0px';
+        labelRenderer.domElement.style.left = '0px';
+        labelRenderer.domElement.style.pointerEvents = 'none';
+        document.body.appendChild(labelRenderer.domElement);
+        
+        // Controls
+        const controls = new OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.05;
+        controls.autoRotate = false;
+        controls.enableZoom = true;
+        controls.zoomSpeed = 1.2;
+        controls.rotateSpeed = 0.8;
+        
+        // --- Lights ---
+        const ambientLight = new THREE.AmbientLight(0x222222);
+        scene.add(ambientLight);
+        const mainLight = new THREE.DirectionalLight(0xffffff, 1.2);
+        mainLight.position.set(5, 10, 7);
+        mainLight.castShadow = true;
+        scene.add(mainLight);
+        const fillLight = new THREE.PointLight(0x4466cc, 0.4);
+        fillLight.position.set(-3, 2, 4);
+        scene.add(fillLight);
+        const backLight = new THREE.PointLight(0xffaa66, 0.3);
+        backLight.position.set(0, 2, -6);
+        scene.add(backLight);
+        
+        // Starfield background (particle system)
+        const starGeometry = new THREE.BufferGeometry();
+        const starCount = 2000;
+        const starPositions = new Float32Array(starCount * 3);
+        for (let i = 0; i < starCount; i++) {
+            starPositions[i*3] = (Math.random() - 0.5) * 800;
+            starPositions[i*3+1] = (Math.random() - 0.5) * 400;
+            starPositions[i*3+2] = (Math.random() - 0.5) * 150 - 50;
+        }
+        starGeometry.setAttribute('position', new THREE.BufferAttribute(starPositions, 3));
+        const starMaterial = new THREE.PointsMaterial({ color: 0xffffff, size: 0.2, transparent: true, opacity: 0.7 });
+        const stars = new THREE.Points(starGeometry, starMaterial);
+        scene.add(stars);
+        
+        // --- Earth Parameters ---
+        const earthRadius = 5.0;
+        const R_miles = 3960; // for scale consistency in calculation
+        
+        // Helper: lat/lon to Vector3 (lat in degrees, lon in degrees, radius)
+        function latLonToVector3(lat, lon, radius) {
+            const phi = (90 - lat) * Math.PI / 180;
+            const theta = lon * Math.PI / 180;
+            const x = radius * Math.sin(phi) * Math.cos(theta);
+            const y = radius * Math.cos(phi);
+            const z = radius * Math.sin(phi) * Math.sin(theta);
+            return new THREE.Vector3(x, y, z);
+        }
+        
+        // Common longitude for both cities (approx 80°W)
+        const commonLon = -80;
+        
+        // --- Groups for toggleable visualizations ---
+        const realisticGroup = new THREE.Group();
+        const mathModelGroup = new THREE.Group();
+        scene.add(realisticGroup);
+        scene.add(mathModelGroup);
+        mathModelGroup.visible = false;
+        
+        // --- Realistic Earth with Texture & Atmosphere ---
+        const earthGeometry = new THREE.SphereGeometry(earthRadius, 128, 128);
+        const textureLoader = new THREE.TextureLoader();
+        const earthMap = textureLoader.load('https://threejs.org/examples/textures/planets/earth_atmos_2048.jpg');
+        const earthSpecularMap = textureLoader.load('https://threejs.org/examples/textures/planets/earth_specular_2048.jpg');
+        const earthNormalMap = textureLoader.load('https://threejs.org/examples/textures/planets/earth_normal_2048.jpg');
+        const cloudMap = textureLoader.load('https://threejs.org/examples/textures/planets/earth_clouds_1024.png');
+        
+        const earthMaterial = new THREE.MeshPhongMaterial({
+            map: earthMap,
+            specularMap: earthSpecularMap,
+            specular: new THREE.Color('grey'),
+            shininess: 5,
+            normalMap: earthNormalMap,
+            normalScale: new THREE.Vector2(0.8, 0.8)
+        });
+        const earthMesh = new THREE.Mesh(earthGeometry, earthMaterial);
+        realisticGroup.add(earthMesh);
+        
+        // Clouds layer
+        const cloudGeometry = new THREE.SphereGeometry(earthRadius + 0.03, 128, 128);
+        const cloudMaterial = new THREE.MeshPhongMaterial({
+            map: cloudMap,
+            transparent: true,
+            opacity: 0.15,
+            blending: THREE.AdditiveBlending
+        });
+        const clouds = new THREE.Mesh(cloudGeometry, cloudMaterial);
+        realisticGroup.add(clouds);
+        
+        // Atmosphere glow
+        const atmosGeometry = new THREE.SphereGeometry(earthRadius + 0.08, 64, 64);
+        const atmosMaterial = new THREE.MeshPhongMaterial({
+            color: 0x88aaff,
+            emissive: 0x112244,
+            transparent: true,
+            opacity: 0.12,
+            side: THREE.BackSide
+        });
+        const atmosphere = new THREE.Mesh(atmosGeometry, atmosMaterial);
+        realisticGroup.add(atmosphere);
+        
+        // --- Mathematical Model Group (Transparent Globe, Cross-section style) ---
+        const wireframeMat = new THREE.MeshPhongMaterial({ color: 0x66ccff, wireframe: true, transparent: true, opacity: 0.35 });
+        const transparentMat = new THREE.MeshPhongMaterial({ color: 0x88aaff, transparent: true, opacity: 0.2, side: THREE.DoubleSide });
+        const mathGlobe = new THREE.Mesh(new THREE.SphereGeometry(earthRadius, 96, 96), transparentMat);
+        const wireframeGlobe = new THREE.Mesh(new THREE.SphereGeometry(earthRadius, 64, 64), wireframeMat);
+        mathModelGroup.add(mathGlobe, wireframeGlobe);
+        
+        // Equator ring for math model
+        const equatorPoints = [];
+        const equatorRing = new THREE.LineLoop(new THREE.BufferGeometry(), new THREE.LineBasicMaterial({ color: 0xffaa44, linewidth: 1 }));
+        const equatorGeo = new THREE.BufferGeometry();
+        const eqSegments = 120;
+        const eqVerts = [];
+        for (let i = 0; i <= eqSegments; i++) {
+            const theta = (i / eqSegments) * Math.PI * 2;
+            const x = earthRadius * Math.cos(theta);
+            const z = earthRadius * Math.sin(theta);
+            eqVerts.push(x, 0, z);
+        }
+        equatorGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(eqVerts), 3));
+        const equatorLine = new THREE.LineLoop(equatorGeo, new THREE.LineBasicMaterial({ color: 0xffaa66, linewidth: 2 }));
+        mathModelGroup.add(equatorLine);
+        
+        // Central angle arc (dynamic - will be updated)
+        let centralArcLine = null;
+        function updateMathModelArc(pitVec, dynVec) {
+            if (centralArcLine) mathModelGroup.remove(centralArcLine);
+            const points = [];
+            // sample arc between two vectors on unit sphere surface
+            const v1 = pitVec.clone().normalize();
+            const v2 = dynVec.clone().normalize();
+            const angle = v1.angleTo(v2);
+            const segments = 40;
+            for (let i = 0; i <= segments; i++) {
+                const t = i / segments;
+                const theta = t * angle;
+                const axis = new THREE.Vector3().crossVectors(v1, v2).normalize();
+                const quat = new THREE.Quaternion().setFromUnitVectors(v1, v2.clone().applyQuaternion(new THREE.Quaternion().setFromAxisAngle(axis, theta)));
+                const dir = v1.clone().applyQuaternion(quat);
+                const point = dir.multiplyScalar(earthRadius + 0.05);
+                points.push(point);
+            }
+            const geometry = new THREE.BufferGeometry().setFromPoints(points);
+            const material = new THREE.LineBasicMaterial({ color: 0xff3366, linewidth: 2 });
+            centralArcLine = new THREE.Line(geometry, material);
+            mathModelGroup.add(centralArcLine);
+            
+            // add radius lines from centre to both points
+            if (mathModelGroup.radiusLines) mathModelGroup.radiusLines.forEach(l => mathModelGroup.remove(l));
+            const radiusLinesGroup = [];
+            const lineMat = new THREE.LineBasicMaterial({ color: 0x77aaff });
+            const lineGeo1 = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0,0,0), pitVec]);
+            const line1 = new THREE.Line(lineGeo1, lineMat);
+            const lineGeo2 = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0,0,0), dynVec]);
+            const line2 = new THREE.Line(lineGeo2, lineMat);
+            mathModelGroup.add(line1, line2);
+            mathModelGroup.radiusLines = [line1, line2];
+        }
+        
+        // --- Markers & Labels (CSS2D) ---
+        const markersGroup = new THREE.Group();
+        scene.add(markersGroup);
+        
+        // Fixed Pittsburgh Marker (40.5°N, -80°)
+        const pitPos = latLonToVector3(40.5, commonLon, earthRadius + 0.08);
+        const pitGlow = new THREE.Mesh(
+            new THREE.SphereGeometry(0.09, 16, 16),
+            new THREE.MeshStandardMaterial({ color: 0xff5555, emissive: 0x441111, emissiveIntensity: 0.8 })
+        );
+        pitGlow.position.copy(pitPos);
+        markersGroup.add(pitGlow);
+        
+        const pitLabelDiv = document.createElement('div');
+        pitLabelDiv.textContent = '📍 Pittsburgh\n40.5°N';
+        pitLabelDiv.style.color = '#ffaaaa';
+        pitLabelDiv.style.fontSize = '14px';
+        pitLabelDiv.style.fontWeight = 'bold';
+        pitLabelDiv.style.textShadow = '1px 1px 0px black';
+        pitLabelDiv.style.backgroundColor = 'rgba(0,0,0,0.6)';
+        pitLabelDiv.style.padding = '2px 8px';
+        pitLabelDiv.style.borderRadius = '20px';
+        pitLabelDiv.style.borderLeft = '3px solid #ff5555';
+        const pitLabel = new CSS2DObject(pitLabelDiv);
+        pitLabel.position.copy(pitPos.clone().multiplyScalar(1.02));
+        markersGroup.add(pitLabel);
+        
+        // Fixed Miami Marker (25.5°N)
+        const miaPos = latLonToVector3(25.5, commonLon, earthRadius + 0.08);
+        const miaGlow = new THREE.Mesh(
+            new THREE.SphereGeometry(0.09, 16, 16),
+            new THREE.MeshStandardMaterial({ color: 0x55aaff, emissive: 0x004466, emissiveIntensity: 0.7 })
+        );
+        miaGlow.position.copy(miaPos);
+        markersGroup.add(miaGlow);
+        
+        const miaLabelDiv = document.createElement('div');
+        miaLabelDiv.textContent = '🌴 Miami\n25.5°N';
+        miaLabelDiv.style.cssText = 'color:#aaffff; font-size:14px; font-weight:bold; background:rgba(0,0,0,0.6); padding:2px 8px; border-radius:20px; border-left:3px solid #55aaff;';
+        const miaLabel = new CSS2DObject(miaLabelDiv);
+        miaLabel.position.copy(miaPos.clone().multiplyScalar(1.02));
+        markersGroup.add(miaLabel);
+        
+        // Dynamic Interactive Marker (controlled by slider)
+        let dynamicMarker = null;
+        let dynamicLabel = null;
+        let currentDynamicLat = 25.5; // default = Miami's latitude
+        function updateDynamicCity(latDiffDeg) {
+            // latDiffDeg = difference from Pittsburgh: Pgh 40.5 - diff = dynamic lat
+            const dynamicLat = 40.5 - latDiffDeg;
+            if (dynamicLat < -10) return;
+            const newPos = latLonToVector3(dynamicLat, commonLon, earthRadius + 0.1);
+            if (dynamicMarker) markersGroup.remove(dynamicMarker);
+            if (dynamicLabel) markersGroup.remove(dynamicLabel);
+            dynamicMarker = new THREE.Mesh(
+                new THREE.SphereGeometry(0.1, 24, 24),
+                new THREE.MeshStandardMaterial({ color: 0xffaa44, emissive: 0x442200, emissiveIntensity: 0.9 })
+            );
+            dynamicMarker.position.copy(newPos);
+            markersGroup.add(dynamicMarker);
+            
+            const dynDiv = document.createElement('div');
+            dynDiv.textContent = `✨ Dynamic City\n${dynamicLat.toFixed(1)}°N`;
+            dynDiv.style.cssText = 'color:#ffdd99; font-size:13px; font-weight:bold; background:rgba(0,0,0,0.7); padding:2px 8px; border-radius:20px; border:1px solid #ffaa44;';
+            dynamicLabel = new CSS2DObject(dynDiv);
+            dynamicLabel.position.copy(newPos.clone().multiplyScalar(1.02));
+            markersGroup.add(dynamicLabel);
+            
+            // update latitude rings (line visual)
+            updateLatitudeRing(dynamicLat, 0xffaa66);
+            // update arc distance display & math model arcs
+            const deltaRad = latDiffDeg * Math.PI / 180;
+            const arcMiles = R_miles * deltaRad;
+            document.getElementById('distanceValue').innerText = Math.round(arcMiles);
+            document.getElementById('thetaDegVal').innerText = latDiffDeg.toFixed(1);
+            // Update math model arc lines
+            const pitVecMath = latLonToVector3(40.5, commonLon, earthRadius);
+            const dynVecMath = latLonToVector3(dynamicLat, commonLon, earthRadius);
+            if (mathModelGroup.visible) updateMathModelArc(pitVecMath, dynVecMath);
+            
+            // update calculation panel
+            const radVal = (latDiffDeg * Math.PI / 180).toFixed(4);
+            document.getElementById('mathJaxPreview').innerHTML = `\\( s = 3960 \\times \\frac{${latDiffDeg.toFixed(1)}\\pi}{180} = 3960 \\times ${radVal} \\approx ${Math.round(arcMiles)} \\text{ miles} \\)`;
+            if (window.MathJax) MathJax.typesetPromise();
+        }
+        
+        // --- Latitude Rings ---
+        let activeRings = [];
+        function updateLatitudeRing(latitudeDeg, colorHex) {
+            // remove previous dynamic ring
+            if (window.dynamicRingObj) {
+                realisticGroup.remove(window.dynamicRingObj);
+                mathModelGroup.remove(window.dynamicRingObj);
+                delete window.dynamicRingObj;
+            }
+            const latRad = latitudeDeg * Math.PI/180;
+            const r = earthRadius * Math.cos(latRad);
+            const y = earthRadius * Math.sin(latRad);
+            const points = [];
+            const segments = 120;
+            for (let i = 0; i <= segments; i++) {
+                const theta = i * Math.PI * 2 / segments;
+                const x = r * Math.cos(theta);
+                const z = r * Math.sin(theta);
+                points.push(new THREE.Vector3(x, y, z));
+            }
+            const geometry = new THREE.BufferGeometry().setFromPoints(points);
+            const material = new THREE.LineBasicMaterial({ color: colorHex, linewidth: 1 });
+            const ring = new THREE.LineLoop(geometry, material);
+            realisticGroup.add(ring);
+            mathModelGroup.add(ring.clone());
+            window.dynamicRingObj = ring;
+            // also store for removal
+        }
+        
+        // static rings: Pittsburgh & Miami
+        function addStaticLatRing(lat, color) {
+            const latRad = lat * Math.PI/180;
+            const r = earthRadius * Math.cos(latRad);
+            const y = earthRadius * Math.sin(latRad);
+            const points = [];
+            for (let i = 0; i <= 120; i++) {
+                const theta = i * Math.PI * 2 / 120;
+                points.push(new THREE.Vector3(r * Math.cos(theta), y, r * Math.sin(theta)));
+            }
+            const geo = new THREE.BufferGeometry().setFromPoints(points);
+            const mat = new THREE.LineBasicMaterial({ color: color });
+            const ringLine = new THREE.LineLoop(geo, mat);
+            realisticGroup.add(ringLine);
+            mathModelGroup.add(ringLine.clone());
+            return ringLine;
+        }
+        addStaticLatRing(40.5, 0xff8888);
+        addStaticLatRing(25.5, 0x88aaff);
+        
+        // Equator (existing)
+        const equatorRingLine = new THREE.LineLoop(equatorGeo, new THREE.LineBasicMaterial({ color: 0x77ddff }));
+        realisticGroup.add(equatorRingLine);
+        
+        let latLinesVisible = true;
+        document.getElementById('latLinesToggle').addEventListener('click', () => {
+            latLinesVisible = !latLinesVisible;
+            const rings = document.querySelectorAll('lineLoop'); // not efficient but we iterate groups
+            realisticGroup.children.forEach(child => { if (child.isLineLoop && child !== equatorRingLine) child.visible = latLinesVisible; });
+            mathModelGroup.children.forEach(child => { if (child.isLineLoop && child !== equatorLine) child.visible = latLinesVisible; });
+            if(window.dynamicRingObj) window.dynamicRingObj.visible = latLinesVisible;
+        });
+        
+        // --- UI and Toggles ---
+        const rotateBtn = document.getElementById('rotateBtn');
+        let autoRotate = false;
+        rotateBtn.addEventListener('click', () => {
+            autoRotate = !autoRotate;
+            controls.autoRotate = autoRotate;
+            rotateBtn.style.background = autoRotate ? '#3b82f6' : 'rgba(30,40,60,0.9)';
+        });
+        
+        const mathToggle = document.getElementById('mathModelToggle');
+        mathToggle.addEventListener('click', () => {
+            const isMath = !mathModelGroup.visible;
+            mathModelGroup.visible = isMath;
+            realisticGroup.visible = !isMath;
+            mathToggle.style.background = isMath ? '#3b82f6' : 'rgba(30,40,60,0.9)';
+            if (isMath) {
+                const pitVec = latLonToVector3(40.5, commonLon, earthRadius);
+                const dynLatCurr = 40.5 - parseFloat(document.getElementById('thetaSlider').value);
+                const dynVec = latLonToVector3(dynLatCurr, commonLon, earthRadius);
+                updateMathModelArc(pitVec, dynVec);
+            }
+        });
+        
+        const calcToggle = document.getElementById('calcToggle');
+        const mathPreviewDiv = document.getElementById('mathJaxPreview');
+        calcToggle.addEventListener('click', () => {
+            mathPreviewDiv.style.display = mathPreviewDiv.style.display === 'none' ? 'block' : 'none';
+        });
+        
+        const thetaSlider = document.getElementById('thetaSlider');
+        thetaSlider.addEventListener('input', (e) => {
+            const diff = parseFloat(e.target.value);
+            updateDynamicCity(diff);
+        });
+        
+        // Initialize dynamic city with Miami (diff 15)
+        updateDynamicCity(15);
+        
+        // --- Cinematic Intro Animation with GSAP ---
+        gsap.fromTo(camera.position, 
+            { x: 3, y: 1.5, z: 14 },
+            { x: 0.8, y: 0.4, z: 10.5, duration: 2.5, ease: "power2.inOut", onUpdate: () => controls.update() }
+        );
+        gsap.to(clouds.rotation, { y: 0.008, duration: 20, repeat: -1, ease: "none" });
+        
+        // --- Helper for rotating atmosphere and clouds subtle ---
+        function animateClouds() {
+            clouds.rotation.y += 0.0008;
+            requestAnimationFrame(animateClouds);
+        }
+        animateClouds();
+        
+        // --- Additional: central angle text in 3D? optional: but we use CSS panel
+        // --- Simple Ray, on update arc distance recalc for slider.
+        
+        // --- Animation Loop ---
+        let time = 0;
+        function animate() {
+            requestAnimationFrame(animate);
+            time += 0.003;
+            stars.rotation.y += 0.0002;
+            stars.rotation.x += 0.0001;
+            
+            if (!autoRotate) controls.update();
+            else controls.update();
+            
+            // update dynamic label position if needed (in case of rotation)
+            if(dynamicMarker && dynamicLabel) {
+                const dynLatCurr = 40.5 - parseFloat(thetaSlider.value);
+                const newPos = latLonToVector3(dynLatCurr, commonLon, earthRadius + 0.1);
+                dynamicMarker.position.lerp(newPos, 0.1);
+                dynamicLabel.position.copy(newPos.clone().multiplyScalar(1.02));
+            }
+            
+            renderer.render(scene, camera);
+            labelRenderer.render(scene, camera);
+        }
+        animate();
+        
+        // Minimize panel functionality
+        let minimized = false;
+        const panelDiv = document.getElementById('infoPanel');
+        document.getElementById('minimizeBtn').addEventListener('click', () => {
+            minimized = !minimized;
+            panelDiv.style.transform = minimized ? 'translateY(-95%)' : 'translateY(0)';
+            panelDiv.style.opacity = minimized ? '0.7' : '1';
+        });
+        
+        // resize handler
+        window.addEventListener('resize', onWindowResize, false);
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            labelRenderer.setSize(window.innerWidth, window.innerHeight);
+        }
+        
+        // Small helper to trigger math update on load
+        setTimeout(() => {
+            updateDynamicCity(15);
+            if (window.MathJax) MathJax.typesetPromise();
+        }, 500);
+        
+        // add a small central crosshair glow for earth center (optional)
+        const centerGlow = new THREE.Mesh(new THREE.SphereGeometry(0.05, 8, 8), new THREE.MeshStandardMaterial({ color: 0xffaa66, emissive: 0x442200 }));
+        scene.add(centerGlow);
+        
+        console.log("Interactive 3D Earth Lesson Ready");
+    </script>
+</body>
+</html>
