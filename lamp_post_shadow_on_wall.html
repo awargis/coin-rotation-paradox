@@ -1,0 +1,634 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Related Rates: The Rotating Spotlight Problem | Interactive 3D Calculus Visualization</title>
+    <!-- Import Google Fonts for modern typography -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,600;14..32,700&display=swap" rel="stylesheet">
+    <!-- Import MathJax for beautiful equations -->
+    <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js" id="MathJax-script" async></script>
+    <!-- Import GSAP for smooth animations -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+    <!-- Import Three.js core and add-ons -->
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.128.0/build/three.module.js",
+                "three/addons/": "https://unpkg.com/three@0.128.0/examples/jsm/"
+            }
+        }
+    </script>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            font-family: 'Inter', sans-serif;
+        }
+        /* UI Overlay Panel - Modern glassmorphic design */
+        .ui-panel {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            right: 20px;
+            background: rgba(10, 15, 25, 0.75);
+            backdrop-filter: blur(12px);
+            border-radius: 28px;
+            padding: 18px 24px;
+            color: white;
+            border: 1px solid rgba(255,255,255,0.2);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            z-index: 10;
+            pointer-events: auto;
+            font-weight: 400;
+            transition: all 0.3s ease;
+        }
+        .controls-row {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: space-between;
+            gap: 15px;
+            margin-bottom: 12px;
+        }
+        .slider-container {
+            flex: 3;
+            min-width: 180px;
+        }
+        .values-container {
+            display: flex;
+            gap: 25px;
+            background: rgba(0,0,0,0.5);
+            padding: 8px 16px;
+            border-radius: 40px;
+            font-family: 'Inter', monospace;
+            font-weight: 600;
+        }
+        .value-box {
+            background: #0a0f1a;
+            padding: 4px 12px;
+            border-radius: 20px;
+            border-left: 3px solid #ffaa44;
+        }
+        button {
+            background: rgba(30,40,60,0.9);
+            border: none;
+            color: white;
+            padding: 8px 18px;
+            border-radius: 40px;
+            font-weight: 500;
+            cursor: pointer;
+            backdrop-filter: blur(4px);
+            transition: 0.2s;
+            font-family: 'Inter', sans-serif;
+            font-size: 14px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+        }
+        button:hover {
+            background: #ffaa44;
+            color: #0a0f1a;
+            transform: scale(1.02);
+        }
+        .toggle-group {
+            display: flex;
+            gap: 12px;
+        }
+        .math-panel {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            width: 320px;
+            background: rgba(0,0,0,0.7);
+            backdrop-filter: blur(16px);
+            border-radius: 24px;
+            padding: 16px 20px;
+            border-right: 4px solid #ffaa44;
+            color: #eef;
+            font-size: 14px;
+            z-index: 10;
+            pointer-events: auto;
+            transition: all 0.5s ease;
+            font-family: 'Inter', monospace;
+        }
+        .math-step {
+            margin: 12px 0;
+            opacity: 0;
+            transform: translateX(20px);
+            transition: all 0.5s ease;
+        }
+        .math-step.active {
+            opacity: 1;
+            transform: translateX(0);
+        }
+        .highlight {
+            color: #ffaa44;
+            font-weight: bold;
+            font-size: 1.1em;
+        }
+        .title-card {
+            position: absolute;
+            top: 20%;
+            left: 5%;
+            z-index: 20;
+            background: rgba(0,0,0,0.6);
+            backdrop-filter: blur(10px);
+            padding: 20px 30px;
+            border-radius: 20px;
+            border-left: 6px solid #ffaa44;
+            pointer-events: none;
+            animation: fadeInUp 1.2s ease-out;
+        }
+        .title-card h1 {
+            margin: 0;
+            font-size: 2rem;
+            font-weight: 700;
+        }
+        .title-card p {
+            margin: 5px 0 0;
+            opacity: 0.8;
+        }
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(30px);}
+            to { opacity: 1; transform: translateY(0);}
+        }
+        input[type="range"] {
+            width: 100%;
+            cursor: pointer;
+            background: #2c3e66;
+            height: 4px;
+            border-radius: 5px;
+        }
+        .status-badge {
+            background: #ffaa44;
+            color: #111;
+            border-radius: 40px;
+            padding: 4px 12px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        @media (max-width: 700px) {
+            .math-panel { width: 260px; font-size: 12px; top: 10px; right: 10px; }
+            .ui-panel { padding: 12px; }
+            .values-container { gap: 10px; font-size: 12px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="title-card" id="introTitle">
+        <h1>📐 Related Rates: The Rotating Spotlight</h1>
+        <p>A man walks at 4 ft/s • The spotlight rotates to follow him</p>
+    </div>
+
+    <div class="math-panel" id="mathPanel">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+            <strong style="color:#ffaa44;">📐 MATHEMATICAL MODEL</strong>
+            <span id="derivationToggleBtn" style="cursor:pointer; background:#2a2e3c; padding:2px 10px; border-radius:20px;">▼ Derivation</span>
+        </div>
+        <div id="derivationSteps">
+            <div class="math-step" id="step1">\[ \tan\theta = \frac{x}{20} \]</div>
+            <div class="math-step" id="step2">\[ \frac{d}{dt}[\tan\theta] = \frac{d}{dt}\left[\frac{x}{20}\right] \]</div>
+            <div class="math-step" id="step3">\[ \sec^2\theta \cdot \frac{d\theta}{dt} = \frac{1}{20}\frac{dx}{dt} \]</div>
+            <div class="math-step" id="step4">Given: \( \frac{dx}{dt} = 4\ \text{ft/s} \) , at \( x = 15\ \text{ft} \)</div>
+            <div class="math-step" id="step5">\[ \tan\theta = \frac{15}{20}=0.75,\quad \sec^2\theta = 1+0.75^2 = 1.5625 \]</div>
+            <div class="math-step" id="step6">\[ \frac{d\theta}{dt} = \frac{4}{20 \times 1.5625} = 0.128\ \text{rad/s} \]</div>
+            <div class="math-step highlight" id="step7">⭐ Angular velocity = 0.128 rad/s</div>
+        </div>
+        <div style="margin-top:10px; font-size:12px; color:#ccc;" id="liveThetaRate"></div>
+    </div>
+
+    <div class="ui-panel" id="controlPanel">
+        <div class="controls-row">
+            <div class="slider-container">
+                <label>🚶 Man Position \( x \) (ft): <span id="xValueDisplay">15.0</span></label>
+                <input type="range" id="xSlider" min="-25" max="30" step="0.1" value="15">
+            </div>
+            <div class="values-container">
+                <div class="value-box">📍 \( x = \) <span id="xLive">15.0</span> ft</div>
+                <div class="value-box">📐 \( \theta = \) <span id="thetaLive">0.6435</span> rad</div>
+                <div class="value-box">⚡ \( \frac{d\theta}{dt} = \) <span id="omegaLive">0.128</span> rad/s</div>
+            </div>
+            <div class="toggle-group">
+                <button id="playPauseBtn">⏸️ Pause Walk</button>
+                <button id="resetViewBtn">🎥 Reset Camera</button>
+                <button id="toggleMathBtn">🔮 Show Math Model</button>
+            </div>
+        </div>
+        <div style="font-size:12px; text-align:center; margin-top:6px;">💡 Drag slider to move man • The spotlight automatically tracks him • Triangle updates in real-time</div>
+    </div>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+        import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
+
+        // --- Setup Scene, Cameras, Renderers ---
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x050b1a);
+        scene.fog = new THREE.FogExp2(0x050b1a, 0.008);
+        
+        // Main WebGL Renderer
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        document.body.appendChild(renderer.domElement);
+        
+        // CSS2 Renderer for text labels
+        const labelRenderer = new CSS2DRenderer();
+        labelRenderer.setSize(window.innerWidth, window.innerHeight);
+        labelRenderer.domElement.style.position = 'absolute';
+        labelRenderer.domElement.style.top = '0px';
+        labelRenderer.domElement.style.left = '0px';
+        labelRenderer.domElement.style.pointerEvents = 'none';
+        document.body.appendChild(labelRenderer.domElement);
+        
+        // Camera
+        const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.set(12, 8, 22);
+        camera.lookAt(0, 0, 0);
+        
+        // Controls (user interactive after intro)
+        const controls = new OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.05;
+        controls.autoRotate = false;
+        controls.enableZoom = true;
+        controls.zoomSpeed = 1.2;
+        controls.target.set(0, 0.5, 0);
+        
+        // --- Lighting (realistic night atmosphere) ---
+        // Ambient
+        const ambientLight = new THREE.AmbientLight(0x22223b, 0.5);
+        scene.add(ambientLight);
+        // Main directional light (moonlight)
+        const moonLight = new THREE.DirectionalLight(0x8a9bb5, 0.9);
+        moonLight.position.set(5, 12, -3);
+        moonLight.castShadow = true;
+        moonLight.receiveShadow = true;
+        moonLight.shadow.mapSize.width = 1024;
+        moonLight.shadow.mapSize.height = 1024;
+        scene.add(moonLight);
+        // Fill back rim light
+        const fillLight = new THREE.PointLight(0x445566, 0.4);
+        fillLight.position.set(-3, 2, -5);
+        scene.add(fillLight);
+        // SpotLight that follows the man (the main rotating spotlight)
+        const followSpotlight = new THREE.SpotLight(0xffaa66, 1.5);
+        followSpotlight.angle = 0.35;
+        followSpotlight.penumbra = 0.4;
+        followSpotlight.decay = 1;
+        followSpotlight.distance = 45;
+        followSpotlight.castShadow = true;
+        followSpotlight.shadow.mapSize.width = 1024;
+        followSpotlight.shadow.mapSize.height = 1024;
+        scene.add(followSpotlight);
+        
+        // Additional point light at spotlight origin for glow
+        const glowLight = new THREE.PointLight(0xff8844, 0.8, 20);
+        scene.add(glowLight);
+        
+        // --- Environment: Ground and Brick Wall Background ---
+        const groundPlane = new THREE.Mesh(
+            new THREE.PlaneGeometry(45, 32),
+            new THREE.MeshStandardMaterial({ color: 0x2a2e3c, roughness: 0.7, metalness: 0.1, side: THREE.DoubleSide })
+        );
+        groundPlane.rotation.x = -Math.PI / 2;
+        groundPlane.position.y = -0.2;
+        groundPlane.receiveShadow = true;
+        scene.add(groundPlane);
+        
+        // Brick wall texture (procedural)
+        const canvas = document.createElement('canvas');
+        canvas.width = 512;
+        canvas.height = 512;
+        const ctx = canvas.getContext('2d');
+        ctx.fillStyle = '#8b3c2a';
+        ctx.fillRect(0, 0, 512, 512);
+        ctx.strokeStyle = '#c97e5a';
+        ctx.lineWidth = 12;
+        for (let i = 0; i < 20; i++) {
+            ctx.beginPath();
+            ctx.moveTo(0, i * 40);
+            ctx.lineTo(512, i * 40);
+            ctx.stroke();
+        }
+        for (let i = 0; i < 12; i++) {
+            ctx.beginPath();
+            ctx.moveTo(i * 60, 0);
+            ctx.lineTo(i * 60, 512);
+            ctx.stroke();
+        }
+        const brickTexture = new THREE.CanvasTexture(canvas);
+        const brickWall = new THREE.Mesh(
+            new THREE.BoxGeometry(40, 12, 0.5),
+            new THREE.MeshStandardMaterial({ map: brickTexture, roughness: 0.4, color: 0xffffff })
+        );
+        brickWall.position.set(0, 3, -12);
+        brickWall.receiveShadow = true;
+        scene.add(brickWall);
+        
+        // Path line (straight walkway)
+        const pathLineMat = new THREE.LineBasicMaterial({ color: 0x88aaff });
+        const pathPoints = [];
+        for (let i = -30; i <= 30; i++) pathPoints.push(new THREE.Vector3(i, -0.1, 0));
+        const pathGeometry = new THREE.BufferGeometry().setFromPoints(pathPoints);
+        const pathLine = new THREE.Line(pathGeometry, pathLineMat);
+        scene.add(pathLine);
+        
+        // --- Key objects: Light origin point A (spotlight base) ---
+        const spotlightBasePos = new THREE.Vector3(0, 0.2, 20); // AB = 20ft (distance to path at z=0)
+        const closestPointPos = new THREE.Vector3(0, 0, 0); // point B on path
+        // Man object (simple realistic person)
+        const manGroup = new THREE.Group();
+        const bodyGeo = new THREE.CylinderGeometry(0.35, 0.35, 0.9, 8);
+        const bodyMat = new THREE.MeshStandardMaterial({ color: 0x4d6a8f, roughness: 0.3 });
+        const body = new THREE.Mesh(bodyGeo, bodyMat);
+        body.castShadow = true;
+        body.receiveShadow = true;
+        body.position.y = 0.45;
+        manGroup.add(body);
+        const headGeo = new THREE.SphereGeometry(0.32, 24, 24);
+        const headMat = new THREE.MeshStandardMaterial({ color: 0xf5d0a9 });
+        const head = new THREE.Mesh(headGeo, headMat);
+        head.position.y = 0.95;
+        head.castShadow = true;
+        manGroup.add(head);
+        // Arms
+        const armGeo = new THREE.CylinderGeometry(0.1, 0.1, 0.6);
+        const leftArm = new THREE.Mesh(armGeo, bodyMat);
+        leftArm.position.set(-0.45, 0.75, 0);
+        leftArm.castShadow = true;
+        const rightArm = new THREE.Mesh(armGeo, bodyMat);
+        rightArm.position.set(0.45, 0.75, 0);
+        rightArm.castShadow = true;
+        manGroup.add(leftArm);
+        manGroup.add(rightArm);
+        scene.add(manGroup);
+        
+        // Beam visual: a semi-transparent cylinder connecting spotlight to man
+        const beamCylinder = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.12, 0.25, 1, 6),
+            new THREE.MeshStandardMaterial({ color: 0xffaa66, emissive: 0xaa6622, transparent: true, opacity: 0.55 })
+        );
+        beamCylinder.castShadow = false;
+        scene.add(beamCylinder);
+        
+        // --- Mathematical Visualization: Triangle Lines & Points ---
+        const lineMaterial = new THREE.LineBasicMaterial({ color: 0x44ffcc, linewidth: 2 });
+        // AB line (vertical from spotlight to closest point)
+        const abPoints = [spotlightBasePos.clone(), closestPointPos.clone()];
+        const abGeometry = new THREE.BufferGeometry().setFromPoints(abPoints);
+        const abLine = new THREE.Line(abGeometry, lineMaterial);
+        scene.add(abLine);
+        
+        // BC line (horizontal along path) will update with x, but segment from B to C
+        let bcLineObj;
+        // AC line (hypotenuse)
+        let acLineObj;
+        
+        // Glowing spheres for points A, B, C
+        const pointMat = new THREE.MeshStandardMaterial({ color: 0xff8855, emissive: 0x442200 });
+        const pointASphere = new THREE.Mesh(new THREE.SphereGeometry(0.25, 16, 16), pointMat);
+        pointASphere.position.copy(spotlightBasePos);
+        scene.add(pointASphere);
+        const pointBSphere = new THREE.Mesh(new THREE.SphereGeometry(0.2, 16, 16), new THREE.MeshStandardMaterial({ color: 0x88ffaa, emissive: 0x226622 }));
+        pointBSphere.position.copy(closestPointPos);
+        scene.add(pointBSphere);
+        const pointCSphere = new THREE.Mesh(new THREE.SphereGeometry(0.22, 16, 16), new THREE.MeshStandardMaterial({ color: 0xffaa77, emissive: 0x442200 }));
+        scene.add(pointCSphere);
+        
+        // CSS2D Labels
+        function makeLabel(text, color, position) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            div.style.color = color;
+            div.style.fontSize = '18px';
+            div.style.fontWeight = 'bold';
+            div.style.textShadow = '1px 1px 0px black';
+            div.style.background = 'rgba(0,0,0,0.6)';
+            div.style.padding = '2px 8px';
+            div.style.borderRadius = '20px';
+            div.style.borderLeft = `3px solid ${color}`;
+            const label = new CSS2DObject(div);
+            label.position.copy(position);
+            scene.add(label);
+            return label;
+        }
+        const labelA = makeLabel('🔦 A (Spotlight)', '#ffaa66', new THREE.Vector3(0, 0.7, 20));
+        const labelB = makeLabel('📍 B (Closest Point)', '#88ffaa', new THREE.Vector3(0, 0.5, 0));
+        let labelC = makeLabel('🚶 Man (C)', '#ffaa77', new THREE.Vector3(15, 0.8, 0));
+        
+        // Utility: Update all geometry based on current x position (ft)
+        let currentX = 15.0; // initial ft
+        let autoAnim = false;
+        let lastTimestamp = 0;
+        let animTime = 0;
+        
+        function updateSceneByX(xVal) {
+            currentX = Math.min(30, Math.max(-25, xVal));
+            // Update man position along X axis, y=0, z=0 (path)
+            manGroup.position.set(currentX, 0, 0);
+            pointCSphere.position.set(currentX, 0.15, 0);
+            if (labelC) scene.remove(labelC);
+            labelC = makeLabel('🚶 Man (C)', '#ffaa77', new THREE.Vector3(currentX, 0.8, 0));
+            
+            // Update spotlight target & visual beam
+            const manPos = new THREE.Vector3(currentX, 0.45, 0);
+            followSpotlight.target = manGroup;
+            followSpotlight.position.copy(spotlightBasePos);
+            followSpotlight.target.updateMatrixWorld();
+            
+            // Update beam cylinder: direction from light to man
+            const lightPos = spotlightBasePos;
+            const direction = new THREE.Vector3().subVectors(manPos, lightPos);
+            const length = direction.length();
+            beamCylinder.scale.set(1, length, 1);
+            beamCylinder.position.copy(lightPos.clone().add(direction.clone().multiplyScalar(0.5)));
+            beamCylinder.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0), direction.clone().normalize());
+            
+            // Update triangle lines: BC (B to C) and AC (A to C)
+            const bPos = closestPointPos;
+            const cPos = new THREE.Vector3(currentX, 0, 0);
+            const aPos = spotlightBasePos;
+            if (bcLineObj) scene.remove(bcLineObj);
+            const bcPoints = [bPos, cPos];
+            const bcGeo = new THREE.BufferGeometry().setFromPoints(bcPoints);
+            bcLineObj = new THREE.Line(bcGeo, new THREE.LineBasicMaterial({ color: 0x66ffcc, linewidth: 2 }));
+            scene.add(bcLineObj);
+            
+            if (acLineObj) scene.remove(acLineObj);
+            const acPoints = [aPos, cPos];
+            const acGeo = new THREE.BufferGeometry().setFromPoints(acPoints);
+            acLineObj = new THREE.Line(acGeo, new THREE.LineBasicMaterial({ color: 0xffaa66, linewidth: 2 }));
+            scene.add(acLineObj);
+            
+            // Compute theta and angular velocity
+            const xValAbs = currentX;
+            const theta = Math.atan2(xValAbs, 20);
+            const dxdt = 4.0; // ft/s
+            const secSq = 1 + Math.pow(xValAbs/20, 2);
+            let dThetaDt = dxdt / (20 * secSq);
+            dThetaDt = parseFloat(dThetaDt.toFixed(4));
+            
+            // Update UI values
+            document.getElementById('xLive').innerText = currentX.toFixed(2);
+            document.getElementById('thetaLive').innerText = theta.toFixed(4);
+            document.getElementById('omegaLive').innerText = dThetaDt;
+            document.getElementById('xValueDisplay').innerText = currentX.toFixed(1);
+            document.getElementById('xSlider').value = currentX;
+            document.getElementById('liveThetaRate').innerHTML = `⚡ Current angular velocity: ${dThetaDt} rad/s | dx/dt = 4 ft/s`;
+            
+            // Extra: adjust point light glow intensity based on distance
+            const distToMan = Math.hypot(currentX, 20);
+            glowLight.intensity = 0.8 + (1 - Math.min(1, distToMan / 35)) * 0.8;
+        }
+        
+        // Slider event
+        const slider = document.getElementById('xSlider');
+        slider.addEventListener('input', (e) => {
+            if (autoAnim) autoAnim = false;
+            updateSceneByX(parseFloat(e.target.value));
+        });
+        
+        // Auto walk simulation
+        let animationFrameId;
+        function startAutoWalk() {
+            autoAnim = true;
+        }
+        function stopAutoWalk() {
+            autoAnim = false;
+        }
+        document.getElementById('playPauseBtn').addEventListener('click', () => {
+            autoAnim = !autoAnim;
+            document.getElementById('playPauseBtn').innerHTML = autoAnim ? "⏸️ Pause Walk" : "▶️ Auto Walk";
+        });
+        document.getElementById('resetViewBtn').addEventListener('click', () => {
+            camera.position.set(12, 7, 22);
+            controls.target.set(0, 0.5, 0);
+            controls.update();
+        });
+        
+        // Toggle mathematical model visibility (toggle triangle and text visibility)
+        let mathVisible = true;
+        const toggleMathBtn = document.getElementById('toggleMathBtn');
+        toggleMathBtn.addEventListener('click', () => {
+            mathVisible = !mathVisible;
+            abLine.visible = mathVisible;
+            bcLineObj.visible = mathVisible;
+            acLineObj.visible = mathVisible;
+            pointASphere.visible = mathVisible;
+            pointBSphere.visible = mathVisible;
+            pointCSphere.visible = mathVisible;
+            labelA.visible = mathVisible;
+            labelB.visible = mathVisible;
+            labelC.visible = mathVisible;
+            toggleMathBtn.innerHTML = mathVisible ? "🔮 Hide Math Model" : "📐 Show Math Model";
+        });
+        toggleMathBtn.innerHTML = "🔮 Hide Math Model";
+        
+        // Derivation step-wise animation
+        const steps = document.querySelectorAll('.math-step');
+        let stepIndex = 0;
+        function animateDerivation() {
+            if (stepIndex < steps.length) {
+                steps[stepIndex].classList.add('active');
+                stepIndex++;
+                setTimeout(animateDerivation, 800);
+            }
+        }
+        document.getElementById('derivationToggleBtn').addEventListener('click', () => {
+            if (stepIndex === 0) animateDerivation();
+            else {
+                steps.forEach(s => s.classList.remove('active'));
+                stepIndex = 0;
+                animateDerivation();
+            }
+        });
+        setTimeout(() => animateDerivation(), 2000);
+        
+        // --- Cinematic Camera Intro (GSAP) ---
+        const timeline = gsap.timeline();
+        timeline.to(camera.position, {
+            duration: 3.5,
+            x: 5,
+            y: 4.5,
+            z: 18,
+            ease: "power2.inOut",
+            onUpdate: () => controls.update()
+        }, 0);
+        timeline.to({}, { duration: 0.5 });
+        timeline.call(() => {
+            document.getElementById('introTitle').style.opacity = '0';
+            setTimeout(() => document.getElementById('introTitle').remove(), 1000);
+        });
+        
+        // Initialize scene
+        updateSceneByX(15);
+        
+        // Small stars / particles for ambience
+        const starGeometry = new THREE.BufferGeometry();
+        const starCount = 800;
+        const starPositions = new Float32Array(starCount * 3);
+        for (let i = 0; i < starCount; i++) {
+            starPositions[i*3] = (Math.random() - 0.5) * 200;
+            starPositions[i*3+1] = (Math.random() - 0.5) * 30 + 5;
+            starPositions[i*3+2] = (Math.random() - 0.5) * 80 - 50;
+        }
+        starGeometry.setAttribute('position', new THREE.BufferAttribute(starPositions, 3));
+        const starMaterial = new THREE.PointsMaterial({ color: 0xffffff, size: 0.08 });
+        const stars = new THREE.Points(starGeometry, starMaterial);
+        scene.add(stars);
+        
+        // Walking animation for legs/arms when auto is active: simple periodic rotation
+        let timeWalk = 0;
+        function animateWalking() {
+            if (autoAnim) {
+                timeWalk += 0.025;
+                const armAngle = Math.sin(timeWalk * 8) * 0.6;
+                if (manGroup.children[2]) manGroup.children[2].rotation.x = armAngle; // left arm
+                if (manGroup.children[3]) manGroup.children[3].rotation.x = -armAngle;
+                // Move position based on time step: 4 ft/s
+                const deltaTime = 1/60; // approx
+                let newX = currentX + 4 * deltaTime;
+                if (newX > 30) newX = -25;
+                if (newX < -25) newX = 30;
+                updateSceneByX(newX);
+            } else {
+                // idle slight sway
+                const idleSway = Math.sin(Date.now() * 0.006) * 0.1;
+                if (manGroup.children[2]) manGroup.children[2].rotation.x = idleSway;
+                if (manGroup.children[3]) manGroup.children[3].rotation.x = -idleSway;
+            }
+        }
+        
+        // Animation loop
+        function renderLoop() {
+            requestAnimationFrame(renderLoop);
+            animateWalking();
+            controls.update(); // update orbit if needed
+            followSpotlight.position.copy(spotlightBasePos);
+            followSpotlight.target.updateMatrixWorld();
+            renderer.render(scene, camera);
+            labelRenderer.render(scene, camera);
+        }
+        renderLoop();
+        
+        // Helper to resize
+        window.addEventListener('resize', onWindowResize, false);
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            labelRenderer.setSize(window.innerWidth, window.innerHeight);
+        }
+        
+        // initial manual trigger to show correct beam
+        setTimeout(() => updateSceneByX(15), 100);
+        
+        // Add small glowing effect to spotlight base
+        const lensGlow = new THREE.PointLight(0xff8844, 0.6, 12);
+        lensGlow.position.copy(spotlightBasePos);
+        scene.add(lensGlow);
+    </script>
+</body>
+</html>
