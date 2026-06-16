@@ -1,0 +1,1584 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Mountain Explorer · Monotonicity &amp; Extrema</title>
+<style>
+/* ═══ DESIGN TOKENS ══════════════════════════════════════════ */
+:root {
+  --blue:      #0071E3;
+  --blue-dk:   #0062C4;
+  --blue-lt:   #E8F1FB;
+  --green:     #30D158;
+  --green-lt:  #E3F9E9;
+  --red:       #FF453A;
+  --red-lt:    #FFF0EF;
+  --yellow:    #FFD60A;
+  --orange:    #FF9F0A;
+  --purple:    #BF5AF2;
+
+  --bg:        #F2F2F7;
+  --surface:   #FFFFFF;
+  --glass:     rgba(255,255,255,0.88);
+  --border:    rgba(0,0,0,0.09);
+  --border-md: rgba(0,0,0,0.14);
+
+  --t1: #1D1D1F;
+  --t2: #6E6E73;
+  --t3: #AEAEB2;
+
+  --r-xl: 20px;  --r-lg: 16px;
+  --r-md: 12px;  --r-sm:  8px;  --r-xs: 5px;
+
+  --sh-sm: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+  --sh-md: 0 4px 14px rgba(0,0,0,0.08), 0 1px 4px rgba(0,0,0,0.04);
+  --sh-lg: 0 8px 28px rgba(0,0,0,0.11), 0 2px 8px rgba(0,0,0,0.06);
+
+  --ff:   -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  --mono: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+  --tr:   0.18s cubic-bezier(.4,0,.2,1);
+}
+
+/* ═══ RESET ══════════════════════════════════════════════════ */
+*,*::before,*::after { box-sizing:border-box; margin:0; padding:0 }
+html,body { width:100%; height:100%; overflow:hidden;
+  font-family:var(--ff); background:var(--bg); color:var(--t1) }
+button { font-family:var(--ff); cursor:pointer; border:none; outline:none }
+button:active { transform:scale(0.96) }
+
+/* ═══ SHELL LAYOUT ═══════════════════════════════════════════ */
+.app          { display:flex; flex-direction:column; width:100vw; height:100vh }
+.app-body     { flex:1; display:flex; min-height:0 }
+.terrain-col  { flex:1; display:flex; flex-direction:column; min-width:0 }
+.side-col     { width:296px; flex-shrink:0; background:var(--bg);
+                display:flex; flex-direction:column; gap:9px;
+                padding:9px 12px 9px 6px; overflow-y:auto }
+
+/* ═══ NAV BAR ════════════════════════════════════════════════ */
+.navbar {
+  height:52px; flex-shrink:0;
+  background:rgba(242,242,247,0.92);
+  backdrop-filter:blur(24px) saturate(180%);
+  -webkit-backdrop-filter:blur(24px) saturate(180%);
+  border-bottom:1px solid var(--border);
+  display:flex; align-items:center; padding:0 18px; gap:0;
+  user-select:none; z-index:10;
+}
+.nav-logo {
+  font-size:14px; font-weight:700; color:var(--t1);
+  display:flex; align-items:center; gap:8px; margin-right:24px;
+}
+.nav-logo-badge {
+  width:28px; height:28px; border-radius:8px; flex-shrink:0;
+  background:linear-gradient(145deg,#3A7BD5 0%,#0071E3 100%);
+  display:flex; align-items:center; justify-content:center;
+  font-size:14px; box-shadow:0 2px 6px rgba(0,113,227,0.3);
+}
+.nav-logo-text { letter-spacing:-0.2px }
+
+.scene-dots { display:flex; align-items:center; gap:5px }
+.sdot {
+  height:5px; border-radius:3px;
+  background:var(--t3); cursor:pointer;
+  transition:background var(--tr), width var(--tr);
+  width:24px;
+}
+.sdot.active { background:var(--blue); width:32px }
+.sdot:hover:not(.active) { background:var(--t2) }
+
+.nav-vr { width:1px; height:22px; background:var(--border); margin:0 16px }
+.nav-scene-name { font-size:12.5px; font-weight:500; color:var(--t1) }
+.nav-gap { flex:1 }
+
+.tgl {
+  height:28px; padding:0 11px; border-radius:var(--r-sm);
+  border:1.5px solid var(--border); background:var(--surface);
+  font-size:11.5px; font-weight:500; color:var(--t2);
+  display:flex; align-items:center; gap:5px; margin-left:5px;
+  transition:all var(--tr); white-space:nowrap;
+}
+.tgl:hover { border-color:var(--blue); color:var(--blue) }
+.tgl.on { background:var(--blue-lt); border-color:var(--blue); color:var(--blue) }
+.tgl .pip { width:6px; height:6px; border-radius:50%; background:currentColor }
+
+/* ═══ TERRAIN AREA ═══════════════════════════════════════════ */
+.terrain-wrap {
+  flex:1; position:relative; overflow:hidden; min-height:0;
+  background:#0D1B2A; cursor:crosshair;
+}
+#terrainCanvas { display:block; width:100%; height:100% }
+
+/* Classification badge */
+.cls-badge {
+  position:absolute; top:14px; left:50%;
+  transform:translateX(-50%) translateY(-4px);
+  background:rgba(10,15,25,0.72);
+  backdrop-filter:blur(16px); -webkit-backdrop-filter:blur(16px);
+  border:1px solid rgba(255,255,255,0.12);
+  color:#fff; border-radius:100px; padding:7px 16px 7px 12px;
+  display:flex; align-items:center; gap:8px;
+  font-size:12.5px; font-weight:600;
+  opacity:0; transition:opacity 0.3s, transform 0.3s;
+  pointer-events:none;
+}
+.cls-badge.show { opacity:1; transform:translateX(-50%) translateY(0) }
+.cls-badge-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0 }
+
+.terrain-tip {
+  position:absolute; bottom:14px; left:50%;
+  transform:translateX(-50%);
+  background:rgba(10,15,25,0.6);
+  backdrop-filter:blur(8px);
+  color:rgba(255,255,255,0.6);
+  font-size:10px; font-family:var(--mono);
+  padding:4px 10px; border-radius:100px;
+  pointer-events:none;
+  letter-spacing:0.5px;
+}
+
+/* Blindfold overlay */
+.blindfold {
+  position:absolute; inset:0;
+  background:rgba(8,12,20,0.93);
+  backdrop-filter:blur(3px);
+  opacity:0; pointer-events:none;
+  transition:opacity 0.5s;
+  display:flex; align-items:center; justify-content:center;
+  flex-direction:column; gap:10px;
+}
+.blindfold.on { opacity:1; pointer-events:all }
+.blindfold-msg {
+  color:rgba(255,255,255,0.28); font-size:12px;
+  font-weight:500; letter-spacing:2.5px; text-transform:uppercase;
+}
+.blindfold-sub {
+  color:rgba(255,255,255,0.14); font-size:10px; letter-spacing:1px;
+}
+
+/* ═══ DERIVATIVE STRIP ═══════════════════════════════════════ */
+.deriv-wrap {
+  height:128px; flex-shrink:0; position:relative;
+  background:var(--surface); border-top:1px solid var(--border);
+}
+#derivCanvas { display:block; width:100%; height:100% }
+.deriv-axis-label {
+  position:absolute; left:6px; top:50%; transform:translateY(-50%);
+  font-size:9px; font-weight:600; color:var(--t3);
+  font-family:var(--mono); letter-spacing:0.5px;
+  pointer-events:none; writing-mode:vertical-rl;
+}
+
+/* ═══ CARD BASE ══════════════════════════════════════════════ */
+.card {
+  background:var(--surface); border-radius:var(--r-lg);
+  border:1px solid var(--border); overflow:hidden;
+  box-shadow:var(--sh-sm); flex-shrink:0;
+}
+.card-hd {
+  padding:9px 13px 8px;
+  border-bottom:1px solid var(--border);
+  display:flex; align-items:center; gap:6px;
+}
+.card-hd-icon { font-size:12px }
+.card-hd-lbl {
+  font-size:10px; font-weight:700; letter-spacing:1px;
+  text-transform:uppercase; color:var(--t2);
+}
+.card-hd-pill {
+  margin-left:auto; font-size:9px; font-weight:600;
+  letter-spacing:0.5px; text-transform:uppercase;
+  padding:2px 8px; border-radius:100px;
+  background:var(--bg); color:var(--t3); cursor:pointer;
+  transition:all var(--tr);
+}
+.card-hd-pill:hover { background:var(--blue-lt); color:var(--blue) }
+.card-hd-pill.on { background:var(--green-lt); color:var(--green) }
+
+/* ═══ SPIRIT LEVEL CARD ══════════════════════════════════════ */
+.spirit-body { padding:14px 16px 12px }
+.spirit-tube-outer { position:relative; height:30px; margin-bottom:9px }
+.spirit-scale-bar {
+  position:absolute; left:16px; right:16px; top:9px; bottom:9px;
+  border-radius:20px;
+  background:linear-gradient(to right,
+    #FF453A 0%, #FF9F0A 22%, #FFD60A 38%,
+    #30D158 50%,
+    #FFD60A 62%, #FF9F0A 78%, #FF453A 100%);
+  opacity:0.3;
+}
+.spirit-center-tick {
+  position:absolute; left:50%; top:3px; bottom:3px;
+  width:1.5px; transform:translateX(-50%);
+  background:#30D158; opacity:0.5;
+}
+.spirit-tube-glass {
+  position:absolute; inset:0; border-radius:22px;
+  background:linear-gradient(180deg,
+    rgba(220,240,255,0.55) 0%,
+    rgba(180,215,240,0.35) 100%);
+  border:1.5px solid rgba(140,190,225,0.45);
+  overflow:hidden;
+}
+.spirit-bubble {
+  position:absolute; top:50%; left:50%;
+  width:22px; height:22px; border-radius:50%;
+  transform:translate(-50%,-50%);
+  background:radial-gradient(circle at 33% 30%,
+    rgba(255,255,255,0.98), rgba(190,228,255,0.75));
+  border:1.5px solid rgba(150,195,228,0.65);
+  box-shadow:inset 0 1px 3px rgba(255,255,255,0.95),
+             0 1px 4px rgba(0,0,0,0.14);
+  will-change:left;
+}
+.spirit-meta {
+  display:flex; align-items:center; gap:8px; justify-content:center;
+  font-size:11px; color:var(--t2);
+}
+.spirit-dir { font-size:15px; font-weight:700; transition:color 0.2s }
+
+/* ═══ READOUT CARD ═══════════════════════════════════════════ */
+.readout-grid {
+  display:grid; grid-template-columns:1fr 1fr; gap:7px; padding:10px;
+}
+.readout-cell {
+  background:var(--bg); border-radius:var(--r-sm);
+  padding:9px 11px;
+}
+.readout-lbl {
+  font-size:9.5px; font-family:var(--mono); font-weight:500;
+  color:var(--t3); margin-bottom:3px; letter-spacing:0.3px;
+}
+.readout-val {
+  font-size:18px; font-weight:700; font-family:var(--mono);
+  color:var(--t1); transition:color 0.15s; line-height:1;
+}
+.readout-val.pos { color:var(--green) }
+.readout-val.neg { color:var(--red) }
+.readout-val.zero { color:var(--orange) }
+.readout-classify {
+  grid-column:1/-1; border-radius:var(--r-sm);
+  background:var(--bg); padding:9px 11px;
+  display:flex; align-items:center; gap:8px;
+  font-size:12px; font-weight:600; transition:all 0.2s;
+}
+.clf-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; transition:background 0.2s }
+
+/* ═══ CHALLENGE CARD ═════════════════════════════════════════ */
+.challenge-card { flex:1 }
+.ch-task {
+  display:flex; gap:10px; align-items:flex-start;
+  padding:10px 13px; border-bottom:1px solid rgba(0,0,0,0.04);
+  transition:background var(--tr); cursor:default;
+}
+.ch-task:last-child { border-bottom:none }
+.ch-task:hover { background:rgba(0,0,0,0.015) }
+.ch-task.active-task { background:var(--blue-lt) }
+.ch-task.done { opacity:0.42; text-decoration:line-through }
+.ch-check {
+  width:18px; height:18px; border-radius:50%; flex-shrink:0; margin-top:1px;
+  border:1.5px solid var(--border); background:var(--surface);
+  display:flex; align-items:center; justify-content:center;
+  font-size:9px; transition:all var(--tr);
+}
+.ch-task.active-task .ch-check { border-color:var(--blue) }
+.ch-task.done .ch-check {
+  background:var(--green); border-color:var(--green);
+  color:#fff;
+}
+.ch-task-text { font-size:12px; line-height:1.5; color:var(--t1) }
+.ch-task-hint { font-size:10px; color:var(--t3); display:block; margin-top:1px }
+
+/* ═══ TEACHER MODE CARD ══════════════════════════════════════ */
+.teacher-card {}
+.teacher-body { padding:11px 13px 12px; display:flex; flex-direction:column; gap:8px }
+.teacher-tip {
+  font-size:11.5px; line-height:1.6; color:var(--t1);
+  background:var(--bg); border-radius:var(--r-sm);
+  padding:9px 11px; border-left:3px solid var(--blue);
+  transition:all 0.3s;
+}
+.teacher-tip-head {
+  font-size:9.5px; font-weight:700; letter-spacing:0.8px;
+  text-transform:uppercase; color:var(--blue); margin-bottom:4px;
+}
+.teacher-formula {
+  font-family:var(--mono); font-size:11px; font-weight:600;
+  color:var(--purple); background:rgba(191,90,242,0.07);
+  border-radius:4px; padding:2px 6px; display:inline-block;
+  margin-top:3px;
+}
+
+/* ═══ HEAT MAP LEGEND ════════════════════════════════════════ */
+.heatmap-legend {
+  position:absolute; bottom:42px; right:14px;
+  background:rgba(10,15,25,0.7);
+  backdrop-filter:blur(8px);
+  border:1px solid rgba(255,255,255,0.1);
+  border-radius:8px; padding:8px 10px;
+  display:none; flex-direction:column; gap:4px;
+  pointer-events:none;
+}
+.heatmap-legend.show { display:flex }
+.hml-title { font-size:9px; font-weight:700; color:rgba(255,255,255,0.5);
+             letter-spacing:1px; text-transform:uppercase; margin-bottom:2px }
+.hml-bar {
+  width:120px; height:8px; border-radius:4px;
+  background:linear-gradient(to right,
+    #4444FF, #4488FF, #44BBFF, #44FFBB, #AAFF44, #FFFF00, #FFAA00, #FF4400);
+  border:1px solid rgba(255,255,255,0.12);
+}
+.hml-labels { display:flex; justify-content:space-between;
+  font-size:8px; color:rgba(255,255,255,0.4); font-family:var(--mono) }
+
+/* ═══ CONTROLS BAR ═══════════════════════════════════════════ */
+.controls-bar {
+  height:66px; flex-shrink:0;
+  background:rgba(255,255,255,0.95);
+  backdrop-filter:blur(20px); -webkit-backdrop-filter:blur(20px);
+  border-top:1px solid var(--border);
+  display:flex; align-items:center; padding:0 18px; gap:14px;
+}
+.ctrl-grp { display:flex; align-items:center; gap:7px; flex-shrink:0 }
+.ctrl-lbl { font-size:10px; font-weight:600; color:var(--t3);
+             letter-spacing:0.8px; text-transform:uppercase; white-space:nowrap }
+.ctrl-vr { width:1px; height:26px; background:var(--border); flex-shrink:0 }
+.ctrl-gap { flex:1 }
+
+.pb { border-radius:50%; display:flex; align-items:center; justify-content:center;
+      font-size:13px; transition:all var(--tr); flex-shrink:0 }
+.pb.sm { width:32px; height:32px; background:var(--bg);
+         color:var(--t2); border:1.5px solid var(--border) }
+.pb.sm:hover { border-color:var(--blue); color:var(--blue) }
+.pb.lg { width:38px; height:38px; background:var(--blue); color:#fff;
+         box-shadow:0 2px 8px rgba(0,113,227,0.32) }
+.pb.lg:hover { background:var(--blue-dk); transform:scale(1.06) }
+
+input[type=range] {
+  -webkit-appearance:none; appearance:none;
+  height:3.5px; border-radius:2px; outline:none; cursor:pointer;
+  background:var(--border); flex-shrink:0;
+}
+input[type=range]::-webkit-slider-thumb {
+  -webkit-appearance:none; appearance:none;
+  width:17px; height:17px; border-radius:50%;
+  background:var(--blue); box-shadow:0 1px 4px rgba(0,113,227,0.35);
+  transition:transform 0.1s;
+}
+input[type=range]::-webkit-slider-thumb:hover { transform:scale(1.18) }
+input[type=range]::-moz-range-thumb {
+  width:17px; height:17px; border:none; border-radius:50%;
+  background:var(--blue); box-shadow:0 1px 4px rgba(0,113,227,0.35);
+}
+.sl-pos  { width:200px }
+.sl-ring { width:90px }
+.sl-spd  { width:80px }
+
+.scene-nav { display:flex; gap:4px }
+.scn-btn {
+  height:32px; padding:0 14px; border-radius:var(--r-sm);
+  border:1.5px solid var(--border); background:var(--surface);
+  font-size:12px; font-weight:500; color:var(--t2);
+  display:flex; align-items:center; gap:5px;
+  transition:all var(--tr);
+}
+.scn-btn:hover { border-color:var(--blue); color:var(--blue) }
+.scn-btn.fwd { background:var(--blue); color:#fff;
+               border-color:var(--blue); box-shadow:0 2px 7px rgba(0,113,227,0.24) }
+.scn-btn.fwd:hover { background:var(--blue-dk) }
+
+/* ═══ ANIMATIONS ═════════════════════════════════════════════ */
+@keyframes taskPop {
+  0%   { transform:scale(1) }
+  40%  { transform:scale(1.18) }
+  100% { transform:scale(1) }
+}
+.task-pop { animation:taskPop 0.35s ease }
+
+@keyframes fadeSlideIn {
+  from { opacity:0; transform:translateY(6px) }
+  to   { opacity:1; transform:translateY(0) }
+}
+
+/* Challenge score badge */
+.score-badge {
+  position:absolute; top:14px; right:14px;
+  background:rgba(10,15,25,0.72);
+  backdrop-filter:blur(12px);
+  border:1px solid rgba(255,215,10,0.3);
+  color:#FFD60A; border-radius:100px;
+  padding:5px 14px; font-size:12px; font-weight:700;
+  font-family:var(--mono); display:none;
+  pointer-events:none;
+}
+.score-badge.show { display:block }
+
+/* Teacher annotation overlay */
+.teacher-overlay {
+  position:absolute; top:14px; left:14px;
+  background:rgba(0,113,227,0.12);
+  backdrop-filter:blur(8px);
+  border:1px solid rgba(0,113,227,0.3);
+  border-radius:10px; padding:8px 12px;
+  font-size:11px; color:rgba(255,255,255,0.85);
+  max-width:200px; line-height:1.5;
+  display:none; pointer-events:none;
+  transition:opacity 0.3s;
+}
+.teacher-overlay.show { display:block }
+.teacher-overlay strong { color:#60BBFF }
+</style>
+</head>
+<body>
+<div class="app">
+
+<!-- ═══════════════════════════════════════════ NAVBAR -->
+<nav class="navbar">
+  <div class="nav-logo">
+    <div class="nav-logo-badge">🏔</div>
+    <span class="nav-logo-text">Mountain Explorer</span>
+  </div>
+
+  <div class="scene-dots" id="sceneDots">
+    <div class="sdot active" data-s="0"></div>
+    <div class="sdot" data-s="1"></div>
+    <div class="sdot" data-s="2"></div>
+    <div class="sdot" data-s="3"></div>
+    <div class="sdot" data-s="4"></div>
+  </div>
+
+  <div class="nav-vr"></div>
+  <div class="nav-scene-name" id="navTitle">Scene 1 — Arrival at Dawn</div>
+  <div class="nav-gap"></div>
+
+  <button class="tgl" id="tTangent" onclick="tog('tangent')">
+    <div class="pip"></div> Tangent Line
+  </button>
+  <button class="tgl" id="tRing" onclick="tog('ring')">
+    <div class="pip"></div> Neighbourhood
+  </button>
+  <button class="tgl" id="tLabels" onclick="tog('labels')">
+    <div class="pip"></div> Labels
+  </button>
+  <button class="tgl" id="tHeatmap" onclick="tog('heatmap')">
+    <div class="pip"></div> Heat Map
+  </button>
+  <button class="tgl" id="tBlind" onclick="tog('blind')">
+    <div class="pip"></div> Blind Mode
+  </button>
+</nav>
+
+<!-- ═══════════════════════════════════════════ MAIN BODY -->
+<div class="app-body">
+
+  <!-- LEFT COLUMN -->
+  <div class="terrain-col">
+
+    <div class="terrain-wrap" id="tw">
+      <canvas id="tc"></canvas>
+
+      <!-- Classification badge -->
+      <div class="cls-badge" id="clsBadge">
+        <div class="cls-badge-dot" id="clsDot"></div>
+        <span id="clsText">Local Maximum</span>
+      </div>
+
+      <!-- Score badge (challenge mode) -->
+      <div class="score-badge" id="scoreBadge">Score: 0</div>
+
+      <!-- Teacher annotation overlay -->
+      <div class="teacher-overlay" id="teacherOverlay"></div>
+
+      <!-- Heatmap legend -->
+      <div class="heatmap-legend" id="heatmapLegend">
+        <div class="hml-title">∂f / ∂x  Derivative</div>
+        <div class="hml-bar"></div>
+        <div class="hml-labels"><span>−max</span><span>0</span><span>+max</span></div>
+      </div>
+
+      <!-- Position readout bottom -->
+      <div class="terrain-tip" id="terrainTip">x = 0.00 &nbsp;·&nbsp; f(x) = 0.00</div>
+
+      <!-- Blindfold -->
+      <div class="blindfold" id="blindfold">
+        <div class="blindfold-msg">Read the Derivative</div>
+        <div class="blindfold-sub">Navigate using only f ′(x) below</div>
+      </div>
+    </div>
+
+    <!-- Derivative strip -->
+    <div class="deriv-wrap">
+      <div class="deriv-axis-label">f ′(x)</div>
+      <canvas id="dc"></canvas>
+    </div>
+
+  </div><!-- /terrain-col -->
+
+  <!-- RIGHT COLUMN -->
+  <div class="side-col">
+
+    <!-- SPIRIT LEVEL -->
+    <div class="card">
+      <div class="card-hd">
+        <span class="card-hd-icon">⚖</span>
+        <span class="card-hd-lbl">Spirit Level</span>
+      </div>
+      <div class="spirit-body">
+        <div class="spirit-tube-outer">
+          <div class="spirit-scale-bar"></div>
+          <div class="spirit-center-tick"></div>
+          <div class="spirit-tube-glass">
+            <div class="spirit-bubble" id="bubble"></div>
+          </div>
+        </div>
+        <div class="spirit-meta">
+          <span class="spirit-dir" id="spiritDir">→</span>
+          <span id="spiritMsg" style="font-size:11px;color:var(--t2)">Level ground</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- LIVE READINGS -->
+    <div class="card">
+      <div class="card-hd">
+        <span class="card-hd-icon">📊</span>
+        <span class="card-hd-lbl">Live Readings</span>
+      </div>
+      <div class="readout-grid">
+        <div class="readout-cell">
+          <div class="readout-lbl">f(x) height</div>
+          <div class="readout-val" id="rH">—</div>
+        </div>
+        <div class="readout-cell">
+          <div class="readout-lbl">f ′(x) slope</div>
+          <div class="readout-val" id="rS">—</div>
+        </div>
+        <div class="readout-cell">
+          <div class="readout-lbl">f ′′(x) curv.</div>
+          <div class="readout-val" id="rC">—</div>
+        </div>
+        <div class="readout-cell">
+          <div class="readout-lbl">x position</div>
+          <div class="readout-val" id="rX">—</div>
+        </div>
+        <div class="readout-classify" id="rClass">
+          <div class="clf-dot" id="clfDot" style="background:var(--t3)"></div>
+          <span id="clfText" style="color:var(--t2)">Walking…</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- TEACHER MODE -->
+    <div class="card teacher-card" id="teacherCard">
+      <div class="card-hd">
+        <span class="card-hd-icon">🎓</span>
+        <span class="card-hd-lbl">Teacher Mode</span>
+        <div class="card-hd-pill" id="teacherPill" onclick="toggleTeacher()">START</div>
+      </div>
+      <div class="teacher-body" id="teacherBody" style="display:none">
+        <div class="teacher-tip" id="teacherTip">
+          <div class="teacher-tip-head">Current Concept</div>
+          <span id="teacherText">Move the explorer to explore the terrain.</span>
+        </div>
+        <div class="teacher-tip" style="border-left-color:var(--purple)">
+          <div class="teacher-tip-head" style="color:var(--purple)">Key Formula</div>
+          <span class="teacher-formula" id="teacherFormula">f ′(x) = lim h→0 [f(x+h)−f(x)] / h</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- CHALLENGE MODE -->
+    <div class="card challenge-card">
+      <div class="card-hd">
+        <span class="card-hd-icon">🎯</span>
+        <span class="card-hd-lbl">Challenge Mode</span>
+        <div class="card-hd-pill" id="chalPill" onclick="toggleChallenge()">START</div>
+      </div>
+
+      <div id="taskList">
+        <div class="ch-task active-task" id="t0">
+          <div class="ch-check" id="ck0"></div>
+          <div>
+            <div class="ch-task-text">Find a <strong>local maximum</strong></div>
+            <span class="ch-task-hint">Spirit level goes flat, f ′ changes + to −</span>
+          </div>
+        </div>
+        <div class="ch-task" id="t1">
+          <div class="ch-check" id="ck1"></div>
+          <div>
+            <div class="ch-task-text">Reach the <strong>global maximum</strong></div>
+            <span class="ch-task-hint">The highest point on the entire mountain</span>
+          </div>
+        </div>
+        <div class="ch-task" id="t2">
+          <div class="ch-check" id="ck2"></div>
+          <div>
+            <div class="ch-task-text">Find f ′(x) = 0 with <strong>no extremum</strong></div>
+            <span class="ch-task-hint">Flat point that is neither max nor min</span>
+          </div>
+        </div>
+        <div class="ch-task" id="t3">
+          <div class="ch-check" id="ck3"></div>
+          <div>
+            <div class="ch-task-text">Locate the <strong>local minimum</strong></div>
+            <span class="ch-task-hint">Valley between the two peaks</span>
+          </div>
+        </div>
+        <div class="ch-task" id="t4">
+          <div class="ch-check" id="ck4"></div>
+          <div>
+            <div class="ch-task-text">Navigate to <strong>global max in Blind Mode</strong></div>
+            <span class="ch-task-hint">Use only f ′(x) — no mountain visible</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /side-col -->
+</div><!-- /app-body -->
+
+<!-- ═══════════════════════════════════════════ CONTROLS BAR -->
+<div class="controls-bar">
+
+  <div class="ctrl-grp">
+    <button class="pb sm" onclick="nudge(-0.4)" title="Step back (←)">⏮</button>
+    <button class="pb lg" id="playBtn" onclick="togglePlay()">▶</button>
+    <button class="pb sm" onclick="nudge(0.4)"  title="Step forward (→)">⏭</button>
+  </div>
+
+  <div class="ctrl-vr"></div>
+
+  <div class="ctrl-grp">
+    <span class="ctrl-lbl">Position</span>
+    <input type="range" id="posSlider" class="sl-pos" min="0" max="1000" value="0"
+           oninput="onPosSlider(this.value)">
+  </div>
+
+  <div class="ctrl-vr"></div>
+
+  <div class="ctrl-grp" id="ringCtrl" style="opacity:0.28;transition:opacity 0.2s">
+    <span class="ctrl-lbl">Ring</span>
+    <input type="range" id="ringSlider" class="sl-ring" min="15" max="85" value="34"
+           oninput="S.ringR=+this.value;draw()">
+  </div>
+
+  <div class="ctrl-vr"></div>
+
+  <div class="ctrl-grp">
+    <span class="ctrl-lbl">Speed</span>
+    <input type="range" id="spdSlider" class="sl-spd" min="1" max="6" value="2"
+           oninput="S.speed=+this.value">
+  </div>
+
+  <div class="ctrl-gap"></div>
+
+  <div class="scene-nav">
+    <button class="scn-btn" onclick="goScene(S.scene-1)">← Prev</button>
+    <button class="scn-btn fwd" onclick="goScene(S.scene+1)">Next →</button>
+  </div>
+
+</div><!-- /controls-bar -->
+
+<!-- ═══════════════════════════════════════════ SCRIPT -->
+<script>
+'use strict';
+
+/* ── MOUNTAIN MATHEMATICS ─────────────────────────────────── */
+const X0 = 0, X1 = 10;
+const H_DIFF = 1e-5;
+
+const mtn = x =>
+  4.4
+  + 2.9 * Math.exp(-Math.pow((x - 3.1) / 1.3, 2))
+  + 3.7 * Math.exp(-Math.pow((x - 7.9) / 1.5, 2))
+  - 1.1 * Math.exp(-Math.pow((x - 5.7) / 0.85,2))
+  + 0.42* Math.sin(x * 3.1 + 0.9);
+
+const dm  = x => (mtn(x+H_DIFF) - mtn(x-H_DIFF)) / (2*H_DIFF);
+const d2m = x => (mtn(x+H_DIFF) - 2*mtn(x) + mtn(x-H_DIFF)) / (H_DIFF*H_DIFF);
+
+const CRITS = (function() {
+  const pts = [], n = 4000;
+  let prev = dm(X0);
+  for (let i = 1; i <= n; i++) {
+    const x = X0 + i*(X1-X0)/n;
+    const cur = dm(x);
+    if (prev*cur < 0) {
+      let lo = x-(X1-X0)/n, hi = x;
+      for (let j = 0; j < 50; j++) {
+        const mid=(lo+hi)/2;
+        dm(lo)*dm(mid)<0 ? (hi=mid) : (lo=mid);
+      }
+      const xc = (lo+hi)/2;
+      const d2 = d2m(xc);
+      const type = Math.abs(d2)<0.25 ? 'neither' : d2<0 ? 'max' : 'min';
+      pts.push({ x:xc, y:mtn(xc), type });
+    }
+    prev = cur;
+  }
+  return pts;
+})();
+
+const GLOBAL_MAX = CRITS.filter(p=>p.type==='max')
+                        .reduce((a,b)=>b.y>a.y?b:a, {y:-Infinity});
+
+/* ── STATE ────────────────────────────────────────────────── */
+const S = {
+  x: 0,
+  playing: false, speed: 2,
+  ringR: 34,
+  scene: 0,
+  feat: { tangent:true, ring:false, labels:true, blind:false, heatmap:false },
+  challenge: false,
+  teacher: false,
+  done: [false,false,false,false,false],
+  score: 0,
+  bx: 50, bvx: 0,
+  yMin: 1.5, yMax: 11.0,
+  // smooth camera
+  camX: 0, camVX: 0,
+  // sky animation
+  skyTime: 0,
+  // fog time
+  fogTime: 0,
+};
+
+const SCENES = [
+  { title:'Scene 1 — Arrival at Dawn',          x0: 0   },
+  { title:'Scene 2 — The Moving Arrow',          x0: 1.0 },
+  { title:'Scene 3 — The False Summit',          x0: 2.5 },
+  { title:'Scene 4 — Navigate Blind',            x0: 0   },
+  { title:'Scene 5 — The Map Reveals',           x0: 0   },
+];
+
+// Teacher mode content by position
+const TEACHER_TIPS = [
+  { xMin:0,   xMax:2.5,  text:'The slope is <strong>positive</strong> here — the mountain rises. f′(x) > 0 means f is <strong>increasing</strong>.', formula:'f increasing ⟺ f ′(x) > 0' },
+  { xMin:2.5, xMax:3.7,  text:'Approaching a <strong>local maximum</strong>. The slope slows, then hits zero. Watch the derivative cross the axis!', formula:'f ′(x) = 0 at critical point' },
+  { xMin:3.7, xMax:5.2,  text:'Now <strong>descending</strong>. f′(x) < 0 confirms the function is decreasing between the peaks.', formula:'f decreasing ⟺ f ′(x) < 0' },
+  { xMin:5.2, xMax:6.2,  text:'Near the <strong>local minimum</strong>. Concavity is positive (f″ > 0) — the curve opens upward like a bowl.', formula:'local min ⟺ f ′=0, f ′′>0' },
+  { xMin:6.2, xMax:8.6,  text:'Rising toward the <strong>global maximum</strong> — the highest point. f′ is positive and f″ will tell us curvature.', formula:'global max: f(x) ≥ f(t) ∀ t' },
+  { xMin:8.6, xMax:10.0, text:'Past the summit, the mountain <strong>descends</strong>. f′ < 0 once more. The second derivative test confirmed the peak.', formula:'f ′′(x) < 0 ⟹ concave down' },
+];
+
+/* ── CANVAS SETUP ─────────────────────────────────────────── */
+const TW = document.getElementById('tw');
+const TC = document.getElementById('tc');
+const DC = document.getElementById('dc');
+const tctx = TC.getContext('2d');
+const dctx = DC.getContext('2d');
+let DPR = window.devicePixelRatio || 1;
+
+function sizeCanvas(canvas, ctx) {
+  DPR = window.devicePixelRatio || 1;
+  const w = canvas.parentElement.clientWidth;
+  const h = canvas.parentElement.clientHeight;
+  canvas.width  = w * DPR;
+  canvas.height = h * DPR;
+  canvas.style.width  = w + 'px';
+  canvas.style.height = h + 'px';
+  ctx.setTransform(DPR,0,0,DPR,0,0);
+  return { w, h };
+}
+function resize() {
+  sizeCanvas(TC, tctx);
+  sizeCanvas(DC, dctx);
+  draw();
+}
+window.addEventListener('resize', resize);
+
+/* ── COORDINATE HELPERS ───────────────────────────────────── */
+const CW = () => TC.clientWidth;
+const CH = () => TC.clientHeight;
+const DW = () => DC.clientWidth;
+const DH = () => DC.clientHeight;
+
+const tx = x  => (x - X0)/(X1-X0) * CW();
+const ty = y  => CH() - (y - S.yMin)/(S.yMax - S.yMin) * CH();
+const tdx = x => (x - X0)/(X1-X0) * DW();
+const tdy = (v,lo,hi) => DH() - (v-lo)/(hi-lo)*DH();
+
+/* ── SKY COLORS ───────────────────────────────────────────── */
+function skyColors(t) {
+  // t cycles 0..1: dawn → day → dusk → night → dawn
+  const phase = t % 1;
+  if (phase < 0.25) { // dawn
+    const p = phase/0.25;
+    return {
+      top: lerpCol('#0B1929','#1A2F4A',p),
+      mid: lerpCol('#193A5C','#3A6080',p),
+      hor: lerpCol('#C87040','#E8904C',p),
+    };
+  } else if (phase < 0.5) { // day
+    const p = (phase-0.25)/0.25;
+    return {
+      top: lerpCol('#1A2F4A','#0E2040',p),
+      mid: lerpCol('#3A6080','#2A5070',p),
+      hor: lerpCol('#E8904C','#5090C0',p),
+    };
+  } else if (phase < 0.75) { // dusk
+    const p = (phase-0.5)/0.25;
+    return {
+      top: lerpCol('#0E2040','#1A0A20',p),
+      mid: lerpCol('#2A5070','#5A2A48',p),
+      hor: lerpCol('#5090C0','#E07060',p),
+    };
+  } else { // night
+    const p = (phase-0.75)/0.25;
+    return {
+      top: lerpCol('#1A0A20','#0B1929',p),
+      mid: lerpCol('#5A2A48','#193A5C',p),
+      hor: lerpCol('#E07060','#C87040',p),
+    };
+  }
+}
+
+function lerpCol(a, b, t) {
+  const ah = a.replace('#',''), bh = b.replace('#','');
+  const ar=parseInt(ah.slice(0,2),16), ag=parseInt(ah.slice(2,4),16), ab=parseInt(ah.slice(4,6),16);
+  const br=parseInt(bh.slice(0,2),16), bg=parseInt(bh.slice(2,4),16), bb=parseInt(bh.slice(4,6),16);
+  const r=Math.round(ar+(br-ar)*t), g=Math.round(ag+(bg-ag)*t), bl2=Math.round(ab+(bb-ab)*t);
+  return `rgb(${r},${g},${bl2})`;
+}
+
+/* ── TERRAIN RENDERER ─────────────────────────────────────── */
+function drawTerrain() {
+  const W = CW(), H = CH();
+  const now = Date.now();
+  S.skyTime += 0.0002; // slow sky animation
+  S.fogTime = now * 0.0008;
+
+  tctx.clearRect(0,0,W,H);
+
+  /* ── ANIMATED SKY ── */
+  const sc = skyColors(S.skyTime);
+  const sky = tctx.createLinearGradient(0,0,0,H);
+  sky.addColorStop(0.00, sc.top);
+  sky.addColorStop(0.40, sc.mid);
+  sky.addColorStop(0.72, sc.hor);
+  sky.addColorStop(1.00,'#C87040');
+  tctx.fillStyle = sky; tctx.fillRect(0,0,W,H);
+
+  /* ── STARS (visible at night phases) ── */
+  const nightness = Math.max(0, Math.sin(S.skyTime * Math.PI * 2 + Math.PI) * 0.6 + 0.2);
+  if (nightness > 0.05) {
+    tctx.save();
+    tctx.globalAlpha = nightness * 0.7;
+    // deterministic star positions
+    for (let i = 0; i < 60; i++) {
+      const sx = ((Math.sin(i*137.5)*0.5+0.5)) * W;
+      const sy = ((Math.cos(i*97.3)*0.5+0.5)) * H * 0.45;
+      const sr = 0.7 + (Math.sin(i*31.7+now*0.001)*0.5+0.5)*0.8;
+      const twinkle = 0.5 + 0.5*Math.sin(now*0.002 + i*0.9);
+      tctx.beginPath();
+      tctx.arc(sx, sy, sr, 0, Math.PI*2);
+      tctx.fillStyle = `rgba(255,255,255,${twinkle})`;
+      tctx.fill();
+    }
+    tctx.restore();
+  }
+
+  /* ── MOON (night) ── */
+  if (nightness > 0.1) {
+    tctx.save();
+    tctx.globalAlpha = nightness * 0.55;
+    const mx = W * 0.78, my = H * 0.14;
+    const moonGrad = tctx.createRadialGradient(mx-3,my-3,0,mx,my,16);
+    moonGrad.addColorStop(0,'rgba(255,252,230,0.95)');
+    moonGrad.addColorStop(1,'rgba(200,210,240,0.1)');
+    tctx.beginPath(); tctx.arc(mx,my,14,0,Math.PI*2);
+    tctx.fillStyle = moonGrad; tctx.fill();
+    tctx.restore();
+  }
+
+  /* ── SUN / SUNRISE GLOW ── */
+  const sunPhase = S.skyTime % 1;
+  const sunY = H * (0.82 - 0.3 * Math.sin(sunPhase * Math.PI * 2));
+  const sunX = W * (0.15 + 0.7 * ((sunPhase + 0.5) % 1));
+  const dawnness = Math.max(0, 1 - Math.abs(sunPhase - 0.25) * 8);
+  const sunGlow = tctx.createRadialGradient(sunX, sunY, 0, sunX, sunY, W * 0.4);
+  sunGlow.addColorStop(0,`rgba(255,${Math.round(140+60*dawnness)},${Math.round(30+20*dawnness)},${0.22+dawnness*0.1})`);
+  sunGlow.addColorStop(0.4,`rgba(255,${Math.round(130+50*dawnness)},20,${0.07+dawnness*0.06})`);
+  sunGlow.addColorStop(1,'transparent');
+  tctx.fillStyle = sunGlow; tctx.fillRect(0,0,W,H);
+
+  /* ── ANIMATED CLOUDS ── */
+  drawClouds(W, H, now);
+
+  /* ── PARALLAX FAR MOUNTAINS ── */
+  [[.58,.38,'rgba(30,55,80,0.45)'],[.66,.55,'rgba(20,42,64,0.55)']].forEach(([hr,px,col])=>{
+    tctx.globalAlpha=0.99; tctx.fillStyle=col;
+    tctx.beginPath(); tctx.moveTo(0,H);
+    tctx.lineTo(0, H*(1-hr*.3));
+    tctx.bezierCurveTo(W*.15,H*(1-hr*.55), W*.28,H*(1-hr*.8), W*px, H*(1-hr));
+    tctx.bezierCurveTo(W*(px+.18),H*(1-hr*.85), W*.7,H*(1-hr*.6), W*.88,H*(1-hr*.4));
+    tctx.lineTo(W,H); tctx.closePath(); tctx.fill();
+  });
+  tctx.globalAlpha=1;
+
+  /* ── DERIVATIVE HEAT MAP ── */
+  if (S.feat.heatmap) {
+    drawHeatmap(W, H);
+  }
+
+  /* ── MOUNTAIN FILL ── */
+  const N = 400;
+  tctx.beginPath();
+  tctx.moveTo(0,H);
+  for (let i=0;i<=N;i++) {
+    const xm = X0+i*(X1-X0)/N;
+    tctx.lineTo(tx(xm), ty(mtn(xm)));
+  }
+  tctx.lineTo(W,H); tctx.closePath();
+  const mfill = tctx.createLinearGradient(0,0,0,H);
+  mfill.addColorStop(0.00,'#EEEAE4');
+  mfill.addColorStop(0.18,'#C8B898');
+  mfill.addColorStop(0.42,'#806A52');
+  mfill.addColorStop(0.68,'#4E6E3A');
+  mfill.addColorStop(1.00,'#3A5828');
+  tctx.fillStyle = mfill; tctx.fill();
+
+  /* ── CINEMATIC LIGHTING: sun-side specular sheen ── */
+  const sunSide = tctx.createLinearGradient(0,0,W*0.6,H*0.4);
+  sunSide.addColorStop(0,`rgba(255,220,150,${0.07+dawnness*0.08})`);
+  sunSide.addColorStop(1,'transparent');
+  tctx.save();
+  tctx.beginPath();
+  tctx.moveTo(0,H);
+  for (let i=0;i<=N;i++) {
+    const xm = X0+i*(X1-X0)/N;
+    tctx.lineTo(tx(xm), ty(mtn(xm)));
+  }
+  tctx.lineTo(W,H); tctx.closePath();
+  tctx.clip();
+  tctx.fillStyle = sunSide; tctx.fillRect(0,0,W,H);
+  tctx.restore();
+
+  /* ── MOUNTAIN OUTLINE ── */
+  tctx.beginPath();
+  for (let i=0;i<=N;i++) {
+    const xm=X0+i*(X1-X0)/N;
+    i===0 ? tctx.moveTo(tx(xm),ty(mtn(xm))) : tctx.lineTo(tx(xm),ty(mtn(xm)));
+  }
+  tctx.strokeStyle='rgba(255,255,255,0.12)'; tctx.lineWidth=1.5; tctx.stroke();
+
+  /* ── SNOW CAP ── */
+  const snowY = ty(8.6);
+  tctx.save();
+  tctx.beginPath();
+  for (let i=0;i<=N;i++) {
+    const xm=X0+i*(X1-X0)/N, ym=ty(mtn(xm));
+    if (ym < snowY+10) {
+      if (i===0 || ty(mtn(X0+(i-1)*(X1-X0)/N)) >= snowY+10) tctx.moveTo(tx(xm),ym);
+      else tctx.lineTo(tx(xm),ym);
+    }
+  }
+  tctx.strokeStyle='rgba(255,255,255,0.7)'; tctx.lineWidth=3;
+  tctx.shadowBlur=8; tctx.shadowColor='rgba(200,230,255,0.5)'; tctx.stroke();
+  tctx.shadowBlur=0;
+  tctx.restore();
+
+  const snowGrad = tctx.createLinearGradient(0,snowY-20,0,snowY+30);
+  snowGrad.addColorStop(0,'rgba(255,255,255,0.18)');
+  snowGrad.addColorStop(1,'rgba(255,255,255,0)');
+  tctx.fillStyle=snowGrad; tctx.fillRect(0,snowY-20,W,50);
+
+  /* ── FOG LAYERS ── */
+  drawFog(W, H, now);
+
+  /* ── CINEMATIC LIGHTING: god rays ── */
+  drawGodRays(W, H, sunX, sunY, dawnness);
+
+  /* ── CRITICAL POINT MARKERS ── */
+  if (S.feat.labels) {
+    CRITS.forEach(p => {
+      const cpx=tx(p.x), cpy=ty(p.y);
+      const isGlobal = p.type==='max' && p.y >= GLOBAL_MAX.y-.08;
+      const dotCol = p.type==='max'
+        ? (isGlobal ? '#FFD60A' : '#FFA040')
+        : p.type==='min' ? '#64B5F6' : '#FFFFFFAA';
+      tctx.beginPath(); tctx.moveTo(cpx,cpy); tctx.lineTo(cpx,cpy+28);
+      tctx.strokeStyle='rgba(255,255,255,0.2)'; tctx.lineWidth=1;
+      tctx.setLineDash([3,3]); tctx.stroke(); tctx.setLineDash([]);
+      tctx.beginPath(); tctx.arc(cpx,cpy,4,0,Math.PI*2);
+      tctx.fillStyle=dotCol; tctx.fill();
+      const label = p.type==='max'
+        ? (isGlobal ? 'Global Max' : 'Local Max')
+        : p.type==='min' ? 'Local Min' : 'f ′=0';
+      tctx.font = `bold 9px ${getComputedStyle(document.body).fontFamily}`;
+      const tw2 = tctx.measureText(label).width;
+      tctx.fillStyle='rgba(0,0,0,0.45)';
+      roundRect(tctx,cpx-tw2/2-5,cpy-26,tw2+10,16,4);
+      tctx.fill();
+      tctx.fillStyle=dotCol; tctx.textAlign='center';
+      tctx.fillText(label, cpx, cpy-14);
+    });
+  }
+
+  /* ── NEIGHBOURHOOD RING ── */
+  if (S.feat.ring) {
+    const rx2=tx(S.x), ry2=ty(mtn(S.x));
+    const pulse = 0.88+0.12*Math.sin(Date.now()*.0032);
+    const r = S.ringR * pulse;
+    const ringFill=tctx.createRadialGradient(rx2,ry2,0,rx2,ry2,S.ringR);
+    ringFill.addColorStop(0,'rgba(0,113,227,0.08)');
+    ringFill.addColorStop(1,'rgba(0,113,227,0)');
+    tctx.fillStyle=ringFill;
+    tctx.beginPath(); tctx.arc(rx2,ry2,S.ringR,0,Math.PI*2); tctx.fill();
+    tctx.beginPath(); tctx.arc(rx2,ry2,r,0,Math.PI*2);
+    tctx.strokeStyle='rgba(0,150,255,0.65)';
+    tctx.lineWidth=1.5; tctx.setLineDash([5,4]); tctx.stroke();
+    tctx.setLineDash([]);
+    tctx.fillStyle='rgba(0,150,255,0.5)';
+    tctx.font='9px system-ui'; tctx.textAlign='center';
+    tctx.fillText('neighbourhood', rx2, ry2-r-6);
+  }
+
+  /* ── TANGENT LINE ── */
+  if (S.feat.tangent) {
+    const sx=tx(S.x), sy=ty(mtn(S.x));
+    const slope = dm(S.x);
+    const scaleX = CW()/(X1-X0);
+    const scaleY = CH()/(S.yMax-S.yMin);
+    const slopeScr = -slope * scaleY/scaleX;
+    const len = CW()*.14;
+    const dxp = len/Math.sqrt(1+slopeScr*slopeScr);
+    const dyp = slopeScr*dxp;
+    const col = slope>0.12 ? '48,209,88' : slope<-0.12 ? '255,69,58' : '255,214,10';
+    const tg=tctx.createLinearGradient(sx-dxp,sy-dyp,sx+dxp,sy+dyp);
+    tg.addColorStop(0,`rgba(${col},0)`);
+    tg.addColorStop(.28,`rgba(${col},0.85)`);
+    tg.addColorStop(.5,`rgba(${col},1)`);
+    tg.addColorStop(.72,`rgba(${col},0.85)`);
+    tg.addColorStop(1,`rgba(${col},0)`);
+    tctx.beginPath();
+    tctx.moveTo(sx-dxp,sy-dyp); tctx.lineTo(sx+dxp,sy+dyp);
+    tctx.strokeStyle=tg; tctx.lineWidth=2.5;
+    tctx.shadowBlur=7; tctx.shadowColor=`rgba(${col},0.5)`;
+    tctx.stroke(); tctx.shadowBlur=0;
+  }
+
+  /* ── STUDENT + DRONE ── */
+  drawStudent(tx(S.x), ty(mtn(S.x)), dm(S.x));
+
+  /* ── POSITION TIP ── */
+  document.getElementById('terrainTip').innerHTML =
+    `x = ${S.x.toFixed(2)} &nbsp;·&nbsp; f(x) = ${mtn(S.x).toFixed(2)}`;
+}
+
+/* ── ANIMATED CLOUDS ─────────────────────────────────────── */
+function drawClouds(W, H, now) {
+  const clouds = [
+    { bx:0.08, by:0.14, sx:0.22, sy:0.07, spd:0.000018, alpha:0.18 },
+    { bx:0.35, by:0.09, sx:0.18, sy:0.06, spd:0.000011, alpha:0.13 },
+    { bx:0.62, by:0.17, sx:0.20, sy:0.05, spd:0.000015, alpha:0.15 },
+    { bx:0.80, by:0.11, sx:0.15, sy:0.04, spd:0.000013, alpha:0.10 },
+    { bx:0.50, by:0.22, sx:0.28, sy:0.07, spd:0.000009, alpha:0.12 },
+  ];
+
+  tctx.save();
+  clouds.forEach((c, i) => {
+    const cx = ((c.bx + now * c.spd + i * 0.37) % 1.3 - 0.15) * W;
+    const cy = c.by * H;
+    const sw = c.sx * W, sh = c.sy * H;
+
+    const cg = tctx.createRadialGradient(cx, cy, 0, cx, cy, sw * 0.5);
+    cg.addColorStop(0, `rgba(255,255,255,${c.alpha})`);
+    cg.addColorStop(0.5, `rgba(240,245,255,${c.alpha * 0.6})`);
+    cg.addColorStop(1, 'transparent');
+    tctx.fillStyle = cg;
+
+    tctx.beginPath();
+    tctx.ellipse(cx, cy, sw*0.5, sh*0.5, 0, 0, Math.PI*2);
+    tctx.fill();
+
+    // second lobe
+    const cg2 = tctx.createRadialGradient(cx+sw*0.25, cy-sh*0.15, 0, cx+sw*0.25, cy, sw*0.3);
+    cg2.addColorStop(0, `rgba(255,255,255,${c.alpha * 0.8})`);
+    cg2.addColorStop(1, 'transparent');
+    tctx.fillStyle = cg2;
+    tctx.beginPath();
+    tctx.ellipse(cx+sw*0.25, cy-sh*0.1, sw*0.3, sh*0.4, 0, 0, Math.PI*2);
+    tctx.fill();
+  });
+  tctx.restore();
+}
+
+/* ── FOG ─────────────────────────────────────────────────── */
+function drawFog(W, H, now) {
+  const horizY = ty(S.yMin + (S.yMax - S.yMin) * 0.32);
+
+  // Rolling fog at horizon
+  for (let layer = 0; layer < 3; layer++) {
+    const spd = 0.00004 * (layer + 1) * (layer % 2 === 0 ? 1 : -0.7);
+    const yOff = H * (0.62 + layer * 0.04);
+    const alpha = 0.06 + layer * 0.025;
+
+    tctx.save();
+    const fg = tctx.createLinearGradient(0, yOff - H*0.04, 0, yOff + H*0.08);
+    fg.addColorStop(0, `rgba(180,210,240,0)`);
+    fg.addColorStop(0.35, `rgba(200,220,240,${alpha})`);
+    fg.addColorStop(0.7, `rgba(180,205,230,${alpha * 0.6})`);
+    fg.addColorStop(1, `rgba(160,195,220,0)`);
+    tctx.fillStyle = fg;
+
+    // Wavy fog shape
+    tctx.beginPath();
+    tctx.moveTo(0, yOff + H*0.06);
+    const waveOff = now * spd;
+    for (let wx = 0; wx <= W; wx += 8) {
+      const wy = yOff + Math.sin((wx/W)*4*Math.PI + waveOff + layer)*H*0.012;
+      tctx.lineTo(wx, wy);
+    }
+    tctx.lineTo(W, yOff + H*0.08);
+    tctx.lineTo(0, yOff + H*0.08);
+    tctx.closePath();
+    tctx.fill();
+    tctx.restore();
+  }
+
+  // Dense fog at mountain base
+  const baseFog = tctx.createLinearGradient(0, H*0.82, 0, H);
+  baseFog.addColorStop(0, 'rgba(160,200,230,0)');
+  baseFog.addColorStop(0.5, 'rgba(170,205,235,0.09)');
+  baseFog.addColorStop(1, 'rgba(180,210,240,0.18)');
+  tctx.fillStyle = baseFog;
+  tctx.fillRect(0, H*0.78, W, H*0.22);
+
+  // Atmospheric haze / depth mist
+  const hazeFg = tctx.createLinearGradient(0,0,W,0);
+  hazeFg.addColorStop(0,'rgba(140,180,210,0.04)');
+  hazeFg.addColorStop(0.5,'rgba(140,180,210,0)');
+  hazeFg.addColorStop(1,'rgba(140,180,210,0.07)');
+  tctx.fillStyle = hazeFg;
+  tctx.fillRect(0,0,W,H);
+}
+
+/* ── GOD RAYS ────────────────────────────────────────────── */
+function drawGodRays(W, H, sunX, sunY, dawnness) {
+  if (dawnness < 0.05) return;
+  tctx.save();
+  tctx.globalAlpha = dawnness * 0.12;
+  tctx.globalCompositeOperation = 'lighter';
+  for (let i = 0; i < 8; i++) {
+    const angle = (i / 8) * Math.PI * 2;
+    const endX = sunX + Math.cos(angle) * W;
+    const endY = sunY + Math.sin(angle) * H;
+    const rg = tctx.createLinearGradient(sunX, sunY, endX, endY);
+    rg.addColorStop(0, 'rgba(255,210,120,0.6)');
+    rg.addColorStop(1, 'rgba(255,160,80,0)');
+    tctx.fillStyle = rg;
+    tctx.beginPath();
+    const hw = 12 + i * 3;
+    tctx.moveTo(sunX - hw, sunY);
+    tctx.lineTo(endX - hw * 4, endY);
+    tctx.lineTo(endX + hw * 4, endY);
+    tctx.lineTo(sunX + hw, sunY);
+    tctx.closePath();
+    tctx.fill();
+  }
+  tctx.globalCompositeOperation = 'source-over';
+  tctx.restore();
+}
+
+/* ── DERIVATIVE HEAT MAP ─────────────────────────────────── */
+function drawHeatmap(W, H) {
+  const N = 200;
+  const derivMax = 3.5; // clamp
+
+  tctx.save();
+  // Clip to mountain
+  tctx.beginPath();
+  tctx.moveTo(0,H);
+  for (let i=0;i<=N;i++) {
+    const xm = X0+i*(X1-X0)/N;
+    tctx.lineTo(tx(xm), ty(mtn(xm)));
+  }
+  tctx.lineTo(W,H); tctx.closePath();
+  tctx.clip();
+
+  // Draw heat strips
+  const sw = W / N;
+  for (let i = 0; i < N; i++) {
+    const xm = X0 + i*(X1-X0)/N;
+    const d = dm(xm);
+    const t = Math.max(-1, Math.min(1, d / derivMax));
+    let r, g, b;
+    if (t >= 0) {
+      // 0 = yellow, 1 = hot red
+      r = Math.round(255);
+      g = Math.round(255 * (1 - t));
+      b = 0;
+    } else {
+      // 0 = cyan, -1 = deep blue
+      r = 0;
+      g = Math.round(180 * (1 + t));
+      b = Math.round(200 + 55 * (-t));
+    }
+    tctx.fillStyle = `rgba(${r},${g},${b},0.38)`;
+    tctx.fillRect(i * sw, 0, sw + 1, H);
+  }
+  tctx.restore();
+
+  // Show legend
+  document.getElementById('heatmapLegend').classList.add('show');
+}
+
+/* ── STUDENT + DRONE ────────────────────────────────────── */
+function drawStudent(sx, sy, slope) {
+  const col = slope>0.15 ? '#30D158' : slope<-0.15 ? '#FF9F0A' : '#FFFFFF';
+
+  // Ground shadow
+  tctx.beginPath();
+  tctx.ellipse(sx,sy+2,8,2.5,0,0,Math.PI*2);
+  tctx.fillStyle='rgba(0,0,0,0.22)'; tctx.fill();
+
+  // Body glow (cinematic)
+  const bodyGlow = tctx.createRadialGradient(sx,sy-9,0,sx,sy-9,16);
+  bodyGlow.addColorStop(0,`${col}44`);
+  bodyGlow.addColorStop(1,'transparent');
+  tctx.fillStyle=bodyGlow; tctx.fillRect(sx-16,sy-25,32,32);
+
+  tctx.beginPath(); tctx.arc(sx,sy-9,7,0,Math.PI*2);
+  tctx.fillStyle=col; tctx.fill();
+  tctx.strokeStyle='rgba(0,0,0,0.25)'; tctx.lineWidth=1; tctx.stroke();
+  tctx.beginPath(); tctx.arc(sx,sy-9,2.5,0,Math.PI*2);
+  tctx.fillStyle='rgba(0,0,0,0.3)'; tctx.fill();
+
+  const ax=sx+24, ay=sy-9;
+  const angle = -Math.atan(slope*(CH()/(S.yMax-S.yMin))/(CW()/(X1-X0)));
+  const alen=20;
+  tctx.save();
+  tctx.translate(ax,ay); tctx.rotate(angle);
+  tctx.beginPath(); tctx.moveTo(-alen/2,0); tctx.lineTo(alen/2-5,0);
+  tctx.strokeStyle=col; tctx.lineWidth=2;
+  tctx.shadowBlur=5; tctx.shadowColor=col;
+  tctx.stroke(); tctx.shadowBlur=0;
+  tctx.beginPath();
+  tctx.moveTo(alen/2,0); tctx.lineTo(alen/2-7,-3); tctx.lineTo(alen/2-7,3);
+  tctx.fillStyle=col; tctx.fill();
+  tctx.restore();
+
+  tctx.beginPath(); tctx.arc(ax,ay,4.5,0,Math.PI*2);
+  tctx.fillStyle='rgba(20,24,36,0.85)'; tctx.fill();
+  tctx.strokeStyle=col; tctx.lineWidth=1; tctx.stroke();
+  tctx.beginPath(); tctx.moveTo(sx+7,sy-9); tctx.lineTo(ax-5,ay);
+  tctx.strokeStyle='rgba(255,255,255,0.18)'; tctx.lineWidth=0.8; tctx.stroke();
+}
+
+function roundRect(ctx,x,y,w,h,r) {
+  ctx.beginPath();
+  ctx.moveTo(x+r,y); ctx.lineTo(x+w-r,y);
+  ctx.quadraticCurveTo(x+w,y,x+w,y+r);
+  ctx.lineTo(x+w,y+h-r); ctx.quadraticCurveTo(x+w,y+h,x+w-r,y+h);
+  ctx.lineTo(x+r,y+h); ctx.quadraticCurveTo(x,y+h,x,y+h-r);
+  ctx.lineTo(x,y+r); ctx.quadraticCurveTo(x,y,x+r,y);
+  ctx.closePath();
+}
+
+/* ── DERIVATIVE RENDERER ──────────────────────────────────── */
+function drawDerivative() {
+  const W=DW(), H=DH();
+  dctx.clearRect(0,0,W,H);
+  dctx.fillStyle='#FAFAFA'; dctx.fillRect(0,0,W,H);
+
+  const NP=500; let lo=Infinity,hi=-Infinity;
+  for(let i=0;i<=NP;i++){
+    const v=dm(X0+i*(X1-X0)/NP);
+    lo=Math.min(lo,v); hi=Math.max(hi,v);
+  }
+  const pad=(hi-lo)*.22; lo-=pad; hi+=pad;
+  const dy=(v)=>tdy(v,lo,hi);
+  const z0=dy(0);
+
+  // Grid
+  dctx.strokeStyle='rgba(0,0,0,0.055)'; dctx.lineWidth=1;
+  for(let v=Math.ceil(lo);v<=Math.floor(hi);v++){
+    if(v===0) continue;
+    dctx.beginPath(); dctx.moveTo(36,dy(v)); dctx.lineTo(W,dy(v)); dctx.stroke();
+  }
+
+  // Sign regions
+  function fillRegion(above) {
+    dctx.beginPath();
+    for(let i=0;i<=NP;i++){
+      const xm=X0+i*(X1-X0)/NP, v=dm(xm);
+      const yv = above ? dy(Math.max(0,v)) : dy(Math.min(0,v));
+      i===0 ? dctx.moveTo(tdx(xm),z0) : dctx.lineTo(tdx(xm),yv);
+    }
+    dctx.lineTo(tdx(X1),z0); dctx.closePath();
+  }
+  fillRegion(true);
+  const gp=dctx.createLinearGradient(0,0,0,H);
+  gp.addColorStop(0,'rgba(48,209,88,0.14)'); gp.addColorStop(1,'rgba(48,209,88,0)');
+  dctx.fillStyle=gp; dctx.fill();
+
+  fillRegion(false);
+  const gn=dctx.createLinearGradient(0,0,0,H);
+  gn.addColorStop(0,'rgba(255,69,58,0)'); gn.addColorStop(1,'rgba(255,69,58,0.13)');
+  dctx.fillStyle=gn; dctx.fill();
+
+  // Zero line
+  dctx.beginPath(); dctx.moveTo(36,z0); dctx.lineTo(W,z0);
+  dctx.strokeStyle='rgba(0,0,0,0.18)'; dctx.lineWidth=1.5; dctx.stroke();
+  dctx.fillStyle='#AEAEB2'; dctx.font='9px system-ui';
+  dctx.textAlign='right'; dctx.fillText('0',32,z0+3);
+
+  // Critical point drops
+  CRITS.forEach(p=>{
+    dctx.beginPath(); dctx.moveTo(tdx(p.x),0); dctx.lineTo(tdx(p.x),H);
+    dctx.strokeStyle='rgba(140,140,140,0.18)'; dctx.lineWidth=1;
+    dctx.setLineDash([3,3]); dctx.stroke(); dctx.setLineDash([]);
+  });
+
+  // f′(x) curve
+  dctx.beginPath();
+  for(let i=0;i<=NP;i++){
+    const xm=X0+i*(X1-X0)/NP,v=dm(xm);
+    i===0 ? dctx.moveTo(tdx(xm),dy(v)) : dctx.lineTo(tdx(xm),dy(v));
+  }
+  dctx.strokeStyle='#0071E3'; dctx.lineWidth=2; dctx.stroke();
+
+  // Current cursor
+  const cx2=tdx(S.x), cv=dm(S.x), cy2=dy(cv);
+  dctx.beginPath(); dctx.moveTo(cx2,0); dctx.lineTo(cx2,H);
+  dctx.strokeStyle='rgba(0,113,227,0.22)'; dctx.lineWidth=1; dctx.stroke();
+  const dc = cv>0.06 ? '#30D158' : cv<-0.06 ? '#FF453A' : '#FFD60A';
+  dctx.beginPath(); dctx.arc(cx2,cy2,5.5,0,Math.PI*2);
+  dctx.fillStyle=dc; dctx.shadowBlur=7; dctx.shadowColor=dc; dctx.fill();
+  dctx.shadowBlur=0; dctx.strokeStyle='#fff'; dctx.lineWidth=1.5; dctx.stroke();
+  dctx.fillStyle='#1D1D1F'; dctx.font='10px system-ui';
+  dctx.textAlign = cx2 < W*.8 ? 'left' : 'right';
+  const lx = cx2 < W*.8 ? cx2+8 : cx2-8;
+  dctx.fillText(`f ′ = ${cv.toFixed(2)}`, lx, cy2-8);
+}
+
+/* ── INSTRUMENT UPDATE ────────────────────────────────────── */
+function updateUI() {
+  const x=S.x, fv=mtn(x), dv=dm(x), d2v=d2m(x);
+
+  // Bubble spring
+  const target = Math.max(10, Math.min(90, 50 + dv*16));
+  S.bvx = (S.bvx + (target-S.bx)*0.09) * 0.74;
+  S.bx += S.bvx;
+  document.getElementById('bubble').style.left = S.bx+'%';
+  const d=Math.abs(S.bx-50);
+  const bc=d<7?'#A8F0C0':d<22?'#FFE09A':'#FFB8B0';
+  document.getElementById('bubble').style.background=
+    `radial-gradient(circle at 33% 30%, rgba(255,255,255,0.97), ${bc})`;
+
+  const sd=document.getElementById('spiritDir');
+  const sm=document.getElementById('spiritMsg');
+  if(Math.abs(dv)<0.14){sd.textContent='→';sd.style.color='#FFD60A';sm.textContent='Level ground'}
+  else if(dv>0){sd.textContent='↗';sd.style.color='#30D158';sm.textContent='Ascending'}
+  else{sd.textContent='↘';sd.style.color='#FF9F0A';sm.textContent='Descending'}
+
+  document.getElementById('rH').textContent=fv.toFixed(2);
+  const rs=document.getElementById('rS');
+  rs.textContent=(dv>=0?'+':'')+dv.toFixed(2);
+  rs.className='readout-val '+(dv>0.05?'pos':dv<-0.05?'neg':'zero');
+  const rc=document.getElementById('rC');
+  rc.textContent=(d2v>=0?'+':'')+d2v.toFixed(2);
+  rc.className='readout-val '+(d2v>0.1?'pos':d2v<-0.1?'neg':'zero');
+  document.getElementById('rX').textContent=x.toFixed(2);
+
+  const near=CRITS.find(p=>Math.abs(p.x-x)<0.3);
+  const badge=document.getElementById('clsBadge');
+  const cDot=document.getElementById('clsDot');
+  const cTxt=document.getElementById('clsText');
+  const rcd=document.getElementById('clfDot');
+  const rct=document.getElementById('clfText');
+  if(near){
+    const isGlobal=near.type==='max'&&near.y>=GLOBAL_MAX.y-.1;
+    const map={
+      max:  {lbl:isGlobal?'Global Maximum':'Local Maximum', col:'#FFD60A'},
+      min:  {lbl:'Local Minimum', col:'#64B5F6'},
+      neither:{lbl:'f ′(x) = 0 · Not an extremum', col:'#AEAEB2'},
+    };
+    const m=map[near.type];
+    cDot.style.background=m.col; cTxt.textContent=m.lbl;
+    badge.style.borderColor=m.col+'66'; badge.classList.add('show');
+    rcd.style.background=m.col; rct.textContent=m.lbl; rct.style.color=m.col;
+  } else {
+    badge.classList.remove('show');
+    rcd.style.background='var(--t3)'; rct.textContent='Walking…'; rct.style.color='var(--t2)';
+  }
+
+  // Teacher mode update
+  if (S.teacher) updateTeacher(x, dv, d2v, near);
+
+  // Challenge checks
+  if(S.challenge) checkTasks(near);
+
+  // Heatmap legend visibility
+  if (!S.feat.heatmap) document.getElementById('heatmapLegend').classList.remove('show');
+}
+
+/* ── TEACHER MODE ─────────────────────────────────────────── */
+function updateTeacher(x, dv, d2v, near) {
+  const tip = TEACHER_TIPS.find(t => x >= t.xMin && x < t.xMax) || TEACHER_TIPS[0];
+  document.getElementById('teacherText').innerHTML = tip.text;
+  document.getElementById('teacherFormula').textContent = tip.formula;
+
+  // Overlay annotation on terrain canvas
+  const overlay = document.getElementById('teacherOverlay');
+  if (near) {
+    const isGlobal = near.type==='max' && near.y >= GLOBAL_MAX.y-.1;
+    const labels = {
+      max: isGlobal ? '🏔 Global Maximum\nf ′=0, f ″<0, highest point' : '⛰ Local Maximum\nf ′=0, f ″<0',
+      min: '🏔 Local Minimum\nf ′=0, f ″>0',
+      neither: '➖ Saddle / Inflection\nf ′=0 but not extremum',
+    };
+    overlay.innerHTML = labels[near.type].replace('\n','<br><span style="opacity:0.6;font-size:9.5px">') + '</span>';
+    overlay.classList.add('show');
+  } else {
+    overlay.classList.remove('show');
+  }
+}
+
+function toggleTeacher() {
+  S.teacher = !S.teacher;
+  const pill = document.getElementById('teacherPill');
+  pill.textContent = S.teacher ? 'STOP' : 'START';
+  pill.className = 'card-hd-pill' + (S.teacher ? ' on' : '');
+  document.getElementById('teacherBody').style.display = S.teacher ? '' : 'none';
+  document.getElementById('teacherOverlay').classList.toggle('show', false);
+}
+
+/* ── CHALLENGE MODE ───────────────────────────────────────── */
+function checkTasks(near) {
+  if(!S.done[0] && near && near.type==='max') markDone(0);
+  if(!S.done[1] && near && near.type==='max' && near.y>=GLOBAL_MAX.y-.12) markDone(1);
+  if(!S.done[2] && near && near.type==='neither') markDone(2);
+  if(!S.done[3] && near && near.type==='min') markDone(3);
+  if(!S.done[4] && S.feat.blind && near && near.type==='max' && near.y>=GLOBAL_MAX.y-.12) markDone(4);
+}
+
+function markDone(i) {
+  if(S.done[i]) return;
+  S.done[i]=true;
+  S.score += 100;
+  const t=document.getElementById('t'+i);
+  const c=document.getElementById('ck'+i);
+  t.classList.add('done','task-pop'); t.classList.remove('active-task');
+  c.textContent='✓';
+  document.getElementById('scoreBadge').textContent = `Score: ${S.score}`;
+  for(let j=i+1;j<5;j++){
+    if(!S.done[j]){document.getElementById('t'+j).classList.add('active-task');break}
+  }
+}
+
+function toggleChallenge() {
+  S.challenge=!S.challenge;
+  const p=document.getElementById('chalPill');
+  p.textContent=S.challenge?'STOP':'START';
+  p.className='card-hd-pill'+(S.challenge?' on':'');
+  document.getElementById('scoreBadge').classList.toggle('show', S.challenge);
+  if(S.challenge) {
+    S.score=0; S.done=[false,false,false,false,false];
+    document.getElementById('scoreBadge').textContent='Score: 0';
+    for(let i=0;i<5;i++){
+      const t=document.getElementById('t'+i);
+      const c=document.getElementById('ck'+i);
+      t.classList.remove('done','task-pop','active-task');
+      c.textContent='';
+    }
+    document.getElementById('t0').classList.add('active-task');
+  }
+}
+
+/* ── FEATURE TOGGLES ──────────────────────────────────────── */
+function tog(name) {
+  S.feat[name]=!S.feat[name];
+  const elId = 't'+name.charAt(0).toUpperCase()+name.slice(1);
+  document.getElementById(elId).classList.toggle('on',S.feat[name]);
+  if(name==='ring')
+    document.getElementById('ringCtrl').style.opacity=S.feat.ring?'1':'0.28';
+  if(name==='blind')
+    document.getElementById('blindfold').classList.toggle('on',S.feat.blind);
+  if(name==='heatmap' && !S.feat.heatmap)
+    document.getElementById('heatmapLegend').classList.remove('show');
+  draw();
+}
+
+/* ── POSITION & PLAYBACK ──────────────────────────────────── */
+function setX(v){
+  S.x=Math.max(X0,Math.min(X1,v));
+  document.getElementById('posSlider').value=((S.x-X0)/(X1-X0)*1000).toFixed(0);
+}
+function onPosSlider(v){ S.x=X0+(v/1000)*(X1-X0); draw(); updateUI(); }
+function nudge(d){ setX(S.x+d); draw(); updateUI(); }
+
+function togglePlay(){
+  S.playing=!S.playing;
+  document.getElementById('playBtn').textContent=S.playing?'⏸':'▶';
+  if(S.playing){ if(S.x>=X1-.05) S.x=X0; loop(); }
+}
+function loop(){
+  if(!S.playing) return;
+  S.x+=S.speed*.014;
+  if(S.x>=X1){ S.x=X1; S.playing=false; document.getElementById('playBtn').textContent='▶'; }
+  setX(S.x); draw(); updateUI();
+  if(S.playing) requestAnimationFrame(loop);
+}
+
+/* ── SCENE NAVIGATION ─────────────────────────────────────── */
+function goScene(i){
+  S.scene=Math.max(0,Math.min(4,i));
+  document.querySelectorAll('.sdot').forEach((d,j)=>d.classList.toggle('active',j===S.scene));
+  document.getElementById('navTitle').textContent=SCENES[S.scene].title;
+  S.x=SCENES[S.scene].x0;
+  setX(S.x);
+  const blind=(S.scene===3);
+  S.feat.blind=blind;
+  document.getElementById('tBlind').classList.toggle('on',blind);
+  document.getElementById('blindfold').classList.toggle('on',blind);
+  draw(); updateUI();
+}
+document.getElementById('sceneDots').addEventListener('click',e=>{
+  if(e.target.dataset.s!=null) goScene(+e.target.dataset.s);
+});
+
+/* ── CLICK ON TERRAIN ─────────────────────────────────────── */
+document.getElementById('tw').addEventListener('click',e=>{
+  const r=TC.getBoundingClientRect();
+  S.x=X0+((e.clientX-r.left)/r.width)*(X1-X0);
+  setX(S.x); draw(); updateUI();
+});
+
+/* ── KEYBOARD ─────────────────────────────────────────────── */
+document.addEventListener('keydown',e=>{
+  if(e.key==='ArrowRight') nudge( 0.25);
+  if(e.key==='ArrowLeft')  nudge(-0.25);
+  if(e.key===' '){ e.preventDefault(); togglePlay(); }
+});
+
+/* ── MAIN DRAW ────────────────────────────────────────────── */
+function draw(){ drawTerrain(); drawDerivative(); }
+
+/* ── ANIMATION LOOP ───────────────────────────────────────── */
+let lastT=0;
+function animate(t){
+  requestAnimationFrame(animate);
+  updateUI();
+  // Always redraw terrain for animated sky + fog
+  if(t-lastT>16){
+    drawTerrain();
+    drawDerivative();
+    lastT=t;
+  }
+}
+
+/* ── INIT ─────────────────────────────────────────────────── */
+(function init(){
+  sizeCanvas(TC,tctx);
+  sizeCanvas(DC,dctx);
+  document.getElementById('tTangent').classList.add('on');
+  document.getElementById('tLabels').classList.add('on');
+  S.x=0;
+  draw(); updateUI();
+  requestAnimationFrame(animate);
+})();
+</script>
+</body>
+</html>
