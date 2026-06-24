@@ -1,0 +1,1606 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fourier Series Epicycles — Sci-Fi Observatory</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;700;900&family=JetBrains+Mono:wght@300;400;500;700&display=swap" rel="stylesheet">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+    --bg-deep: #060912;
+    --bg: #0a0f1d;
+    --bg-card: rgba(15, 25, 45, 0.5);
+    --grid: rgba(0, 242, 254, 0.04);
+    --grid-major: rgba(0, 242, 254, 0.08);
+    --neon: #00f2fe;
+    --neon-dim: rgba(0, 242, 254, 0.5);
+    --neon-soft: rgba(0, 242, 254, 0.15);
+    --accent: #ff2e6c;
+    --accent-soft: rgba(255, 46, 108, 0.15);
+    --warning: #fcee0c;
+    --success: #00ff9d;
+    --text: #d8f5ff;
+    --text-mid: #8db5d0;
+    --text-dim: #4a6885;
+    --border: rgba(0, 242, 254, 0.18);
+    --border-strong: rgba(0, 242, 254, 0.35);
+}
+
+html, body {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'JetBrains Mono', 'Courier New', monospace;
+    font-size: 13px;
+    line-height: 1.4;
+}
+
+body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: 
+        linear-gradient(var(--grid) 1px, transparent 1px),
+        linear-gradient(90deg, var(--grid) 1px, transparent 1px),
+        linear-gradient(var(--grid-major) 1px, transparent 1px),
+        linear-gradient(90deg, var(--grid-major) 1px, transparent 1px);
+    background-size: 25px 25px, 25px 25px, 125px 125px, 125px 125px;
+    pointer-events: none;
+    z-index: 0;
+}
+
+body::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: 
+        radial-gradient(ellipse at 30% 20%, rgba(0, 242, 254, 0.10), transparent 50%),
+        radial-gradient(ellipse at 70% 80%, rgba(255, 46, 108, 0.07), transparent 50%),
+        radial-gradient(ellipse at 50% 50%, transparent 30%, rgba(6, 9, 18, 0.6) 100%);
+    pointer-events: none;
+    z-index: 1;
+}
+
+.dashboard {
+    position: relative;
+    z-index: 2;
+    display: grid;
+    grid-template-columns: 30% 1fr;
+    grid-template-rows: 1fr 200px;
+    width: 100%;
+    height: 100vh;
+    gap: 12px;
+    padding: 12px;
+}
+
+.sidebar {
+    grid-row: 1 / 3;
+    grid-column: 1;
+    background: var(--bg-card);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 20px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+    position: relative;
+}
+
+.sidebar::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--neon), transparent);
+    box-shadow: 0 0 10px var(--neon);
+    z-index: 5;
+}
+
+.sidebar::-webkit-scrollbar { width: 4px; }
+.sidebar::-webkit-scrollbar-track { background: rgba(0, 0, 0, 0.3); }
+.sidebar::-webkit-scrollbar-thumb { background: var(--neon-dim); border-radius: 2px; }
+
+.canvas-area {
+    grid-row: 1;
+    grid-column: 2;
+    background: var(--bg-card);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    position: relative;
+    overflow: hidden;
+}
+
+.canvas-area::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--neon), transparent);
+    box-shadow: 0 0 10px var(--neon);
+    z-index: 10;
+}
+
+#mainCanvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+}
+
+.canvas-overlay {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 8px;
+    z-index: 5;
+    pointer-events: none;
+}
+
+.canvas-tag {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 10px;
+    letter-spacing: 2px;
+    color: var(--neon);
+    text-shadow: 0 0 8px var(--neon);
+    padding: 4px 10px;
+    border: 1px solid var(--border);
+    background: rgba(10, 15, 29, 0.7);
+    border-radius: 2px;
+}
+
+.canvas-tag.dim {
+    color: var(--text-mid);
+    text-shadow: none;
+    border-color: rgba(0, 242, 254, 0.1);
+}
+
+.oscilloscope {
+    grid-row: 2;
+    grid-column: 2;
+    background: var(--bg-card);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 12px 16px 8px;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+}
+
+#scopeCanvas {
+    display: block;
+    width: 100%;
+    flex: 1;
+}
+
+.panel-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding-bottom: 14px;
+    border-bottom: 1px solid var(--border);
+}
+
+.panel-header .icon {
+    width: 28px;
+    height: 28px;
+    border: 1px solid var(--neon);
+    background: var(--neon-soft);
+    box-shadow: 0 0 12px var(--neon-soft), inset 0 0 8px var(--neon-soft);
+    position: relative;
+    flex-shrink: 0;
+}
+
+.panel-header .icon::before, .panel-header .icon::after {
+    content: '';
+    position: absolute;
+    background: var(--neon);
+    box-shadow: 0 0 6px var(--neon);
+}
+
+.panel-header .icon::before {
+    top: 50%; left: 5px; right: 5px;
+    height: 1px;
+    transform: translateY(-50%);
+}
+
+.panel-header .icon::after {
+    top: 5px; bottom: 5px; left: 50%;
+    width: 1px;
+    transform: translateX(-50%);
+}
+
+.panel-title {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 18px;
+    font-weight: 700;
+    letter-spacing: 4px;
+    color: var(--neon);
+    text-shadow: 0 0 10px var(--neon-dim), 0 0 20px var(--neon-soft);
+}
+
+.panel-subtitle {
+    font-size: 9px;
+    letter-spacing: 2px;
+    color: var(--text-dim);
+    margin-top: 3px;
+}
+
+.section {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.section-label {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-family: 'Orbitron', sans-serif;
+    font-size: 10px;
+    letter-spacing: 2.5px;
+    color: var(--text-mid);
+}
+
+.section-label .value {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 15px;
+    color: var(--neon);
+    text-shadow: 0 0 8px var(--neon-dim);
+    font-weight: 700;
+    letter-spacing: 0;
+}
+
+.section-label .unit {
+    color: var(--text-dim);
+    font-size: 9px;
+    margin-left: 4px;
+    letter-spacing: 0;
+}
+
+.slider-wrap {
+    position: relative;
+    height: 32px;
+    display: flex;
+    align-items: center;
+}
+
+input[type="range"] {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100%;
+    height: 4px;
+    background: linear-gradient(90deg, 
+        var(--neon) 0%, 
+        var(--neon) var(--fill, 50%), 
+        rgba(0, 242, 254, 0.12) var(--fill, 50%), 
+        rgba(0, 242, 254, 0.12) 100%);
+    border-radius: 2px;
+    outline: none;
+    cursor: pointer;
+    box-shadow: 0 0 8px var(--neon-soft);
+}
+
+input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 14px;
+    height: 14px;
+    background: var(--bg);
+    border: 2px solid var(--neon);
+    border-radius: 50%;
+    cursor: pointer;
+    box-shadow: 0 0 12px var(--neon), inset 0 0 4px var(--neon);
+    transition: transform 0.15s;
+}
+
+input[type="range"]::-webkit-slider-thumb:hover {
+    transform: scale(1.25);
+}
+
+input[type="range"]::-moz-range-thumb {
+    width: 14px;
+    height: 14px;
+    background: var(--bg);
+    border: 2px solid var(--neon);
+    border-radius: 50%;
+    cursor: pointer;
+    box-shadow: 0 0 12px var(--neon);
+}
+
+.slider-ticks {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 4px;
+    font-size: 9px;
+    color: var(--text-dim);
+    font-family: 'JetBrains Mono', monospace;
+}
+
+.formula-box {
+    background: rgba(0, 0, 0, 0.35);
+    border: 1px solid var(--border);
+    border-radius: 2px;
+    padding: 14px 16px 10px;
+    position: relative;
+    overflow: hidden;
+}
+
+.formula-box::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, transparent 40%, rgba(0, 242, 254, 0.04) 50%, transparent 60%);
+    pointer-events: none;
+}
+
+.formula-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+    font-family: 'Orbitron', sans-serif;
+    font-size: 8px;
+    letter-spacing: 2px;
+    color: var(--text-dim);
+}
+
+.formula-header .live {
+    color: var(--success);
+    text-shadow: 0 0 6px var(--success);
+}
+
+.formula-header .live::before {
+    content: '●';
+    margin-right: 4px;
+    animation: pulse 1.5s infinite;
+}
+
+.formula {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 15px;
+    color: var(--text);
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex-wrap: wrap;
+    justify-content: center;
+    line-height: 1.6;
+}
+
+.formula .var {
+    color: var(--neon);
+    font-style: italic;
+    font-weight: 700;
+    text-shadow: 0 0 6px var(--neon-dim);
+}
+
+.formula .var-accent {
+    color: var(--accent);
+    font-style: italic;
+    font-weight: 700;
+    text-shadow: 0 0 6px var(--accent-soft);
+}
+
+.formula .op {
+    color: var(--text-mid);
+}
+
+.formula .sigma {
+    font-size: 30px;
+    color: var(--warning);
+    font-weight: 700;
+    line-height: 1;
+    text-shadow: 0 0 10px rgba(252, 238, 12, 0.5);
+    margin: 0 2px;
+    font-family: 'Orbitron', sans-serif;
+}
+
+.formula .bounds {
+    display: inline-flex;
+    flex-direction: column;
+    font-size: 9px;
+    color: var(--text-mid);
+    vertical-align: middle;
+    margin: 0 2px;
+    line-height: 1.1;
+    font-family: 'JetBrains Mono', monospace;
+}
+
+.formula .bounds .upper { color: var(--neon); }
+.formula .bounds .lower { color: var(--text-mid); }
+
+.formula sub {
+    font-size: 10px;
+    color: var(--text-mid);
+}
+
+.formula-info {
+    margin-top: 10px;
+    padding-top: 8px;
+    border-top: 1px dashed var(--border);
+    display: flex;
+    justify-content: space-between;
+    font-size: 10px;
+    color: var(--text-dim);
+    font-family: 'JetBrains Mono', monospace;
+}
+
+.formula-info span span {
+    color: var(--neon-dim);
+}
+
+.shape-toggles {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 6px;
+}
+
+.shape-btn {
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid var(--border);
+    color: var(--text-mid);
+    font-family: 'Orbitron', sans-serif;
+    font-size: 10px;
+    letter-spacing: 1.5px;
+    padding: 11px 6px;
+    cursor: pointer;
+    transition: all 0.2s;
+    position: relative;
+    overflow: hidden;
+    text-transform: uppercase;
+    font-weight: 500;
+}
+
+.shape-btn:hover {
+    border-color: var(--neon-dim);
+    color: var(--neon);
+    background: rgba(0, 242, 254, 0.05);
+}
+
+.shape-btn.active {
+    background: var(--neon-soft);
+    border-color: var(--neon);
+    color: var(--neon);
+    box-shadow: 0 0 14px var(--neon-soft), inset 0 0 14px rgba(0, 242, 254, 0.08);
+    text-shadow: 0 0 8px var(--neon);
+}
+
+.shape-btn::before {
+    content: '';
+    position: absolute;
+    top: 0; left: -100%;
+    width: 100%; height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(0, 242, 254, 0.2), transparent);
+    transition: left 0.5s;
+}
+
+.shape-btn.active::before {
+    left: 100%;
+}
+
+.stats {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.stat-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 4px 0;
+    border-bottom: 1px dashed rgba(0, 242, 254, 0.1);
+    font-size: 11px;
+}
+
+.stat-row:last-child { border-bottom: none; }
+
+.stat-label {
+    color: var(--text-mid);
+    font-size: 10px;
+    letter-spacing: 1px;
+}
+
+.stat-value {
+    color: var(--neon);
+    font-weight: 500;
+    text-shadow: 0 0 4px var(--neon-dim);
+    font-family: 'JetBrains Mono', monospace;
+}
+
+.stat-value.accent {
+    color: var(--accent);
+    text-shadow: 0 0 4px var(--accent-soft);
+}
+
+.harmonic-list {
+    max-height: 140px;
+    overflow-y: auto;
+    font-size: 10px;
+    background: rgba(0, 0, 0, 0.25);
+    border: 1px solid var(--border);
+    padding: 8px 10px;
+    border-radius: 2px;
+}
+
+.harmonic-list::-webkit-scrollbar { width: 3px; }
+.harmonic-list::-webkit-scrollbar-track { background: transparent; }
+.harmonic-list::-webkit-scrollbar-thumb { background: var(--neon-dim); }
+
+.harmonic-row {
+    display: grid;
+    grid-template-columns: 28px 1fr 1fr 1fr;
+    gap: 6px;
+    padding: 3px 0;
+    color: var(--text-mid);
+    font-size: 10px;
+    font-family: 'JetBrains Mono', monospace;
+}
+
+.harmonic-row.header {
+    color: var(--text-dim);
+    font-size: 8px;
+    letter-spacing: 1px;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 4px;
+    margin-bottom: 4px;
+    font-family: 'Orbitron', sans-serif;
+}
+
+.harmonic-row .idx { color: var(--warning); }
+.harmonic-row .amp { color: var(--neon); }
+.harmonic-row .freq { color: var(--accent); }
+.harmonic-row .phase { color: var(--text-mid); }
+
+.scope-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 6px;
+}
+
+.scope-title {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 11px;
+    letter-spacing: 3px;
+    color: var(--neon);
+    text-shadow: 0 0 8px var(--neon-dim);
+}
+
+.scope-legend {
+    display: flex;
+    gap: 14px;
+    font-size: 9px;
+    letter-spacing: 1px;
+}
+
+.legend-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--text-mid);
+    font-family: 'Orbitron', sans-serif;
+}
+
+.legend-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+}
+
+.legend-dot.x { background: var(--neon); box-shadow: 0 0 6px var(--neon); }
+.legend-dot.y { background: var(--accent); box-shadow: 0 0 6px var(--accent); }
+
+.status-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 9px;
+    color: var(--text-dim);
+    margin-top: auto;
+    padding-top: 12px;
+    border-top: 1px solid var(--border);
+    letter-spacing: 1.5px;
+    font-family: 'Orbitron', sans-serif;
+}
+
+.status-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--success);
+    box-shadow: 0 0 8px var(--success);
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+}
+
+.loading {
+    position: fixed;
+    inset: 0;
+    background: var(--bg-deep);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+    transition: opacity 0.6s, visibility 0.6s;
+    gap: 20px;
+}
+
+.loading.hidden {
+    opacity: 0;
+    visibility: hidden;
+}
+
+.loading-text {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 13px;
+    letter-spacing: 5px;
+    color: var(--neon);
+    text-shadow: 0 0 12px var(--neon);
+    animation: blink 1.2s infinite;
+}
+
+.loading-bar {
+    width: 200px;
+    height: 2px;
+    background: rgba(0, 242, 254, 0.15);
+    overflow: hidden;
+    position: relative;
+}
+
+.loading-bar::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(90deg, transparent, var(--neon), transparent);
+    animation: scan 1.5s infinite;
+}
+
+@keyframes scan {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(100%); }
+}
+
+@keyframes blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+}
+
+.corner {
+    position: absolute;
+    width: 14px;
+    height: 14px;
+    border-color: var(--neon);
+    border-style: solid;
+    border-width: 0;
+    pointer-events: none;
+    z-index: 4;
+}
+
+.corner.tl { top: 4px; left: 4px; border-top-width: 2px; border-left-width: 2px; }
+.corner.tr { top: 4px; right: 4px; border-top-width: 2px; border-right-width: 2px; }
+.corner.bl { bottom: 4px; left: 4px; border-bottom-width: 2px; border-left-width: 2px; }
+.corner.br { bottom: 4px; right: 4px; border-bottom-width: 2px; border-right-width: 2px; }
+
+@media (max-width: 900px) {
+    .dashboard {
+        grid-template-columns: 1fr;
+        grid-template-rows: auto 1fr 160px;
+    }
+    .sidebar { grid-row: 1; grid-column: 1; max-height: 45vh; }
+    .canvas-area { grid-row: 2; grid-column: 1; min-height: 350px; }
+    .oscilloscope { grid-row: 3; grid-column: 1; }
+}
+</style>
+</head>
+<body>
+<div class="loading" id="loading">
+    <div class="loading-text">INITIALIZING FOURIER ENGINE</div>
+    <div class="loading-bar"></div>
+</div>
+
+<div class="dashboard">
+    <aside class="sidebar">
+        <div class="corner tl"></div>
+        <div class="corner tr"></div>
+        <div class="corner bl"></div>
+        <div class="corner br"></div>
+        
+        <header class="panel-header">
+            <div class="icon"></div>
+            <div>
+                <div class="panel-title">FOURIER</div>
+                <div class="panel-subtitle">SERIES HARMONIC ENGINE · v2.4</div>
+            </div>
+        </header>
+        
+        <section class="section">
+            <div class="section-label">
+                <span>HARMONICS (N)</span>
+                <span><span class="value" id="harmonicsVal">15</span><span class="unit">/50</span></span>
+            </div>
+            <div class="slider-wrap">
+                <input type="range" id="harmonicsSlider" min="1" max="50" value="15">
+            </div>
+            <div class="slider-ticks">
+                <span>1</span><span>10</span><span>20</span><span>30</span><span>40</span><span>50</span>
+            </div>
+        </section>
+        
+        <section class="section">
+            <div class="section-label">
+                <span>DRAW SPEED</span>
+                <span><span class="value" id="speedVal">1.00</span><span class="unit">×</span></span>
+            </div>
+            <div class="slider-wrap">
+                <input type="range" id="speedSlider" min="0.1" max="3" step="0.05" value="1">
+            </div>
+            <div class="slider-ticks">
+                <span>0.1×</span><span>1×</span><span>2×</span><span>3×</span>
+            </div>
+        </section>
+        
+        <section class="section">
+            <div class="section-label"><span>TARGET MORPHOLOGY</span></div>
+            <div class="shape-toggles">
+                <button class="shape-btn active" data-shape="guitar">Guitar</button>
+                <button class="shape-btn" data-shape="batman">Batman</button>
+                <button class="shape-btn" data-shape="square">Square</button>
+            </div>
+        </section>
+        
+        <section class="formula-box">
+            <div class="formula-header">
+                <span>EQUATION · SUMMATION FORM</span>
+                <span class="live">LIVE</span>
+            </div>
+            <div class="formula">
+                <span class="var">f(t)</span>
+                <span class="op">=</span>
+                <span class="sigma">∑</span>
+                <span class="bounds">
+                    <span class="upper">N=<span id="formulaN">15</span></span>
+                    <span class="lower">n=1</span>
+                </span>
+                <span class="op">[</span>
+                <span class="var-accent">A</span><sub>n</sub>
+                <span class="op">cos(</span><span class="var">nωt</span><span class="op">)</span>
+                <span class="op">+</span>
+                <span class="var-accent">B</span><sub>n</sub>
+                <span class="op">sin(</span><span class="var">nωt</span><span class="op">)</span>
+                <span class="op">]</span>
+            </div>
+            <div class="formula-info">
+                <span>ω = <span>2π/T</span></span>
+                <span>t = <span id="formulaT">0.00</span></span>
+                <span>T = <span>2π</span></span>
+            </div>
+        </section>
+        
+        <section class="section">
+            <div class="section-label"><span>TOP HARMONIC COMPONENTS</span></div>
+            <div class="harmonic-list" id="harmonicList">
+                <div class="harmonic-row header">
+                    <span>#</span><span>AMP</span><span>FREQ</span><span>PHASE</span>
+                </div>
+            </div>
+        </section>
+        
+        <section class="section">
+            <div class="section-label"><span>TELEMETRY</span></div>
+            <div class="stats">
+                <div class="stat-row">
+                    <span class="stat-label">SAMPLE POINTS</span>
+                    <span class="stat-value" id="statPoints">256</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">DFT COEFFICIENTS</span>
+                    <span class="stat-value" id="statCoeffs">255</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">ACTIVE EPICYCLES</span>
+                    <span class="stat-value accent" id="statActive">15</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">FRAME RATE</span>
+                    <span class="stat-value" id="statFps">60</span>
+                </div>
+            </div>
+        </section>
+        
+        <div class="status-bar">
+            <span class="status-dot"></span>
+            <span>SYSTEM ONLINE · DFT STREAM ACTIVE</span>
+        </div>
+    </aside>
+    
+    <main class="canvas-area">
+        <div class="corner tl"></div>
+        <div class="corner tr"></div>
+        <div class="corner bl"></div>
+        <div class="corner br"></div>
+        <canvas id="mainCanvas"></canvas>
+        <div class="canvas-overlay">
+            <div class="canvas-tag">EPICYCLE TRACE</div>
+            <div class="canvas-tag dim" id="shapeTag">GUITAR</div>
+        </div>
+    </main>
+    
+    <footer class="oscilloscope">
+        <div class="corner tl"></div>
+        <div class="corner tr"></div>
+        <div class="corner bl"></div>
+        <div class="corner br"></div>
+        <div class="scope-header">
+            <div class="scope-title">RESULTANT WAVEFORM</div>
+            <div class="scope-legend">
+                <div class="legend-item"><span class="legend-dot x"></span>X-COMPONENT</div>
+                <div class="legend-item"><span class="legend-dot y"></span>Y-COMPONENT</div>
+            </div>
+        </div>
+        <canvas id="scopeCanvas"></canvas>
+    </footer>
+</div>
+
+<script>
+'use strict';
+
+// ====================================================================
+// CONFIGURATION
+// ====================================================================
+const CONFIG = {
+    numPoints: 256,
+    maxHarmonics: 50,
+    defaultHarmonics: 15,
+    trailMaxMultiplier: 2.5  // trail length = N * multiplier
+};
+
+// ====================================================================
+// STATE
+// ====================================================================
+const state = {
+    points: [],
+    coefficients: [],
+    numHarmonics: CONFIG.defaultHarmonics,
+    time: 0,
+    speed: 1.0,
+    shape: 'guitar',
+    trail: [],         // normalized {x, y} trail points
+    history: [],       // for oscilloscope, normalized
+    fps: 60,
+    lastFrameTime: performance.now(),
+    fpsCounter: { frames: 0, lastUpdate: performance.now() }
+};
+
+// ====================================================================
+// CANVAS SETUP
+// ====================================================================
+const mainCanvas = document.getElementById('mainCanvas');
+const mainCtx = mainCanvas.getContext('2d');
+const scopeCanvas = document.getElementById('scopeCanvas');
+const scopeCtx = scopeCanvas.getContext('2d');
+
+let mainSize = { w: 0, h: 0 };
+let scopeSize = { w: 0, h: 0 };
+
+function resizeCanvases() {
+    const dpr = window.devicePixelRatio || 1;
+    
+    const mainRect = mainCanvas.getBoundingClientRect();
+    mainCanvas.width = Math.max(1, mainRect.width * dpr);
+    mainCanvas.height = Math.max(1, mainRect.height * dpr);
+    mainCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    mainSize = { w: mainRect.width, h: mainRect.height };
+    
+    const scopeRect = scopeCanvas.getBoundingClientRect();
+    scopeCanvas.width = Math.max(1, scopeRect.width * dpr);
+    scopeCanvas.height = Math.max(1, scopeRect.height * dpr);
+    scopeCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    scopeSize = { w: scopeRect.width, h: scopeRect.height };
+}
+
+// ====================================================================
+// SHAPE GENERATION
+// ====================================================================
+function catmullRom(p0, p1, p2, p3, t) {
+    const t2 = t * t;
+    const t3 = t2 * t;
+    return {
+        x: 0.5 * ((2 * p1.x) +
+            (-p0.x + p2.x) * t +
+            (2 * p0.x - 5 * p1.x + 4 * p2.x - p3.x) * t2 +
+            (-p0.x + 3 * p1.x - 3 * p2.x + p3.x) * t3),
+        y: 0.5 * ((2 * p1.y) +
+            (-p0.y + p2.y) * t +
+            (2 * p0.y - 5 * p1.y + 4 * p2.y - p3.y) * t2 +
+            (-p0.y + 3 * p1.y - 3 * p2.y + p3.y) * t3)
+    };
+}
+
+function catmullRomClosedPath(waypoints, numPoints) {
+    const points = [];
+    const n = waypoints.length;
+    const stepsPerSeg = Math.max(1, Math.ceil(numPoints / n));
+    
+    for (let i = 0; i < n; i++) {
+        const a = waypoints[(i - 1 + n) % n];
+        const b = waypoints[i];
+        const c = waypoints[(i + 1) % n];
+        const d = waypoints[(i + 2) % n];
+        
+        for (let j = 0; j < stepsPerSeg; j++) {
+            const t = j / stepsPerSeg;
+            points.push(catmullRom(a, b, c, d, t));
+        }
+    }
+    return points;
+}
+
+function normalizePoints(points) {
+    let cx = 0, cy = 0;
+    for (const p of points) { cx += p.x; cy += p.y; }
+    cx /= points.length;
+    cy /= points.length;
+    
+    let maxR = 0;
+    for (const p of points) {
+        const dx = p.x - cx;
+        const dy = p.y - cy;
+        const r = Math.sqrt(dx * dx + dy * dy);
+        if (r > maxR) maxR = r;
+    }
+    maxR = Math.max(maxR, 0.001);
+    const scale = 1 / maxR;
+    return points.map(p => ({ x: (p.x - cx) * scale, y: (p.y - cy) * scale }));
+}
+
+function generateGuitarPoints(numPoints = 256) {
+    // Acoustic guitar outline (math convention: y up)
+    // Traced clockwise from top of headstock
+    const waypoints = [
+        { x: 0.00, y: 1.50 },   // top of headstock
+        { x: 0.10, y: 1.48 },
+        { x: 0.18, y: 1.40 },
+        { x: 0.20, y: 1.25 },   // headstock right
+        { x: 0.15, y: 1.10 },
+        { x: 0.10, y: 0.95 },
+        { x: 0.08, y: 0.70 },   // neck right top
+        { x: 0.08, y: 0.30 },
+        { x: 0.08, y: 0.00 },   // body joint right
+        { x: 0.20, y: -0.10 },  // upper bout shoulder
+        { x: 0.40, y: -0.20 },
+        { x: 0.50, y: -0.35 },  // upper bout widest
+        { x: 0.45, y: -0.50 },
+        { x: 0.35, y: -0.65 },  // waist right
+        { x: 0.30, y: -0.75 },
+        { x: 0.45, y: -0.90 },
+        { x: 0.58, y: -1.10 },  // lower bout widest
+        { x: 0.60, y: -1.30 },
+        { x: 0.50, y: -1.45 },
+        { x: 0.25, y: -1.55 },  // bottom right curve
+        { x: 0.00, y: -1.58 },  // bottom center
+        { x: -0.25, y: -1.55 },
+        { x: -0.50, y: -1.45 },
+        { x: -0.60, y: -1.30 },
+        { x: -0.58, y: -1.10 },
+        { x: -0.45, y: -0.90 },
+        { x: -0.30, y: -0.75 },
+        { x: -0.35, y: -0.65 }, // waist left
+        { x: -0.45, y: -0.50 },
+        { x: -0.50, y: -0.35 },
+        { x: -0.40, y: -0.20 },
+        { x: -0.20, y: -0.10 },
+        { x: -0.08, y: 0.00 },  // body joint left
+        { x: -0.08, y: 0.30 },
+        { x: -0.08, y: 0.70 },
+        { x: -0.10, y: 0.95 },
+        { x: -0.15, y: 1.10 },
+        { x: -0.20, y: 1.25 },
+        { x: -0.18, y: 1.40 },
+        { x: -0.10, y: 1.48 }
+    ];
+    
+    return normalizePoints(catmullRomClosedPath(waypoints, numPoints));
+}
+
+function generateBatmanPoints(numPoints = 256) {
+    // Stylized Batman logo outline
+    const waypoints = [
+        { x: 0.00, y: 0.45 },   // top center between ears
+        { x: 0.06, y: 0.50 },
+        { x: 0.10, y: 0.95 },   // right ear tip
+        { x: 0.16, y: 0.55 },
+        { x: 0.22, y: 0.48 },
+        { x: 0.32, y: 0.42 },
+        { x: 0.48, y: 0.32 },
+        { x: 0.68, y: 0.20 },
+        { x: 0.92, y: 0.05 },   // right wing top
+        { x: 1.18, y: -0.12 },
+        { x: 1.32, y: -0.32 },  // right wing tip
+        { x: 1.30, y: -0.50 },
+        { x: 1.15, y: -0.55 },
+        { x: 0.92, y: -0.48 },
+        { x: 0.72, y: -0.38 },
+        { x: 0.55, y: -0.68 },  // right W point (down)
+        { x: 0.40, y: -0.35 },
+        { x: 0.25, y: -0.55 },
+        { x: 0.12, y: -0.32 },
+        { x: 0.00, y: -0.42 },  // center W peak (up)
+        { x: -0.12, y: -0.32 },
+        { x: -0.25, y: -0.55 },
+        { x: -0.40, y: -0.35 },
+        { x: -0.55, y: -0.68 }, // left W point (down)
+        { x: -0.72, y: -0.38 },
+        { x: -0.92, y: -0.48 },
+        { x: -1.15, y: -0.55 },
+        { x: -1.30, y: -0.50 },
+        { x: -1.32, y: -0.32 }, // left wing tip
+        { x: -1.18, y: -0.12 },
+        { x: -0.92, y: 0.05 },
+        { x: -0.68, y: 0.20 },
+        { x: -0.48, y: 0.32 },
+        { x: -0.32, y: 0.42 },
+        { x: -0.22, y: 0.48 },
+        { x: -0.16, y: 0.55 },
+        { x: -0.10, y: 0.95 },  // left ear tip
+        { x: -0.06, y: 0.50 }
+    ];
+    
+    return normalizePoints(catmullRomClosedPath(waypoints, numPoints));
+}
+
+function generateSquarePoints(numPoints = 256) {
+    const points = [];
+    const side = Math.floor(numPoints / 4);
+    const size = 1.0;
+    
+    for (let i = 0; i < side; i++) {
+        const t = i / side;
+        points.push({ x: -size + 2 * size * t, y: -size });
+    }
+    for (let i = 0; i < side; i++) {
+        const t = i / side;
+        points.push({ x: size, y: -size + 2 * size * t });
+    }
+    for (let i = 0; i < side; i++) {
+        const t = i / side;
+        points.push({ x: size - 2 * size * t, y: size });
+    }
+    for (let i = 0; i < side; i++) {
+        const t = i / side;
+        points.push({ x: -size, y: size - 2 * size * t });
+    }
+    return normalizePoints(points);
+}
+
+// ====================================================================
+// DISCRETE FOURIER TRANSFORM
+// ====================================================================
+function computeDFT(points) {
+    const N = points.length;
+    const coefficients = [];
+    
+    // Skip k=0 (DC component); after normalization it's near zero
+    for (let k = 1; k < N; k++) {
+        let re = 0, im = 0;
+        for (let n = 0; n < N; n++) {
+            const phi = (2 * Math.PI * k * n) / N;
+            const cosPhi = Math.cos(phi);
+            const sinPhi = Math.sin(phi);
+            // x[n] = px + i*py
+            // X[k] = sum x[n] * exp(-i*phi) = sum (px + i*py)(cos - i*sin)
+            //      = sum (px*cos + py*sin) + i*(py*cos - px*sin)
+            re += points[n].x * cosPhi + points[n].y * sinPhi;
+            im += points[n].y * cosPhi - points[n].x * sinPhi;
+        }
+        re /= N;
+        im /= N;
+        
+        const amplitude = Math.sqrt(re * re + im * im);
+        const phase = Math.atan2(im, re);
+        
+        coefficients.push({
+            re, im,
+            amplitude,
+            phase,
+            frequency: k
+        });
+    }
+    
+    // Sort by amplitude descending (largest circles first)
+    coefficients.sort((a, b) => b.amplitude - a.amplitude);
+    return coefficients;
+}
+
+// ====================================================================
+// MAIN CANVAS RENDERING
+// ====================================================================
+function drawBackground(ctx, w, h) {
+    // Subtle radial gradient
+    const grad = ctx.createRadialGradient(w/2, h/2, 0, w/2, h/2, Math.max(w, h) * 0.7);
+    grad.addColorStop(0, 'rgba(0, 242, 254, 0.04)');
+    grad.addColorStop(1, 'rgba(10, 15, 29, 0)');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, w, h);
+    
+    // Grid
+    ctx.strokeStyle = 'rgba(0, 242, 254, 0.05)';
+    ctx.lineWidth = 1;
+    const grid = 40;
+    ctx.beginPath();
+    for (let x = grid; x < w; x += grid) {
+        ctx.moveTo(x, 0); ctx.lineTo(x, h);
+    }
+    for (let y = grid; y < h; y += grid) {
+        ctx.moveTo(0, y); ctx.lineTo(w, y);
+    }
+    ctx.stroke();
+    
+    // Major grid (every 5 cells)
+    ctx.strokeStyle = 'rgba(0, 242, 254, 0.08)';
+    ctx.beginPath();
+    for (let x = grid * 5; x < w; x += grid * 5) {
+        ctx.moveTo(x, 0); ctx.lineTo(x, h);
+    }
+    for (let y = grid * 5; y < h; y += grid * 5) {
+        ctx.moveTo(0, y); ctx.lineTo(w, y);
+    }
+    ctx.stroke();
+    
+    // Center crosshair
+    const cx = w / 2, cy = h / 2;
+    ctx.strokeStyle = 'rgba(0, 242, 254, 0.2)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(cx - 16, cy); ctx.lineTo(cx + 16, cy);
+    ctx.moveTo(cx, cy - 16); ctx.lineTo(cx, cy + 16);
+    ctx.stroke();
+    
+    // Center reticle
+    ctx.strokeStyle = 'rgba(0, 242, 254, 0.15)';
+    ctx.beginPath();
+    ctx.arc(cx, cy, 6, 0, Math.PI * 2);
+    ctx.stroke();
+}
+
+function drawTrail(ctx, trail, cx, cy, scale) {
+    if (trail.length < 2) return;
+    
+    ctx.save();
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    
+    // Outer glow pass
+    ctx.shadowBlur = 18;
+    ctx.shadowColor = '#00f2fe';
+    ctx.strokeStyle = 'rgba(0, 242, 254, 0.35)';
+    ctx.lineWidth = 3.5;
+    ctx.beginPath();
+    ctx.moveTo(cx + trail[0].x * scale, cy - trail[0].y * scale);
+    for (let i = 1; i < trail.length; i++) {
+        ctx.lineTo(cx + trail[i].x * scale, cy - trail[i].y * scale);
+    }
+    ctx.stroke();
+    
+    // Mid glow
+    ctx.shadowBlur = 10;
+    ctx.strokeStyle = 'rgba(0, 242, 254, 0.7)';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(cx + trail[0].x * scale, cy - trail[0].y * scale);
+    for (let i = 1; i < trail.length; i++) {
+        ctx.lineTo(cx + trail[i].x * scale, cy - trail[i].y * scale);
+    }
+    ctx.stroke();
+    
+    // Bright core
+    ctx.shadowBlur = 4;
+    ctx.shadowColor = '#ffffff';
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.95)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(cx + trail[0].x * scale, cy - trail[0].y * scale);
+    for (let i = 1; i < trail.length; i++) {
+        ctx.lineTo(cx + trail[i].x * scale, cy - trail[i].y * scale);
+    }
+    ctx.stroke();
+    
+    ctx.restore();
+}
+
+function drawEpicycles(ctx, centerX, centerY, coefficients, time, numHarmonics, N, scale) {
+    let x = centerX;
+    let y = centerY;
+    
+    ctx.save();
+    
+    const count = Math.min(numHarmonics, coefficients.length);
+    
+    for (let i = 0; i < count; i++) {
+        const c = coefficients[i];
+        const prevX = x;
+        const prevY = y;
+        
+        const angle = c.phase + (2 * Math.PI * c.frequency * time) / N;
+        
+        // Tip displacement (math convention: y up; canvas: y down → flip y)
+        const dx = c.amplitude * Math.cos(angle) * scale;
+        const dy = -c.amplitude * Math.sin(angle) * scale;
+        x = prevX + dx;
+        y = prevY + dy;
+        
+        const radius = Math.max(0.5, c.amplitude * scale);
+        
+        // Translucent circle
+        const alpha = 0.10 + 0.18 * (1 - i / count);
+        ctx.strokeStyle = `rgba(0, 242, 254, ${alpha})`;
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.arc(prevX, prevY, radius, 0, Math.PI * 2);
+        ctx.stroke();
+        
+        // Subtle filled center
+        if (i < 8) {
+            ctx.fillStyle = `rgba(0, 242, 254, 0.04)`;
+            ctx.beginPath();
+            ctx.arc(prevX, prevY, radius, 0, Math.PI * 2);
+            ctx.fill();
+        }
+        
+        // Radius vector (sharp white line)
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.55)';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(prevX, prevY);
+        ctx.lineTo(x, y);
+        ctx.stroke();
+        
+        // Center dot
+        ctx.fillStyle = 'rgba(0, 242, 254, 0.7)';
+        ctx.beginPath();
+        ctx.arc(prevX, prevY, 1.5, 0, Math.PI * 2);
+        ctx.fill();
+    }
+    
+    // Final tip — bright glowing point
+    ctx.shadowBlur = 25;
+    ctx.shadowColor = '#00f2fe';
+    ctx.fillStyle = 'rgba(0, 242, 254, 0.4)';
+    ctx.beginPath();
+    ctx.arc(x, y, 12, 0, Math.PI * 2);
+    ctx.fill();
+    
+    ctx.shadowBlur = 20;
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath();
+    ctx.arc(x, y, 4, 0, Math.PI * 2);
+    ctx.fill();
+    
+    ctx.restore();
+    
+    return { x, y };
+}
+
+// ====================================================================
+// OSCILLOSCOPE RENDERING
+// ====================================================================
+function drawOscilloscope(ctx, w, h, history) {
+    // Background
+    ctx.fillStyle = 'rgba(6, 9, 18, 0.7)';
+    ctx.fillRect(0, 0, w, h);
+    
+    // Grid
+    ctx.strokeStyle = 'rgba(0, 242, 254, 0.06)';
+    ctx.lineWidth = 1;
+    const gridX = 40, gridY = 20;
+    ctx.beginPath();
+    for (let x = 0; x < w; x += gridX) {
+        ctx.moveTo(x, 0); ctx.lineTo(x, h);
+    }
+    for (let y = 0; y < h; y += gridY) {
+        ctx.moveTo(0, y); ctx.lineTo(w, y);
+    }
+    ctx.stroke();
+    
+    // Center line
+    ctx.strokeStyle = 'rgba(0, 242, 254, 0.2)';
+    ctx.lineWidth = 1;
+    ctx.setLineDash([4, 4]);
+    ctx.beginPath();
+    ctx.moveTo(0, h / 2);
+    ctx.lineTo(w, h / 2);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    
+    // Axis labels
+    ctx.fillStyle = 'rgba(74, 104, 133, 0.8)';
+    ctx.font = '9px "JetBrains Mono", monospace';
+    ctx.fillText('+1', 4, h / 2 - h * 0.4 + 4);
+    ctx.fillText(' 0', 4, h / 2 + 4);
+    ctx.fillText('-1', 4, h / 2 + h * 0.4 + 4);
+    
+    if (history.length < 2) return;
+    
+    const centerY = h / 2;
+    const scaleY = h * 0.4;
+    const stepX = w / Math.max(history.length - 1, 1);
+    
+    // X component (cyan)
+    ctx.save();
+    ctx.shadowBlur = 10;
+    ctx.shadowColor = '#00f2fe';
+    ctx.strokeStyle = '#00f2fe';
+    ctx.lineWidth = 1.8;
+    ctx.beginPath();
+    for (let i = 0; i < history.length; i++) {
+        const px = i * stepX;
+        const py = centerY - history[i].x * scaleY;
+        if (i === 0) ctx.moveTo(px, py);
+        else ctx.lineTo(px, py);
+    }
+    ctx.stroke();
+    ctx.restore();
+    
+    // Y component (magenta)
+    ctx.save();
+    ctx.shadowBlur = 10;
+    ctx.shadowColor = '#ff2e6c';
+    ctx.strokeStyle = '#ff2e6c';
+    ctx.lineWidth = 1.8;
+    ctx.beginPath();
+    for (let i = 0; i < history.length; i++) {
+        const px = i * stepX;
+        const py = centerY - history[i].y * scaleY;
+        if (i === 0) ctx.moveTo(px, py);
+        else ctx.lineTo(px, py);
+    }
+    ctx.stroke();
+    ctx.restore();
+    
+    // Current value markers
+    const last = history[history.length - 1];
+    const lastX = (history.length - 1) * stepX;
+    
+    ctx.save();
+    ctx.shadowBlur = 12;
+    ctx.shadowColor = '#00f2fe';
+    ctx.fillStyle = '#00f2fe';
+    ctx.beginPath();
+    ctx.arc(lastX, centerY - last.x * scaleY, 3, 0, Math.PI * 2);
+    ctx.fill();
+    
+    ctx.shadowColor = '#ff2e6c';
+    ctx.fillStyle = '#ff2e6c';
+    ctx.beginPath();
+    ctx.arc(lastX, centerY - last.y * scaleY, 3, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+    
+    // Vertical scan line at current position
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(lastX, 0);
+    ctx.lineTo(lastX, h);
+    ctx.stroke();
+}
+
+// ====================================================================
+// SHAPE MANAGEMENT
+// ====================================================================
+function setShape(name) {
+    state.shape = name;
+    state.time = 0;
+    state.trail = [];
+    state.history = [];
+    
+    switch (name) {
+        case 'guitar':
+            state.points = generateGuitarPoints(CONFIG.numPoints);
+            break;
+        case 'batman':
+            state.points = generateBatmanPoints(CONFIG.numPoints);
+            break;
+        case 'square':
+            state.points = generateSquarePoints(CONFIG.numPoints);
+            break;
+    }
+    
+    state.coefficients = computeDFT(state.points);
+    
+    document.getElementById('shapeTag').textContent = name.toUpperCase();
+    document.querySelectorAll('.shape-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.shape === name);
+    });
+    document.getElementById('statPoints').textContent = state.points.length;
+    document.getElementById('statCoeffs').textContent = state.coefficients.length;
+    updateHarmonicList();
+}
+
+function updateHarmonicList() {
+    const list = document.getElementById('harmonicList');
+    list.innerHTML = '<div class="harmonic-row header"><span>#</span><span>AMP</span><span>FREQ</span><span>PHASE</span></div>';
+    
+    const count = Math.min(state.numHarmonics, 8);
+    for (let i = 0; i < count; i++) {
+        const c = state.coefficients[i];
+        if (!c) continue;
+        const row = document.createElement('div');
+        row.className = 'harmonic-row';
+        const phaseDeg = ((c.phase * 180 / Math.PI) + 360) % 360;
+        row.innerHTML = `
+            <span class="idx">${String(i + 1).padStart(2, '0')}</span>
+            <span class="amp">${c.amplitude.toFixed(3)}</span>
+            <span class="freq">${c.frequency}</span>
+            <span class="phase">${phaseDeg.toFixed(0)}°</span>
+        `;
+        list.appendChild(row);
+    }
+}
+
+// ====================================================================
+// UI EVENT HANDLERS
+// ====================================================================
+function updateSliderFill(slider) {
+    const min = parseFloat(slider.min);
+    const max = parseFloat(slider.max);
+    const val = parseFloat(slider.value);
+    const fill = ((val - min) / (max - min)) * 100;
+    slider.style.setProperty('--fill', fill + '%');
+}
+
+function setupUI() {
+    const harmonicsSlider = document.getElementById('harmonicsSlider');
+    const speedSlider = document.getElementById('speedSlider');
+    
+    harmonicsSlider.addEventListener('input', (e) => {
+        state.numHarmonics = parseInt(e.target.value);
+        document.getElementById('harmonicsVal').textContent = state.numHarmonics;
+        document.getElementById('formulaN').textContent = state.numHarmonics;
+        document.getElementById('statActive').textContent = state.numHarmonics;
+        state.trail = [];  // Reset trail to show new path forming
+        updateHarmonicList();
+        updateSliderFill(harmonicsSlider);
+    });
+    
+    speedSlider.addEventListener('input', (e) => {
+        state.speed = parseFloat(e.target.value);
+        document.getElementById('speedVal').textContent = state.speed.toFixed(2);
+        updateSliderFill(speedSlider);
+    });
+    
+    document.querySelectorAll('.shape-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            setShape(btn.dataset.shape);
+        });
+    });
+    
+    updateSliderFill(harmonicsSlider);
+    updateSliderFill(speedSlider);
+}
+
+// ====================================================================
+// ANIMATION LOOP
+// ====================================================================
+function animate() {
+    const now = performance.now();
+    state.lastFrameTime = now;
+    
+    // FPS counter
+    state.fpsCounter.frames++;
+    if (now - state.fpsCounter.lastUpdate > 500) {
+        state.fps = Math.round(state.fpsCounter.frames * 1000 / (now - state.fpsCounter.lastUpdate));
+        state.fpsCounter.frames = 0;
+        state.fpsCounter.lastUpdate = now;
+        document.getElementById('statFps').textContent = state.fps;
+    }
+    
+    const N = state.points.length;
+    
+    // === Compute tip position (normalized coordinates) ===
+    let tipX = 0, tipY = 0;
+    const count = Math.min(state.numHarmonics, state.coefficients.length);
+    for (let i = 0; i < count; i++) {
+        const c = state.coefficients[i];
+        const angle = c.phase + (2 * Math.PI * c.frequency * state.time) / N;
+        tipX += c.amplitude * Math.cos(angle);
+        tipY += c.amplitude * Math.sin(angle);
+    }
+    
+    // === Update trail (normalized) ===
+    state.trail.push({ x: tipX, y: tipY });
+    // Cap trail length to ~2 loops worth of points (independent of speed)
+    const trailCap = Math.max(N * CONFIG.trailMaxMultiplier, 200);
+    while (state.trail.length > trailCap) state.trail.shift();
+    
+    // === Update history for oscilloscope ===
+    state.history.push({ x: tipX, y: tipY });
+    while (state.history.length > 400) state.history.shift();
+    
+    // === Render main canvas ===
+    mainCtx.clearRect(0, 0, mainSize.w, mainSize.h);
+    drawBackground(mainCtx, mainSize.w, mainSize.h);
+    
+    const scale = Math.min(mainSize.w, mainSize.h) * 0.35;
+    const cx = mainSize.w / 2;
+    const cy = mainSize.h / 2;
+    
+    // Draw trail (below epicycles)
+    drawTrail(mainCtx, state.trail, cx, cy, scale);
+    
+    // Draw epicycles (on top of trail)
+    drawEpicycles(mainCtx, cx, cy, state.coefficients, state.time, state.numHarmonics, N, scale);
+    
+    // === Render oscilloscope ===
+    scopeCtx.clearRect(0, 0, scopeSize.w, scopeSize.h);
+    drawOscilloscope(scopeCtx, scopeSize.w, scopeSize.h, state.history);
+    
+    // === Update formula display ===
+    const phaseAngle = (2 * Math.PI * state.time / N);
+    document.getElementById('formulaT').textContent = phaseAngle.toFixed(2);
+    
+    // === Advance time ===
+    state.time += state.speed;
+    if (state.time >= N) state.time -= N;
+    
+    requestAnimationFrame(animate);
+}
+
+// ====================================================================
+// INITIALIZATION
+// ====================================================================
+function init() {
+    resizeCanvases();
+    setupUI();
+    setShape('guitar');
+    
+    // Hide loading overlay after brief delay for effect
+    setTimeout(() => {
+        document.getElementById('loading').classList.add('hidden');
+    }, 900);
+    
+    // Start animation loop
+    state.lastFrameTime = performance.now();
+    state.fpsCounter.lastUpdate = performance.now();
+    requestAnimationFrame(animate);
+}
+
+// Handle resize
+let resizeTimeout;
+window.addEventListener('resize', () => {
+    clearTimeout(resizeTimeout);
+    resizeTimeout = setTimeout(() => {
+        resizeCanvases();
+        // Trail is in normalized coords, no need to clear
+    }, 100);
+});
+
+// Start when DOM is ready
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+} else {
+    init();
+}
+</script>
+</body>
+</html>
