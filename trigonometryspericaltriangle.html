@@ -1,0 +1,1260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Spherical Trigonometry vs. Flat Geometry — Holographic Analysis</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;500;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #000308;
+  --cyan: #00f0ff;
+  --cyan-dim: #0098b8;
+  --red: #ff3854;
+  --yellow: #ffcc33;
+  --green: #00ff88;
+  --panel-bg: rgba(8, 18, 32, 0.55);
+  --panel-border: rgba(0, 240, 255, 0.25);
+  --text: #c8e6f0;
+  --text-dim: #6a8a9a;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body {
+  width: 100%; height: 100%;
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Rajdhani', sans-serif;
+  overflow: hidden;
+  user-select: none;
+}
+#webgl { display: block; width: 100%; height: 100%; cursor: grab; }
+#webgl:active { cursor: grabbing; }
+
+/* HUD overlay */
+.hud { position: fixed; inset: 0; pointer-events: none; z-index: 10; }
+.hud > * { pointer-events: auto; }
+
+/* Header */
+.hud-header {
+  position: absolute; top: 24px; left: 24px; right: 24px;
+  display: flex; justify-content: space-between; align-items: flex-start;
+}
+.title-main {
+  font-family: 'Orbitron', sans-serif; font-weight: 900;
+  font-size: 22px; letter-spacing: 4px;
+  color: var(--cyan);
+  text-shadow: 0 0 20px rgba(0, 240, 255, 0.5);
+}
+.title-sub {
+  font-size: 11px; letter-spacing: 3px; color: var(--text-dim); margin-top: 4px;
+}
+.status {
+  display: flex; align-items: center; gap: 8px;
+  font-family: 'Share Tech Mono', monospace; font-size: 11px;
+  letter-spacing: 2px; color: var(--green);
+  padding: 7px 12px;
+  background: var(--panel-bg);
+  backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+  border: 1px solid var(--panel-border); border-radius: 2px;
+}
+.status .dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--green); box-shadow: 0 0 10px var(--green);
+  animation: pulse 1.5s ease-in-out infinite;
+}
+@keyframes pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(0.8); }
+}
+
+/* Glassmorphism panels */
+.panel {
+  position: absolute; width: 320px;
+  background: var(--panel-bg);
+  backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--panel-border);
+  border-radius: 4px; padding: 20px; font-size: 13px;
+  box-shadow: 0 0 40px rgba(0, 240, 255, 0.1), inset 0 0 30px rgba(0, 240, 255, 0.03);
+}
+.left-panel { top: 100px; left: 24px; }
+.right-panel { top: 100px; right: 24px; }
+
+.panel-header {
+  font-family: 'Orbitron', sans-serif; font-weight: 700;
+  font-size: 11px; letter-spacing: 3px; color: var(--cyan);
+  margin-bottom: 16px; padding-bottom: 10px;
+  border-bottom: 1px solid var(--panel-border);
+  display: flex; align-items: center; gap: 8px;
+}
+.panel-header::before {
+  content: ''; display: inline-block;
+  width: 6px; height: 6px; background: var(--cyan);
+  box-shadow: 0 0 10px var(--cyan); transform: rotate(45deg);
+}
+.section { margin-bottom: 18px; }
+.section:last-child { margin-bottom: 0; }
+.section-label {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 10px; letter-spacing: 2px;
+  color: var(--text-dim); margin-bottom: 8px;
+}
+.btn-group { display: flex; gap: 6px; }
+.btn {
+  flex: 1; padding: 10px 8px;
+  background: rgba(0, 30, 50, 0.5);
+  border: 1px solid rgba(0, 240, 255, 0.2);
+  color: var(--text-dim);
+  font-family: 'Rajdhani', sans-serif; font-weight: 500;
+  font-size: 12px; letter-spacing: 1.5px;
+  cursor: pointer; transition: all 0.2s ease;
+  text-transform: uppercase; border-radius: 2px;
+  position: relative; overflow: hidden;
+}
+.btn:hover {
+  background: rgba(0, 60, 90, 0.5);
+  color: var(--cyan); border-color: var(--cyan-dim);
+}
+.btn.active {
+  background: rgba(0, 240, 255, 0.15);
+  color: var(--cyan); border-color: var(--cyan);
+  box-shadow: 0 0 15px rgba(0, 240, 255, 0.3), inset 0 0 10px rgba(0, 240, 255, 0.1);
+  text-shadow: 0 0 8px rgba(0, 240, 255, 0.6);
+}
+
+/* Math formula */
+.formula {
+  font-family: 'Cambria Math', 'Times New Roman', serif;
+  font-style: italic; font-size: 15px;
+  color: var(--text); padding: 12px;
+  background: rgba(0, 0, 0, 0.3);
+  border-left: 2px solid var(--cyan);
+  border-radius: 2px; text-align: center; letter-spacing: 1px;
+  line-height: 1.8;
+}
+.formula .fn { font-style: normal; color: var(--cyan); margin-right: 1px; }
+.formula i { color: #fff; font-weight: 600; }
+.formula .op { color: var(--text-dim); margin: 0 4px; }
+
+/* Calculation display */
+.calc {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 12px; color: var(--text);
+  line-height: 1.9; padding: 10px;
+  background: rgba(0, 0, 0, 0.3); border-radius: 2px;
+}
+.calc .v { color: var(--cyan); }
+.calc .l { color: var(--yellow); display: inline-block; width: 18px; }
+
+/* Metrics */
+.metric { margin-bottom: 14px; }
+.metric-label {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 10px; letter-spacing: 2px;
+  color: var(--text-dim); margin-bottom: 4px;
+}
+.metric-value {
+  font-family: 'Orbitron', sans-serif; font-weight: 700;
+  font-size: 20px; color: var(--text); letter-spacing: 1px;
+  transition: color 0.3s;
+}
+.metric-value.cyan { color: var(--cyan); text-shadow: 0 0 10px rgba(0, 240, 255, 0.5); }
+.metric-value.red { color: var(--red); text-shadow: 0 0 10px rgba(255, 56, 84, 0.5); }
+.metric-value.yellow { color: var(--yellow); text-shadow: 0 0 10px rgba(255, 204, 51, 0.5); }
+.metric-bar {
+  height: 3px; background: rgba(0, 240, 255, 0.1);
+  border-radius: 2px; overflow: hidden; margin-top: 6px;
+}
+.metric-fill {
+  height: 100%; width: 0%;
+  background: linear-gradient(90deg, var(--cyan-dim), var(--cyan));
+  box-shadow: 0 0 8px var(--cyan);
+  transition: width 0.1s linear;
+}
+
+/* Footer */
+.hud-footer {
+  position: absolute; bottom: 24px; left: 50%;
+  transform: translateX(-50%);
+  display: flex; gap: 30px;
+  padding: 10px 24px;
+  background: var(--panel-bg);
+  backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+  border: 1px solid var(--panel-border); border-radius: 2px;
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 11px; letter-spacing: 2px; color: var(--text-dim);
+}
+.footer-item { display: flex; align-items: center; gap: 6px; }
+.footer-item::before { content: '◆'; color: var(--cyan); font-size: 8px; }
+
+/* HUD frame corners */
+.corner {
+  position: fixed; width: 24px; height: 24px;
+  border-color: var(--cyan); border-style: solid; border-width: 0;
+  opacity: 0.6; pointer-events: none; z-index: 5;
+}
+.corner.tl { top: 12px; left: 12px; border-top-width: 2px; border-left-width: 2px; }
+.corner.tr { top: 12px; right: 12px; border-top-width: 2px; border-right-width: 2px; }
+.corner.bl { bottom: 12px; left: 12px; border-bottom-width: 2px; border-left-width: 2px; }
+.corner.br { bottom: 12px; right: 12px; border-bottom-width: 2px; border-right-width: 2px; }
+
+/* Scanlines + vignette + sweep */
+.scanlines {
+  position: fixed; inset: 0; pointer-events: none; z-index: 4;
+  background: repeating-linear-gradient(to bottom,
+    transparent 0, transparent 2px,
+    rgba(0, 240, 255, 0.018) 3px, transparent 4px);
+}
+.vignette {
+  position: fixed; inset: 0; pointer-events: none; z-index: 3;
+  background: radial-gradient(ellipse at center, transparent 40%, rgba(0,0,0,0.7) 100%);
+}
+.sweep {
+  position: fixed; left: 0; width: 100%; height: 2px;
+  background: linear-gradient(to right, transparent, rgba(0,240,255,0.5), transparent);
+  pointer-events: none; z-index: 4; opacity: 0;
+  animation: sweep 9s linear infinite;
+}
+@keyframes sweep {
+  0% { top: -2px; opacity: 0; }
+  5% { opacity: 1; }
+  95% { opacity: 1; }
+  100% { top: 100%; opacity: 0; }
+}
+
+/* 3D labels */
+.label3d {
+  position: absolute; pointer-events: none;
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 10px; letter-spacing: 1px;
+  background: rgba(0, 20, 40, 0.75);
+  border: 1px solid var(--cyan-dim);
+  padding: 3px 8px; border-radius: 2px;
+  white-space: nowrap;
+  transform: translate(-50%, -160%);
+  text-shadow: 0 0 5px currentColor;
+  z-index: 9; transition: opacity 0.3s;
+}
+.label3d::after {
+  content: ''; position: absolute;
+  left: 50%; bottom: -10px; transform: translateX(-50%);
+  width: 1px; height: 10px;
+  background: currentColor; box-shadow: 0 0 4px currentColor;
+}
+
+/* Loading screen */
+.loading {
+  position: fixed; inset: 0; display: flex;
+  align-items: center; justify-content: center;
+  background: var(--bg); z-index: 100;
+  font-family: 'Orbitron', sans-serif; letter-spacing: 4px;
+  color: var(--cyan); font-size: 13px;
+  transition: opacity 0.6s ease;
+}
+.loading.hidden { opacity: 0; pointer-events: none; }
+.loading-text { animation: pulse 1s ease-in-out infinite; }
+.loading-bar {
+  position: absolute; bottom: 35%; left: 50%;
+  transform: translateX(-50%); width: 200px; height: 2px;
+  background: rgba(0,240,255,0.2); overflow: hidden;
+}
+.loading-bar::after {
+  content: ''; position: absolute; inset: 0;
+  background: var(--cyan); animation: loadbar 1.4s ease-in-out infinite;
+  box-shadow: 0 0 8px var(--cyan);
+}
+@keyframes loadbar {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+@media (max-width: 900px) {
+  .panel { width: 260px; padding: 14px; }
+  .left-panel, .right-panel { top: 80px; }
+  .title-main { font-size: 16px; }
+  .hud-footer { gap: 12px; padding: 8px 14px; font-size: 9px; }
+}
+</style>
+</head>
+<body>
+
+<canvas id="webgl"></canvas>
+
+<div class="vignette"></div>
+<div class="scanlines"></div>
+<div class="sweep"></div>
+<div class="corner tl"></div><div class="corner tr"></div>
+<div class="corner bl"></div><div class="corner br"></div>
+
+<div class="hud">
+  <header class="hud-header">
+    <div class="title">
+      <div class="title-main">SPHERICAL TRIGONOMETRY</div>
+      <div class="title-sub">vs. FLAT GEOMETRY // HOLOGRAPHIC ANALYSIS</div>
+    </div>
+    <div class="status"><span class="dot"></span> SYSTEM ONLINE</div>
+  </header>
+
+  <aside class="panel left-panel">
+    <div class="panel-header">CONTROL MATRIX</div>
+
+    <div class="section">
+      <div class="section-label">SCENARIO MODE</div>
+      <div class="btn-group">
+        <button id="btn-flight" class="btn active">Flight Path</button>
+        <button id="btn-triangle" class="btn">Triangle</button>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-label">PROJECTION</div>
+      <div class="btn-group">
+        <button id="btn-3d" class="btn active">3D Globe</button>
+        <button id="btn-2d" class="btn">2D Map</button>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-label">SPHERICAL LAW OF COSINES</div>
+      <div class="formula">
+        <span class="fn">cos</span>(<i>c</i>)<span class="op">=</span><span class="fn">cos</span>(<i>a</i>)<span class="fn">cos</span>(<i>b</i>)<span class="op">+</span><span class="fn">sin</span>(<i>a</i>)<span class="fn">sin</span>(<i>b</i>)<span class="fn">cos</span>(<i>C</i>)
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-label">LIVE PARAMETERS</div>
+      <div class="calc" id="calc-display">
+        <span class="l">a</span> = <span class="v" id="calc-a">90.00°</span><br>
+        <span class="l">b</span> = <span class="v" id="calc-b">90.00°</span><br>
+        <span class="l">c</span> = <span class="v" id="calc-c">90.00°</span><br>
+        <span class="l">C</span> = <span class="v" id="calc-C">90.00°</span>
+      </div>
+    </div>
+  </aside>
+
+  <aside class="panel right-panel">
+    <div class="panel-header">TELEMETRY</div>
+
+    <div class="metric">
+      <div class="metric-label">DISTANCE TRAVELED</div>
+      <div class="metric-value" id="distance">0 km</div>
+      <div class="metric-bar"><div class="metric-fill" id="distance-bar"></div></div>
+    </div>
+
+    <div class="metric">
+      <div class="metric-label">FLIGHT PROGRESS</div>
+      <div class="metric-value cyan" id="progress">0.0%</div>
+    </div>
+
+    <div class="metric">
+      <div class="metric-label">GREAT CIRCLE DISTANCE</div>
+      <div class="metric-value cyan" id="gc-distance">— km</div>
+    </div>
+
+    <div class="metric">
+      <div class="metric-label">RHUMB LINE DISTANCE</div>
+      <div class="metric-value red" id="rhumb-distance">— km</div>
+    </div>
+
+    <div class="metric">
+      <div class="metric-label">PATH DIFFERENCE (FLAT-PATH PENALTY)</div>
+      <div class="metric-value yellow" id="savings">— km</div>
+    </div>
+
+    <div class="metric">
+      <div class="metric-label">TRIANGLE ANGLE SUM (SPHERICAL EXCESS)</div>
+      <div class="metric-value yellow" id="triangle-sum">270° / +90°</div>
+    </div>
+  </aside>
+
+  <footer class="hud-footer">
+    <div class="footer-item">DRAG TO ROTATE</div>
+    <div class="footer-item">SCROLL TO ZOOM</div>
+    <div class="footer-item" id="mode-indicator">MODE: FLIGHT PATH</div>
+    <div class="footer-item" id="proj-indicator">PROJECTION: 3D GLOBE</div>
+  </footer>
+</div>
+
+<div id="labels-layer"></div>
+
+<div class="loading" id="loading">
+  <div class="loading-text">INITIALIZING HOLOGRAPHIC SYSTEM</div>
+  <div class="loading-bar"></div>
+</div>
+
+<!-- GSAP for camera tweening -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+// =====================================================================
+// CONFIGURATION
+// =====================================================================
+const CONFIG = {
+  earthRadius: 2,
+  cloudRadius: 2.02,
+  atmosphereRadius: 2.18,
+  NY:    { lat: 40.7,  lon: -74.0,  name: 'NEW YORK' },
+  TOKYO: { lat: 35.6,  lon: 139.6,  name: 'TOKYO' },
+  triPoints: [
+    { lat: 90, lon: 0,  name: 'NORTH POLE' },
+    { lat: 0,  lon: 0,  name: 'EQUATOR · 0°' },
+    { lat: 0,  lon: 90, name: 'EQUATOR · 90°E' }
+  ]
+};
+
+// =====================================================================
+// RENDERER / SCENE / CAMERA
+// =====================================================================
+const canvas = document.getElementById('webgl');
+const renderer = new THREE.WebGLRenderer({
+  canvas, antialias: true, alpha: false, powerPreference: 'high-performance'
+});
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.1;
+renderer.setClearColor(0x000308, 1);
+
+const scene = new THREE.Scene();
+
+const camera = new THREE.PerspectiveCamera(
+  45, window.innerWidth / window.innerHeight, 0.1, 1000
+);
+camera.position.set(4, 2, 5);
+
+const controls = new OrbitControls(camera, canvas);
+controls.enableDamping = true;
+controls.dampingFactor = 0.06;
+controls.minDistance = 3.2;
+controls.maxDistance = 14;
+controls.rotateSpeed = 0.5;
+controls.target.set(0, 0.3, 0);
+
+// =====================================================================
+// LIGHTING — Sun + soft fill + rim
+// =====================================================================
+scene.add(new THREE.AmbientLight(0x1a2a4a, 0.55));
+
+const sunLight = new THREE.DirectionalLight(0xffffff, 2.4);
+sunLight.position.set(6, 3, 5);
+scene.add(sunLight);
+
+const rimLight = new THREE.DirectionalLight(0x3a6fff, 0.55);
+rimLight.position.set(-6, 1, -4);
+scene.add(rimLight);
+
+// =====================================================================
+// STARFIELD — Custom shader points with twinkle
+// =====================================================================
+function createStarfield() {
+  const N = 6000;
+  const positions = new Float32Array(N * 3);
+  const colors    = new Float32Array(N * 3);
+  const sizes     = new Float32Array(N);
+
+  for (let i = 0; i < N; i++) {
+    const r = 80 + Math.random() * 70;
+    const theta = Math.random() * Math.PI * 2;
+    const phi = Math.acos(2 * Math.random() - 1);
+    positions[i*3]   = r * Math.sin(phi) * Math.cos(theta);
+    positions[i*3+1] = r * Math.cos(phi);
+    positions[i*3+2] = r * Math.sin(phi) * Math.sin(theta);
+
+    const t = Math.random();
+    if (t < 0.72)      { colors[i*3]=1; colors[i*3+1]=1; colors[i*3+2]=1; }
+    else if (t < 0.92) { colors[i*3]=0.7; colors[i*3+1]=0.85; colors[i*3+2]=1; }
+    else               { colors[i*3]=1; colors[i*3+1]=0.92; colors[i*3+2]=0.7; }
+    sizes[i] = Math.random() * 1.6 + 0.4;
+  }
+
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+  geo.setAttribute('aColor',   new THREE.BufferAttribute(colors, 3));
+  geo.setAttribute('aSize',    new THREE.BufferAttribute(sizes, 1));
+
+  const mat = new THREE.ShaderMaterial({
+    uniforms: { uTime: { value: 0 } },
+    vertexShader: `
+      attribute vec3 aColor; attribute float aSize;
+      varying vec3 vColor; varying float vTwinkle;
+      uniform float uTime;
+      void main() {
+        vColor = aColor;
+        vTwinkle = 0.55 + 0.45 * sin(uTime * 2.0 + position.x * 0.5 + position.y * 0.3);
+        vec4 mv = modelViewMatrix * vec4(position, 1.0);
+        gl_PointSize = aSize * (320.0 / -mv.z) * vTwinkle;
+        gl_Position = projectionMatrix * mv;
+      }
+    `,
+    fragmentShader: `
+      varying vec3 vColor; varying float vTwinkle;
+      void main() {
+        vec2 c = gl_PointCoord - vec2(0.5);
+        float d = length(c);
+        if (d > 0.5) discard;
+        float a = smoothstep(0.5, 0.0, d);
+        gl_FragColor = vec4(vColor * vTwinkle, a);
+      }
+    `,
+    transparent: true, depthWrite: false, blending: THREE.AdditiveBlending
+  });
+  return new THREE.Points(geo, mat);
+}
+const stars = createStarfield();
+scene.add(stars);
+
+// =====================================================================
+// NEBULA — Faint purple/blue volumetric backdrop
+// =====================================================================
+function createNebula() {
+  const geo = new THREE.SphereGeometry(120, 32, 32);
+  const mat = new THREE.ShaderMaterial({
+    uniforms: { uTime: { value: 0 } },
+    vertexShader: `
+      varying vec3 vPos;
+      void main() { vPos = position; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }
+    `,
+    fragmentShader: `
+      varying vec3 vPos; uniform float uTime;
+      float hash(vec3 p){ p=fract(p*0.3183099+0.1); p*=17.0; return fract(p.x*p.y*p.z*(p.x+p.y+p.z)); }
+      float noise(vec3 p){
+        vec3 i=floor(p), f=fract(p); f=f*f*(3.0-2.0*f);
+        return mix(mix(mix(hash(i),hash(i+vec3(1,0,0)),f.x),
+                       mix(hash(i+vec3(0,1,0)),hash(i+vec3(1,1,0)),f.x),f.y),
+                   mix(mix(hash(i+vec3(0,0,1)),hash(i+vec3(1,0,1)),f.x),
+                       mix(hash(i+vec3(0,1,1)),hash(i+vec3(1,1,1)),f.x),f.y),f.z);
+      }
+      void main() {
+        vec3 dir = normalize(vPos);
+        float n = noise(dir*3.0 + uTime*0.02)*0.5
+                + noise(dir*8.0)*0.25
+                + noise(dir*16.0)*0.125;
+        vec3 col1 = vec3(0.36, 0.10, 0.55); // purple
+        vec3 col2 = vec3(0.08, 0.22, 0.55); // blue
+        vec3 col3 = vec3(0.0);
+        vec3 color = mix(col3, col1, smoothstep(0.40, 0.72, n));
+        color = mix(color, col2, smoothstep(0.62, 0.88, n));
+        gl_FragColor = vec4(color * 0.55, 1.0);
+      }
+    `,
+    side: THREE.BackSide, depthWrite: false
+  });
+  return new THREE.Mesh(geo, mat);
+}
+const nebula = createNebula();
+scene.add(nebula);
+
+// =====================================================================
+// EARTH — Diffuse + Bump + Specular + Clouds + Atmosphere
+// =====================================================================
+const earthGroup = new THREE.Group();
+scene.add(earthGroup);
+
+const textureLoader = new THREE.TextureLoader();
+textureLoader.crossOrigin = 'anonymous';
+
+// Procedural fallback (used if CDN textures fail)
+function createProceduralEarth() {
+  const c = document.createElement('canvas'); c.width = 1024; c.height = 512;
+  const x = c.getContext('2d');
+  const g = x.createLinearGradient(0, 0, 0, 512);
+  g.addColorStop(0, '#06243d'); g.addColorStop(0.5, '#0d3c66'); g.addColorStop(1, '#06243d');
+  x.fillStyle = g; x.fillRect(0, 0, 1024, 512);
+  // pseudo continents
+  for (let i = 0; i < 38; i++) {
+    x.fillStyle = `hsl(${90 + Math.random()*40}, 50%, ${20 + Math.random()*15}%)`;
+    const cx = Math.random() * 1024, cy = 80 + Math.random() * 350, r = 25 + Math.random() * 90;
+    x.beginPath(); x.arc(cx, cy, r, 0, Math.PI*2); x.fill();
+  }
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  return tex;
+}
+
+let earth, clouds, atmosphere;
+const fallbackTex = createProceduralEarth();
+
+const earthGeo = new THREE.SphereGeometry(CONFIG.earthRadius, 96, 96);
+const earthMat = new THREE.MeshPhongMaterial({
+  map: fallbackTex,
+  specular: new THREE.Color(0x333333),
+  shininess: 18
+});
+earth = new THREE.Mesh(earthGeo, earthMat);
+earthGroup.add(earth);
+
+const cloudGeo = new THREE.SphereGeometry(CONFIG.cloudRadius, 64, 64);
+const cloudMat = new THREE.MeshPhongMaterial({
+  transparent: true, opacity: 0.0, depthWrite: false
+});
+clouds = new THREE.Mesh(cloudGeo, cloudMat);
+earthGroup.add(clouds);
+
+// Attempt to load high-resolution textures from CDN
+const TEX_BASE = 'https://threejs.org/examples/textures/planets/';
+textureLoader.load(TEX_BASE + 'earth_atmos_2048.jpg',
+  (tex) => { tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = renderer.capabilities.getMaxAnisotropy(); earthMat.map = tex; earthMat.needsUpdate = true; },
+  undefined, () => console.warn('Earth diffuse failed — using fallback'));
+textureLoader.load(TEX_BASE + 'earth_normal_2048.jpg',
+  (tex) => { earthMat.bumpMap = tex; earthMat.bumpScale = 0.05; earthMat.needsUpdate = true; },
+  undefined, () => console.warn('Earth bump failed'));
+textureLoader.load(TEX_BASE + 'earth_specular_2048.jpg',
+  (tex) => { earthMat.specularMap = tex; earthMat.specular = new THREE.Color(0x8899bb); earthMat.shininess = 28; earthMat.needsUpdate = true; },
+  undefined, () => console.warn('Earth specular failed'));
+textureLoader.load(TEX_BASE + 'earth_clouds_1024.png',
+  (tex) => { cloudMat.map = tex; cloudMat.opacity = 0.45; cloudMat.needsUpdate = true; },
+  undefined, () => console.warn('Clouds failed'));
+
+// Atmosphere — Fresnel glow shader (back-side, additive)
+function createAtmosphere() {
+  const geo = new THREE.SphereGeometry(CONFIG.atmosphereRadius, 64, 64);
+  const mat = new THREE.ShaderMaterial({
+    uniforms: {
+      uColor: { value: new THREE.Color(0x4aa8ff) },
+      uTime:  { value: 0 }
+    },
+    vertexShader: `
+      varying vec3 vNormal;
+      void main() {
+        vNormal = normalize(normalMatrix * normal);
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+      }
+    `,
+    fragmentShader: `
+      varying vec3 vNormal;
+      uniform vec3 uColor; uniform float uTime;
+      void main() {
+        float intensity = pow(0.72 - dot(vNormal, vec3(0.0, 0.0, 1.0)), 2.6);
+        float pulse = 0.92 + 0.08 * sin(uTime * 0.6);
+        gl_FragColor = vec4(uColor * pulse, 1.0) * intensity;
+      }
+    `,
+    side: THREE.BackSide,
+    blending: THREE.AdditiveBlending,
+    transparent: true, depthWrite: false
+  });
+  return new THREE.Mesh(geo, mat);
+}
+atmosphere = createAtmosphere();
+earthGroup.add(atmosphere);
+
+// =====================================================================
+// UTILITIES — lat/lon → 3D vector
+// =====================================================================
+function latLonToVec3(lat, lon, radius = 1) {
+  const phi = lat * Math.PI / 180;
+  const lam = lon * Math.PI / 180;
+  return new THREE.Vector3(
+    radius * Math.cos(phi) * Math.cos(lam),
+    radius * Math.sin(phi),
+    -radius * Math.cos(phi) * Math.sin(lam)
+  );
+}
+
+// =====================================================================
+// GREAT CIRCLE CURVE — slerp-based shortest arc on a sphere
+// =====================================================================
+class GreatCircleCurve extends THREE.Curve {
+  constructor(start, end, radius) {
+    super();
+    this.start = start.clone().normalize();
+    this.end   = end.clone().normalize();
+    this.radius = Math.max(0.001, radius);
+  }
+  getPoint(t, target = new THREE.Vector3()) {
+    const dot = THREE.MathUtils.clamp(this.start.dot(this.end), -1, 1);
+    const omega = Math.acos(dot);
+    const sinO = Math.sin(omega);
+    let p;
+    if (sinO < 1e-5) {
+      p = this.start.clone().lerp(this.end, t);
+    } else {
+      const s0 = Math.sin((1 - t) * omega) / sinO;
+      const s1 = Math.sin(t * omega) / sinO;
+      p = this.start.clone().multiplyScalar(s0).add(this.end.clone().multiplyScalar(s1));
+    }
+    return p.normalize().multiplyScalar(this.radius).clone();
+  }
+}
+
+// =====================================================================
+// RHUMB LINE — Constant-bearing loxodrome sampling
+// =====================================================================
+function rhumbLinePoints(lat1, lon1, lat2, lon2, radius, segments = 128) {
+  const pts = [];
+  const phi1 = lat1 * Math.PI / 180;
+  const phi2 = lat2 * Math.PI / 180;
+  const lam1 = lon1 * Math.PI / 180;
+  const lam2 = lon2 * Math.PI / 180;
+  let dLam = lam2 - lam1;
+  if (Math.abs(dLam) > Math.PI) dLam -= Math.sign(dLam) * 2 * Math.PI;
+  const dPsi = Math.log(Math.tan(Math.PI/4 + phi2/2) / Math.tan(Math.PI/4 + phi1/2));
+  const psi1 = Math.log(Math.tan(Math.PI/4 + phi1/2));
+  for (let i = 0; i <= segments; i++) {
+    const f = i / segments;
+    const psi = psi1 + dPsi * f;
+    const phi = 2 * Math.atan(Math.exp(psi)) - Math.PI / 2;
+    const lam = lam1 + dLam * f;
+    pts.push(new THREE.Vector3(
+      radius * Math.cos(phi) * Math.cos(lam),
+      radius * Math.sin(phi),
+      -radius * Math.cos(phi) * Math.sin(lam)
+    ));
+  }
+  return pts;
+}
+
+// =====================================================================
+// FLIGHT PATH GROUP — Beacons, Great Circle, Rhumb Line, Airplane
+// =====================================================================
+const flightGroup = new THREE.Group();
+scene.add(flightGroup);
+
+const nyVec    = latLonToVec3(CONFIG.NY.lat,    CONFIG.NY.lon);
+const tokyoVec = latLonToVec3(CONFIG.TOKYO.lat, CONFIG.TOKYO.lon);
+const ARC_ALT  = CONFIG.earthRadius * 1.012;
+
+const gcCurve = new GreatCircleCurve(nyVec, tokyoVec, ARC_ALT);
+
+// Great Circle — solid glowing cyan tube
+const gcTubeGeo = new THREE.TubeGeometry(gcCurve, 200, 0.013, 8, false);
+const gcTubeMat = new THREE.MeshBasicMaterial({
+  color: 0x00f0ff, transparent: true, opacity: 0.95,
+  blending: THREE.AdditiveBlending, depthWrite: false
+});
+const gcTube = new THREE.Mesh(gcTubeGeo, gcTubeMat);
+flightGroup.add(gcTube);
+
+// Rhumb Line — red dashed
+const rhumbPts = rhumbLinePoints(
+  CONFIG.NY.lat, CONFIG.NY.lon,
+  CONFIG.TOKYO.lat, CONFIG.TOKYO.lon,
+  CONFIG.earthRadius * 1.006, 160
+);
+const rhumbGeo = new THREE.BufferGeometry().setFromPoints(rhumbPts);
+const rhumbMat = new THREE.LineDashedMaterial({
+  color: 0xff3854, dashSize: 0.09, gapSize: 0.055,
+  transparent: true, opacity: 0.85, linewidth: 2
+});
+const rhumbLine = new THREE.Line(rhumbGeo, rhumbMat);
+rhumbLine.computeLineDistances();
+flightGroup.add(rhumbLine);
+
+// Helper: radial glow sprite texture
+function createGlowTexture(hexColor) {
+  const c = document.createElement('canvas'); c.width = 128; c.height = 128;
+  const ctx = c.getContext('2d');
+  const col = new THREE.Color(hexColor);
+  const r = Math.floor(col.r * 255), g = Math.floor(col.g * 255), b = Math.floor(col.b * 255);
+  const grad = ctx.createRadialGradient(64, 64, 0, 64, 64, 64);
+  grad.addColorStop(0,   `rgba(${r},${g},${b},1)`);
+  grad.addColorStop(0.3, `rgba(${r},${g},${b},0.5)`);
+  grad.addColorStop(1,   `rgba(${r},${g},${b},0)`);
+  ctx.fillStyle = grad; ctx.fillRect(0, 0, 128, 128);
+  return new THREE.CanvasTexture(c);
+}
+
+// Beacon — glowing sphere + outward beam + sprite halo
+function createBeacon(position, color) {
+  const group = new THREE.Group();
+  const sphere = new THREE.Mesh(
+    new THREE.SphereGeometry(0.028, 16, 16),
+    new THREE.MeshBasicMaterial({ color })
+  );
+  group.add(sphere);
+
+  const sprite = new THREE.Sprite(new THREE.SpriteMaterial({
+    map: createGlowTexture(color),
+    blending: THREE.AdditiveBlending,
+    transparent: true, depthWrite: false
+  }));
+  sprite.scale.set(0.32, 0.32, 1);
+  group.add(sprite);
+
+  // Outward beam (cylinder pointing away from Earth center)
+  const beam = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.006, 0.006, 0.32, 8),
+    new THREE.MeshBasicMaterial({
+      color, transparent: true, opacity: 0.55,
+      blending: THREE.AdditiveBlending, depthWrite: false
+    })
+  );
+  const outDir = position.clone().normalize();
+  beam.position.copy(outDir.clone().multiplyScalar(0.16));
+  beam.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), outDir);
+  group.add(beam);
+
+  group.position.copy(position);
+  return group;
+}
+
+const nyBeacon    = createBeacon(nyVec.clone().multiplyScalar(ARC_ALT),    0xffcc33);
+const tokyoBeacon = createBeacon(tokyoVec.clone().multiplyScalar(ARC_ALT), 0xffcc33);
+flightGroup.add(nyBeacon, tokyoBeacon);
+
+// =====================================================================
+// AIRPLANE — Low-poly jet built from primitives
+// =====================================================================
+function createAirplane() {
+  const g = new THREE.Group();
+  const bodyMat = new THREE.MeshStandardMaterial({
+    color: 0xf0f8ff, emissive: 0x00d8ff, emissiveIntensity: 0.5,
+    metalness: 0.7, roughness: 0.3
+  });
+  const accentMat = new THREE.MeshStandardMaterial({
+    color: 0x00f0ff, emissive: 0x00f0ff, emissiveIntensity: 1.6,
+    metalness: 0.4, roughness: 0.4
+  });
+
+  // Fuselage
+  const body = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.022, 0.018, 0.18, 10),
+    bodyMat
+  );
+  body.geometry.rotateX(Math.PI / 2);
+  g.add(body);
+
+  // Nose cone (forward = +Z)
+  const nose = new THREE.Mesh(
+    new THREE.ConeGeometry(0.022, 0.07, 10),
+    bodyMat
+  );
+  nose.geometry.rotateX(Math.PI / 2);
+  nose.geometry.translate(0, 0, 0.125);
+  g.add(nose);
+
+  // Wings
+  const wings = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.006, 0.055), bodyMat);
+  wings.position.z = -0.005;
+  g.add(wings);
+  const wingAccent = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.007, 0.01), accentMat);
+  wingAccent.position.set(0, 0.003, 0.018);
+  g.add(wingAccent);
+
+  // Tail
+  const tail = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.005, 0.035), bodyMat);
+  tail.position.set(0, 0, -0.085);
+  g.add(tail);
+  const vstab = new THREE.Mesh(new THREE.BoxGeometry(0.006, 0.045, 0.035), bodyMat);
+  vstab.position.set(0, 0.022, -0.085);
+  g.add(vstab);
+
+  // Engine glow at rear
+  const engine = new THREE.Mesh(
+    new THREE.SphereGeometry(0.014, 8, 8),
+    new THREE.MeshBasicMaterial({ color: 0x00f0ff })
+  );
+  engine.position.set(0, 0, -0.1);
+  g.add(engine);
+
+  // Glow sprite wrap
+  const sprite = new THREE.Sprite(new THREE.SpriteMaterial({
+    map: createGlowTexture(0x00f0ff),
+    blending: THREE.AdditiveBlending,
+    transparent: true, depthWrite: false
+  }));
+  sprite.scale.set(0.45, 0.45, 1);
+  g.add(sprite);
+
+  return g;
+}
+const airplane = createAirplane();
+flightGroup.add(airplane);
+
+// =====================================================================
+// SPHERICAL TRIANGLE GROUP
+// =====================================================================
+const triangleGroup = new THREE.Group();
+triangleGroup.visible = false;
+scene.add(triangleGroup);
+
+const triVecs = CONFIG.triPoints.map(p =>
+  latLonToVec3(p.lat, p.lon).normalize().multiplyScalar(ARC_ALT)
+);
+
+// Three yellow arcs
+for (let i = 0; i < 3; i++) {
+  const a = triVecs[i];
+  const b = triVecs[(i + 1) % 3];
+  const curve = new GreatCircleCurve(a, b, ARC_ALT);
+  const tubeGeo = new THREE.TubeGeometry(curve, 64, 0.016, 8, false);
+  const tubeMat = new THREE.MeshBasicMaterial({
+    color: 0xffcc33, transparent: true, opacity: 0.92,
+    blending: THREE.AdditiveBlending, depthWrite: false
+  });
+  triangleGroup.add(new THREE.Mesh(tubeGeo, tubeMat));
+}
+
+// Vertex markers
+triVecs.forEach(v => {
+  const s = new THREE.Mesh(
+    new THREE.SphereGeometry(0.04, 16, 16),
+    new THREE.MeshBasicMaterial({ color: 0xffcc33 })
+  );
+  s.position.copy(v);
+  triangleGroup.add(s);
+  const spr = new THREE.Sprite(new THREE.SpriteMaterial({
+    map: createGlowTexture(0xffcc33),
+    blending: THREE.AdditiveBlending, transparent: true, depthWrite: false
+  }));
+  spr.position.copy(v);
+  spr.scale.set(0.45, 0.45, 1);
+  triangleGroup.add(spr);
+});
+
+// Protractor at each vertex — 90° arc with tick marks, tangent to sphere
+function createProtractorAtVertex(vertexIdx) {
+  const pos = triVecs[vertexIdx];
+  const up  = pos.clone().normalize();
+
+  const prevIdx = (vertexIdx + 2) % 3;
+  const nextIdx = (vertexIdx + 1) % 3;
+  const toNextRaw = triVecs[nextIdx].clone().sub(pos);
+  const toPrevRaw = triVecs[prevIdx].clone().sub(pos);
+
+  // Project to tangent plane
+  const toNext = toNextRaw.sub(up.clone().multiplyScalar(toNextRaw.dot(up))).normalize();
+  const toPrev = toPrevRaw.sub(up.clone().multiplyScalar(toPrevRaw.dot(up))).normalize();
+
+  const group = new THREE.Group();
+  const arcR = 0.20;
+
+  // Arc: 90° sweep
+  const arcPts = [];
+  for (let i = 0; i <= 32; i++) {
+    const a = (i / 32) * Math.PI / 2;
+    arcPts.push(new THREE.Vector3(Math.cos(a) * arcR, Math.sin(a) * arcR, 0));
+  }
+  const arcCurve = new THREE.CatmullRomCurve3(arcPts);
+  const arcTube = new THREE.Mesh(
+    new THREE.TubeGeometry(arcCurve, 32, 0.007, 6, false),
+    new THREE.MeshBasicMaterial({
+      color: 0x00f0ff, transparent: true, opacity: 0.95,
+      blending: THREE.AdditiveBlending, depthWrite: false
+    })
+  );
+  group.add(arcTube);
+
+  // Tick marks every 10°
+  for (let i = 0; i <= 9; i++) {
+    const a = (i / 9) * (Math.PI / 2);
+    const inner = arcR + 0.018;
+    const outer = arcR + (i % 3 === 0 ? 0.05 : 0.03);
+    const tickGeo = new THREE.BufferGeometry().setFromPoints([
+      new THREE.Vector3(Math.cos(a) * inner, Math.sin(a) * inner, 0),
+      new THREE.Vector3(Math.cos(a) * outer, Math.sin(a) * outer, 0)
+    ]);
+    group.add(new THREE.Line(tickGeo, new THREE.LineBasicMaterial({
+      color: 0x00f0ff, transparent: true, opacity: 0.7
+    })));
+  }
+
+  // Filled sector (subtle)
+  const sectorShape = new THREE.Shape();
+  sectorShape.moveTo(0, 0);
+  sectorShape.absarc(0, 0, arcR - 0.02, 0, Math.PI / 2, false);
+  sectorShape.lineTo(0, 0);
+  const sectorGeo = new THREE.ShapeGeometry(sectorShape);
+  const sector = new THREE.Mesh(sectorGeo, new THREE.MeshBasicMaterial({
+    color: 0x00f0ff, transparent: true, opacity: 0.08,
+    blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide
+  }));
+  group.add(sector);
+
+  // Orient: local +Z = up (outward), local +X = toNext, local +Y = toPrev
+  let basisY = new THREE.Vector3().crossVectors(up, toNext).normalize();
+  if (basisY.dot(toPrev) < 0) basisY.negate();
+  const basisX = new THREE.Vector3().crossVectors(basisY, up).normalize();
+
+  const m = new THREE.Matrix4();
+  m.makeBasis(basisX, basisY, up);
+  group.quaternion.setFromRotationMatrix(m);
+  group.position.copy(pos);
+  return group;
+}
+for (let i = 0; i < 3; i++) triangleGroup.add(createProtractorAtVertex(i));
+
+// "90°" text sprites at each vertex
+function createTextSprite(text, color = '#00f0ff') {
+  const c = document.createElement('canvas'); c.width = 256; c.height = 128;
+  const ctx = c.getContext('2d');
+  ctx.font = 'bold 60px Orbitron, sans-serif';
+  ctx.fillStyle = color;
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.shadowColor = color; ctx.shadowBlur = 25;
+  ctx.fillText(text, 128, 64);
+  const tex = new THREE.CanvasTexture(c);
+  const spr = new THREE.Sprite(new THREE.SpriteMaterial({
+    map: tex, transparent: true, depthWrite: false,
+    blending: THREE.AdditiveBlending
+  }));
+  spr.scale.set(0.32, 0.16, 1);
+  return spr;
+}
+triVecs.forEach(v => {
+  const spr = createTextSprite('90°', '#00f0ff');
+  spr.position.copy(v.clone().multiplyScalar(1.08));
+  triangleGroup.add(spr);
+});
+
+// =====================================================================
+// HTML 3D-LABELS (projected onto screen)
+// =====================================================================
+const labelsLayer = document.getElementById('labels-layer');
+const labels = {};
+function createLabel(id, text, color) {
+  const d = document.createElement('div');
+  d.className = 'label3d';
+  d.textContent = text;
+  d.style.color = color;
+  d.style.borderColor = color;
+  labelsLayer.appendChild(d);
+  labels[id] = d;
+}
+createLabel('ny',     'NEW YORK · 40.7°N 74.0°W',     '#ffcc33');
+createLabel('tokyo',  'TOKYO · 35.6°N 139.6°E',       '#ffcc33');
+createLabel('pole',   'NORTH POLE · 90°N',            '#ffcc33');
+createLabel('eq0',    'EQUATOR · 0°, 0°',             '#ffcc33');
+createLabel('eq90',   'EQUATOR · 0°, 90°E',           '#ffcc33');
+createLabel('gc',     'GREAT CIRCLE · SHORTEST PATH', '#00f0ff');
+createLabel('rhumb',  'RHUMB LINE · CONSTANT BEARING','#ff3854');
+
+function updateLabelsVisibility() {
+  const flightMode = state.mode === 'flight';
+  labels.ny.style.display     = flightMode ? 'block' : 'none';
+  labels.tokyo.style.display  = flightMode ? 'block' : 'none';
+  labels.gc.style.display     = flightMode ? 'block' : 'none';
+  labels.rhumb.style.display  = flightMode ? 'block' : 'none';
+  labels.pole.style.display   = !flightMode ? 'block' : 'none';
+  labels.eq0.style.display    = !flightMode ? 'block' : 'none';
+  labels.eq90.style.display   = !flightMode ? 'block' : 'none';
+}
+
+// =====================================================================
+// DISTANCE CALCULATIONS — Haversine + Rhumb
+// =====================================================================
+function haversineDistance(lat1, lon1, lat2, lon2) {
+  const R = 6371;
+  const phi1 = lat1 * Math.PI / 180, phi2 = lat2 * Math.PI / 180;
+  const dPhi = (lat2 - lat1) * Math.PI / 180;
+  let dLam = (lon2 - lon1) * Math.PI / 180;
+  const a = Math.sin(dPhi/2)**2 + Math.cos(phi1) * Math.cos(phi2) * Math.sin(dLam/2)**2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+}
+function rhumbDistance(lat1, lon1, lat2, lon2) {
+  const R = 6371;
+  const phi1 = lat1 * Math.PI / 180, phi2 = lat2 * Math.PI / 180;
+  const dPhi = phi2 - phi1;
+  let dLam = (lon2 - lon1) * Math.PI / 180;
+  if (Math.abs(dLam) > Math.PI) dLam -= Math.sign(dLam) * 2 * Math.PI;
+  const dPsi = Math.log(Math.tan(Math.PI/4 + phi2/2) / Math.tan(Math.PI/4 + phi1/2));
+  const q = Math.abs(dPsi) > 1e-10 ? dPhi / dPsi : Math.cos(phi1);
+  return R * Math.sqrt(dPhi*dPhi + q*q * dLam*dLam);
+}
+
+const GC_DIST    = haversineDistance(CONFIG.NY.lat, CONFIG.NY.lon, CONFIG.TOKYO.lat, CONFIG.TOKYO.lon);
+const RHUMB_DIST = rhumbDistance   (CONFIG.NY.lat, CONFIG.NY.lon, CONFIG.TOKYO.lat, CONFIG.TOKYO.lon);
+document.getElementById('gc-distance').textContent    = Math.round(GC_DIST).toLocaleString() + ' km';
+document.getElementById('rhumb-distance').textContent = Math.round(RHUMB_DIST).toLocaleString() + ' km';
+document.getElementById('savings').textContent        = Math.round(RHUMB_DIST - GC_DIST).toLocaleString() + ' km';
+
+// =====================================================================
+// STATE + MODE SWITCHING
+// =====================================================================
+const state = {
+  mode: 'flight',
+  projection: '3d',
+  flightProgress: 0,
+  flightSpeed: 0.045
+};
+
+const cameraViews = {
+  flight3D:    { pos: new THREE.Vector3(3.8, 2.2, 4.2), target: new THREE.Vector3(0, 0.4, 0) },
+  flight2D:    { pos: new THREE.Vector3(0, 7, 0.001),   target: new THREE.Vector3(0, 0, 0) },
+  triangle3D:  { pos: new THREE.Vector3(2.8, 3.2, 3.0), target: new THREE.Vector3(0, 1.0, 0) },
+  triangle2D:  { pos: new THREE.Vector3(0, 7, 0.001),   target: new THREE.Vector3(0, 0, 0) }
+};
+
+function animateCameraTo(pos, target, duration = 1.3) {
+  gsap.to(camera.position, {
+    x: pos.x, y: pos.y, z: pos.z,
+    duration, ease: 'power2.inOut',
+    onUpdate: () => controls.update()
+  });
+  gsap.to(controls.target, {
+    x: target.x, y: target.y, z: target.z,
+    duration, ease: 'power2.inOut'
+  });
+}
+function updateCameraView() {
+  const key = state.mode + (state.projection === '2d' ? '2D' : '3D');
+  const v = cameraViews[key];
+  if (v) animateCameraTo(v.pos, v.target);
+}
+
+function setMode(mode) {
+  state.mode = mode;
+  flightGroup.visible    = (mode === 'flight');
+  triangleGroup.visible  = (mode === 'triangle');
+  document.getElementById('btn-flight').classList.toggle('active',   mode === 'flight');
+  document.getElementById('btn-triangle').classList.toggle('active', mode === 'triangle');
+  document.getElementById('mode-indicator').textContent = 'MODE: ' + mode.toUpperCase();
+
+  if (mode === 'triangle') {
+    document.getElementById('calc-a').textContent = '90.00°';
+    document.getElementById('calc-b').textContent = '90.00°';
+    document.getElementById('calc-c').textContent = '90.00°';
+    document.getElementById('calc-C').textContent = '90.00°';
+    document.getElementById('triangle-sum').textContent = '270° / +90°';
+    document.getElementById('distance').textContent = '— km';
+    document.getElementById('progress').textContent = '— %';
+    document.getElementById('distance-bar').style.width = '0%';
+  } else {
+    const ang = (GC_DIST / 6371) * 180 / Math.PI;
+    document.getElementById('calc-a').textContent = ang.toFixed(2) + '°';
+    document.getElementById('calc-b').textContent = ang.toFixed(2) + '°';
+    document.getElementById('calc-c').textContent = ang.toFixed(2) + '°';
+    document.getElementById('calc-C').textContent = '—';
+    document.getElementById('triangle-sum').textContent = '180° / +0°';
+  }
+  updateLabelsVisibility();
+  updateCameraView();
+}
+
+function setProjection(proj) {
+  state.projection = proj;
+  document.getElementById('btn-3d').classList.toggle('active', proj === '3d');
+  document.getElementById('btn-2d').classList.toggle('active', proj === '2d');
+  document.getElementById('proj-indicator').textContent =
+    'PROJECTION: ' + (proj === '2d' ? '2D MAP' : '3D GLOBE');
+
+  // Flatten / restore globe + overlays
+  const targetY = proj === '2d' ? 0.02 : 1.0;
+  gsap.to(earthGroup.scale,    { y: targetY, duration: 1.2, ease: 'power2.inOut' });
+  gsap.to(flightGroup.scale,   { y: targetY, duration: 1.2, ease: 'power2.inOut' });
+  gsap.to(triangleGroup.scale, { y: targetY, duration: 1.2, ease: 'power2.inOut' });
+
+  updateCameraView();
+}
+
+document.getElementById('btn-flight').addEventListener('click',   () => setMode('flight'));
+document.getElementById('btn-triangle').addEventListener('click', () => setMode('triangle'));
+document.getElementById('btn-3d').addEventListener('click',       () => setProjection('3d'));
+document.getElementById('btn-2d').addEventListener('click',       () => setProjection('2d'));
+
+updateLabelsVisibility();
+
+// =====================================================================
+// RESIZE
+// =====================================================================
+window.addEventListener('resize', () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+
+// =====================================================================
+// MAIN LOOP
+// =====================================================================
+const clock = new THREE.Clock();
+const _tmpMatrix = new THREE.Matrix4();
+const _right = new THREE.Vector3();
+const _up = new THREE.Vector3();
+const _tangent = new THREE.Vector3();
+
+function projectLabel(id, worldPos) {
+  const el = labels[id];
+  if (!el || el.style.display === 'none') return;
+  const v = worldPos.clone().project(camera);
+  if (v.z > 1 || v.z < -1) { el.style.opacity = '0'; return; }
+  el.style.opacity = '1';
+  el.style.left = ((v.x * 0.5 + 0.5) * window.innerWidth) + 'px';
+  el.style.top  = ((-v.y * 0.5 + 0.5) * window.innerHeight) + 'px';
+}
+
+function updateLabels3D() {
+  projectLabel('ny',     nyVec.clone().multiplyScalar(CONFIG.earthRadius * 1.06));
+  projectLabel('tokyo',  tokyoVec.clone().multiplyScalar(CONFIG.earthRadius * 1.06));
+  projectLabel('pole',   triVecs[0].clone().multiplyScalar(1.10));
+  projectLabel('eq0',    triVecs[1].clone().multiplyScalar(1.10));
+  projectLabel('eq90',   triVecs[2].clone().multiplyScalar(1.10));
+  projectLabel('gc',     gcCurve.getPoint(0.5).multiplyScalar(1.06));
+  projectLabel('rhumb',  rhumbPts[Math.floor(rhumbPts.length / 2)].clone().multiplyScalar(1.06));
+}
+
+function animate() {
+  requestAnimationFrame(animate);
+  const dt = clock.getDelta();
+  const t  = clock.elapsedTime;
+
+  // Earth + cloud rotation (different speeds)
+  if (earth)  earth.rotation.y  += dt * 0.035;
+  if (clouds) clouds.rotation.y += dt * 0.055;
+
+  // Background drift
+  stars.rotation.y  += dt * 0.004;
+  nebula.rotation.y += dt * 0.003;
+  stars.material.uniforms.uTime.value  = t;
+  nebula.material.uniforms.uTime.value = t;
+  atmosphere.material.uniforms.uTime.value = t;
+
+  // Beacon pulse
+  const pulse = 1 + 0.25 * Math.sin(t * 4);
+  nyBeacon.children[1].scale.set(0.32 * pulse, 0.32 * pulse, 1);
+  tokyoBeacon.children[1].scale.set(0.32 * pulse, 0.32 * pulse, 1);
+
+  // Flight animation
+  if (state.mode === 'flight') {
+    state.flightProgress += dt * state.flightSpeed;
+    if (state.flightProgress > 1) state.flightProgress = 0;
+
+    const pos = gcCurve.getPoint(state.flightProgress);
+    const nextT = Math.min(state.flightProgress + 0.005, 1);
+    const nextPos = gcCurve.getPoint(nextT);
+
+    airplane.position.copy(pos);
+
+    // Orient: local +Z (nose) along tangent, +Y along up (outward radial)
+    _tangent.copy(nextPos).sub(pos).normalize();
+    _up.copy(pos).normalize();
+    _right.crossVectors(_up, _tangent).normalize();
+    _tmpMatrix.makeBasis(_right, _up, _tangent);
+    airplane.quaternion.setFromRotationMatrix(_tmpMatrix);
+
+    // Live metrics
+    const traveled = GC_DIST * state.flightProgress;
+    document.getElementById('distance').textContent = Math.round(traveled).toLocaleString() + ' km';
+    document.getElementById('progress').textContent = (state.flightProgress * 100).toFixed(1) + '%';
+    document.getElementById('distance-bar').style.width = (state.flightProgress * 100) + '%';
+  }
+
+  controls.update();
+  updateLabels3D();
+  renderer.render(scene, camera);
+}
+
+// Boot
+camera.position.copy(cameraViews.flight3D.pos);
+controls.target.copy(cameraViews.flight3D.target);
+animate();
+
+// Hide loading screen after a moment
+setTimeout(() => {
+  const l = document.getElementById('loading');
+  l.classList.add('hidden');
+  setTimeout(() => l.remove(), 700);
+}, 1400);
+</script>
+</body>
+</html>
