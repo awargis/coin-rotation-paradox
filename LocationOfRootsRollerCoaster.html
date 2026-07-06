@@ -1,0 +1,788 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Quadratic Coaster | Location of Roots Simulation</title>
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+
+    <!-- GSAP for Cinematic Animation -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+
+    <!-- Three.js r128 Global Build & Controls -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+
+    <style>
+        :root {
+            --color-emerald: #10b981;
+            --color-gold: #fbbf24;
+            --color-crimson: #ef4444;
+            --color-cyan: #06b6d4;
+            --color-magenta: #d946ef;
+            --color-white: #ffffff;
+            --glass-bg: rgba(255, 255, 255, 0.85);
+            --glass-border: rgba(255, 255, 255, 0.4);
+            --shadow-soft: 0 10px 40px rgba(0, 0, 0, 0.15);
+            --text-dark: #1e293b;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; -webkit-font-smoothing: antialiased; }
+
+        body {
+            background-color: #87CEEB;
+            color: var(--text-dark);
+            font-family: 'Inter', sans-serif;
+            overflow: hidden;
+            height: 100vh; width: 100vw;
+        }
+
+        canvas { display: block; position: absolute; top: 0; left: 0; z-index: 1; }
+
+        .ui-layer {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            z-index: 10; pointer-events: none;
+        }
+
+        .glass-panel {
+            background: var(--glass-bg);
+            backdrop-filter: blur(16px) saturate(180%);
+            -webkit-backdrop-filter: blur(16px) saturate(180%);
+            border: 1px solid var(--glass-border);
+            border-radius: 16px;
+            box-shadow: var(--shadow-soft);
+            pointer-events: auto;
+        }
+
+        /* Control Panel */
+        #control-panel {
+            position: absolute; bottom: 30px; left: 30px; width: 340px; padding: 24px;
+            opacity: 0; transform: translateY(20px);
+        }
+
+        .panel-header {
+            font-size: 12px; text-transform: uppercase; letter-spacing: 1.5px;
+            color: #64748b; margin-bottom: 20px; font-weight: 700;
+            display: flex; align-items: center; gap: 8px;
+        }
+        .panel-header::before {
+            content: ''; width: 8px; height: 8px; background: var(--color-gold);
+            border-radius: 50%;
+        }
+        
+        .header-cyan::before { background: var(--color-cyan) !important; }
+
+        .slider-group { margin-bottom: 16px; }
+        .slider-group:last-child { margin-bottom: 0; }
+        .slider-label { display: flex; justify-content: space-between; margin-bottom: 8px; }
+        .slider-name { font-family: 'JetBrains Mono', monospace; font-size: 16px; font-weight: 700; color: #0f172a; }
+        .slider-value { font-family: 'JetBrains Mono', monospace; font-size: 14px; color: #3b82f6; font-weight: 500; }
+        
+        .k-slider-name { color: var(--color-magenta); }
+        .k-slider-value { color: var(--color-magenta); }
+
+        input[type="range"] {
+            -webkit-appearance: none; appearance: none; width: 100%; height: 6px;
+            background: #cbd5e1; border-radius: 3px; outline: none;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none; appearance: none; width: 20px; height: 20px;
+            background: #3b82f6; border-radius: 50%; cursor: pointer;
+            box-shadow: 0 2px 6px rgba(59, 130, 246, 0.4); transition: transform 0.1s;
+        }
+        input[type="range"]#slider-k::-webkit-slider-thumb {
+            background: var(--color-magenta);
+            box-shadow: 0 2px 6px rgba(217, 70, 239, 0.4);
+        }
+        input[type="range"]::-webkit-slider-thumb:hover { transform: scale(1.15); }
+
+        /* Telemetry Panel */
+        #info-panel {
+            position: absolute; bottom: 30px; right: 30px; width: 340px; padding: 24px;
+            opacity: 0; transform: translateY(20px);
+        }
+        .info-row {
+            display: flex; justify-content: space-between; padding: 8px 0;
+            border-bottom: 1px solid rgba(0,0,0,0.05);
+        }
+        .info-row:last-child { border-bottom: none; padding-bottom: 0; }
+        .info-label { font-size: 13px; color: #475569; font-weight: 500; }
+        .info-data { font-family: 'JetBrains Mono', monospace; font-size: 14px; font-weight: 700; color: #0f172a; text-align: right; }
+        .highlight-data { color: var(--color-magenta); }
+
+        /* Math Status Panel */
+        #math-status {
+            position: absolute; top: 30px; right: 30px; width: 340px; padding: 20px;
+            opacity: 0; transform: translateX(20px); text-align: center;
+        }
+        .nature-box {
+            margin-top: 10px; padding: 12px; border-radius: 10px;
+            background: rgba(255,255,255,0.5); font-size: 14px; font-weight: 700;
+            border: 2px solid; transition: all 0.3s ease;
+        }
+        
+        .k-status-box {
+            margin-top: 10px; padding: 12px; border-radius: 10px;
+            background: rgba(217, 70, 239, 0.1); font-size: 14px; font-weight: 700;
+            border: 2px solid var(--color-magenta); color: var(--color-magenta);
+        }
+
+        /* 3D Math Labels */
+        .math-label {
+            position: absolute; pointer-events: none; transform: translate(-50%, -50%);
+            padding: 6px 14px; background: rgba(255, 255, 255, 0.95);
+            border-radius: 8px; font-size: 13px; font-weight: 700; white-space: nowrap;
+            opacity: 0; transition: opacity 0.2s, transform 0.1s; z-index: 5;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1); border: 2px solid;
+        }
+        .label-root { border-color: var(--color-emerald); color: var(--color-emerald); }
+        .label-vertex { border-color: var(--color-gold); color: #d97706; }
+        .label-fk { 
+            border-color: var(--color-magenta); color: var(--color-magenta); 
+            background: rgba(255,255,255,1); z-index: 6; font-size: 14px;
+        }
+
+        /* Intro Overlay */
+        #intro-overlay {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: #ffffff; z-index: 100; display: flex;
+            flex-direction: column; align-items: center; justify-content: center;
+            text-align: center;
+        }
+        .intro-text {
+            position: absolute; font-size: 40px; font-weight: 700; letter-spacing: -1px;
+            color: #0f172a; opacity: 0; max-width: 800px; padding: 0 40px;
+        }
+        .intro-text span { color: var(--color-magenta); }
+
+        .hint {
+            position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%);
+            font-size: 12px; color: #1e293b; font-weight: 600; opacity: 0;
+            background: rgba(255,255,255,0.7); padding: 6px 16px; border-radius: 20px;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="intro-overlay">
+        <div class="intro-text" id="text1">Where does <span>k</span> live relative to the roots?</div>
+        <div class="intro-text" id="text2">Explore the <span>Location of Roots</span>.</div>
+    </div>
+
+    <div class="ui-layer">
+        <div class="glass-panel" id="control-panel">
+            <div class="panel-header">Equation Controls</div>
+            <div class="slider-group">
+                <div class="slider-label"><span class="slider-name">a</span><span class="slider-value" id="val-a">0.20</span></div>
+                <input type="range" id="slider-a" min="-1" max="1" step="0.01" value="0.2">
+            </div>
+            <div class="slider-group">
+                <div class="slider-label"><span class="slider-name">b</span><span class="slider-value" id="val-b">0.00</span></div>
+                <input type="range" id="slider-b" min="-5" max="5" step="0.1" value="0">
+            </div>
+            <div class="slider-group">
+                <div class="slider-label"><span class="slider-name">c</span><span class="slider-value" id="val-c">-3.00</span></div>
+                <input type="range" id="slider-c" min="-8" max="8" step="0.1" value="-3">
+            </div>
+            
+            <div class="panel-header header-cyan" style="margin-top: 24px;">Observer Position</div>
+            <div class="slider-group">
+                <div class="slider-label"><span class="slider-name k-slider-name">k (x-axis)</span><span class="slider-value k-slider-value" id="val-k">0.00</span></div>
+                <input type="range" id="slider-k" min="-12" max="12" step="0.1" value="0">
+            </div>
+        </div>
+
+        <div class="glass-panel" id="info-panel">
+            <div class="panel-header">Mathematical Telemetry</div>
+            <div class="info-row"><span class="info-label">Equation f(x)</span><span class="info-data" id="eq-display">y = 0.2x² - 3</span></div>
+            <div class="info-row"><span class="info-label">Discriminant (Δ)</span><span class="info-data" id="delta-display">2.40</span></div>
+            <div class="info-row"><span class="info-label">Roots (α, β)</span><span class="info-data" id="roots-display">-3.87, 3.87</span></div>
+            <div class="info-row"><span class="info-label">Intersect f(k)</span><span class="info-data highlight-data" id="fk-display">-3.00</span></div>
+            <div class="info-row"><span class="info-label">Condition a × f(k)</span><span class="info-data highlight-data" id="afk-display">-0.60</span></div>
+        </div>
+
+        <div class="glass-panel" id="math-status">
+            <div class="panel-header">Nature & Location of Roots</div>
+            <div class="nature-box" id="nature-box" style="color: var(--color-emerald); border-color: var(--color-emerald);">
+                Two distinct real roots<br><span style="font-size:12px; font-weight:500;">Crosses the X-Axis</span>
+            </div>
+            <div class="k-status-box" id="k-status-box">
+                k lies BETWEEN the roots<br><span style="font-size:12px; font-weight:500;">a × f(k) < 0</span>
+            </div>
+        </div>
+
+        <div class="math-label label-root" id="lbl-r1">Root (α)</div>
+        <div class="math-label label-root" id="lbl-r2">Root (β)</div>
+        <div class="math-label label-vertex" id="lbl-v">Vertex</div>
+        <div class="math-label label-fk" id="lbl-fk">f(k)</div>
+
+        <div class="hint" id="hint">Mouse: Orbit & Zoom | Move 'k' to analyze its location relative to roots</div>
+    </div>
+
+    <script>
+        // ==========================================
+        // STATE & MATH ENGINE
+        // ==========================================
+        const state = {
+            a: 0.2, b: 0.0, c: -3.0, k: 0.0,
+            time: 0, trainPos: -12, trainDir: 1,
+            roots: []
+        };
+
+        const quadratic = (x) => state.a * x * x + state.b * x + state.c;
+        const derivative = (x) => 2 * state.a * x + state.b;
+
+        // ==========================================
+        // THREE.JS SCENE SETUP
+        // ==========================================
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x87CEEB); 
+        scene.fog = new THREE.FogExp2(0x87CEEB, 0.008);
+        
+        const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.set(0, 12, 35);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        renderer.toneMapping = THREE.ACESFilmicToneMapping;
+        document.body.appendChild(renderer.domElement);
+
+        const controls = new THREE.OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.05;
+        controls.maxPolarAngle = Math.PI / 2 - 0.05; 
+        controls.minDistance = 10;
+        controls.maxDistance = 80;
+        controls.target.set(0, 0, 0);
+
+        // ==========================================
+        // REALISTIC DAYLIGHT LIGHTING
+        // ==========================================
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.6); 
+        scene.add(ambientLight);
+
+        const sunLight = new THREE.DirectionalLight(0xfff5e6, 2.5); 
+        sunLight.position.set(30, 50, 20);
+        sunLight.castShadow = true;
+        sunLight.shadow.mapSize.width = 2048;
+        sunLight.shadow.mapSize.height = 2048;
+        sunLight.shadow.camera.near = 0.5;
+        sunLight.shadow.camera.far = 150;
+        const d = 40;
+        sunLight.shadow.camera.left = -d; sunLight.shadow.camera.right = d;
+        sunLight.shadow.camera.top = d; sunLight.shadow.camera.bottom = -d;
+        sunLight.shadow.bias = -0.0005;
+        scene.add(sunLight);
+
+        const hemiLight = new THREE.HemisphereLight(0xffffff, 0x44aa44, 0.4);
+        scene.add(hemiLight);
+
+        // ==========================================
+        // ENVIRONMENT: THE PARK & THE X-AXIS PLANE
+        // ==========================================
+        const GROUND_LEVEL = -12; 
+
+        // Grassy Park Ground
+        const groundGeo = new THREE.PlaneGeometry(200, 200, 64, 64);
+        const groundMat = new THREE.MeshStandardMaterial({ 
+            color: 0x3d7a2e, roughness: 0.9, metalness: 0.1, flatShading: true 
+        });
+        const pos = groundGeo.attributes.position;
+        for(let i = 0; i < pos.count; i++) {
+            let x = pos.getX(i);
+            let y = pos.getY(i);
+            let zOffset = Math.sin(x*0.1) * Math.cos(y*0.1) * 2;
+            pos.setZ(i, zOffset);
+        }
+        groundGeo.computeVertexNormals();
+        const ground = new THREE.Mesh(groundGeo, groundMat);
+        ground.rotation.x = -Math.PI / 2;
+        ground.position.y = GROUND_LEVEL;
+        ground.receiveShadow = true;
+        scene.add(ground);
+
+        // The Educational "Zero Plane" (X-Axis at y=0)
+        const zeroPlaneGeo = new THREE.PlaneGeometry(100, 40);
+        const zeroPlaneMat = new THREE.MeshPhysicalMaterial({ 
+            color: 0xffffff, transparent: true, opacity: 0.35,
+            roughness: 0.1, metalness: 0.1, transmission: 0.5, side: THREE.DoubleSide
+        });
+        const zeroPlane = new THREE.Mesh(zeroPlaneGeo, zeroPlaneMat);
+        zeroPlane.rotation.x = -Math.PI / 2;
+        zeroPlane.position.y = 0;
+        zeroPlane.receiveShadow = true;
+        scene.add(zeroPlane);
+
+        // Grid for the Zero Plane
+        const gridHelper = new THREE.GridHelper(100, 100, 0x000000, 0xffffff);
+        gridHelper.material.opacity = 0.25;
+        gridHelper.material.transparent = true;
+        gridHelper.position.y = 0.01;
+        scene.add(gridHelper);
+
+        // Thick X and Z axis lines on the plane
+        const axisGeo = new THREE.CylinderGeometry(0.06, 0.06, 100, 8);
+        const axisMat = new THREE.MeshBasicMaterial({ color: 0x1e293b });
+        const xAxisLine = new THREE.Mesh(axisGeo, axisMat);
+        xAxisLine.rotation.z = Math.PI / 2;
+        scene.add(xAxisLine);
+
+        // Trees
+        function createTree(x, z) {
+            const tree = new THREE.Group();
+            const trunkGeo = new THREE.CylinderGeometry(0.3, 0.5, 3, 7);
+            const trunkMat = new THREE.MeshStandardMaterial({ color: 0x5c4033, roughness: 1.0 });
+            const trunk = new THREE.Mesh(trunkGeo, trunkMat);
+            trunk.position.y = 1.5; trunk.castShadow = true; trunk.receiveShadow = true;
+            
+            const leavesGeo = new THREE.IcosahedronGeometry(2, 1);
+            const leavesMat = new THREE.MeshStandardMaterial({ color: 0x228b22, roughness: 0.8, flatShading: true });
+            
+            const leaves1 = new THREE.Mesh(leavesGeo, leavesMat);
+            leaves1.position.y = 4; leaves1.castShadow = true;
+            const leaves2 = new THREE.Mesh(leavesGeo, leavesMat);
+            leaves2.scale.set(0.8, 0.8, 0.8); leaves2.position.set(0.8, 3.5, 0.5); leaves2.castShadow = true;
+
+            tree.add(trunk, leaves1, leaves2);
+            tree.position.set(x, GROUND_LEVEL, z);
+            return tree;
+        }
+
+        const treeGroup = new THREE.Group();
+        for(let i=0; i<60; i++) {
+            let px = (Math.random() - 0.5) * 120;
+            let pz = (Math.random() - 0.5) * 80;
+            if (Math.abs(px) < 15 && Math.abs(pz) < 10) continue;
+            treeGroup.add(createTree(px, pz));
+        }
+        scene.add(treeGroup);
+
+
+        // ==========================================
+        // THE HOLOGRAPHIC OBSERVER (MAN for 'k')
+        // ==========================================
+        function createHologramMan() {
+            const man = new THREE.Group();
+            // Futuristic glowing glass material
+            const mat = new THREE.MeshPhysicalMaterial({
+                color: 0xd946ef, emissive: 0x86198f, emissiveIntensity: 0.6,
+                transparent: true, opacity: 0.8, roughness: 0.1, metalness: 0.1, transmission: 0.9
+            });
+
+            // Head
+            const head = new THREE.Mesh(new THREE.SphereGeometry(0.18, 16, 16), mat);
+            head.position.y = 1.6;
+            // Torso
+            const torso = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 1.0, 16), mat);
+            torso.position.y = 1.05;
+            // Arms
+            const armGeo = new THREE.CylinderGeometry(0.08, 0.08, 0.61, 16);
+            const lArm = new THREE.Mesh(armGeo, mat); lArm.position.set(-0.35, 1.1, 0); lArm.rotation.z = -0.15;
+            const rArm = new THREE.Mesh(armGeo, mat); rArm.position.set(0.35, 1.1, 0); rArm.rotation.z = 0.15;
+            // Legs
+            const legGeo = new THREE.CylinderGeometry(0.1, 0.1, 0.75, 16);
+            const lLeg = new THREE.Mesh(legGeo, mat); lLeg.position.set(-0.12, 0.4, 0);
+            const rLeg = new THREE.Mesh(legGeo, mat); rLeg.position.set(0.12, 0.4, 0);
+
+            // Base Ring
+            const ring = new THREE.Mesh(
+                new THREE.RingGeometry(0.4, 0.5, 32),
+                new THREE.MeshBasicMaterial({ color: 0xd946ef, side: THREE.DoubleSide })
+            );
+            ring.rotation.x = -Math.PI / 2;
+            ring.position.y = 0.02;
+
+            man.add(head, torso, lArm, rArm, lLeg, rLeg, ring);
+            return man;
+        }
+
+        const manNode = createHologramMan();
+        scene.add(manNode);
+
+        // Vertical Laser Line for f(k)
+        const laserGeo = new THREE.CylinderGeometry(0.03, 0.03, 1, 8);
+        const laserMat = new THREE.MeshBasicMaterial({ color: 0xd946ef, transparent: true, opacity: 0.7, blending: THREE.AdditiveBlending });
+        const laserLine = new THREE.Mesh(laserGeo, laserMat);
+        scene.add(laserLine);
+
+        // Intersection Point Marker
+        const markerGeo = new THREE.SphereGeometry(0.2, 16, 16);
+        const markerMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+        const intersectMarker = new THREE.Mesh(markerGeo, markerMat);
+        scene.add(intersectMarker);
+
+        // ==========================================
+        // REALISTIC ROLLER COASTER TRACK
+        // ==========================================
+        let trackGroup = new THREE.Group();
+        scene.add(trackGroup);
+
+        function buildTrack() {
+            while(trackGroup.children.length > 0) {
+                let child = trackGroup.children.pop();
+                trackGroup.remove(child);
+                if(child.geometry) child.geometry.dispose();
+            }
+
+            const pointsCenter = [];
+            const pointsL = [];
+            const pointsR = [];
+            const trackExtent = 18; 
+
+            for (let x = -trackExtent; x <= trackExtent; x += 0.2) {
+                let y = quadratic(x);
+                let slope = derivative(x);
+                let angle = Math.atan(slope);
+                
+                let nx = -Math.sin(angle);
+                let ny = Math.cos(angle);
+
+                pointsCenter.push(new THREE.Vector3(x - nx*0.5, y - ny*0.5, 0));
+                pointsL.push(new THREE.Vector3(x, y, -0.4));
+                pointsR.push(new THREE.Vector3(x, y, 0.4));
+            }
+
+            const spineGeo = new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pointsCenter), 200, 0.15, 8, false);
+            const railGeoL = new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pointsL), 200, 0.05, 8, false);
+            const railGeoR = new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pointsR), 200, 0.05, 8, false);
+
+            const steelMat = new THREE.MeshStandardMaterial({ color: 0x94a3b8, metalness: 0.6, roughness: 0.4 });
+            const railMat = new THREE.MeshStandardMaterial({ color: 0xd97706, metalness: 0.8, roughness: 0.2 }); 
+
+            const meshSpine = new THREE.Mesh(spineGeo, steelMat);
+            const meshL = new THREE.Mesh(railGeoL, railMat);
+            const meshR = new THREE.Mesh(railGeoR, railMat);
+            meshSpine.castShadow = true; meshL.castShadow = true; meshR.castShadow = true;
+            
+            trackGroup.add(meshSpine, meshL, meshR);
+
+            const tieGeo = new THREE.BoxGeometry(0.1, 0.6, 1.0);
+            
+            for (let x = -trackExtent; x <= trackExtent; x += 1.0) {
+                let y = quadratic(x);
+                let slope = derivative(x);
+                let angle = Math.atan(slope);
+                let nx = -Math.sin(angle);
+                let ny = Math.cos(angle);
+
+                const tie = new THREE.Mesh(tieGeo, steelMat);
+                tie.position.set(x - nx*0.25, y - ny*0.25, 0);
+                tie.rotation.z = angle;
+                tie.castShadow = true;
+                trackGroup.add(tie);
+
+                if (x % 3 === 0) {
+                    let pillarHeight = (y - ny*0.5) - GROUND_LEVEL;
+                    if(pillarHeight > 0) {
+                        const pGeo = new THREE.CylinderGeometry(0.15, 0.2, pillarHeight, 8);
+                        const pillar = new THREE.Mesh(pGeo, steelMat);
+                        pillar.position.set(x - nx*0.5, GROUND_LEVEL + pillarHeight/2, 0);
+                        pillar.castShadow = true; pillar.receiveShadow = true;
+                        trackGroup.add(pillar);
+                    }
+                }
+            }
+        }
+
+        // ==========================================
+        // ARTICULATED ROLLER COASTER TRAIN
+        // ==========================================
+        const trainGroup = new THREE.Group();
+        const cars = [];
+        const numCars = 3;
+        const carSpacing = 1.6;
+
+        function createCarMesh(isLead) {
+            const car = new THREE.Group();
+            
+            const chMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, metalness: 0.8, roughness: 0.3 });
+            const chassis = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.2, 0.8), chMat);
+            chassis.position.y = 0.2; chassis.castShadow = true;
+
+            const bodyMat = new THREE.MeshStandardMaterial({ color: isLead ? 0xef4444 : 0x3b82f6, metalness: 0.3, roughness: 0.5 });
+            const body = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.4, 0.7), bodyMat);
+            body.position.y = 0.5; body.castShadow = true;
+
+            const seatMat = new THREE.MeshStandardMaterial({ color: 0x0f172a });
+            const seat1 = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.5, 0.6), seatMat);
+            seat1.position.set(-0.2, 0.7, 0); seat1.castShadow = true;
+            
+            if(isLead) {
+                const nose = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.35, 0.7, 16), bodyMat);
+                nose.rotation.x = Math.PI/2;
+                nose.position.set(0.6, 0.5, 0);
+                nose.castShadow = true;
+                car.add(nose);
+            }
+
+            const wheelGeo = new THREE.CylinderGeometry(0.12, 0.12, 0.1, 12);
+            const wheelMat = new THREE.MeshStandardMaterial({ color: 0x000000, roughness: 0.9 });
+            const wheelPos = [[-0.5, 0.12, 0.42], [-0.5, 0.12, -0.42], [0.5, 0.12, 0.42], [0.5, 0.12, -0.42]];
+            
+            wheelPos.forEach(p => {
+                const w = new THREE.Mesh(wheelGeo, wheelMat);
+                w.position.set(p[0], p[1], p[2]); w.rotation.x = Math.PI/2;
+                car.add(w);
+            });
+
+            car.add(chassis, body, seat1);
+            return car;
+        }
+
+        for(let i=0; i<numCars; i++) {
+            let carMesh = createCarMesh(i === 0);
+            cars.push(carMesh);
+            trainGroup.add(carMesh);
+        }
+        scene.add(trainGroup);
+
+
+        // ==========================================
+        // UI INTERACTION & MATHEMATICS
+        // ==========================================
+        const sliderA = document.getElementById('slider-a');
+        const sliderB = document.getElementById('slider-b');
+        const sliderC = document.getElementById('slider-c');
+        const sliderK = document.getElementById('slider-k');
+
+        function onSliderChange() {
+            state.a = parseFloat(sliderA.value);
+            state.b = parseFloat(sliderB.value);
+            state.c = parseFloat(sliderC.value);
+            state.k = parseFloat(sliderK.value);
+            
+            document.getElementById('val-a').textContent = state.a.toFixed(2);
+            document.getElementById('val-b').textContent = state.b.toFixed(2);
+            document.getElementById('val-c').textContent = state.c.toFixed(2);
+            document.getElementById('val-k').textContent = state.k.toFixed(2);
+            
+            buildTrack();
+            updateMathUI();
+        }
+        sliderA.addEventListener('input', onSliderChange);
+        sliderB.addEventListener('input', onSliderChange);
+        sliderC.addEventListener('input', onSliderChange);
+        sliderK.addEventListener('input', onSliderChange);
+
+        function updateMathUI() {
+            const {a, b, c, k} = state;
+            const eqStr = `y = ${a.toFixed(2)}x² ${b>=0?'+':'-'} ${Math.abs(b).toFixed(2)}x ${c>=0?'+':'-'} ${Math.abs(c).toFixed(2)}`;
+            document.getElementById('eq-display').textContent = eqStr;
+            
+            const delta = b*b - 4*a*c;
+            document.getElementById('delta-display').textContent = delta.toFixed(2);
+            
+            // Calculate f(k)
+            const fk = quadratic(k);
+            document.getElementById('fk-display').textContent = fk.toFixed(2);
+            const afk = a * fk;
+            document.getElementById('afk-display').textContent = afk.toFixed(2);
+
+            // Root Nature Update
+            const natureBox = document.getElementById('nature-box');
+            let nHtml = '', nCol = '';
+            
+            if (a === 0) { 
+                nHtml = 'Linear Path'; nCol = '#64748b'; 
+            }
+            else if (delta > 0) { 
+                nHtml = 'Two distinct real roots<br><span style="font-size:12px; font-weight:500;">(Δ > 0) Coaster crosses X-Axis</span>'; 
+                nCol = '#10b981'; 
+            }
+            else if (delta === 0) { 
+                nHtml = 'One real root<br><span style="font-size:12px; font-weight:500;">(Δ = 0) Coaster grazes X-Axis</span>'; 
+                nCol = '#d97706'; 
+            }
+            else { 
+                nHtml = 'No real roots<br><span style="font-size:12px; font-weight:500;">(Δ < 0) Coaster avoids X-Axis</span>'; 
+                nCol = '#ef4444'; 
+            }
+            natureBox.innerHTML = nHtml;
+            natureBox.style.color = nCol; natureBox.style.borderColor = nCol;
+
+            // Location of Roots (k vs Roots) Update
+            const kBox = document.getElementById('k-status-box');
+            let kHtml = '';
+
+            const newRoots = [];
+            if (a !== 0 && delta >= 0) {
+                const sqrtD = Math.sqrt(delta);
+                newRoots.push((-b - sqrtD) / (2*a));
+                if (delta > 0) newRoots.push((-b + sqrtD) / (2*a));
+            }
+            // Sort roots properly
+            newRoots.sort((x, y) => x - y);
+            state.roots = newRoots;
+            
+            if (a === 0) {
+                kHtml = `k is on a linear path`;
+            } else if (delta < 0) {
+                kHtml = `k does not lie between any real roots<br><span style="font-size:12px; font-weight:500;">a × f(k) > 0 (Always True)</span>`;
+            } else if (delta === 0) {
+                if (Math.abs(k - newRoots[0]) < 0.05) kHtml = `k coincides with the root!`;
+                else kHtml = `k is outside the single root<br><span style="font-size:12px; font-weight:500;">a × f(k) > 0</span>`;
+            } else {
+                // Two distinct roots
+                let r1 = newRoots[0];
+                let r2 = newRoots[1];
+                
+                if (Math.abs(k - r1) < 0.05 || Math.abs(k - r2) < 0.05) {
+                    kHtml = `k is exactly ON a root!<br><span style="font-size:12px; font-weight:500;">f(k) = 0</span>`;
+                } else if (k > r1 && k < r2) {
+                    kHtml = `k lies BETWEEN the roots (α < k < β)<br><span style="font-size:12px; font-weight:500;">Condition: a × f(k) < 0</span>`;
+                } else if (k < r1) {
+                    kHtml = `k is LESS than both roots (k < α < β)<br><span style="font-size:12px; font-weight:500;">Condition: a × f(k) > 0</span>`;
+                } else if (k > r2) {
+                    kHtml = `k is GREATER than both roots (α < β < k)<br><span style="font-size:12px; font-weight:500;">Condition: a × f(k) > 0</span>`;
+                }
+            }
+            
+            kBox.innerHTML = kHtml;
+            const rStr = state.roots.length > 0 ? state.roots.map(r => r.toFixed(2)).join(', ') : 'None';
+            document.getElementById('roots-display').textContent = rStr;
+        }
+
+
+        // ==========================================
+        // ANIMATION LOOP
+        // ==========================================
+        const clock = new THREE.Clock();
+        const lblR1 = document.getElementById('lbl-r1');
+        const lblR2 = document.getElementById('lbl-r2');
+        const lblV = document.getElementById('lbl-v');
+        const lblFk = document.getElementById('lbl-fk');
+        const tempV = new THREE.Vector3();
+
+        function project3DTo2D(x, y, z, el) {
+            tempV.set(x, y, z);
+            tempV.project(camera);
+            
+            if(tempV.z > 1) {
+                el.style.opacity = 0; return;
+            }
+            const sx = (tempV.x * 0.5 + 0.5) * window.innerWidth;
+            const sy = (-tempV.y * 0.5 + 0.5) * window.innerHeight;
+            el.style.transform = `translate(${sx}px, ${sy}px) translate(-50%, -50%)`;
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            const delta = Math.min(clock.getDelta(), 0.1);
+            state.time += delta;
+            
+            controls.update();
+
+            // Dynamic Man & Laser updates
+            const { k } = state;
+            const fk = quadratic(k);
+            
+            // Position man on the axis
+            manNode.position.set(k, 0, 0);
+            
+            // Position and scale vertical laser line
+            if (Math.abs(fk) > 0.05) {
+                laserLine.visible = true;
+                laserLine.position.set(k, fk / 2, 0);
+                laserLine.scale.y = Math.abs(fk);
+                intersectMarker.visible = true;
+                intersectMarker.position.set(k, fk, 0);
+            } else {
+                laserLine.visible = false;
+                intersectMarker.position.set(k, 0, 0);
+            }
+
+            // Train Physics 
+            let currentY = quadratic(state.trainPos);
+            let energyHeight = 25; 
+            let speed = Math.sqrt(Math.max(0.5, 2 * 9.8 * Math.abs(energyHeight - currentY))) * 0.10;
+            
+            if (state.trainPos > 18) { state.trainPos = -18; }
+            if (state.trainPos < -18) { state.trainPos = 18; }
+            state.trainPos += speed * state.trainDir * delta;
+
+            for(let i = 0; i < numCars; i++) {
+                let carPos = state.trainPos - (i * carSpacing * state.trainDir);
+                let y = quadratic(carPos);
+                let slope = derivative(carPos);
+                let angle = Math.atan(slope);
+                
+                cars[i].position.set(carPos, y + 0.1, 0);
+                cars[i].rotation.z = angle;
+            }
+
+            // UI HTML Projection Positioning
+            lblR1.style.opacity = 0; lblR2.style.opacity = 0; lblV.style.opacity = 0; lblFk.style.opacity = 0;
+            
+            if (state.a !== 0) {
+                const deltaVal = state.b*state.b - 4*state.a*state.c;
+                if (deltaVal >= 0) {
+                    if (state.roots.length > 0 && Math.abs(state.roots[0]) <= 18) {
+                        lblR1.style.opacity = 1;
+                        project3DTo2D(state.roots[0], 0, 0, lblR1);
+                    }
+                    if (state.roots.length > 1 && Math.abs(state.roots[1]) <= 18) {
+                        lblR2.style.opacity = 1;
+                        project3DTo2D(state.roots[1], 0, 0, lblR2);
+                    }
+                }
+                const vx = -state.b / (2*state.a);
+                const vy = state.c - (state.b*state.b) / (4*state.a);
+                if (Math.abs(vx) <= 18) {
+                    lblV.style.opacity = 1;
+                    project3DTo2D(vx, vy, 0, lblV);
+                }
+            }
+
+            // Always project f(k) label
+            if (Math.abs(k) <= 18) {
+                lblFk.style.opacity = 1;
+                lblFk.textContent = `f(${k.toFixed(1)}) = ${fk.toFixed(1)}`;
+                project3DTo2D(k, fk, 0, lblFk);
+            }
+
+            renderer.render(scene, camera);
+        }
+
+        // ==========================================
+        // INITIALIZATION & INTRO SEQUENCE
+        // ==========================================
+        function init() {
+            buildTrack();
+            updateMathUI();
+            animate();
+
+            // Cinematic Intro Transitions
+            const tl = gsap.timeline();
+            tl.to('#text1', { opacity: 1, duration: 1.5 })
+              .to('#text1', { opacity: 0, duration: 1, delay: 1.5 })
+              .to('#text2', { opacity: 1, duration: 1.5 })
+              .to('#text2', { opacity: 0, duration: 1, delay: 1.5 })
+              .to('#intro-overlay', { opacity: 0, duration: 1.5, onComplete: () => {
+                  document.getElementById('intro-overlay').style.display = 'none';
+              }})
+              .to('#control-panel', { opacity: 1, y: 0, duration: 1, ease: "back.out(1.5)" }, "-=0.5")
+              .to('#info-panel', { opacity: 1, y: 0, duration: 1, ease: "back.out(1.5)" }, "-=0.8")
+              .to('#math-status', { opacity: 1, x: 0, duration: 1, ease: "back.out(1.5)" }, "-=0.8")
+              .to('#hint', { opacity: 1, duration: 0.8 }, "-=0.4");
+
+            // Camera Flight
+            gsap.from(camera.position, { x: 30, y: 40, z: 60, duration: 7, ease: "power2.out" });
+        }
+
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        init();
+    </script>
+</body>
+</html>
