@@ -1,0 +1,1520 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Coterminal Angles · A Cinematic Mathematical Experience</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,400&family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+<style>
+:root{
+  --bg-deep:#000005;
+  --bg-near:#040818;
+  --blue:#00d4ff;
+  --cyan:#00f0ff;
+  --purple:#b366ff;
+  --gold:#ffd166;
+  --red:#ff3b6b;
+  --white:#ffffff;
+  --glass:rgba(10,18,35,.42);
+  --glass-strong:rgba(8,14,28,.72);
+  --border:rgba(140,180,255,.14);
+  --border-strong:rgba(140,180,255,.28);
+  --text:#e8f0ff;
+  --text-2:#8da3c7;
+  --text-3:#4a5a78;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{width:100%;height:100%;overflow:hidden;background:var(--bg-deep);font-family:'Space Grotesk',sans-serif;color:var(--text);cursor:none}
+canvas{display:block}
+
+/* Atmospheric overlays */
+body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellipse at 50% 50%,transparent 35%,rgba(0,0,5,.45) 75%,rgba(0,0,5,.85) 100%);pointer-events:none;z-index:5}
+body::after{content:'';position:fixed;inset:0;background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='180' height='180'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%' height='100%' filter='url(%23n)' opacity='0.55'/></svg>");opacity:.05;pointer-events:none;z-index:6;mix-blend-mode:overlay}
+
+#canvas-container{position:fixed;inset:0;z-index:1}
+
+/* Custom cursor */
+.cursor{position:fixed;width:6px;height:6px;background:var(--cyan);border-radius:50%;pointer-events:none;z-index:9999;mix-blend-mode:screen;transform:translate(-50%,-50%);box-shadow:0 0 12px var(--cyan),0 0 28px var(--cyan)}
+.cursor-ring{position:fixed;width:34px;height:34px;border:1px solid rgba(0,240,255,.45);border-radius:50%;pointer-events:none;z-index:9998;transform:translate(-50%,-50%);transition:width .3s,height .3s,border-color .3s,opacity .3s}
+.cursor-ring.hover{width:54px;height:54px;border-color:rgba(255,209,102,.7)}
+.cursor-ring.click{width:24px;height:24px}
+
+/* Intro overlay */
+.intro-overlay{position:fixed;inset:0;z-index:50;display:flex;align-items:center;justify-content:center;flex-direction:column;background:radial-gradient(ellipse at center,#020410 0%,#000005 80%);transition:opacity 1.4s ease}
+.intro-overlay.hidden{opacity:0;pointer-events:none}
+.intro-pretitle{font-size:.78rem;letter-spacing:.55em;color:var(--cyan);text-transform:uppercase;margin-bottom:1.8rem;opacity:0;font-weight:300}
+.intro-title{font-family:'Cormorant Garamond',serif;font-size:clamp(3.5rem,9vw,7.5rem);font-weight:400;letter-spacing:.02em;background:linear-gradient(180deg,#fff 0%,#9eb8ff 60%,#5a78c4 100%);-webkit-background-clip:text;background-clip:text;color:transparent;line-height:1;opacity:0;position:relative}
+.intro-title::after{content:'';position:absolute;left:50%;bottom:-1.2rem;width:0;height:1px;background:linear-gradient(90deg,transparent,var(--gold),transparent);transform:translateX(-50%);transition:width 1.8s ease 1.2s}
+.intro-overlay.show-title .intro-title::after{width:240px}
+.intro-subtitle{font-family:'Cormorant Garamond',serif;font-style:italic;font-size:clamp(1.1rem,2vw,1.6rem);color:var(--text-2);margin-top:2.6rem;letter-spacing:.08em;opacity:0}
+.intro-hint{position:absolute;bottom:3rem;font-size:.7rem;letter-spacing:.4em;color:var(--text-3);text-transform:uppercase;opacity:0;animation:hintPulse 2.4s ease infinite 3s}
+@keyframes hintPulse{0%,100%{opacity:.3}50%{opacity:.8}}
+
+/* Top bar */
+.top-bar{position:fixed;top:0;left:0;right:0;z-index:20;padding:1.4rem 2.2rem;display:flex;align-items:center;justify-content:space-between;pointer-events:none}
+.brand{display:flex;align-items:center;gap:.9rem;pointer-events:auto}
+.brand-mark{width:34px;height:34px;border-radius:50%;border:1px solid var(--gold);position:relative;display:flex;align-items:center;justify-content:center}
+.brand-mark::before{content:'';width:14px;height:1px;background:var(--gold);transform-origin:left;transform:rotate(-35deg);position:absolute;left:50%;top:50%;box-shadow:0 0 8px var(--gold)}
+.brand-mark::after{content:'';width:4px;height:4px;background:var(--gold);border-radius:50%;box-shadow:0 0 10px var(--gold)}
+.brand-text .brand-name{font-size:.62rem;letter-spacing:.42em;color:var(--text-2);text-transform:uppercase;font-weight:500}
+.brand-text .brand-sub{font-family:'Cormorant Garamond',serif;font-size:1.05rem;color:var(--text);font-style:italic;margin-top:1px}
+
+.chapter-nav{display:flex;gap:.3rem;pointer-events:auto;background:var(--glass);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);border:1px solid var(--border);border-radius:99px;padding:.35rem}
+.chapter-btn{padding:.55rem 1rem;font-size:.66rem;letter-spacing:.18em;text-transform:uppercase;color:var(--text-2);background:transparent;border:none;cursor:none;border-radius:99px;transition:all .4s ease;font-family:'Space Grotesk',sans-serif;font-weight:500;position:relative}
+.chapter-btn:hover{color:var(--text)}
+.chapter-btn.active{background:linear-gradient(135deg,rgba(0,212,255,.18),rgba(179,102,255,.18));color:var(--cyan);box-shadow:inset 0 0 0 1px rgba(0,212,255,.35),0 0 24px rgba(0,212,255,.18)}
+
+/* Panels - shared glass style */
+.panel{position:fixed;z-index:15;background:var(--glass);backdrop-filter:blur(22px) saturate(140%);-webkit-backdrop-filter:blur(22px) saturate(140%);border:1px solid var(--border);border-radius:18px;padding:1.3rem 1.4rem;box-shadow:0 24px 60px -20px rgba(0,0,0,.6),inset 0 1px 0 rgba(255,255,255,.05)}
+.panel::before{content:'';position:absolute;inset:0;border-radius:18px;padding:1px;background:linear-gradient(135deg,rgba(0,212,255,.25),transparent 40%,transparent 60%,rgba(179,102,255,.2));-webkit-mask:linear-gradient(#000,#000) content-box,linear-gradient(#000,#000);-webkit-mask-composite:xor;mask-composite:exclude;pointer-events:none}
+
+.panel-title{font-size:.62rem;letter-spacing:.32em;text-transform:uppercase;color:var(--text-2);font-weight:600;margin-bottom:1rem;display:flex;align-items:center;gap:.6rem}
+.panel-title::before{content:'';width:18px;height:1px;background:linear-gradient(90deg,var(--cyan),transparent)}
+
+/* Control panel */
+.control-panel{bottom:1.8rem;left:1.8rem;width:340px}
+.angle-readout{display:flex;align-items:baseline;gap:.5rem;margin-bottom:1.1rem;font-family:'JetBrains Mono',monospace}
+.angle-readout .value{font-size:2.4rem;font-weight:500;color:var(--gold);text-shadow:0 0 24px rgba(255,209,102,.4);line-height:1;letter-spacing:-.02em}
+.angle-readout .unit{font-size:1.2rem;color:var(--text-2)}
+.angle-readout .rev{margin-left:auto;font-size:.7rem;color:var(--text-3);letter-spacing:.12em}
+
+.slider-wrap{position:relative;margin-bottom:1.1rem}
+.slider-track{height:4px;background:rgba(255,255,255,.06);border-radius:2px;position:relative;overflow:hidden}
+.slider-fill{position:absolute;left:0;top:0;height:100%;background:linear-gradient(90deg,var(--blue),var(--cyan),var(--gold));border-radius:2px;width:8%;box-shadow:0 0 12px rgba(0,212,255,.5)}
+.slider-input{position:absolute;inset:-12px 0;width:100%;opacity:0;cursor:none}
+.slider-marks{display:flex;justify-content:space-between;margin-top:.55rem;font-size:.6rem;color:var(--text-3);font-family:'JetBrains Mono',monospace;letter-spacing:.05em}
+
+.btn-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:.4rem;margin-top:.6rem}
+.btn{background:rgba(255,255,255,.03);border:1px solid var(--border);color:var(--text-2);padding:.6rem .4rem;font-size:.62rem;letter-spacing:.14em;text-transform:uppercase;font-family:'JetBrains Mono',monospace;font-weight:500;border-radius:10px;cursor:none;transition:all .35s cubic-bezier(.2,.8,.2,1);position:relative;overflow:hidden}
+.btn:hover{color:var(--cyan);border-color:rgba(0,212,255,.4);background:rgba(0,212,255,.06);transform:translateY(-1px)}
+.btn:active{transform:translateY(0) scale(.97)}
+.btn::after{content:'';position:absolute;width:6px;height:6px;border-radius:50%;background:var(--cyan);top:50%;left:50%;transform:translate(-50%,-50%) scale(0);opacity:0;transition:transform .5s,opacity .5s}
+.btn.ripple::after{transform:translate(-50%,-50%) scale(12);opacity:.3;transition:0s}
+.btn.primary{background:linear-gradient(135deg,rgba(0,212,255,.18),rgba(179,102,255,.18));border-color:rgba(0,212,255,.35);color:var(--cyan)}
+.btn.gold{color:var(--gold);border-color:rgba(255,209,102,.3)}
+.btn.gold:hover{background:rgba(255,209,102,.06);border-color:rgba(255,209,102,.5)}
+.btn.danger{color:var(--red);border-color:rgba(255,59,107,.28)}
+.btn.danger:hover{background:rgba(255,59,107,.06);border-color:rgba(255,59,107,.5)}
+
+.toggle-row{display:flex;gap:.4rem;margin-top:.5rem}
+.toggle{flex:1;background:rgba(255,255,255,.03);border:1px solid var(--border);padding:.55rem .5rem;border-radius:10px;font-size:.6rem;letter-spacing:.16em;text-transform:uppercase;color:var(--text-3);cursor:none;text-align:center;transition:all .3s;font-weight:500;font-family:'JetBrains Mono',monospace}
+.toggle.on{color:var(--cyan);border-color:rgba(0,212,255,.35);background:rgba(0,212,255,.06)}
+
+/* Calculator panel */
+.calc-panel{bottom:1.8rem;right:1.8rem;width:340px}
+.calc-input-row{display:flex;gap:.6rem;margin-bottom:1rem}
+.calc-input{flex:1;background:rgba(0,0,0,.35);border:1px solid var(--border);color:var(--gold);padding:.7rem .9rem;border-radius:10px;font-family:'JetBrains Mono',monospace;font-size:1.1rem;outline:none;cursor:none;transition:border-color .3s}
+.calc-input:focus{border-color:rgba(0,212,255,.5)}
+.calc-input::placeholder{color:var(--text-3)}
+.calc-go{background:linear-gradient(135deg,rgba(0,212,255,.2),rgba(179,102,255,.2));border:1px solid rgba(0,212,255,.35);color:var(--cyan);padding:0 1.2rem;border-radius:10px;font-size:.66rem;letter-spacing:.2em;text-transform:uppercase;cursor:none;font-weight:600;transition:all .3s}
+.calc-go:hover{box-shadow:0 0 22px rgba(0,212,255,.35)}
+
+.calc-steps{min-height:120px;font-family:'JetBrains Mono',monospace;font-size:.78rem;display:flex;flex-direction:column;gap:.35rem;position:relative}
+.calc-step{display:flex;align-items:center;gap:.6rem;padding:.4rem .6rem;border-radius:8px;background:rgba(0,0,0,.18);border:1px solid rgba(255,255,255,.04);opacity:0;transform:translateX(-8px);transition:all .4s}
+.calc-step.show{opacity:1;transform:translateX(0)}
+.calc-step.final{background:linear-gradient(90deg,rgba(255,209,102,.1),rgba(255,209,102,.02));border-color:rgba(255,209,102,.3);color:var(--gold)}
+.calc-step .arrow{color:var(--text-3)}
+.calc-step .op{color:var(--cyan);min-width:90px}
+.calc-step .eq{color:var(--text-2);min-width:90px}
+.calc-step.final .eq{color:var(--gold)}
+.calc-empty{color:var(--text-3);font-size:.72rem;font-style:italic;font-family:'Cormorant Garamond',serif;text-align:center;padding:1.4rem 0;letter-spacing:.05em}
+
+/* JEE panel */
+.jee-panel{top:5.5rem;right:1.8rem;width:300px;max-height:calc(100vh - 22rem);overflow-y:auto;scrollbar-width:thin;scrollbar-color:rgba(0,212,255,.3) transparent}
+.jee-panel::-webkit-scrollbar{width:4px}
+.jee-panel::-webkit-scrollbar-thumb{background:rgba(0,212,255,.3);border-radius:2px}
+.jee-card{background:rgba(0,0,0,.28);border:1px solid var(--border);border-radius:12px;padding:.9rem;margin-bottom:.7rem;transition:all .4s;position:relative;overflow:hidden}
+.jee-card::before{content:'';position:absolute;left:0;top:0;width:3px;height:100%;background:linear-gradient(180deg,var(--purple),var(--blue));opacity:.6}
+.jee-card:hover{border-color:rgba(179,102,255,.35);transform:translateX(-2px)}
+.jee-q{font-size:.62rem;letter-spacing:.24em;color:var(--text-3);text-transform:uppercase;margin-bottom:.4rem}
+.jee-angle{font-family:'JetBrains Mono',monospace;font-size:1.3rem;color:var(--text);margin-bottom:.6rem}
+.jee-reveal{font-size:.62rem;letter-spacing:.2em;text-transform:uppercase;color:var(--cyan);background:transparent;border:1px solid rgba(0,212,255,.28);padding:.4rem .7rem;border-radius:6px;cursor:none;transition:all .3s;font-family:'JetBrains Mono',monospace}
+.jee-reveal:hover{background:rgba(0,212,255,.08)}
+.jee-answer{margin-top:.7rem;padding:.6rem .7rem;background:linear-gradient(90deg,rgba(255,209,102,.1),transparent);border-left:2px solid var(--gold);border-radius:4px;font-family:'JetBrains Mono',monospace;font-size:.95rem;color:var(--gold);max-height:0;overflow:hidden;opacity:0;transition:all .6s cubic-bezier(.2,.8,.2,1)}
+.jee-card.revealed .jee-answer{max-height:80px;opacity:1;margin-top:.7rem}
+.jee-answer .label{font-size:.6rem;color:var(--text-3);letter-spacing:.18em;text-transform:uppercase;display:block;margin-bottom:.2rem}
+
+/* Chapter info */
+.chapter-info{position:fixed;left:1.8rem;top:5.5rem;z-index:14;max-width:300px;pointer-events:none}
+.chapter-num{font-family:'JetBrains Mono',monospace;font-size:.7rem;color:var(--gold);letter-spacing:.3em;margin-bottom:.6rem;opacity:0;transform:translateY(8px)}
+.chapter-title{font-family:'Cormorant Garamond',serif;font-size:2.2rem;line-height:1.05;color:var(--text);margin-bottom:.7rem;opacity:0;transform:translateY(8px);font-weight:400}
+.chapter-desc{font-size:.82rem;color:var(--text-2);line-height:1.6;opacity:0;transform:translateY(8px);max-width:280px}
+.chapter-info.show .chapter-num,.chapter-info.show .chapter-title,.chapter-info.show .chapter-desc{opacity:1;transform:translateY(0);transition:all .8s cubic-bezier(.2,.8,.2,1)}
+.chapter-info.show .chapter-title{transition-delay:.1s}
+.chapter-info.show .chapter-desc{transition-delay:.2s}
+
+/* Floating message (for chapter moments) */
+.floating-msg{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:18;text-align:center;pointer-events:none;opacity:0}
+.floating-msg .msg-line{font-family:'Cormorant Garamond',serif;font-style:italic;font-size:clamp(1.4rem,3vw,2.2rem);color:var(--text);letter-spacing:.04em;text-shadow:0 0 40px rgba(0,212,255,.4)}
+.floating-msg .msg-line .accent{color:var(--gold);font-style:normal;font-family:'JetBrains Mono',monospace;font-size:.8em;letter-spacing:.05em}
+
+/* Formula overlay */
+.formula-overlay{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:17;text-align:center;pointer-events:none;opacity:0;transition:opacity .8s}
+.formula-overlay.show{opacity:1}
+.formula-label{font-size:.7rem;letter-spacing:.4em;color:var(--cyan);text-transform:uppercase;margin-bottom:1.4rem;font-weight:500}
+.formula{font-family:'Cormorant Garamond',serif;font-size:clamp(2.5rem,6vw,4.5rem);font-style:italic;color:var(--text);letter-spacing:.02em;display:flex;align-items:center;justify-content:center;gap:.4rem}
+.formula .sym{display:inline-block;opacity:0;transform:translateY(20px) scale(.8);text-shadow:0 0 30px rgba(0,212,255,.5)}
+.formula .sym.gold{color:var(--gold);text-shadow:0 0 30px rgba(255,209,102,.5)}
+.formula .sym.cyan{color:var(--cyan);text-shadow:0 0 30px rgba(0,212,255,.5)}
+.formula .sym.purple{color:var(--purple);text-shadow:0 0 30px rgba(179,102,255,.5)}
+.formula .sym.show{opacity:1;transform:translateY(0) scale(1);transition:all .6s cubic-bezier(.2,.8,.2,1)}
+.formula-note{font-family:'Cormorant Garamond',serif;font-style:italic;font-size:1.1rem;color:var(--text-2);margin-top:1.6rem;opacity:0;letter-spacing:.05em}
+.formula-note.show{opacity:1;transition:opacity .8s 1.6s}
+
+/* Coterminal labels (3D-anchored) */
+.coterm-labels{position:fixed;inset:0;pointer-events:none;z-index:10}
+.coterm-label{position:absolute;transform:translate(-50%,-50%);font-family:'JetBrains Mono',monospace;font-size:.78rem;color:var(--purple);background:rgba(8,14,28,.72);backdrop-filter:blur(8px);padding:.3rem .65rem;border-radius:6px;border:1px solid rgba(179,102,255,.35);box-shadow:0 0 22px rgba(179,102,255,.25);white-space:nowrap;opacity:0;transition:opacity .5s;letter-spacing:.05em}
+.coterm-label.show{opacity:1}
+.coterm-label.negative{color:var(--red);border-color:rgba(255,59,107,.35);box-shadow:0 0 22px rgba(255,59,107,.25)}
+
+/* Ending */
+.ending{position:fixed;inset:0;z-index:60;display:flex;align-items:center;justify-content:center;flex-direction:column;background:radial-gradient(ellipse at center,#000005 0%,#000 80%);opacity:0;pointer-events:none;transition:opacity 2s}
+.ending.show{opacity:1;pointer-events:auto}
+.ending-line{font-family:'Cormorant Garamond',serif;font-style:italic;font-size:clamp(1.4rem,3vw,2.2rem);color:var(--text-2);text-align:center;max-width:680px;line-height:1.5;opacity:0;letter-spacing:.04em}
+.ending-line .em{color:var(--gold);font-style:normal}
+.ending-title{font-family:'Cormorant Garamond',serif;font-size:clamp(3rem,7vw,5.5rem);font-weight:400;background:linear-gradient(180deg,#fff,#9eb8ff);-webkit-background-clip:text;background-clip:text;color:transparent;margin-top:2rem;opacity:0;letter-spacing:.02em}
+
+/* Scrollbar hidden */
+::-webkit-scrollbar{width:0;height:0}
+
+/* Responsive */
+@media (max-width:1280px){
+  .jee-panel{width:260px}
+  .control-panel,.calc-panel{width:300px}
+}
+@media (max-width:1024px){
+  .chapter-info{max-width:220px}
+  .chapter-title{font-size:1.8rem}
+}
+</style>
+</head>
+<body>
+
+<div id="canvas-container"></div>
+<div class="cursor" id="cursor"></div>
+<div class="cursor-ring" id="cursor-ring"></div>
+
+<!-- Intro -->
+<div class="intro-overlay" id="introOverlay">
+  <div class="intro-pretitle">A Cinematic Mathematical Experience</div>
+  <h1 class="intro-title">Coterminal Angles</h1>
+  <div class="intro-subtitle">One Position. Infinite Angles.</div>
+  <div class="intro-hint">Click anywhere to begin</div>
+</div>
+
+<!-- Top bar -->
+<header class="top-bar">
+  <div class="brand">
+    <div class="brand-mark"></div>
+    <div class="brand-text">
+      <div class="brand-name">Infinite · Circle</div>
+      <div class="brand-sub">A study in rotation</div>
+    </div>
+  </div>
+  <nav class="chapter-nav" id="chapterNav">
+    <button class="chapter-btn active" data-ch="overture">Overture</button>
+    <button class="chapter-btn" data-ch="genesis">Genesis</button>
+    <button class="chapter-btn" data-ch="theorem">Theorem</button>
+    <button class="chapter-btn" data-ch="mirror">Mirror</button>
+    <button class="chapter-btn" data-ch="formula">Formula</button>
+    <button class="chapter-btn" data-ch="spiral">Spiral</button>
+    <button class="chapter-btn" data-ch="analogies">Echoes</button>
+    <button class="chapter-btn" data-ch="finale">Finale</button>
+  </nav>
+</header>
+
+<!-- Chapter info -->
+<div class="chapter-info" id="chapterInfo">
+  <div class="chapter-num" id="chNum">01 — OVERTURE</div>
+  <h2 class="chapter-title" id="chTitle">A circle, drawn in light</h2>
+  <p class="chapter-desc" id="chDesc">Before there are numbers, there is geometry. Watch as a thousand particles remember the shape that will define everything that follows.</p>
+</div>
+
+<!-- Control panel -->
+<div class="panel control-panel">
+  <div class="panel-title">Interactive Console</div>
+  <div class="angle-readout">
+    <span class="value" id="angleValue">30</span>
+    <span class="unit">°</span>
+    <span class="rev" id="revInfo">0 revs</span>
+  </div>
+  <div class="slider-wrap">
+    <div class="slider-track"><div class="slider-fill" id="sliderFill"></div></div>
+    <input type="range" class="slider-input" id="angleSlider" min="-1440" max="1440" value="30" step="1">
+    <div class="slider-marks">
+      <span>−1440°</span><span>0°</span><span>1440°</span>
+    </div>
+  </div>
+  <div class="btn-grid">
+    <button class="btn" data-act="plus360">+360°</button>
+    <button class="btn" data-act="minus360">−360°</button>
+    <button class="btn" data-act="plus720">+720°</button>
+    <button class="btn" data-act="minus720">−720°</button>
+    <button class="btn gold" data-act="random">Random</button>
+    <button class="btn danger" data-act="reset">Reset</button>
+  </div>
+  <div class="toggle-row">
+    <div class="toggle on" id="togglePlay">Play</div>
+    <div class="toggle" id="toggleSlow">Slow</div>
+    <div class="toggle on" id="toggleTrail">Trails</div>
+  </div>
+</div>
+
+<!-- Calculator panel -->
+<div class="panel calc-panel">
+  <div class="panel-title">Coterminal Calculator</div>
+  <div class="calc-input-row">
+    <input type="number" class="calc-input" id="calcInput" placeholder="e.g. 870" value="870">
+    <button class="calc-go" id="calcGo">Reduce</button>
+  </div>
+  <div class="calc-steps" id="calcSteps">
+    <div class="calc-empty">Enter any angle — positive or negative — to reveal its coterminal form.</div>
+  </div>
+</div>
+
+<!-- JEE panel -->
+<div class="panel jee-panel">
+  <div class="panel-title">JEE Advanced Challenges</div>
+  <div class="jee-card" data-angle="-870">
+    <div class="jee-q">Find a positive coterminal angle</div>
+    <div class="jee-angle">θ = −870°</div>
+    <button class="jee-reveal">Reveal</button>
+    <div class="jee-answer"><span class="label">Answer</span>+210°</div>
+  </div>
+  <div class="jee-card" data-angle="1350">
+    <div class="jee-q">Reduce to [0°, 360°)</div>
+    <div class="jee-angle">θ = 1350°</div>
+    <button class="jee-reveal">Reveal</button>
+    <div class="jee-answer"><span class="label">Answer</span>270°</div>
+  </div>
+  <div class="jee-card" data-angle="2460">
+    <div class="jee-q">Reduce to [0°, 360°)</div>
+    <div class="jee-angle">θ = 2460°</div>
+    <button class="jee-reveal">Reveal</button>
+    <div class="jee-answer"><span class="label">Answer</span>300°</div>
+  </div>
+  <div class="jee-card" data-angle="-1110">
+    <div class="jee-q">Find a positive coterminal angle</div>
+    <div class="jee-angle">θ = −1110°</div>
+    <button class="jee-reveal">Reveal</button>
+    <div class="jee-answer"><span class="label">Answer</span>330°</div>
+  </div>
+</div>
+
+<!-- Coterminal labels layer -->
+<div class="coterm-labels" id="cotermLabels"></div>
+
+<!-- Formula overlay -->
+<div class="formula-overlay" id="formulaOverlay">
+  <div class="formula-label">The General Form</div>
+  <div class="formula" id="formulaSym">
+    <span class="sym gold">θ</span>
+    <span class="sym">+</span>
+    <span class="sym cyan">360°</span>
+    <span class="sym">·</span>
+    <span class="sym purple">n</span>
+  </div>
+  <div class="formula-note" id="formulaNote">where n is any integer — positive, negative, or zero</div>
+</div>
+
+<!-- Floating messages -->
+<div class="floating-msg" id="floatingMsg">
+  <div class="msg-line" id="floatingMsgLine"></div>
+</div>
+
+<!-- Ending -->
+<div class="ending" id="endingOverlay">
+  <div class="ending-line" id="endingLine1">In mathematics, <span class="em">different journeys</span><br>can lead to the <span class="em">same destination.</span></div>
+  <div class="ending-title" id="endingTitle">Coterminal Angles</div>
+</div>
+
+<script type="module">
+import * as THREE from 'three';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+
+/* ============================================================
+   CONSTANTS & STATE
+   ============================================================ */
+const COLORS = {
+  blue: 0x00d4ff,
+  cyan: 0x00f0ff,
+  purple: 0xb366ff,
+  gold: 0xffd166,
+  red: 0xff3b6b,
+  white: 0xffffff,
+  dim: 0x4a5a78
+};
+
+const state = {
+  angle: 30,            // current angle in degrees (can exceed 360)
+  displayAngle: 30,     // smoothed angle for UI
+  isPlaying: false,
+  slowMo: false,
+  showTrail: true,
+  chapter: 'overture',
+  introDone: false,
+  time: 0,
+  cameraTarget: new THREE.Vector3(0, 0, 0),
+  cameraOffset: new THREE.Vector3(0, 0, 13),
+  trailPoints: [],
+  maxTrailPoints: 120,
+  cotermRays: [],
+  spiralProgress: 0,
+  watchMode: false
+};
+
+const chapters = {
+  overture: { num:'01 — OVERTURE', title:'A circle, drawn in light', desc:'Before there are numbers, there is geometry. Watch as a thousand particles remember the shape that will define everything that follows.' },
+  genesis:  { num:'02 — GENESIS', title:'The unit circle, alive', desc:'A golden radius sweeps through silence. Each angle — 30°, 60°, 270°, 360° — leaves behind a fading trail of light. Direction matters. Position remembers.' },
+  theorem:  { num:'03 — THEOREM', title:'One position. Infinite angles.', desc:'Rotate 30°. Then 390°. Then 750°. Each journey is different — yet the terminal side arrives at exactly the same place. This is the theorem of coterminality.' },
+  mirror:   { num:'04 — MIRROR', title:'The negative reflection', desc:'Rotation reverses. −30°, −390°, −750° — the angle unwinds backwards through the same terminal side. Positive and negative families merge into one.' },
+  formula:  { num:'05 — FORMULA', title:'The general form', desc:'Every coterminal angle obeys a single rule: θ + 360°·n, where n is any integer. From this equation, an entire family is born.' },
+  spiral:   { num:'06 — SPIRAL', title:'Unrolling the revolutions', desc:'Lift each rotation into a new plane and a circle becomes a spiral. Press it back down — the spiral collapses. The terminal side never moves.' },
+  analogies:{ num:'07 — ECHOES', title:'Coterminality, everywhere', desc:'A watch hand. A compass needle. A steering wheel, a radar sweep, a Ferris wheel, a planet. The same angle, again and again — the world is full of coterminal echoes.' },
+  finale:   { num:'08 — FINALE', title:'Different journeys, same destination', desc:'Zoom out. The circle becomes a point of light. The mathematics remains — quiet, exact, eternal.' }
+};
+
+/* ============================================================
+   THREE.JS SETUP
+   ============================================================ */
+let scene, camera, renderer, composer, bloomPass, clock;
+let bgParticles, circleGroup, radius, radiusTip, radiusGlow, trailLine, trailGeo;
+let axesGroup, ticksGroup, cardinalGroup, coterminalGroup, spiralMesh, watchGroup;
+let raycaster = new THREE.Raycaster();
+let mouseNDC = new THREE.Vector2(0, 0);
+let mouseScreen = new THREE.Vector2(0, 0);
+let cameraShake = { x:0, y:0 };
+
+const container = document.getElementById('canvas-container');
+
+function initThree() {
+  scene = new THREE.Scene();
+  scene.fog = new THREE.FogExp2(0x000005, 0.025);
+
+  camera = new THREE.PerspectiveCamera(48, window.innerWidth/window.innerHeight, 0.1, 200);
+  camera.position.copy(state.cameraOffset);
+  camera.lookAt(0, 0, 0);
+
+  renderer = new THREE.WebGLRenderer({ antialias:true, alpha:true, powerPreference:'high-performance' });
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 1.15;
+  renderer.setClearColor(0x000005, 1);
+  container.appendChild(renderer.domElement);
+
+  // Post processing
+  composer = new EffectComposer(renderer);
+  composer.addPass(new RenderPass(scene, camera));
+  bloomPass = new UnrealBloomPass(
+    new THREE.Vector2(window.innerWidth, window.innerHeight),
+    1.1, 0.55, 0.82
+  );
+  composer.addPass(bloomPass);
+
+  clock = new THREE.Clock();
+
+  // Lights
+  scene.add(new THREE.AmbientLight(0x223355, 0.6));
+  const keyLight = new THREE.PointLight(0x00d4ff, 2.5, 60);
+  keyLight.position.set(8, 8, 10);
+  scene.add(keyLight);
+  const rimLight = new THREE.PointLight(0xb366ff, 1.8, 50);
+  rimLight.position.set(-10, -4, 6);
+  scene.add(rimLight);
+  const goldLight = new THREE.PointLight(0xffd166, 1.4, 30);
+  goldLight.position.set(0, 0, 4);
+  scene.add(goldLight);
+}
+
+/* ============================================================
+   PARTICLE TEXTURE
+   ============================================================ */
+function makeParticleTexture() {
+  const c = document.createElement('canvas');
+  c.width = c.height = 64;
+  const ctx = c.getContext('2d');
+  const g = ctx.createRadialGradient(32, 32, 0, 32, 32, 32);
+  g.addColorStop(0, 'rgba(255,255,255,1)');
+  g.addColorStop(0.35, 'rgba(255,255,255,0.55)');
+  g.addColorStop(1, 'rgba(255,255,255,0)');
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, 64, 64);
+  const tex = new THREE.CanvasTexture(c);
+  tex.needsUpdate = true;
+  return tex;
+}
+
+/* ============================================================
+   BACKGROUND PARTICLES (always present)
+   ============================================================ */
+function createBackground() {
+  const count = 1800;
+  const positions = new Float32Array(count * 3);
+  const colors = new Float32Array(count * 3);
+  const sizes = new Float32Array(count);
+  const initial = new Float32Array(count * 3);
+  const target = new Float32Array(count * 3);
+  const radius3 = new Float32Array(count);
+
+  const circleRadius = 3.0;
+
+  for (let i = 0; i < count; i++) {
+    // start scattered in a large sphere
+    const r = 8 + Math.random() * 22;
+    const t = Math.random() * Math.PI * 2;
+    const p = Math.acos(Math.random() * 2 - 1);
+    initial[i*3]   = r * Math.sin(p) * Math.cos(t);
+    initial[i*3+1] = r * Math.sin(p) * Math.sin(t);
+    initial[i*3+2] = r * Math.cos(p) * 0.6;
+
+    // target on a faint disk / circle
+    const angle = (i / count) * Math.PI * 2 + (Math.random() - 0.5) * 0.1;
+    const rr = circleRadius + (Math.random() - 0.5) * 0.3;
+    target[i*3]   = rr * Math.cos(angle);
+    target[i*3+1] = rr * Math.sin(angle);
+    target[i*3+2] = (Math.random() - 0.5) * 0.4;
+
+    radius3[i] = rr;
+
+    positions[i*3]   = initial[i*3];
+    positions[i*3+1] = initial[i*3+1];
+    positions[i*3+2] = initial[i*3+2];
+
+    // color blend: cyan / blue / purple / gold (rare)
+    const r2 = Math.random();
+    if (r2 < 0.55)      { colors[i*3]=0.0; colors[i*3+1]=0.83; colors[i*3+2]=1.0; }
+    else if (r2 < 0.80) { colors[i*3]=0.7; colors[i*3+1]=0.4; colors[i*3+2]=1.0; }
+    else if (r2 < 0.95) { colors[i*3]=0.05; colors[i*3+1]=0.3; colors[i*3+2]=0.7; }
+    else                { colors[i*3]=1.0; colors[i*3+1]=0.82; colors[i*3+2]=0.4; }
+
+    sizes[i] = Math.random() * 1.6 + 0.4;
+  }
+
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+  geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+  geo.setAttribute('size', new THREE.BufferAttribute(sizes, 1));
+  geo.userData = { initial, target, radius3, progress: 0 };
+
+  const mat = new THREE.PointsMaterial({
+    size: 0.085,
+    map: makeParticleTexture(),
+    vertexColors: true,
+    transparent: true,
+    opacity: 0.85,
+    blending: THREE.AdditiveBlending,
+    depthWrite: false,
+    sizeAttenuation: true
+  });
+
+  bgParticles = new THREE.Points(geo, mat);
+  scene.add(bgParticles);
+
+  // A few distant stars (separate, slower)
+  const starCount = 600;
+  const sp = new Float32Array(starCount * 3);
+  const sc = new Float32Array(starCount * 3);
+  for (let i = 0; i < starCount; i++) {
+    const r = 40 + Math.random() * 60;
+    const t = Math.random() * Math.PI * 2;
+    const p = Math.acos(Math.random() * 2 - 1);
+    sp[i*3]   = r * Math.sin(p) * Math.cos(t);
+    sp[i*3+1] = r * Math.sin(p) * Math.sin(t);
+    sp[i*3+2] = r * Math.cos(p);
+    const b = 0.4 + Math.random() * 0.6;
+    sc[i*3] = b * 0.6; sc[i*3+1] = b * 0.8; sc[i*3+2] = b;
+  }
+  const sgeo = new THREE.BufferGeometry();
+  sgeo.setAttribute('position', new THREE.BufferAttribute(sp, 3));
+  sgeo.setAttribute('color', new THREE.BufferAttribute(sc, 3));
+  const smat = new THREE.PointsMaterial({
+    size: 0.18, map: makeParticleTexture(), vertexColors: true,
+    transparent: true, opacity: 0.7, blending: THREE.AdditiveBlending,
+    depthWrite: false, sizeAttenuation: true
+  });
+  scene.add(new THREE.Points(sgeo, smat));
+}
+
+/* ============================================================
+   UNIT CIRCLE
+   ============================================================ */
+function createUnitCircle() {
+  circleGroup = new THREE.Group();
+  scene.add(circleGroup);
+
+  // Main glowing ring (multiple passes for depth)
+  const ringRadius = 3.0;
+  const ringGeo = new THREE.TorusGeometry(ringRadius, 0.018, 16, 220);
+  const ringMat = new THREE.MeshBasicMaterial({ color: COLORS.cyan, transparent:true, opacity:0.95 });
+  const ring = new THREE.Mesh(ringGeo, ringMat);
+  circleGroup.add(ring);
+
+  // Outer glow ring
+  const glowGeo = new THREE.TorusGeometry(ringRadius, 0.06, 16, 180);
+  const glowMat = new THREE.MeshBasicMaterial({ color: COLORS.blue, transparent:true, opacity:0.25, blending:THREE.AdditiveBlending });
+  circleGroup.add(new THREE.Mesh(glowGeo, glowMat));
+
+  const glow2 = new THREE.Mesh(new THREE.TorusGeometry(ringRadius, 0.16, 16, 140), new THREE.MeshBasicMaterial({ color: COLORS.purple, transparent:true, opacity:0.06, blending:THREE.AdditiveBlending }));
+  circleGroup.add(glow2);
+
+  // Tick marks every 30°
+  ticksGroup = new THREE.Group();
+  for (let i = 0; i < 36; i++) {
+    const ang = (i * 10) * Math.PI / 180;
+    const isMajor = (i % 3 === 0);
+    const len = isMajor ? 0.22 : 0.10;
+    const r1 = ringRadius - len;
+    const r2 = ringRadius + 0.04;
+    const geo = new THREE.BufferGeometry().setFromPoints([
+      new THREE.Vector3(r1 * Math.cos(ang), r1 * Math.sin(ang), 0.01),
+      new THREE.Vector3(r2 * Math.cos(ang), r2 * Math.sin(ang), 0.01)
+    ]);
+    const mat = new THREE.LineBasicMaterial({ color: isMajor ? COLORS.cyan : COLORS.dim, transparent:true, opacity: isMajor ? 0.7 : 0.35 });
+    ticksGroup.add(new THREE.Line(geo, mat));
+  }
+  circleGroup.add(ticksGroup);
+
+  // Cardinal angle markers (small spheres + labels via sprites)
+  cardinalGroup = new THREE.Group();
+  const cardinals = [
+    { deg: 0,   label: '0°',   pos: [ringRadius + 0.4, 0, 0.02] },
+    { deg: 90,  label: '90°',  pos: [0, ringRadius + 0.4, 0.02] },
+    { deg: 180, label: '180°', pos: [-ringRadius - 0.4, 0, 0.02] },
+    { deg: 270, label: '270°', pos: [0, -ringRadius - 0.4, 0.02] }
+  ];
+  cardinals.forEach(c => {
+    const s = new THREE.Mesh(
+      new THREE.SphereGeometry(0.06, 16, 16),
+      new THREE.MeshBasicMaterial({ color: COLORS.gold })
+    );
+    s.position.set(...c.pos);
+    cardinalGroup.add(s);
+    const sprite = makeTextSprite(c.label, '#ffd166', '14px');
+    sprite.position.set(c.pos[0] * 1.18, c.pos[1] * 1.18, 0.05);
+    sprite.scale.set(0.7, 0.35, 1);
+    cardinalGroup.add(sprite);
+  });
+  circleGroup.add(cardinalGroup);
+
+  // Axes
+  axesGroup = new THREE.Group();
+  const axisLen = 4.4;
+  const xAxisGeo = new THREE.BufferGeometry().setFromPoints([
+    new THREE.Vector3(-axisLen, 0, 0), new THREE.Vector3(axisLen, 0, 0)
+  ]);
+  const yAxisGeo = new THREE.BufferGeometry().setFromPoints([
+    new THREE.Vector3(0, -axisLen, 0), new THREE.Vector3(0, axisLen, 0)
+  ]);
+  axesGroup.add(new THREE.Line(xAxisGeo, new THREE.LineBasicMaterial({ color: COLORS.blue, transparent:true, opacity:0.35 })));
+  axesGroup.add(new THREE.Line(yAxisGeo, new THREE.LineBasicMaterial({ color: COLORS.blue, transparent:true, opacity:0.35 })));
+
+  // Axis arrowheads
+  const arrow = (x, y, dx, dy) => {
+    const g = new THREE.BufferGeometry().setFromPoints([
+      new THREE.Vector3(x, y, 0),
+      new THREE.Vector3(x - dx*0.18 + dy*0.06, y - dy*0.18 - dx*0.06, 0),
+      new THREE.Vector3(x - dx*0.18 - dy*0.06, y - dy*0.18 + dx*0.06, 0),
+      new THREE.Vector3(x, y, 0)
+    ]);
+    return new THREE.Line(g, new THREE.LineBasicMaterial({ color: COLORS.blue, transparent:true, opacity:0.6 }));
+  };
+  axesGroup.add(arrow(axisLen, 0, 1, 0));
+  axesGroup.add(arrow(0, axisLen, 0, 1));
+  axesGroup.add(arrow(-axisLen, 0, -1, 0));
+  axesGroup.add(arrow(0, -axisLen, 0, -1));
+  scene.add(axesGroup);
+
+  // Center point glow
+  const center = new THREE.Mesh(
+    new THREE.SphereGeometry(0.09, 24, 24),
+    new THREE.MeshBasicMaterial({ color: COLORS.white })
+  );
+  circleGroup.add(center);
+  const centerGlow = new THREE.Mesh(
+    new THREE.SphereGeometry(0.25, 24, 24),
+    new THREE.MeshBasicMaterial({ color: COLORS.gold, transparent:true, opacity:0.25, blending:THREE.AdditiveBlending })
+  );
+  circleGroup.add(centerGlow);
+
+  // Direction arrows (positive = CCW, negative = CW)
+  const dirArrowGeo = new THREE.BufferGeometry().setFromPoints([
+    new THREE.Vector3(ringRadius - 0.15, 0.4, 0.05),
+    new THREE.Vector3(ringRadius + 0.05, 0.05, 0.05),
+    new THREE.Vector3(ringRadius - 0.15, -0.3, 0.05)
+  ]);
+  const dirArrow = new THREE.Line(dirArrowGeo, new THREE.LineBasicMaterial({ color: COLORS.cyan, transparent:true, opacity:0.6 }));
+  dirArrow.name = 'posDirArrow';
+  circleGroup.add(dirArrow);
+}
+
+function makeTextSprite(text, color, fontSize) {
+  const c = document.createElement('canvas');
+  c.width = 256; c.height = 128;
+  const ctx = c.getContext('2d');
+  ctx.font = `500 ${fontSize} 'JetBrains Mono', monospace`;
+  ctx.fillStyle = color;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.shadowColor = color;
+  ctx.shadowBlur = 12;
+  ctx.fillText(text, 128, 64);
+  const tex = new THREE.CanvasTexture(c);
+  tex.needsUpdate = true;
+  const mat = new THREE.SpriteMaterial({ map: tex, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false });
+  const sp = new THREE.Sprite(mat);
+  return sp;
+}
+
+/* ============================================================
+   RADIUS (the rotating beam)
+   ============================================================ */
+function createRadius() {
+  radius = new THREE.Group();
+
+  // Main beam - thin cylinder
+  const beamGeo = new THREE.CylinderGeometry(0.025, 0.025, 3.0, 16, 1, true);
+  beamGeo.translate(0, 1.5, 0);
+  beamGeo.rotateZ(-Math.PI / 2);
+  const beamMat = new THREE.MeshBasicMaterial({ color: COLORS.gold, transparent:true, opacity:0.95 });
+  const beam = new THREE.Mesh(beamGeo, beamMat);
+  radius.add(beam);
+
+  // Glow halo
+  const haloGeo = new THREE.CylinderGeometry(0.09, 0.09, 3.0, 16, 1, true);
+  haloGeo.translate(0, 1.5, 0);
+  haloGeo.rotateZ(-Math.PI / 2);
+  const halo = new THREE.Mesh(haloGeo, new THREE.MeshBasicMaterial({ color: COLORS.gold, transparent:true, opacity:0.18, blending:THREE.AdditiveBlending }));
+  radius.add(halo);
+
+  // Tip - bright sphere
+  radiusTip = new THREE.Mesh(
+    new THREE.SphereGeometry(0.12, 24, 24),
+    new THREE.MeshBasicMaterial({ color: COLORS.white })
+  );
+  radiusTip.position.set(3.0, 0, 0);
+  radius.add(radiusTip);
+
+  // Tip glow
+  radiusGlow = new THREE.Mesh(
+    new THREE.SphereGeometry(0.32, 24, 24),
+    new THREE.MeshBasicMaterial({ color: COLORS.gold, transparent:true, opacity:0.4, blending:THREE.AdditiveBlending })
+  );
+  radiusGlow.position.set(3.0, 0, 0);
+  radius.add(radiusGlow);
+
+  // Tip outer glow
+  const outerGlow = new THREE.Mesh(
+    new THREE.SphereGeometry(0.7, 24, 24),
+    new THREE.MeshBasicMaterial({ color: COLORS.gold, transparent:true, opacity:0.12, blending:THREE.AdditiveBlending })
+  );
+  outerGlow.position.set(3.0, 0, 0);
+  radius.add(outerGlow);
+
+  scene.add(radius);
+}
+
+/* ============================================================
+   TRAIL SYSTEM
+   ============================================================ */
+function createTrail() {
+  trailGeo = new THREE.BufferGeometry();
+  const positions = new Float32Array(state.maxTrailPoints * 3);
+  const colors = new Float32Array(state.maxTrailPoints * 3);
+  trailGeo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+  trailGeo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+  trailGeo.setDrawRange(0, 0);
+
+  const mat = new THREE.LineBasicMaterial({
+    vertexColors: true,
+    transparent: true,
+    opacity: 0.9,
+    blending: THREE.AdditiveBlending,
+    depthWrite: false
+  });
+  trailLine = new THREE.Line(trailGeo, mat);
+  scene.add(trailLine);
+}
+
+function updateTrail() {
+  if (!state.showTrail || state.chapter === 'overture') {
+    trailGeo.setDrawRange(0, 0);
+    state.trailPoints = [];
+    return;
+  }
+  // tip world position
+  const tipPos = new THREE.Vector3(3.0, 0, 0);
+  tipPos.applyMatrix4(radius.matrixWorld);
+
+  // sample when moved enough
+  const last = state.trailPoints[state.trailPoints.length - 1];
+  if (!last || tipPos.distanceTo(last) > 0.04) {
+    state.trailPoints.push(tipPos.clone());
+    if (state.trailPoints.length > state.maxTrailPoints) state.trailPoints.shift();
+  }
+
+  const posAttr = trailGeo.attributes.position;
+  const colAttr = trailGeo.attributes.color;
+  const n = state.trailPoints.length;
+
+  for (let i = 0; i < n; i++) {
+    const p = state.trailPoints[i];
+    posAttr.array[i*3] = p.x;
+    posAttr.array[i*3+1] = p.y;
+    posAttr.array[i*3+2] = p.z;
+    const t = i / Math.max(1, n - 1);
+    // fade from gold (old) to bright (new)
+    const intensity = t;
+    colAttr.array[i*3]   = 1.0 * intensity;
+    colAttr.array[i*3+1] = 0.82 * intensity;
+    colAttr.array[i*3+2] = 0.4 * intensity;
+  }
+  posAttr.needsUpdate = true;
+  colAttr.needsUpdate = true;
+  trailGeo.setDrawRange(0, n);
+}
+
+/* ============================================================
+   COTERMINAL RAYS (stacked rays at same terminal side)
+   ============================================================ */
+function createCoterminalGroup() {
+  coterminalGroup = new THREE.Group();
+  scene.add(coterminalGroup);
+}
+
+function clearCoterminalRays() {
+  while (coterminalGroup.children.length) {
+    const c = coterminalGroup.children[0];
+    coterminalGroup.remove(c);
+    c.traverse(o => { if (o.geometry) o.geometry.dispose(); if (o.material) o.material.dispose(); });
+  }
+  state.cotermRays = [];
+  // Clear HTML labels
+  document.getElementById('cotermLabels').innerHTML = '';
+}
+
+function addCoterminalRay(angleDeg, label, isNegative=false, layer=0) {
+  const ang = angleDeg * Math.PI / 180;
+  const rayGroup = new THREE.Group();
+
+  // Beam
+  const beamGeo = new THREE.CylinderGeometry(0.012, 0.012, 3.0, 12, 1, true);
+  beamGeo.translate(0, 1.5, 0);
+  beamGeo.rotateZ(-Math.PI / 2);
+  const color = isNegative ? COLORS.red : COLORS.purple;
+  const beam = new THREE.Mesh(beamGeo, new THREE.MeshBasicMaterial({ color, transparent:true, opacity:0.85 }));
+  rayGroup.add(beam);
+
+  // Halo
+  const haloGeo = new THREE.CylinderGeometry(0.05, 0.05, 3.0, 12, 1, true);
+  haloGeo.translate(0, 1.5, 0);
+  haloGeo.rotateZ(-Math.PI / 2);
+  rayGroup.add(new THREE.Mesh(haloGeo, new THREE.MeshBasicMaterial({ color, transparent:true, opacity:0.18, blending:THREE.AdditiveBlending })));
+
+  // Tip
+  const tip = new THREE.Mesh(
+    new THREE.SphereGeometry(0.06, 16, 16),
+    new THREE.MeshBasicMaterial({ color: isNegative ? 0xffaaaa : 0xddaaff })
+  );
+  tip.position.set(3.0, 0, 0);
+  rayGroup.add(tip);
+
+  // Ring at terminal side (revolution marker)
+  if (layer > 0) {
+    const ringR = 3.0 + layer * 0.18;
+    const ringGeo = new THREE.TorusGeometry(ringR, 0.005, 8, 80, Math.PI * 0.18);
+    ringGeo.rotateZ(ang - Math.PI * 0.09);
+    const ringMat = new THREE.MeshBasicMaterial({ color, transparent:true, opacity:0.5, blending:THREE.AdditiveBlending });
+    rayGroup.add(new THREE.Mesh(ringGeo, ringMat));
+  }
+
+  // Slight z offset for stacking
+  rayGroup.position.z = layer * 0.06;
+  rayGroup.rotation.z = ang;
+
+  coterminalGroup.add(rayGroup);
+  state.cotermRays.push({ group: rayGroup, label, angleDeg, isNegative, layer });
+
+  // HTML label
+  const lbl = document.createElement('div');
+  lbl.className = 'coterm-label' + (isNegative ? ' negative' : '');
+  lbl.textContent = label;
+  document.getElementById('cotermLabels').appendChild(lbl);
+  rayGroup.userData.labelEl = lbl;
+
+  // Animate in
+  rayGroup.scale.set(0, 0, 0);
+  gsap.to(rayGroup.scale, { x:1, y:1, z:1, duration:0.9, ease:'power3.out' });
+  setTimeout(() => lbl.classList.add('show'), 400);
+
+  return rayGroup;
+}
+
+function updateCoterminalLabels() {
+  // Project tip of each ray to screen
+  state.cotermRays.forEach(rc => {
+    if (!rc.group.userData.labelEl) return;
+    const tipWorld = new THREE.Vector3(3.0, 0, 0);
+    tipWorld.applyMatrix4(rc.group.matrixWorld);
+    tipWorld.project(camera);
+    const x = (tipWorld.x * 0.5 + 0.5) * window.innerWidth;
+    const y = (-tipWorld.y * 0.5 + 0.5) * window.innerHeight;
+    // offset slightly outward
+    const ang = rc.angleDeg * Math.PI / 180;
+    const offX = Math.cos(ang) * 32;
+    const offY = -Math.sin(ang) * 32;
+    rc.group.userData.labelEl.style.left = (x + offX) + 'px';
+    rc.group.userData.labelEl.style.top  = (y + offY) + 'px';
+  });
+}
+
+/* ============================================================
+   SPIRAL (geometric insight)
+   ============================================================ */
+class SpiralCurve extends THREE.Curve {
+  constructor(revolutions=3, radius=3.0, pitch=0.45) {
+    super();
+    this.revolutions = revolutions;
+    this.radius = radius;
+    this.pitch = pitch;
+  }
+  getPoint(t, target = new THREE.Vector3()) {
+    const angle = t * this.revolutions * Math.PI * 2;
+    const z = (t - 0.5) * this.revolutions * this.pitch;
+    return target.set(this.radius * Math.cos(angle), this.radius * Math.sin(angle), z);
+  }
+}
+
+function createSpiral() {
+  const curve = new SpiralCurve(3, 3.0, 0.55);
+  const geo = new THREE.TubeGeometry(curve, 240, 0.022, 8, false);
+  const mat = new THREE.MeshBasicMaterial({ color: COLORS.purple, transparent:true, opacity:0.85 });
+  spiralMesh = new THREE.Mesh(geo, mat);
+  spiralMesh.visible = false;
+  scene.add(spiralMesh);
+
+  // Add a softer glow tube
+  const glowGeo = new THREE.TubeGeometry(curve, 240, 0.07, 8, false);
+  const glowMat = new THREE.MeshBasicMaterial({ color: COLORS.purple, transparent:true, opacity:0.15, blending:THREE.AdditiveBlending });
+  const glow = new THREE.Mesh(glowGeo, glowMat);
+  glow.visible = false;
+  spiralMesh.add(glow);
+  spiralMesh.userData.glow = glow;
+}
+
+/* ============================================================
+   WATCH / ANALOGY ELEMENTS
+   ============================================================ */
+function createWatch() {
+  watchGroup = new THREE.Group();
+  // 12 hour markers
+  for (let i = 0; i < 12; i++) {
+    const ang = (i * 30 - 90) * Math.PI / 180;
+    const isQuad = (i % 3 === 0);
+    const r1 = 2.5, r2 = isQuad ? 2.2 : 2.32;
+    const g = new THREE.BufferGeometry().setFromPoints([
+      new THREE.Vector3(r1 * Math.cos(ang), r1 * Math.sin(ang), 0.03),
+      new THREE.Vector3(r2 * Math.cos(ang), r2 * Math.sin(ang), 0.03)
+    ]);
+    watchGroup.add(new THREE.Line(g, new THREE.LineBasicMaterial({ color: isQuad ? COLORS.gold : COLORS.dim, transparent:true, opacity: isQuad ? 0.9 : 0.4 })));
+
+    if (isQuad) {
+      const nums = ['3','12','9','6'];
+      const numText = nums[i/3];
+      const sp = makeTextSprite(numText, '#ffd166', '20px');
+      sp.position.set(2.0 * Math.cos(ang), 2.0 * Math.sin(ang), 0.05);
+      sp.scale.set(0.5, 0.5, 1);
+      watchGroup.add(sp);
+    }
+  }
+  // Watch case outer ring
+  const caseGeo = new THREE.TorusGeometry(2.75, 0.04, 16, 100);
+  watchGroup.add(new THREE.Mesh(caseGeo, new THREE.MeshBasicMaterial({ color: COLORS.gold, transparent:true, opacity:0.6 })));
+  watchGroup.visible = false;
+  scene.add(watchGroup);
+}
+
+/* ============================================================
+   ANIMATION LOOP
+   ============================================================ */
+function animate() {
+  requestAnimationFrame(animate);
+  const dt = clock.getDelta();
+  state.time += dt;
+
+  // Smooth UI angle
+  state.displayAngle += (state.angle - state.displayAngle) * 0.18;
+  updateAngleReadout();
+
+  // Update radius rotation (visual angle is just the angle, rotation handles direction)
+  if (radius) {
+    const angRad = state.angle * Math.PI / 180;
+    radius.rotation.z = angRad;
+    // Subtle tip pulsing
+    const pulse = 1 + Math.sin(state.time * 4) * 0.08;
+    radiusGlow.scale.setScalar(pulse);
+  }
+
+  // Background particles - animate to target during overture, then drift
+  if (bgParticles) {
+    const ud = bgParticles.geometry.userData;
+    if (state.chapter === 'overture' && ud.progress < 1) {
+      ud.progress = Math.min(1, ud.progress + dt * 0.25);
+      const p = ud.progress;
+      const ease = 1 - Math.pow(1 - p, 3);
+      const posAttr = bgParticles.geometry.attributes.position;
+      for (let i = 0; i < posAttr.count; i++) {
+        posAttr.array[i*3]   = ud.initial[i*3]   + (ud.target[i*3]   - ud.initial[i*3])   * ease;
+        posAttr.array[i*3+1] = ud.initial[i*3+1] + (ud.target[i*3+1] - ud.initial[i*3+1]) * ease;
+        posAttr.array[i*3+2] = ud.initial[i*3+2] + (ud.target[i*3+2] - ud.initial[i*3+2]) * ease;
+      }
+      posAttr.needsUpdate = true;
+    } else {
+      // Gentle drift around target
+      const posAttr = bgParticles.geometry.attributes.position;
+      for (let i = 0; i < posAttr.count; i++) {
+        const tx = ud.target[i*3], ty = ud.target[i*3+1], tz = ud.target[i*3+2];
+        const r = ud.radius3[i];
+        const phase = i * 0.13;
+        posAttr.array[i*3]   = tx + Math.sin(state.time * 0.4 + phase) * 0.04;
+        posAttr.array[i*3+1] = ty + Math.cos(state.time * 0.35 + phase) * 0.04;
+        posAttr.array[i*3+2] = tz + Math.sin(state.time * 0.5 + phase * 1.7) * 0.06;
+      }
+      posAttr.needsUpdate = true;
+    }
+    bgParticles.rotation.z += dt * 0.02;
+  }
+
+  // Trail update
+  updateTrail();
+
+  // Coterminal labels
+  updateCoterminalLabels();
+
+  // Spiral animation
+  if (spiralMesh && spiralMesh.visible) {
+    spiralMesh.rotation.z += dt * 0.15;
+    spiralMesh.userData.glow.material.opacity = 0.12 + Math.sin(state.time * 1.5) * 0.06;
+  }
+
+  // Camera: cinematic float
+  if (state.introDone) {
+    const t = state.time;
+    const targetX = state.cameraOffset.x + Math.sin(t * 0.13) * 0.5 + cameraShake.x;
+    const targetY = state.cameraOffset.y + Math.cos(t * 0.17) * 0.35 + cameraShake.y;
+    const targetZ = state.cameraOffset.z + Math.sin(t * 0.09) * 0.4;
+    camera.position.x += (targetX - camera.position.x) * 0.04;
+    camera.position.y += (targetY - camera.position.y) * 0.04;
+    camera.position.z += (targetZ - camera.position.z) * 0.04;
+    camera.lookAt(state.cameraTarget);
+  }
+
+  // Auto play
+  if (state.isPlaying && state.introDone) {
+    const speed = state.slowMo ? 12 : 36;
+    state.angle += dt * speed;
+    if (state.angle > 1440) state.angle = -1440;
+    syncSliderToAngle();
+  }
+
+  composer.render();
+}
+
+/* ============================================================
+   ANGLE / UI SYNC
+   ============================================================ */
+function updateAngleReadout() {
+  const a = Math.round(state.displayAngle);
+  document.getElementById('angleValue').textContent = a;
+  const revs = Math.floor(Math.abs(a) / 360) * (a < 0 ? -1 : 1);
+  document.getElementById('revInfo').textContent = `${revs} rev${Math.abs(revs)===1?'':'s'}`;
+  // slider fill
+  const min = -1440, max = 1440;
+  const pct = ((state.displayAngle - min) / (max - min)) * 100;
+  document.getElementById('sliderFill').style.width = pct + '%';
+}
+
+function syncSliderToAngle() {
+  const slider = document.getElementById('angleSlider');
+  if (document.activeElement !== slider) {
+    slider.value = Math.round(state.angle);
+  }
+}
+
+function setAngle(deg, animate=true) {
+  if (animate) {
+    gsap.to(state, { angle: deg, duration: 1.0, ease: 'power2.inOut', onUpdate: syncSliderToAngle });
+  } else {
+    state.angle = deg;
+    syncSliderToAngle();
+  }
+}
+
+/* ============================================================
+   CHAPTER SYSTEM
+   ============================================================ */
+function setChapter(name) {
+  if (!chapters[name]) return;
+  state.chapter = name;
+
+  // Update nav buttons
+  document.querySelectorAll('.chapter-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.ch === name);
+  });
+
+  // Update chapter info
+  const c = chapters[name];
+  const info = document.getElementById('chapterInfo');
+  info.classList.remove('show');
+  setTimeout(() => {
+    document.getElementById('chNum').textContent = c.num;
+    document.getElementById('chTitle').textContent = c.title;
+    document.getElementById('chDesc').textContent = c.desc;
+    info.classList.add('show');
+  }, 200);
+
+  // Hide spiral & watch by default
+  if (spiralMesh) spiralMesh.visible = false;
+  if (watchGroup) watchGroup.visible = false;
+  if (axesGroup) axesGroup.visible = true;
+  if (ticksGroup) ticksGroup.visible = true;
+  if (cardinalGroup) cardinalGroup.visible = true;
+  clearCoterminalRays();
+  hideFormula();
+  hideFloatingMsg();
+
+  // Per-chapter actions
+  switch (name) {
+    case 'overture': playOverture(); break;
+    case 'genesis':  playGenesis(); break;
+    case 'theorem':  playTheorem(); break;
+    case 'mirror':   playMirror(); break;
+    case 'formula':  playFormula(); break;
+    case 'spiral':   playSpiral(); break;
+    case 'analogies':playAnalogies(); break;
+    case 'finale':   playFinale(); break;
+  }
+}
+
+function playOverture() {
+  state.introDone = false;
+  // reset particles to scattered
+  if (bgParticles) {
+    bgParticles.geometry.userData.progress = 0;
+  }
+  state.angle = 30;
+  syncSliderToAngle();
+  // dim circle elements during formation
+  gsap.to(circleGroup.scale, { x:0.4, y:0.4, z:0.4, duration:1, ease:'power2.in' });
+  gsap.to(radius.scale, { x:0, y:0, z:0, duration:0.6 });
+  gsap.to(axesGroup.scale, { x:0, y:0, duration:0.6 });
+  // Camera closer
+  gsap.to(state.cameraOffset, { x:0, y:0, z:8, duration:2, ease:'power2.inOut' });
+
+  // Animate particle formation
+  setTimeout(() => {
+    gsap.to(circleGroup.scale, { x:1, y:1, z:1, duration:1.6, ease:'power2.out' });
+    gsap.to(axesGroup.scale, { x:1, y:1, duration:1.4, ease:'power2.out' });
+  }, 2400);
+  setTimeout(() => {
+    gsap.to(radius.scale, { x:1, y:1, z:1, duration:1.0, ease:'back.out(1.4)' });
+    state.introDone = true;
+    gsap.to(state.cameraOffset, { x:0, y:0, z:13, duration:2.5, ease:'power2.inOut' });
+  }, 4200);
+}
+
+function playGenesis() {
+  state.introDone = true;
+  // Sequence of canonical angles
+  const seq = [30, 60, 120, 270, 360, 390, 750];
+  let i = 0;
+  gsap.to(radius.scale, { x:1, y:1, z:1, duration:0.6 });
+  gsap.to(circleGroup.scale, { x:1, y:1, z:1, duration:0.6 });
+  gsap.to(axesGroup.scale, { x:1, y:1, duration:0.6 });
+
+  function next() {
+    if (i >= seq.length || state.chapter !== 'genesis') return;
+    setAngle(seq[i], true);
+    i++;
+    setTimeout(next, 1800);
+  }
+  setTimeout(next, 600);
+}
+
+function playTheorem() {
+  const seq = [30, 390, 750, 1110, 1470];
+  let i = 0;
+  setAngle(30, true);
+
+  function next() {
+    if (state.chapter !== 'theorem') return;
+    if (i >= seq.length) {
+      // Show all coterminal rays
+      [30, 390, 750, 1110, 1470].forEach((a, idx) => {
+        setTimeout(() => addCoterminalRay(a, a + '°', false, idx), idx * 180);
+      });
+      setTimeout(() => {
+        showFloatingMsg('They all share the <span class="accent">SAME terminal side.</span>');
+      }, 1100);
+      return;
+    }
+    setAngle(seq[i], true);
+    i++;
+    setTimeout(next, 2000);
+  }
+  setTimeout(next, 800);
+}
+
+function playMirror() {
+  // negative sequence
+  const seq = [-30, -390, -750];
+  let i = 0;
+  setAngle(-30, true);
+
+  function next() {
+    if (state.chapter !== 'mirror') return;
+    if (i >= seq.length) {
+      // Show positive + negative together
+      [30, -30, 390, -390, 750, -750].forEach((a, idx) => {
+        setTimeout(() => addCoterminalRay(a, (a > 0 ? '+' : '') + a + '°', a < 0, Math.floor(idx/2)), idx * 140);
+      });
+      setTimeout(() => {
+        showFloatingMsg('Positive and negative — <span class="accent">one terminal side.</span>');
+      }, 1200);
+      return;
+    }
+    setAngle(seq[i], true);
+    i++;
+    setTimeout(next, 2000);
+  }
+  setTimeout(next, 800);
+}
+
+function playFormula() {
+  setAngle(30, true);
+  showFormula();
+}
+
+function playSpiral() {
+  spiralMesh.visible = true;
+  // Hide ticks temporarily for clarity
+  gsap.to(ticksGroup.scale, { x:0.6, y:0.6, duration:1 });
+  setAngle(390, true);
+  setTimeout(() => showFloatingMsg('No matter how many revolutions —<br>the <span class="accent">terminal side</span> remains unchanged.'), 1200);
+  // Collapse spiral back
+  setTimeout(() => {
+    if (spiralMesh && spiralMesh.visible) {
+      gsap.to(spiralMesh.scale, { z:0.05, duration:1.6, ease:'power2.inOut', yoyo:true, repeat:1 });
+    }
+  }, 3500);
+}
+
+function playAnalogies() {
+  watchGroup.visible = true;
+  setAngle(0, true);
+  // Sequence through revolutions
+  const seq = [0, 360, 720, 1080, 3600];
+  let i = 0;
+  function next() {
+    if (state.chapter !== 'analogies') return;
+    if (i >= seq.length) {
+      showFloatingMsg('A watch, a compass, a wheel, a planet —<br><span class="accent">coterminality, everywhere.</span>');
+      return;
+    }
+    setAngle(seq[i], true);
+    i++;
+    setTimeout(next, 2000);
+  }
+  setTimeout(next, 600);
+}
+
+function playFinale() {
+  // zoom out, fade
+  gsap.to(state.cameraOffset, { x:0, y:0, z:40, duration:4, ease:'power2.inOut' });
+  gsap.to(circleGroup.scale, { x:0.08, y:0.08, z:0.08, duration:4, ease:'power2.in' });
+  gsap.to(radius.scale, { x:0.08, y:0.08, z:0.08, duration:4, ease:'power2.in' });
+  gsap.to(axesGroup.scale, { x:0.08, y:0.08, duration:4, ease:'power2.in' });
+  gsap.to([ticksGroup.scale, cardinalGroup.scale], { x:0.08, y:0.08, duration:4, ease:'power2.in' });
+  setTimeout(() => {
+    document.getElementById('endingOverlay').classList.add('show');
+    gsap.to('#endingLine1', { opacity:1, duration:1.6, delay:0.4 });
+    gsap.to('#endingTitle', { opacity:1, duration:1.8, delay:2.2 });
+  }, 3500);
+}
+
+/* ============================================================
+   FORMULA OVERLAY
+   ============================================================ */
+function showFormula() {
+  const o = document.getElementById('formulaOverlay');
+  o.classList.add('show');
+  // Reset symbols
+  document.querySelectorAll('#formulaSym .sym').forEach(s => s.classList.remove('show'));
+  setTimeout(() => {
+    document.querySelectorAll('#formulaSym .sym').forEach((s, i) => {
+      setTimeout(() => s.classList.add('show'), i * 220);
+    });
+    setTimeout(() => document.getElementById('formulaNote').classList.add('show'), 1200);
+  }, 500);
+}
+function hideFormula() {
+  document.getElementById('formulaOverlay').classList.remove('show');
+  document.getElementById('formulaNote').classList.remove('show');
+}
+
+/* ============================================================
+   FLOATING MESSAGE
+   ============================================================ */
+let floatingMsgTimeout;
+function showFloatingMsg(html) {
+  const el = document.getElementById('floatingMsg');
+  document.getElementById('floatingMsgLine').innerHTML = html;
+  gsap.killTweensOf(el);
+  gsap.fromTo(el, { opacity:0, scale:0.92 }, { opacity:1, scale:1, duration:1.2, ease:'power2.out' });
+  clearTimeout(floatingMsgTimeout);
+  floatingMsgTimeout = setTimeout(() => {
+    gsap.to(el, { opacity:0, scale:1.05, duration:1.4, ease:'power2.in' });
+  }, 4200);
+}
+function hideFloatingMsg() {
+  gsap.to('#floatingMsg', { opacity:0, duration:0.6 });
+}
+
+/* ============================================================
+   UI / EVENT BINDINGS
+   ============================================================ */
+function initUI() {
+  // Chapter nav
+  document.querySelectorAll('.chapter-btn').forEach(b => {
+    b.addEventListener('click', () => setChapter(b.dataset.ch));
+  });
+
+  // Slider
+  const slider = document.getElementById('angleSlider');
+  slider.addEventListener('input', e => {
+    state.angle = parseInt(e.target.value);
+    state.isPlaying = false;
+    document.getElementById('togglePlay').classList.remove('on');
+  });
+
+  // Buttons
+  document.querySelectorAll('.btn').forEach(b => {
+    b.addEventListener('click', () => {
+      b.classList.add('ripple');
+      setTimeout(() => b.classList.remove('ripple'), 600);
+      const act = b.dataset.act;
+      switch (act) {
+        case 'plus360':  setAngle(state.angle + 360); break;
+        case 'minus360': setAngle(state.angle - 360); break;
+        case 'plus720':  setAngle(state.angle + 720); break;
+        case 'minus720': setAngle(state.angle - 720); break;
+        case 'random':   setAngle(Math.round((Math.random() * 2880 - 1440) / 10) * 10); break;
+        case 'reset':    setAngle(30); break;
+      }
+    });
+  });
+
+  // Toggles
+  document.getElementById('togglePlay').addEventListener('click', e => {
+    state.isPlaying = !state.isPlaying;
+    e.target.classList.toggle('on', state.isPlaying);
+  });
+  document.getElementById('toggleSlow').addEventListener('click', e => {
+    state.slowMo = !state.slowMo;
+    e.target.classList.toggle('on', state.slowMo);
+  });
+  document.getElementById('toggleTrail').addEventListener('click', e => {
+    state.showTrail = !state.showTrail;
+    e.target.classList.toggle('on', state.showTrail);
+    if (!state.showTrail) { state.trailPoints = []; trailGeo.setDrawRange(0,0); }
+  });
+
+  // JEE reveal
+  document.querySelectorAll('.jee-reveal').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const card = btn.closest('.jee-card');
+      card.classList.toggle('revealed');
+      if (card.classList.contains('revealed')) {
+        // animate the angle into the visualization
+        const ang = parseInt(card.dataset.angle);
+        setAngle(ang, true);
+      }
+    });
+  });
+
+  // Calculator
+  document.getElementById('calcGo').addEventListener('click', runCalculator);
+  document.getElementById('calcInput').addEventListener('keydown', e => {
+    if (e.key === 'Enter') runCalculator();
+  });
+
+  // Intro click to dismiss
+  document.getElementById('introOverlay').addEventListener('click', () => {
+    const o = document.getElementById('introOverlay');
+    if (!o.classList.contains('show-title')) return;
+    o.classList.add('hidden');
+    setTimeout(() => o.style.display = 'none', 1400);
+    setChapter('genesis');
+  });
+
+  // Show title sequence
+  setTimeout(() => {
+    const o = document.getElementById('introOverlay');
+    o.classList.add('show-title');
+    gsap.to('.intro-pretitle', { opacity:1, duration:1.4, ease:'power2.out' });
+    gsap.to('.intro-title', { opacity:1, duration:1.8, delay:0.6, ease:'power2.out' });
+    gsap.to('.intro-subtitle', { opacity:1, duration:1.6, delay:1.8, ease:'power2.out' });
+  }, 400);
+
+  // Ending restart on click
+  document.getElementById('endingOverlay').addEventListener('click', () => {
+    document.getElementById('endingOverlay').classList.remove('show');
+    gsap.to(state.cameraOffset, { x:0, y:0, z:13, duration:2, ease:'power2.inOut' });
+    gsap.to(circleGroup.scale, { x:1, y:1, z:1, duration:2, ease:'power2.out' });
+    gsap.to(radius.scale, { x:1, y:1, z:1, duration:2, ease:'power2.out' });
+    gsap.to(axesGroup.scale, { x:1, y:1, duration:2, ease:'power2.out' });
+    gsap.to([ticksGroup.scale, cardinalGroup.scale], { x:1, y:1, duration:2, ease:'power2.out' });
+    setTimeout(() => setChapter('overture'), 800);
+  });
+}
+
+/* ============================================================
+   CALCULATOR
+   ============================================================ */
+function runCalculator() {
+  const input = document.getElementById('calcInput');
+  const stepsEl = document.getElementById('calcSteps');
+  let val = parseInt(input.value);
+  if (isNaN(val)) return;
+
+  stepsEl.innerHTML = '';
+
+  // Determine direction
+  const isNeg = val < 0;
+  const op = isNeg ? '+' : '−';
+  const step = 360;
+
+  // Build steps
+  const stepList = [{ from: val }];
+  let cur = val;
+  let safety = 0;
+  while ((isNeg ? cur < 0 : cur >= 360) && safety < 12) {
+    const next = isNeg ? cur + 360 : cur - 360;
+    stepList.push({ from: cur, to: next });
+    cur = next;
+    safety++;
+  }
+  stepList.push({ final: cur });
+
+  // Animate each step
+  let delay = 0;
+  stepList.forEach((s, i) => {
+    setTimeout(() => {
+      const div = document.createElement('div');
+      div.className = 'calc-step' + (s.final !== undefined ? ' final' : '');
+      if (s.final !== undefined) {
+        div.innerHTML = `<span class="op">Coterminal</span><span class="arrow">→</span><span class="eq">${s.final}°</span>`;
+      } else if (s.to !== undefined) {
+        div.innerHTML = `<span class="op">${s.from}°</span><span class="arrow">${op} 360°</span><span class="eq">= ${s.to}°</span>`;
+      } else {
+        div.innerHTML = `<span class="op">Start</span><span class="arrow">→</span><span class="eq">${s.from}°</span>`;
+      }
+      stepsEl.appendChild(div);
+      requestAnimationFrame(() => div.classList.add('show'));
+    }, delay);
+    delay += 380;
+  });
+
+  // Set the radius to the final angle
+  setTimeout(() => {
+    setAngle(cur, true);
+  }, delay + 200);
+}
+
+/* ============================================================
+   CUSTOM CURSOR
+   ============================================================ */
+function initCursor() {
+  const cur = document.getElementById('cursor');
+  const ring = document.getElementById('cursor-ring');
+  let mx = window.innerWidth / 2, my = window.innerHeight / 2;
+  let rx = mx, ry = my;
+
+  window.addEventListener('mousemove', e => {
+    mx = e.clientX; my = e.clientY;
+    cur.style.left = mx + 'px';
+    cur.style.top = my + 'px';
+  });
+
+  function loop() {
+    rx += (mx - rx) * 0.18;
+    ry += (my - ry) * 0.18;
+    ring.style.left = rx + 'px';
+    ring.style.top = ry + 'px';
+    requestAnimationFrame(loop);
+  }
+  loop();
+
+  // hover states
+  document.addEventListener('mouseover', e => {
+    if (e.target.closest('button, .toggle, .jee-card, .calc-input, .chapter-btn, .slider-input, input')) {
+      ring.classList.add('hover');
+    } else {
+      ring.classList.remove('hover');
+    }
+  });
+  document.addEventListener('mousedown', () => ring.classList.add('click'));
+  document.addEventListener('mouseup', () => ring.classList.remove('click'));
+}
+
+/* ============================================================
+   RESIZE
+   ============================================================ */
+window.addEventListener('resize', () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  composer.setSize(window.innerWidth, window.innerHeight);
+  bloomPass.setSize(window.innerWidth, window.innerHeight);
+});
+
+/* ============================================================
+   BOOT
+   ============================================================ */
+initThree();
+createBackground();
+createUnitCircle();
+createRadius();
+createTrail();
+createCoterminalGroup();
+createSpiral();
+createWatch();
+initUI();
+initCursor();
+setChapter('overture');
+animate();
+
+// Subtle parallax on mouse move
+window.addEventListener('mousemove', e => {
+  const x = (e.clientX / window.innerWidth - 0.5) * 2;
+  const y = (e.clientY / window.innerHeight - 0.5) * 2;
+  cameraShake.x = x * 0.3;
+  cameraShake.y = -y * 0.3;
+});
+
+</script>
+</body>
+</html>
