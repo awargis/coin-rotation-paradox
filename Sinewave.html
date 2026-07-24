@@ -1,1110 +1,779 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>The Geometry of Waves</title>
-    <style>
-        :root {
-            --bg-color: #050814;
-            --grid-color: rgba(255, 255, 255, 0.04);
-            --axis-color: rgba(255, 255, 255, 0.15);
-            --text-main: rgba(255, 255, 255, 0.95);
-            --text-muted: rgba(255, 255, 255, 0.5);
-            --color-cyan: #00e5ff;
-            --color-amber: #ffaa00;
-            --color-magenta: #ff007f;
-            --color-glass: rgba(15, 20, 35, 0.6);
-            --color-glass-border: rgba(255, 255, 255, 0.1);
-            --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-        }
-
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-            user-select: none;
-        }
-
-        body {
-            background-color: var(--bg-color);
-            color: var(--text-main);
-            font-family: var(--font-family);
-            overflow: hidden;
-            width: 100vw;
-            height: 100vh;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            -webkit-font-smoothing: antialiased;
-        }
-
-        #canvas-container {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            z-index: 1;
-        }
-
-        canvas {
-            display: block;
-            width: 100%;
-            height: 100%;
-        }
-
-        .ui-layer {
-            position: absolute;
-            z-index: 10;
-            pointer-events: none; /* Let clicks pass through to canvas by default */
-            display: flex;
-            flex-direction: column;
-            width: 100%;
-            height: 100%;
-            padding: 2rem;
-        }
-
-        .interactive-panel {
-            pointer-events: auto;
-            background: var(--color-glass);
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
-            border: 1px solid var(--color-glass-border);
-            border-radius: 16px;
-            padding: 1.5rem;
-            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
-            transition: opacity 0.5s ease, transform 0.5s ease;
-        }
-
-        /* Cinematic Narrative Text Overlay */
-        #cinematic-overlay {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            background: rgba(5, 8, 20, 0.8);
-            z-index: 20;
-            transition: opacity 1s ease;
-        }
-
-        .narrative-text {
-            font-size: 2.5rem;
-            font-weight: 300;
-            letter-spacing: 2px;
-            text-align: center;
-            opacity: 0;
-            transform: translateY(20px);
-            transition: all 0.8s ease;
-            position: absolute;
-            text-shadow: 0 0 20px rgba(0, 229, 255, 0.3);
-        }
-
-        .narrative-text.active {
-            opacity: 1;
-            transform: translateY(0);
-        }
-
-        /* Top Bar Controls */
-        #top-bar {
-            position: absolute;
-            top: 2rem;
-            left: 50%;
-            transform: translateX(-50%);
-            display: flex;
-            gap: 1rem;
-            opacity: 0; /* Hidden during intro */
-        }
-
-        /* Guided Lesson Panel */
-        #teacher-panel {
-            position: absolute;
-            bottom: 3rem;
-            left: 50%;
-            transform: translateX(-50%);
-            max-width: 600px;
-            text-align: center;
-            opacity: 0;
-            display: flex;
-            flex-direction: column;
-            gap: 1rem;
-            align-items: center;
-        }
-
-        #teacher-text {
-            font-size: 1.25rem;
-            line-height: 1.5;
-            font-weight: 400;
-        }
-
-        /* Explorer Sidebar */
-        #explorer-panel {
-            position: absolute;
-            top: 50%;
-            right: 2rem;
-            transform: translateY(-50%);
-            width: 300px;
-            display: flex;
-            flex-direction: column;
-            gap: 1.5rem;
-            opacity: 0;
-            pointer-events: none;
-        }
-
-        .control-group {
-            display: flex;
-            flex-direction: column;
-            gap: 0.5rem;
-        }
-
-        .control-label {
-            font-size: 0.75rem;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            color: var(--text-muted);
-            display: flex;
-            justify-content: space-between;
-        }
-
-        input[type=range] {
-            -webkit-appearance: none;
-            width: 100%;
-            background: transparent;
-        }
-
-        input[type=range]::-webkit-slider-thumb {
-            -webkit-appearance: none;
-            height: 16px;
-            width: 16px;
-            border-radius: 50%;
-            background: var(--color-cyan);
-            cursor: pointer;
-            margin-top: -6px;
-            box-shadow: 0 0 10px rgba(0, 229, 255, 0.5);
-        }
-
-        input[type=range]::-webkit-slider-runnable-track {
-            width: 100%;
-            height: 4px;
-            cursor: pointer;
-            background: var(--axis-color);
-            border-radius: 2px;
-        }
-
-        button {
-            background: transparent;
-            border: 1px solid var(--text-muted);
-            color: var(--text-main);
-            padding: 0.5rem 1rem;
-            border-radius: 8px;
-            font-family: inherit;
-            cursor: pointer;
-            transition: all 0.2s;
-            font-size: 0.9rem;
-        }
-
-        button:hover {
-            background: rgba(255, 255, 255, 0.1);
-            border-color: var(--text-main);
-        }
-
-        button.active-btn {
-            background: var(--text-main);
-            color: var(--bg-color);
-        }
-
-        /* Checkbox styling */
-        .toggle-row {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            font-size: 0.85rem;
-            cursor: pointer;
-        }
-
-        .toggle-row input {
-            accent-color: var(--color-cyan);
-            cursor: pointer;
-        }
-
-        .hidden { display: none !important; }
-        .visible { opacity: 1 !important; pointer-events: auto !important; }
-
-        /* Real-time Math Data Panel */
-        #data-panel {
-            position: absolute;
-            top: 2rem;
-            left: 2rem;
-            min-width: 200px;
-            opacity: 0;
-        }
-
-        .math-row {
-            display: flex;
-            justify-content: space-between;
-            font-family: 'Courier New', Courier, monospace;
-            font-size: 1.1rem;
-            margin-bottom: 0.5rem;
-        }
-        
-        .math-color-sine { color: var(--color-amber); font-weight: bold; }
-        .math-color-cos { color: var(--color-magenta); font-weight: bold; }
-        .math-color-angle { color: var(--color-cyan); }
-
-        /* Responsive adjustments */
-        @media (max-width: 1024px) {
-            #explorer-panel { top: auto; bottom: 2rem; right: 50%; transform: translateX(50%); width: 90%; flex-direction: row; flex-wrap: wrap; }
-            .control-group { flex: 1; min-width: 120px; }
-            #teacher-panel { bottom: 12rem; }
-        }
-        @media (max-width: 768px) {
-            #top-bar { top: 1rem; flex-wrap: wrap; justify-content: center; width: 90%; }
-            #data-panel { display: none; } /* Hide complex data on small mobile */
-            #teacher-panel { bottom: 1rem; width: 90%; padding: 1rem; }
-            #teacher-text { font-size: 1rem; }
-            .narrative-text { font-size: 1.5rem; }
-        }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Shadow That Became a Wave</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#070b15;--sin:#f5c842;--cos:#4dd9f5;
+  --pt:#f8f4e8;--ring:#7a8fa8;--ax:rgba(180,200,230,.40);
+  --dim:rgba(180,200,230,.30);--tan:#f54d7d;
+}
+html,body{width:100%;height:100%;background:var(--bg);
+  font-family:'Inter',-apple-system,BlinkMacSystemFont,sans-serif;
+  color:var(--pt);overflow:hidden}
+#app{display:flex;flex-direction:column;height:100vh;width:100vw}
+#top{height:48px;display:flex;align-items:center;justify-content:space-between;
+  padding:0 20px;border-bottom:1px solid rgba(180,200,230,.08);flex-shrink:0}
+#title{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--dim)}
+#hud{display:flex;gap:20px;align-items:center}
+.hv{font-size:12px;font-family:'JetBrains Mono','Courier New',monospace;letter-spacing:.04em}
+.hs{color:var(--sin)}.hc{color:var(--cos)}.ht{color:var(--tan)}
+.hth{color:rgba(248,244,232,.75)}
+#row{display:flex;flex:1;overflow:hidden;min-height:0}
+#lp{width:44%;position:relative;border-right:1px solid rgba(180,200,230,.08)}
+#rp{flex:1;position:relative}
+#cc,#wc{display:block;width:100%;height:100%;cursor:crosshair}
+#bot{height:58px;display:flex;align-items:center;justify-content:center;
+  gap:14px;padding:0 16px;border-top:1px solid rgba(180,200,230,.08);
+  flex-shrink:0;background:rgba(7,11,21,.85);flex-wrap:wrap}
+input[type=range]{-webkit-appearance:none;appearance:none;
+  height:2px;background:rgba(180,200,230,.18);border-radius:2px;outline:none;cursor:pointer}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;
+  width:13px;height:13px;border-radius:50%;cursor:pointer}
+#sl{width:180px}
+#sl::-webkit-slider-thumb{background:var(--pt);box-shadow:0 0 6px rgba(248,244,232,.5)}
+#spd{width:70px}
+#spd::-webkit-slider-thumb{background:rgba(180,200,230,.6)}
+.lbl{font-size:11px;color:var(--dim);letter-spacing:.06em;white-space:nowrap}
+#spdv{font-size:11px;font-family:monospace;color:var(--dim);width:30px}
+.btn{height:32px;padding:0 14px;border:1px solid rgba(180,200,230,.18);
+  border-radius:6px;background:rgba(180,200,230,.05);color:rgba(248,244,232,.75);
+  font-size:11px;letter-spacing:.08em;text-transform:uppercase;
+  cursor:pointer;transition:all .18s;font-family:inherit;white-space:nowrap}
+.btn:hover{background:rgba(180,200,230,.10);border-color:rgba(180,200,230,.35)}
+.on{background:rgba(248,244,232,.08)!important;border-color:rgba(248,244,232,.40)!important;
+  color:var(--pt)!important;box-shadow:0 0 10px rgba(248,244,232,.08)!important}
+.son{background:rgba(245,200,66,.08)!important;border-color:var(--sin)!important;
+  color:var(--sin)!important;box-shadow:0 0 10px rgba(245,200,66,.15)!important}
+.con{background:rgba(77,217,245,.08)!important;border-color:var(--cos)!important;
+  color:var(--cos)!important;box-shadow:0 0 10px rgba(77,217,245,.12)!important}
+@media(max-width:700px){
+  #row{flex-direction:column}
+  #lp{width:100%;height:52%;border-right:none;border-bottom:1px solid rgba(180,200,230,.08)}
+  #rp{height:48%}
+  #hud .hv:nth-child(n+3){display:none}
+  #bot{height:auto;padding:8px;gap:8px}
+  #sl{width:120px}
+}
+</style>
 </head>
 <body>
-
-    <div id="canvas-container">
-        <canvas id="math-canvas"></canvas>
+<div id="app">
+  <div id="top">
+    <div id="title">The Shadow That Became a Wave</div>
+    <div id="hud">
+      <div class="hv hth">&#952; = <span id="vth">0.0&deg;</span></div>
+      <div class="hv hs">sin&#952; = <span id="vs">0.000</span></div>
+      <div class="hv hc">cos&#952; = <span id="vc">1.000</span></div>
+      <div class="hv ht">tan&#952; = <span id="vt">0.000</span></div>
     </div>
+  </div>
+  <div id="row">
+    <div id="lp"><canvas id="cc"></canvas></div>
+    <div id="rp"><canvas id="wc"></canvas></div>
+  </div>
+  <div id="bot">
+    <span class="lbl">&#952;</span>
+    <input type="range" id="sl" min="0" max="360" step="0.5" value="0">
+    <button class="btn on" id="bplay">&#9654; Animate</button>
+    <button class="btn" id="breset">Reset Wave</button>
+    <button class="btn son" id="bsin">Sine</button>
+    <button class="btn con" id="bcos">Cosine</button>
+    <button class="btn on" id="btri">Triangle</button>
+    <span class="lbl">Speed</span>
+    <input type="range" id="spd" min="0.1" max="3" step="0.1" value="0.5">
+    <span id="spdv">0.5&#215;</span>
+  </div>
+</div>
+<script>
+(function(){
+'use strict';
 
-    <!-- Cinematic Intro Overlay -->
-    <div id="cinematic-overlay">
-        <div class="narrative-text" id="text-1">Where does the <span style="color: var(--color-amber)">SINE WAVE</span> come from?</div>
-        <div class="narrative-text" id="text-2">Is it just an abstract formula?</div>
-        <div class="narrative-text" id="text-3">Or is there a hidden motion behind it?</div>
-        <div class="narrative-text" id="text-4">Let's uncover the geometry.</div>
-    </div>
+// ── Canvas Setup ──────────────────────────────────────────────────────────────
+var CC = document.getElementById('cc');
+var WC = document.getElementById('wc');
+var cc = CC.getContext('2d');
+var wc = WC.getContext('2d');
+var DPR = Math.min(window.devicePixelRatio || 1, 2);
 
-    <div class="ui-layer">
-        
-        <!-- Live Data Panel -->
-        <div id="data-panel" class="interactive-panel">
-            <div class="math-row">
-                <span>θ =</span>
-                <span class="math-color-angle" id="val-theta">0.00 rad</span>
-            </div>
-            <div class="math-row">
-                <span>P =</span>
-                <span>(<span id="val-x">1.00</span>, <span id="val-y">0.00</span>)</span>
-            </div>
-            <hr style="border:0; border-top: 1px solid var(--color-glass-border); margin: 8px 0;">
-            <div class="math-row">
-                <span>sin(θ) =</span>
-                <span class="math-color-sine" id="val-sin">0.00</span>
-            </div>
-            <div class="math-row">
-                <span>cos(θ) =</span>
-                <span class="math-color-cos" id="val-cos">1.00</span>
-            </div>
-        </div>
+function resize() {
+  var lp = document.getElementById('lp');
+  var rp = document.getElementById('rp');
+  CC.width  = lp.clientWidth  * DPR;
+  CC.height = lp.clientHeight * DPR;
+  CC.style.width  = lp.clientWidth  + 'px';
+  CC.style.height = lp.clientHeight + 'px';
+  WC.width  = rp.clientWidth  * DPR;
+  WC.height = rp.clientHeight * DPR;
+  WC.style.width  = rp.clientWidth  + 'px';
+  WC.style.height = rp.clientHeight + 'px';
+}
+window.addEventListener('resize', resize);
+resize();
 
-        <!-- Top Navigation -->
-        <div id="top-bar" class="interactive-panel">
-            <button id="btn-play">Pause</button>
-            <button id="btn-restart">↻ Reset</button>
-            <div style="width: 1px; background: var(--color-glass-border); margin: 0 10px;"></div>
-            <button id="btn-mode-guided" class="active-btn">Guided Story</button>
-            <button id="btn-mode-explore">Free Explore</button>
-        </div>
+// ── State ─────────────────────────────────────────────────────────────────────
+var S = {
+  theta: 0,
+  animating: false,
+  speed: 0.5,
+  showSin: true,
+  showCos: true,
+  showTri: true,
+  waveHist: [],
+  waveAngle: 0,
+  lastWavePush: -1e9,
+  arcTrace: [],
+  dragging: false,
+  lastTime: null,
+  complete: false
+};
+var WAVE_STEP = Math.PI / 90;
+var MAX_WAVE  = 2000;
+var ARC_LEN   = 80;
+var PI2       = Math.PI * 2;
 
-        <!-- Teacher / Narrative Panel -->
-        <div id="teacher-panel" class="interactive-panel">
-            <div id="teacher-text">Welcome to the laboratory.</div>
-            <button id="btn-next-scene" style="margin-top: 10px; background: var(--color-cyan); color: black; border: none; font-weight: bold;">Next Step →</button>
-        </div>
+// ── Stars ─────────────────────────────────────────────────────────────────────
+var STARS = [];
+for (var i = 0; i < 90; i++) {
+  STARS.push({
+    rx: Math.random(), ry: Math.random(),
+    r:  Math.random() * 1.0 + 0.2,
+    a:  Math.random() * 0.45 + 0.08
+  });
+}
 
-        <!-- Explorer Controls (Hidden initially) -->
-        <div id="explorer-panel" class="interactive-panel">
-            <div style="font-weight: bold; margin-bottom: 0.5rem; text-align: center;">Wave Parameters</div>
-            <div class="control-group">
-                <div class="control-label"><span>Amplitude (A)</span> <span id="lbl-amp">1.0</span></div>
-                <input type="range" id="sl-amp" min="0.1" max="2.0" step="0.1" value="1.0">
-            </div>
-            <div class="control-group">
-                <div class="control-label"><span>Speed (ω)</span> <span id="lbl-freq">1.0</span></div>
-                <input type="range" id="sl-freq" min="0" max="3" step="0.1" value="1.0">
-            </div>
-            <div class="control-group">
-                <div class="control-label"><span>Phase (φ)</span> <span id="lbl-phase">0.0</span></div>
-                <input type="range" id="sl-phase" min="-3.14" max="3.14" step="0.1" value="0">
-            </div>
-            
-            <hr style="border:0; border-top: 1px solid var(--color-glass-border); margin: 10px 0;">
-            
-            <div style="font-weight: bold; margin-bottom: 0.5rem; font-size: 0.85rem;">Display Toggles</div>
-            <label class="toggle-row"><input type="checkbox" id="chk-sine" checked> Show Sine (Vertical)</label>
-            <label class="toggle-row"><input type="checkbox" id="chk-cos"> Show Cosine (Horizontal)</label>
-            <label class="toggle-row"><input type="checkbox" id="chk-beam" checked> Show Connection Beam</label>
-            <label class="toggle-row"><input type="checkbox" id="chk-degrees"> Use Degrees</label>
-        </div>
-    </div>
+function drawStars(ctx, W, H) {
+  ctx.save();
+  for (var i = 0; i < STARS.length; i++) {
+    var s = STARS[i];
+    ctx.beginPath();
+    ctx.arc(s.rx * W, s.ry * H, s.r * DPR, 0, PI2);
+    ctx.fillStyle = 'rgba(180,200,230,' + s.a + ')';
+    ctx.fill();
+  }
+  ctx.restore();
+}
 
-    <script>
-        /**
-         * The Geometry of Waves - Core Engine
-         */
-        const canvas = document.getElementById('math-canvas');
-        const ctx = canvas.getContext('2d', { alpha: false }); // Optimize performance
+// ── Coordinate helpers ────────────────────────────────────────────────────────
+function SC()  { return Math.min(CC.width, CC.height) * 0.295; }
+function wx(v) { return CC.width  * 0.5 + v * SC(); }
+function wy(v) { return CC.height * 0.5 - v * SC(); }
+function cxw(p){ return (p - CC.width  * 0.5) / SC(); }
+function cyw(p){ return (CC.height * 0.5 - p) / SC(); }
 
-        // DOM Elements
-        const overlay = document.getElementById('cinematic-overlay');
-        const topBar = document.getElementById('top-bar');
-        const dataPanel = document.getElementById('data-panel');
-        const teacherPanel = document.getElementById('teacher-panel');
-        const explorerPanel = document.getElementById('explorer-panel');
-        const teacherText = document.getElementById('teacher-text');
-        
-        // --- Application State ---
-        const state = {
-            width: 0,
-            height: 0,
-            dpr: 1,
-            time: 0,            // Internal time driver
-            angle: 0,           // Current θ in radians
-            speed: 0.015,       // Base angular velocity
-            isPlaying: true,
-            mode: 'guided',     // 'guided' or 'explore'
-            currentScene: -1,   // -1 is intro
-            isDragging: false,
-            dragTarget: null,   // 'circle' or 'graph'
-            
-            // Mathematical Parameters
-            A: 1.0,             // Amplitude
-            w: 1.0,             // Frequency (omega)
-            phi: 0.0,           // Phase shift
-            
-            // Layout (Calculated dynamically)
-            layout: {
-                cx: 0, cy: 0, R: 0,   // Circle center and radius
-                gx: 0, gy: 0, gW: 0   // Graph origin and width
-            },
+function glo(ctx, col, r) { ctx.shadowColor = col; ctx.shadowBlur = r * DPR; }
+function noG(ctx)          { ctx.shadowColor = 'transparent'; ctx.shadowBlur = 0; }
+function arc(ctx, x, y, r) { ctx.beginPath(); ctx.arc(x, y, r, 0, PI2); }
 
-            // Display Toggles (driven by scene or user)
-            showGrid: false,
-            showAxes: false,
-            showCircle: false,
-            showPoint: true,    // Intro point
-            showAngle: false,
-            showSineProj: false,
-            showCosProj: false,
-            showSineGraph: false,
-            showCosGraph: false,
-            showBeam: false,
-            useDegrees: false,
-            
-            history: [], // Stores {theta, y_sin, y_cos} for trails
-            maxHistory: 300
-        };
+// ── Draw: Circle Panel ────────────────────────────────────────────────────────
+function drawCircle() {
+  var ctx = cc;
+  var W = CC.width, H = CC.height, sc = SC();
+  var ox = W * 0.5, oy = H * 0.5;
 
-        // --- Colors ---
-        const colors = {
-            bg: '#050814',
-            grid: 'rgba(255, 255, 255, 0.05)',
-            axis: 'rgba(255, 255, 255, 0.2)',
-            text: '#ffffff',
-            cyan: '#00e5ff',
-            amber: '#ffaa00',
-            magenta: '#ff007f',
-            beam: 'rgba(255, 255, 255, 0.3)'
-        };
+  ctx.fillStyle = '#070b15';
+  ctx.fillRect(0, 0, W, H);
+  drawStars(ctx, W, H);
 
-        // --- Resize & Setup ---
-        function resize() {
-            state.dpr = window.devicePixelRatio || 1;
-            state.width = window.innerWidth;
-            state.height = window.innerHeight;
-            
-            canvas.width = state.width * state.dpr;
-            canvas.height = state.height * state.dpr;
-            canvas.style.width = `${state.width}px`;
-            canvas.style.height = `${state.height}px`;
-            
-            ctx.scale(state.dpr, state.dpr);
-            
-            // Calculate layout architecture based on screen aspect ratio
-            const isMobile = state.width < 768;
-            
-            if (isMobile) {
-                // Stacked layout for mobile
-                state.layout.R = Math.min(state.width * 0.3, state.height * 0.15);
-                state.layout.cx = state.width * 0.5;
-                state.layout.cy = state.height * 0.3; // Circle at top
-                
-                state.layout.gx = state.width * 0.1;
-                state.layout.gy = state.height * 0.7; // Graph at bottom
-                state.layout.gW = state.width * 0.8;
-            } else {
-                // Side-by-side layout for desktop/tablet
-                state.layout.R = Math.min(state.width * 0.15, state.height * 0.25);
-                state.layout.cx = state.width * 0.25;
-                state.layout.cy = state.height * 0.5; // Circle on left
-                
-                state.layout.gx = state.width * 0.55;
-                state.layout.gy = state.height * 0.5; // Graph on right
-                state.layout.gW = state.width * 0.4;
-            }
-        }
-        window.addEventListener('resize', resize);
-        resize();
+  // Grid
+  ctx.save();
+  ctx.strokeStyle = 'rgba(180,200,230,0.055)';
+  ctx.lineWidth = DPR;
+  for (var v = -2; v <= 2; v += 0.5) {
+    ctx.beginPath(); ctx.moveTo(wx(-2), wy(v)); ctx.lineTo(wx(2), wy(v)); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(wx(v), wy(-2)); ctx.lineTo(wx(v), wy(2)); ctx.stroke();
+  }
+  ctx.restore();
 
-        const storyScenes = [
-            {
-                id: 0,
-                text: "Here is a perfect circle. A point moves along its edge. This is simple circular motion.",
-                setup: () => {
-                    state.showGrid = true; state.showAxes = true; state.showCircle = true; state.showPoint = true;
-                    state.showAngle = true; state.showSineProj = false; state.showSineGraph = false;
-                    state.showBeam = false; state.showCosProj = false; state.showCosGraph = false;
-                    state.A = 1; state.w = 1; state.phi = 0; state.speed = 0.01;
-                    document.getElementById('chk-sine').checked = true;
-                    document.getElementById('chk-cos').checked = false;
-                }
-            },
-            {
-                id: 1,
-                text: "Now, let's track only its VERTICAL height. Imagine a light shining from the side, casting a shadow on the y-axis.",
-                setup: () => {
-                    state.showSineProj = true;
-                }
-            },
-            {
-                id: 2,
-                text: "As the angle (θ) increases, we record this vertical height over time. Watch the graph emerge.",
-                setup: () => {
-                    state.showSineGraph = true; state.showBeam = true; state.history = [];
-                    // Slow down slightly for observation
-                    state.speed = 0.015;
-                }
-            },
-            {
-                id: 3,
-                text: "This shape is the Sine Wave. It is nothing more than the vertical shadow of circular motion unrolled over time.",
-                setup: () => { }
-            },
-            {
-                id: 4,
-                text: "What if we track the HORIZONTAL position instead? Let's cast the shadow down to the x-axis.",
-                setup: () => {
-                    state.showSineProj = false; state.showSineGraph = false; state.showBeam = false;
-                    state.showCosProj = true; state.history = [];
-                }
-            },
-            {
-                id: 5,
-                text: "Let's record this horizontal position. This generates the Cosine Wave.",
-                setup: () => {
-                    state.showCosGraph = true; state.showBeam = true; state.history = [];
-                }
-            },
-            {
-                id: 6,
-                text: "Notice that Sine and Cosine are the EXACT SAME WAVE, just starting at different points. They are mathematical twins.",
-                setup: () => {
-                    state.showSineProj = true; state.showSineGraph = true;
-                    document.getElementById('chk-sine').checked = true;
-                    document.getElementById('chk-cos').checked = true;
-                }
-            },
-            {
-                id: 7,
-                text: "You can even drag the graph backwards. Notice how changing the wave's position perfectly moves the point on the circle.",
-                setup: () => {
-                    state.isPlaying = false; // Pause to encourage interaction
-                    document.getElementById('btn-play').innerText = "Play";
-                }
-            },
-            {
-                id: 8,
-                text: "The laboratory is yours. Switch to 'Free Explore' mode to adjust amplitude, speed, and phase.",
-                setup: () => {
-                    state.isPlaying = true;
-                    document.getElementById('btn-play').innerText = "Pause";
-                }
-            }
-        ];
+  // Axes
+  ctx.save();
+  ctx.strokeStyle = 'rgba(180,200,230,0.38)';
+  ctx.lineWidth = DPR;
+  ctx.beginPath(); ctx.moveTo(wx(-1.78), oy); ctx.lineTo(wx(1.78), oy); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(ox, wy(-1.78)); ctx.lineTo(ox, wy(1.78)); ctx.stroke();
+  ctx.fillStyle = 'rgba(180,200,230,0.30)';
+  ctx.font = (10 * DPR) + 'px Inter,sans-serif';
+  var tks = [-1, 1];
+  for (var i = 0; i < tks.length; i++) {
+    var v = tks[i];
+    ctx.fillRect(wx(v) - DPR, oy - 4 * DPR, 2 * DPR, 8 * DPR);
+    ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+    ctx.fillText(v === 1 ? '1' : '-1', wx(v), oy + 6 * DPR);
+    ctx.fillRect(ox - 4 * DPR, wy(v) - DPR, 8 * DPR, 2 * DPR);
+    ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+    ctx.fillText(v === 1 ? '1' : '-1', ox - 8 * DPR, wy(v));
+  }
+  ctx.restore();
 
-        function nextScene() {
-            state.currentScene++;
-            if (state.currentScene >= storyScenes.length) {
-                // End of guided tour, switch to explore mode
-                setMode('explore');
-                return;
-            }
-            
-            const scene = storyScenes[state.currentScene];
-            teacherText.innerText = scene.text;
-            scene.setup();
-            
-            // Animation for panel
-            teacherPanel.style.transform = 'translate(-50%, 10px)';
-            setTimeout(() => teacherPanel.style.transform = 'translate(-50%, 0)', 50);
-        }
+  // Unit circle
+  ctx.save();
+  if (S.complete) {
+    glo(ctx, 'rgba(122,143,168,0.5)', 28 * DPR);
+    ctx.strokeStyle = 'rgba(122,143,168,0.15)';
+    ctx.lineWidth = 7 * DPR;
+    ctx.beginPath(); ctx.arc(ox, oy, sc, 0, PI2); ctx.stroke();
+  }
+  glo(ctx, '#7a8fa8', 14 * DPR);
+  ctx.strokeStyle = 'rgba(122,143,168,0.72)';
+  ctx.lineWidth = 1.8 * DPR;
+  ctx.beginPath(); ctx.arc(ox, oy, sc, 0, PI2); ctx.stroke();
+  noG(ctx);
+  ctx.restore();
 
-        
-        // Utility for formatting math
-        const fmt = (val) => (val >= 0 ? "+" : "") + val.toFixed(2);
-        const formatAngle = (rad) => {
-            if (state.useDegrees) return Math.round(rad * (180/Math.PI)) + "°";
-            // Rough mapping to pi fractions for display
-            const piFrac = rad / Math.PI;
-            if (Math.abs(piFrac) < 0.01) return "0";
-            if (Math.abs(piFrac - 0.5) < 0.01) return "π/2";
-            if (Math.abs(piFrac - 1.0) < 0.01) return "π";
-            if (Math.abs(piFrac - 1.5) < 0.01) return "3π/2";
-            if (Math.abs(piFrac - 2.0) < 0.01) return "2π";
-            return rad.toFixed(2) + " rad";
-        };
+  // Arc trace
+  if (S.arcTrace.length > 1) {
+    ctx.save();
+    for (var i = 1; i < S.arcTrace.length; i++) {
+      var a = i / S.arcTrace.length;
+      glo(ctx, 'rgba(248,244,232,0.4)', 6 * a * DPR);
+      ctx.strokeStyle = 'rgba(248,244,232,' + (a * 0.52) + ')';
+      ctx.lineWidth = 1.8 * DPR;
+      ctx.beginPath();
+      ctx.moveTo(wx(S.arcTrace[i-1].x), wy(S.arcTrace[i-1].y));
+      ctx.lineTo(wx(S.arcTrace[i].x),   wy(S.arcTrace[i].y));
+      ctx.stroke();
+    }
+    noG(ctx);
+    ctx.restore();
+  }
 
-        function drawGrid() {
-            ctx.fillStyle = colors.bg;
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-            
-            if (!state.showGrid) return;
+  var sin = Math.sin(S.theta);
+  var cos = Math.cos(S.theta);
+  var Px = wx(cos),  Py = wy(sin);
+  var Fx = wx(cos),  Fy = wy(0);
+  var Ox = wx(0),    Oy = wy(0);
 
-            ctx.strokeStyle = colors.grid;
-            ctx.lineWidth = 1;
-            
-            const R = state.layout.R;
-            // Draw circle grid
-            ctx.beginPath();
-            for(let i = -2; i <= 2; i++) {
-                ctx.moveTo(state.layout.cx - 2.5*R, state.layout.cy + i*R);
-                ctx.lineTo(state.layout.cx + 2.5*R, state.layout.cy + i*R);
-                ctx.moveTo(state.layout.cx + i*R, state.layout.cy - 2.5*R);
-                ctx.lineTo(state.layout.cx + i*R, state.layout.cy + 2.5*R);
-            }
-            ctx.stroke();
+  // Cosine projection
+  if (S.showCos) {
+    var scry = wy(-1.5);
+    var sdx  = wx(cos);
 
-            // Draw graph grid (horizontal lines for +1, 0, -1)
-            ctx.beginPath();
-            for(let i = -2; i <= 2; i++) {
-                ctx.moveTo(state.layout.gx, state.layout.gy + i*R);
-                ctx.lineTo(state.layout.gx + state.layout.gW, state.layout.gy + i*R);
-            }
-            // Vertical divisions for pi/2, pi, 3pi/2, 2pi
-            for(let i=0; i<=4; i++) {
-                const x = state.layout.gx + (i/4) * state.layout.gW;
-                ctx.moveTo(x, state.layout.gy - 2*R);
-                ctx.lineTo(x, state.layout.gy + 2*R);
-            }
-            ctx.stroke();
-        }
+    ctx.save();
+    ctx.strokeStyle = 'rgba(77,217,245,0.12)';
+    ctx.lineWidth = 3 * DPR;
+    ctx.beginPath(); ctx.moveTo(wx(-1.35), scry); ctx.lineTo(wx(1.35), scry); ctx.stroke();
+    ctx.restore();
 
-        function drawAxes() {
-            if (!state.showAxes) return;
-            const {cx, cy, gx, gy, gW, R} = state.layout;
-            
-            ctx.strokeStyle = colors.axis;
-            ctx.lineWidth = 2;
-            
-            // Circle Axes
-            ctx.beginPath();
-            ctx.moveTo(cx - 1.5*R, cy); ctx.lineTo(cx + 1.5*R, cy);
-            ctx.moveTo(cx, cy - 1.5*R); ctx.lineTo(cx, cy + 1.5*R);
-            ctx.stroke();
-            
-            // Graph Axes
-            ctx.beginPath();
-            ctx.moveTo(gx - 20, gy); ctx.lineTo(gx + gW + 20, gy); // X
-            ctx.moveTo(gx, gy - 1.5*R); ctx.lineTo(gx, gy + 1.5*R); // Y
-            ctx.stroke();
-            
-            // Axis Labels
-            ctx.fillStyle = colors.text;
-            ctx.font = '12px ' + state.fontFamily;
-            ctx.fillText("x", cx + 1.5*R + 5, cy + 15);
-            ctx.fillText("y", cx - 15, cy - 1.5*R - 5);
-            
-            ctx.fillText("θ (angle / time)", gx + gW + 5, gy + 20);
-            ctx.fillText("+1", gx - 20, gy - R + 4);
-            ctx.fillText("-1", gx - 20, gy + R + 4);
-            
-            // Pi markers on graph x-axis
-            const labels = ["0", "π/2", "π", "3π/2", "2π"];
-            for(let i=1; i<=4; i++) {
-                const x = gx + (i/4) * gW;
-                ctx.fillText(labels[i], x - 8, gy + 20);
-            }
-        }
+    ctx.save();
+    ctx.strokeStyle = 'rgba(77,217,245,0.22)';
+    ctx.lineWidth = DPR;
+    ctx.setLineDash([5 * DPR, 5 * DPR]);
+    ctx.beginPath(); ctx.moveTo(Px, Py); ctx.lineTo(sdx, scry); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.restore();
 
-        function renderMath() {
-            const {cx, cy, R, gx, gy, gW} = state.layout;
-            
-            // Normalizing angle for calculations (0 to 2pi)
-            let normAngle = state.angle % (Math.PI * 2);
-            if (normAngle < 0) normAngle += Math.PI * 2;
-            
-            // Core Math
-            const actualAngle = state.w * state.angle + state.phi;
-            const mathX = state.A * Math.cos(actualAngle);
-            const mathY = state.A * Math.sin(actualAngle); // Mathematical Y (up is positive)
-            
-            // Screen coordinates (Y is inverted on canvas)
-            const px = cx + mathX * R;
-            const py = cy - mathY * R;
-            
-            // Update UI Data
-            if (state.currentScene > -1) {
-                document.getElementById('val-theta').innerText = formatAngle(normAngle);
-                document.getElementById('val-x').innerText = fmt(mathX);
-                document.getElementById('val-y').innerText = fmt(mathY);
-                document.getElementById('val-sin').innerText = fmt(Math.sin(actualAngle));
-                document.getElementById('val-cos').innerText = fmt(Math.cos(actualAngle));
-            }
+    ctx.save();
+    glo(ctx, '#4dd9f5', 12 * DPR);
+    ctx.strokeStyle = 'rgba(77,217,245,0.88)';
+    ctx.lineWidth = 2.5 * DPR;
+    ctx.beginPath(); ctx.moveTo(Ox, Oy); ctx.lineTo(Fx, Fy); ctx.stroke();
+    noG(ctx);
+    ctx.restore();
 
-            // 1. Draw Unit Circle
-            if (state.showCircle) {
-                ctx.beginPath();
-                ctx.arc(cx, cy, R * state.A, 0, Math.PI * 2);
-                ctx.strokeStyle = 'rgba(255,255,255,0.3)';
-                ctx.lineWidth = 2;
-                ctx.stroke();
-            }
+    ctx.save();
+    glo(ctx, '#4dd9f5', 18 * DPR);
+    ctx.fillStyle = '#4dd9f5';
+    arc(ctx, sdx, scry, 5 * DPR); ctx.fill();
+    noG(ctx);
+    ctx.restore();
 
-            // 2. Draw Angle Arc
-            if (state.showAngle) {
-                ctx.beginPath();
-                // Draw arc counter-clockwise from 0 to -angle (because Y is down)
-                ctx.arc(cx, cy, R * 0.3, 0, -actualAngle, actualAngle > 0);
-                ctx.lineTo(cx, cy);
-                ctx.fillStyle = 'rgba(0, 229, 255, 0.2)';
-                ctx.fill();
-                ctx.strokeStyle = colors.cyan;
-                ctx.lineWidth = 1;
-                ctx.stroke();
-                
-                // Radius line
-                ctx.beginPath();
-                ctx.moveTo(cx, cy);
-                ctx.lineTo(px, py);
-                ctx.strokeStyle = colors.text;
-                ctx.lineWidth = 2;
-                ctx.stroke();
-            }
+    ctx.save();
+    ctx.fillStyle = 'rgba(77,217,245,0.85)';
+    ctx.font = 'italic ' + (11 * DPR) + 'px Inter,sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('cosθ', wx(cos * 0.5), wy(-0.11));
+    ctx.restore();
+  }
 
-            // 3. Draw Projections
-            if (state.showSineProj) {
-                // Vertical line to x-axis
-                ctx.beginPath();
-                ctx.moveTo(px, py);
-                ctx.lineTo(px, cy);
-                ctx.strokeStyle = colors.amber;
-                ctx.setLineDash([5, 5]);
-                ctx.lineWidth = 2;
-                ctx.stroke();
-                ctx.setLineDash([]);
-                
-                // Highlight on Y axis
-                ctx.beginPath();
-                ctx.moveTo(cx, cy);
-                ctx.lineTo(cx, py);
-                ctx.strokeStyle = colors.amber;
-                ctx.lineWidth = 4;
-                ctx.stroke();
-            }
+  // Sine projection
+  if (S.showSin) {
+    var scrx = wx(-1.5);
+    var sdy  = wy(sin);
 
-            if (state.showCosProj) {
-                // Horizontal line to y-axis
-                ctx.beginPath();
-                ctx.moveTo(px, py);
-                ctx.lineTo(cx, py);
-                ctx.strokeStyle = colors.magenta;
-                ctx.setLineDash([5, 5]);
-                ctx.lineWidth = 2;
-                ctx.stroke();
-                ctx.setLineDash([]);
-                
-                // Highlight on X axis
-                ctx.beginPath();
-                ctx.moveTo(cx, cy);
-                ctx.lineTo(px, cy);
-                ctx.strokeStyle = colors.magenta;
-                ctx.lineWidth = 4;
-                ctx.stroke();
-            }
+    ctx.save();
+    ctx.strokeStyle = 'rgba(245,200,66,0.12)';
+    ctx.lineWidth = 3 * DPR;
+    ctx.beginPath(); ctx.moveTo(scrx, wy(-1.35)); ctx.lineTo(scrx, wy(1.35)); ctx.stroke();
+    ctx.restore();
 
-            // 4. Draw Graph Points & Beams
-            const graphProgress = (normAngle / (Math.PI * 2)); // 0 to 1
-            const currentGraphX = gx + graphProgress * gW;
-            const currentGraphYSin = gy - mathY * R;
-            const currentGraphYCos = gy - mathX * R; // x value plotted on y axis
+    ctx.save();
+    ctx.strokeStyle = 'rgba(245,200,66,0.22)';
+    ctx.lineWidth = DPR;
+    ctx.setLineDash([5 * DPR, 5 * DPR]);
+    ctx.beginPath(); ctx.moveTo(Px, Py); ctx.lineTo(scrx, sdy); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.restore();
 
-            if (state.showBeam) {
-                ctx.setLineDash([4, 8]);
-                ctx.lineWidth = 1;
-                
-                if (state.showSineGraph) {
-                    ctx.beginPath();
-                    ctx.moveTo(px, py);
-                    ctx.lineTo(currentGraphX, currentGraphYSin);
-                    ctx.strokeStyle = colors.amber;
-                    ctx.globalAlpha = 0.5;
-                    ctx.stroke();
-                }
-                
-                if (state.showCosGraph) {
-                    ctx.beginPath();
-                    // Draw beam from X projection point to graph
-                    ctx.moveTo(px, cy); 
-                    // Route it cleanly: go down/up, then across
-                    ctx.lineTo(px, currentGraphYCos);
-                    ctx.lineTo(currentGraphX, currentGraphYCos);
-                    ctx.strokeStyle = colors.magenta;
-                    ctx.globalAlpha = 0.5;
-                    ctx.stroke();
-                }
-                ctx.globalAlpha = 1.0;
-                ctx.setLineDash([]);
-            }
+    ctx.save();
+    glo(ctx, '#f5c842', 12 * DPR);
+    ctx.strokeStyle = 'rgba(245,200,66,0.88)';
+    ctx.lineWidth = 2.5 * DPR;
+    ctx.beginPath(); ctx.moveTo(Px, Py); ctx.lineTo(Fx, Fy); ctx.stroke();
+    noG(ctx);
+    ctx.restore();
 
-            // Save history
-            if (state.isPlaying || state.isDragging) {
-                state.history.unshift({ a: normAngle, sy: currentGraphYSin, cy: currentGraphYCos });
-                if (state.history.length > state.maxHistory) state.history.pop();
-                
-                // Sort history by angle to draw a continuous line properly
-                state.history.sort((a, b) => a.a - b.a);
-            }
+    ctx.save();
+    glo(ctx, '#f5c842', 18 * DPR);
+    ctx.fillStyle = '#f5c842';
+    arc(ctx, scrx, sdy, 5 * DPR); ctx.fill();
+    noG(ctx);
+    ctx.restore();
 
-            // Draw Sine Graph
-            if (state.showSineGraph && state.history.length > 0) {
-                ctx.beginPath();
-                let started = false;
-                for (let i = 0; i < state.history.length; i++) {
-                    const h = state.history[i];
-                    const hx = gx + (h.a / (Math.PI*2)) * gW;
-                    if (!started) { ctx.moveTo(hx, h.sy); started = true; }
-                    else { ctx.lineTo(hx, h.sy); }
-                }
-                ctx.strokeStyle = colors.amber;
-                ctx.lineWidth = 3;
-                
-                // Glow
-                ctx.shadowBlur = 10;
-                ctx.shadowColor = colors.amber;
-                ctx.stroke();
-                ctx.shadowBlur = 0;
-                
-                // Current Point on graph
-                ctx.beginPath();
-                ctx.arc(currentGraphX, currentGraphYSin, 6, 0, Math.PI*2);
-                ctx.fillStyle = colors.amber;
-                ctx.fill();
-            }
+    if (Math.abs(sin) > 0.04) {
+      ctx.save();
+      ctx.strokeStyle = 'rgba(245,200,66,0.38)';
+      ctx.lineWidth = DPR;
+      var bx = scrx - 8 * DPR;
+      var my = wy(0);
+      ctx.beginPath(); ctx.moveTo(bx, sdy); ctx.lineTo(bx, my); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(bx - 3*DPR, sdy); ctx.lineTo(bx + 3*DPR, sdy); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(bx - 3*DPR, my);  ctx.lineTo(bx + 3*DPR, my);  ctx.stroke();
+      ctx.restore();
+    }
 
-            // Draw Cosine Graph
-            if (state.showCosGraph && state.history.length > 0) {
-                ctx.beginPath();
-                let started = false;
-                for (let i = 0; i < state.history.length; i++) {
-                    const h = state.history[i];
-                    const hx = gx + (h.a / (Math.PI*2)) * gW;
-                    if (!started) { ctx.moveTo(hx, h.cy); started = true; }
-                    else { ctx.lineTo(hx, h.cy); }
-                }
-                ctx.strokeStyle = colors.magenta;
-                ctx.lineWidth = 3;
-                
-                // Glow
-                ctx.shadowBlur = 10;
-                ctx.shadowColor = colors.magenta;
-                ctx.stroke();
-                ctx.shadowBlur = 0;
-                
-                // Current Point on graph
-                ctx.beginPath();
-                ctx.arc(currentGraphX, currentGraphYCos, 6, 0, Math.PI*2);
-                ctx.fillStyle = colors.magenta;
-                ctx.fill();
-            }
+    ctx.save();
+    ctx.fillStyle = 'rgba(245,200,66,0.85)';
+    ctx.font = 'italic ' + (11 * DPR) + 'px Inter,sans-serif';
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'middle';
+    var lbx = wx(cos + (cos >= 0 ? 0.13 : -0.22));
+    var lby = wy(sin * 0.5);
+    ctx.fillText('sinθ', lbx, lby);
+    ctx.restore();
+  }
 
-            // 5. Draw the Rotating Point (Hero element)
-            if (state.showPoint) {
-                ctx.beginPath();
-                ctx.arc(px, py, 8, 0, Math.PI * 2);
-                ctx.fillStyle = colors.cyan;
-                ctx.shadowBlur = 20;
-                ctx.shadowColor = colors.cyan;
-                ctx.fill();
-                ctx.shadowBlur = 0;
-                
-                // Interactive affordance (pulse if paused)
-                if (!state.isPlaying && state.mode === 'guided') {
-                    ctx.beginPath();
-                    ctx.arc(px, py, 8 + Math.sin(Date.now() / 150) * 4, 0, Math.PI * 2);
-                    ctx.strokeStyle = colors.cyan;
-                    ctx.lineWidth = 2;
-                    ctx.stroke();
-                }
-            }
-        }
+  // Right triangle
+  if (S.showTri) {
+    ctx.save();
+    ctx.beginPath();
+    ctx.moveTo(Ox, Oy); ctx.lineTo(Fx, Fy); ctx.lineTo(Px, Py);
+    ctx.closePath();
+    ctx.fillStyle = 'rgba(248,244,232,0.038)'; ctx.fill();
+    var rm  = 9 * DPR;
+    var sfx = cos >= 0 ? -rm : rm;
+    var sfy = sin >= 0 ? -rm : rm;
+    ctx.strokeStyle = 'rgba(180,200,230,0.28)';
+    ctx.lineWidth = DPR;
+    ctx.beginPath();
+    ctx.moveTo(Fx + sfx, Fy);
+    ctx.lineTo(Fx + sfx, Fy + sfy);
+    ctx.lineTo(Fx,       Fy + sfy);
+    ctx.stroke();
+    ctx.restore();
+  }
 
-        function animate() {
-            if (state.isPlaying && !state.isDragging) {
-                state.angle += state.speed;
-                // Keep angle growing indefinitely so trails loop continuously if needed
-                // But for standard visualization, wrapping is cleaner
-            }
-            
-            drawGrid();
-            drawAxes();
-            renderMath();
-            
-            requestAnimationFrame(animate);
-        }
+  // Arm
+  ctx.save();
+  glo(ctx, 'rgba(248,244,232,0.55)', 10 * DPR);
+  ctx.strokeStyle = 'rgba(248,244,232,0.82)';
+  ctx.lineWidth = 2 * DPR;
+  ctx.beginPath(); ctx.moveTo(Ox, Oy); ctx.lineTo(Px, Py); ctx.stroke();
+  noG(ctx);
+  var ang  = S.theta;
+  var mx2  = wx(cos * 0.5);
+  var my2  = wy(sin * 0.5);
+  ctx.fillStyle = 'rgba(248,244,232,0.38)';
+  ctx.font = (11 * DPR) + 'px Inter,sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('1',
+    mx2 - Math.sin(ang) * 14 * DPR,
+    my2 - Math.cos(ang) * 14 * DPR);
+  ctx.restore();
 
-        // --- Cinematic Intro Sequence ---
-        async function runIntro() {
-            const t1 = document.getElementById('text-1');
-            const t2 = document.getElementById('text-2');
-            const t3 = document.getElementById('text-3');
-            const t4 = document.getElementById('text-4');
-            
-            const wait = (ms) => new Promise(r => setTimeout(r, ms));
-            
-            state.showPoint = true;
-            state.A = 1.5; // Big circle initially
-            state.speed = 0.02;
-            
-            await wait(1000);
-            t1.classList.add('active');
-            await wait(3500);
-            t1.classList.remove('active');
-            
-            await wait(1000);
-            t2.classList.add('active');
-            await wait(3000);
-            t2.classList.remove('active');
-            
-            await wait(1000);
-            t3.classList.add('active');
-            await wait(3500);
-            t3.classList.remove('active');
-            
-            await wait(1000);
-            t4.classList.add('active');
-            await wait(2000);
-            
-            // Fade out overlay
-            overlay.style.opacity = 0;
-            setTimeout(() => {
-                overlay.style.display = 'none';
-                
-                // Smoothly transition math parameters to normal
-                let shrinkInt = setInterval(() => {
-                    state.A -= 0.01;
-                    if (state.A <= 1.0) {
-                        state.A = 1.0;
-                        clearInterval(shrinkInt);
-                        // Start Scene 0
-                        topBar.style.opacity = 1;
-                        dataPanel.style.opacity = 1;
-                        teacherPanel.style.opacity = 1;
-                        nextScene();
-                    }
-                }, 20);
+  // Angle arc
+  var nT = ((S.theta % PI2) + PI2) % PI2;
+  ctx.save();
+  ctx.strokeStyle = 'rgba(248,244,232,0.22)';
+  ctx.lineWidth = 1.5 * DPR;
+  ctx.beginPath();
+  ctx.arc(Ox, Oy, sc * 0.19, 0, -nT, true);
+  ctx.stroke();
+  var mA = nT / 2;
+  var lr = sc * 0.28;
+  ctx.fillStyle = 'rgba(248,244,232,0.55)';
+  ctx.font = 'italic ' + (12 * DPR) + 'px Georgia,serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('θ', Ox + lr * Math.cos(mA), Oy - lr * Math.sin(mA));
+  ctx.restore();
 
-            }, 1000);
-        }
+  // Origin dot
+  ctx.save();
+  ctx.fillStyle = 'rgba(180,200,230,0.55)';
+  arc(ctx, Ox, Oy, 4 * DPR); ctx.fill();
+  ctx.restore();
 
-        function getPointerPos(e) {
-            const rect = canvas.getBoundingClientRect();
-            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-            return {
-                x: clientX - rect.left,
-                y: clientY - rect.top
-            };
-        }
+  // Point P — layered glow
+  ctx.save();
+  glo(ctx, 'rgba(248,244,232,0.55)', 32 * DPR);
+  ctx.fillStyle = 'rgba(248,244,232,0.16)';
+  arc(ctx, Px, Py, 16 * DPR); ctx.fill();
+  glo(ctx, 'rgba(248,244,232,0.75)', 16 * DPR);
+  ctx.fillStyle = 'rgba(248,244,232,0.50)';
+  arc(ctx, Px, Py, 8 * DPR); ctx.fill();
+  noG(ctx);
+  ctx.fillStyle = '#f8f4e8';
+  arc(ctx, Px, Py, 4.5 * DPR); ctx.fill();
+  ctx.fillStyle = 'rgba(248,244,232,0.48)';
+  ctx.font = 'italic bold ' + (11 * DPR) + 'px Inter,sans-serif';
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'bottom';
+  ctx.fillText('P', Px + 8 * DPR, Py - 8 * DPR);
+  ctx.restore();
+}
 
-        function handlePointerDown(e) {
-            if (state.currentScene < 0) return; // Prevent during intro
-            const pos = getPointerPos(e);
-            const {cx, cy, R, gx, gy, gW} = state.layout;
-            
-            // Check if clicked near the rotating point on the circle
-            const actualAngle = state.w * state.angle + state.phi;
-            const px = cx + state.A * Math.cos(actualAngle) * R;
-            const py = cy - state.A * Math.sin(actualAngle) * R;
-            
-            const distToCircle = Math.hypot(pos.x - px, pos.y - py);
-            
-            // Check if clicked inside the graph area
-            const inGraphArea = pos.x >= gx && pos.x <= gx + gW && pos.y >= gy - 1.5*R && pos.y <= gy + 1.5*R;
+// ── Draw: Wave Panel ──────────────────────────────────────────────────────────
+function drawWave() {
+  var ctx = wc;
+  var W = WC.width, H = WC.height;
 
-            if (distToCircle < 30) {
-                state.isDragging = true;
-                state.dragTarget = 'circle';
-                state.wasPlaying = state.isPlaying;
-                state.isPlaying = false; // Pause while dragging
-            } else if (inGraphArea) {
-                state.isDragging = true;
-                state.dragTarget = 'graph';
-                state.wasPlaying = state.isPlaying;
-                state.isPlaying = false;
-                // Move immediately to where clicked
-                handlePointerMove(e);
-            }
-        }
+  ctx.fillStyle = '#070b15';
+  ctx.fillRect(0, 0, W, H);
+  drawStars(ctx, W, H);
 
-        function handlePointerMove(e) {
-            if (!state.isDragging) return;
-            const pos = getPointerPos(e);
-            const {cx, cy, gx, gW} = state.layout;
-            
-            if (state.dragTarget === 'circle') {
-                // Calculate angle from center
-                let dragAngle = Math.atan2(cy - pos.y, pos.x - cx); // Note: cy - y because canvas Y is down
-                if (dragAngle < 0) dragAngle += Math.PI * 2;
-                
-                // Adjust for parameters (reverse map)
-                // actual = w*angle + phi => angle = (actual - phi)/w
-                state.angle = (dragAngle - state.phi) / state.w;
-                
-            } else if (state.dragTarget === 'graph') {
-                // Map X coordinate on graph back to angle
-                // pos.x = gx + (normAngle / 2PI) * gW
-                let progress = (pos.x - gx) / gW;
-                progress = Math.max(0, Math.min(1, progress)); // Clamp 0 to 1
-                
-                // We map graph X directly to the internal angle to keep it synchronized across multiple rotations
-                const targetNormAngle = progress * (Math.PI * 2);
-                
-                // Logic to handle continuous rotation without jumping back to 0
-                const currentRotations = Math.floor(state.angle / (Math.PI * 2));
-                state.angle = (currentRotations * Math.PI * 2) + targetNormAngle;
-            }
-            
-            // Clear history when dragging to prevent wild streaks
-            state.history = [];
-        }
+  var pL = 52 * DPR, pR = 20 * DPR, pT = 28 * DPR, pB = 44 * DPR;
+  var cw = W - pL - pR;
+  var ch = H - pT - pB;
+  var midY = pT + ch * 0.5;
+  var yS   = ch / 2.2;
 
-        function handlePointerUp() {
-            if (state.isDragging) {
-                state.isDragging = false;
-                state.dragTarget = null;
-                // Only resume if it was playing and we are in explore mode or it was playing before
-                if (state.wasPlaying && document.getElementById('btn-play').innerText === "Pause") {
-                    state.isPlaying = true;
-                }
-            }
-        }
+  // Y axis labels and guidelines
+  ctx.save();
+  ctx.fillStyle = 'rgba(180,200,230,0.28)';
+  ctx.font = (10 * DPR) + 'px Inter,sans-serif';
+  ctx.textAlign = 'right';
+  ctx.textBaseline = 'middle';
+  var yv = [-1, -0.5, 0, 0.5, 1];
+  for (var i = 0; i < yv.length; i++) {
+    var v  = yv[i];
+    var yp = midY - v * yS;
+    ctx.fillText(v === 0 ? '0' : v.toString(), pL - 7 * DPR, yp);
+    if (v !== 0) {
+      ctx.save();
+      ctx.strokeStyle = 'rgba(180,200,230,0.06)';
+      ctx.lineWidth = DPR;
+      ctx.setLineDash([4 * DPR, 6 * DPR]);
+      ctx.beginPath(); ctx.moveTo(pL, yp); ctx.lineTo(pL + cw, yp); ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.restore();
+    }
+  }
+  ctx.restore();
 
-        canvas.addEventListener('mousedown', handlePointerDown);
-        canvas.addEventListener('mousemove', handlePointerMove);
-        window.addEventListener('mouseup', handlePointerUp);
-        
-        canvas.addEventListener('touchstart', handlePointerDown, {passive: false});
-        canvas.addEventListener('touchmove', (e) => { e.preventDefault(); handlePointerMove(e); }, {passive: false});
-        window.addEventListener('touchend', handlePointerUp);
+  // Axes
+  ctx.save();
+  ctx.strokeStyle = 'rgba(180,200,230,0.32)';
+  ctx.lineWidth = DPR;
+  ctx.beginPath(); ctx.moveTo(pL, midY); ctx.lineTo(pL + cw, midY); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(pL, pT);   ctx.lineTo(pL, pT + ch);   ctx.stroke();
+  ctx.restore();
 
-        
-        function setMode(mode) {
-            state.mode = mode;
-            if (mode === 'explore') {
-                document.getElementById('btn-mode-explore').classList.add('active-btn');
-                document.getElementById('btn-mode-guided').classList.remove('active-btn');
-                teacherPanel.classList.add('hidden');
-                explorerPanel.classList.remove('hidden');
-                explorerPanel.classList.add('visible');
-                
-                // Ensure all elements are visible for exploration
-                state.showGrid = true; state.showAxes = true; state.showCircle = true;
-                state.showPoint = true; state.showAngle = true;
-                
-                // Sync toggles with current state
-                state.showSineGraph = document.getElementById('chk-sine').checked;
-                state.showSineProj = state.showSineGraph;
-                state.showCosGraph = document.getElementById('chk-cos').checked;
-                state.showCosProj = state.showCosGraph;
-                state.showBeam = document.getElementById('chk-beam').checked;
-                state.useDegrees = document.getElementById('chk-degrees').checked;
-                
-            } else {
-                document.getElementById('btn-mode-guided').classList.add('active-btn');
-                document.getElementById('btn-mode-explore').classList.remove('active-btn');
-                teacherPanel.classList.remove('hidden');
-                explorerPanel.classList.add('hidden');
-                explorerPanel.classList.remove('visible');
-                
-                // Restart story
-                state.currentScene = -1;
-                state.history = [];
-                nextScene();
-            }
-        }
+  if (S.waveHist.length < 2) {
+    ctx.save();
+    ctx.fillStyle = 'rgba(180,200,230,0.14)';
+    ctx.font = (13 * DPR) + 'px Inter,sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('Press Animate — or drag P — to trace the wave', W * 0.5, H * 0.5);
+    ctx.restore();
+    return;
+  }
 
-        // Top Bar
-        document.getElementById('btn-play').addEventListener('click', (e) => {
-            state.isPlaying = !state.isPlaying;
-            e.target.innerText = state.isPlaying ? "Pause" : "Play";
-        });
-        
-        document.getElementById('btn-restart').addEventListener('click', () => {
-            state.angle = 0;
-            state.history = [];
-        });
+  var totalSpan = Math.max(4 * Math.PI, S.waveAngle);
+  var xS   = cw / totalSpan;
+  var latX = pL + cw;
 
-        document.getElementById('btn-mode-guided').addEventListener('click', () => setMode('guided'));
-        document.getElementById('btn-mode-explore').addEventListener('click', () => setMode('explore'));
-        
-        // Guided Tour Next
-        document.getElementById('btn-next-scene').addEventListener('click', nextScene);
+  function rToX(wa) { return latX - (S.waveAngle - wa) * xS; }
+  function vToY(v)  { return midY - v * yS; }
 
-        // Explorer Sliders
-        const slAmp = document.getElementById('sl-amp');
-        const slFreq = document.getElementById('sl-freq');
-        const slPhase = document.getElementById('sl-phase');
+  // X axis labels
+  ctx.save();
+  ctx.fillStyle   = 'rgba(180,200,230,0.28)';
+  ctx.strokeStyle = 'rgba(180,200,230,0.06)';
+  ctx.font = (10 * DPR) + 'px Inter,sans-serif';
+  ctx.textAlign = 'center';
+  ctx.lineWidth = DPR;
+  var startWa = S.waveAngle - totalSpan;
+  var k0 = Math.ceil(startWa / Math.PI);
+  var k1 = Math.floor(S.waveAngle / Math.PI) + 1;
+  for (var k = k0; k <= k1; k++) {
+    var xp = rToX(k * Math.PI);
+    if (xp < pL || xp > pL + cw) continue;
+    ctx.setLineDash([4 * DPR, 6 * DPR]);
+    ctx.beginPath(); ctx.moveTo(xp, pT); ctx.lineTo(xp, pT + ch); ctx.stroke();
+    ctx.setLineDash([]);
+    var lbl = k === 0 ? '0' : k === 1 ? 'π' : k === -1 ? '-π' : k + 'π';
+    ctx.textBaseline = 'top';
+    ctx.fillText(lbl, xp, pT + ch + 6 * DPR);
+  }
+  ctx.restore();
 
-        slAmp.addEventListener('input', (e) => {
-            state.A = parseFloat(e.target.value);
-            document.getElementById('lbl-amp').innerText = state.A.toFixed(1);
-            state.history = []; // Clear trail on parameter change
-        });
-        
-        slFreq.addEventListener('input', (e) => {
-            state.w = parseFloat(e.target.value);
-            document.getElementById('lbl-freq').innerText = state.w.toFixed(1);
-            state.history = [];
-        });
-        
-        slPhase.addEventListener('input', (e) => {
-            state.phi = parseFloat(e.target.value);
-            // Format phase as multiple of pi
-            const p = (state.phi / Math.PI).toFixed(2);
-            document.getElementById('lbl-phase').innerText = `${p}π`;
-            state.history = [];
-        });
+  // Clip to chart area
+  ctx.save();
+  ctx.beginPath(); ctx.rect(pL, pT, cw, ch); ctx.clip();
 
-        // Display Toggles
-        document.getElementById('chk-sine').addEventListener('change', (e) => {
-            state.showSineGraph = e.target.checked;
-            state.showSineProj = e.target.checked;
-        });
-        document.getElementById('chk-cos').addEventListener('change', (e) => {
-            state.showCosGraph = e.target.checked;
-            state.showCosProj = e.target.checked;
-        });
-        document.getElementById('chk-beam').addEventListener('change', (e) => {
-            state.showBeam = e.target.checked;
-        });
-        document.getElementById('chk-degrees').addEventListener('change', (e) => {
-            state.useDegrees = e.target.checked;
-        });
+  // Cosine trace
+  if (S.showCos && S.waveHist.length > 1) {
+    ctx.save();
+    glo(ctx, '#4dd9f5', 7 * DPR);
+    ctx.strokeStyle = 'rgba(77,217,245,0.72)';
+    ctx.lineWidth = 2 * DPR;
+    ctx.beginPath();
+    for (var i = 0; i < S.waveHist.length; i++) {
+      var p = S.waveHist[i];
+      if (i === 0) ctx.moveTo(rToX(p.wa), vToY(p.cos));
+      else         ctx.lineTo(rToX(p.wa), vToY(p.cos));
+    }
+    ctx.stroke(); noG(ctx);
+    var lp = S.waveHist[S.waveHist.length - 1];
+    glo(ctx, '#4dd9f5', 18 * DPR);
+    ctx.fillStyle = '#4dd9f5';
+    arc(ctx, rToX(lp.wa), vToY(lp.cos), 5 * DPR); ctx.fill();
+    noG(ctx);
+    ctx.restore();
+  }
 
-        // Initialize and Start
-        requestAnimationFrame(animate);
-        runIntro();
+  // Sine trace
+  if (S.showSin && S.waveHist.length > 1) {
+    ctx.save();
+    glo(ctx, '#f5c842', 8 * DPR);
+    ctx.strokeStyle = 'rgba(245,200,66,0.88)';
+    ctx.lineWidth = 2.5 * DPR;
+    ctx.beginPath();
+    for (var i = 0; i < S.waveHist.length; i++) {
+      var p = S.waveHist[i];
+      if (i === 0) ctx.moveTo(rToX(p.wa), vToY(p.sin));
+      else         ctx.lineTo(rToX(p.wa), vToY(p.sin));
+    }
+    ctx.stroke(); noG(ctx);
+    var lp  = S.waveHist[S.waveHist.length - 1];
+    var lpx = rToX(lp.wa);
+    var lpy = vToY(lp.sin);
+    ctx.save();
+    ctx.strokeStyle = 'rgba(245,200,66,0.18)';
+    ctx.lineWidth = DPR;
+    ctx.setLineDash([3 * DPR, 4 * DPR]);
+    ctx.beginPath(); ctx.moveTo(lpx, lpy); ctx.lineTo(lpx, midY); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.restore();
+    glo(ctx, '#f5c842', 22 * DPR);
+    ctx.fillStyle = '#f5c842';
+    arc(ctx, lpx, lpy, 6 * DPR); ctx.fill();
+    noG(ctx);
+    ctx.restore();
+  }
 
-    </script>
+  ctx.restore(); // end clip
+
+  // Legend
+  ctx.save();
+  ctx.font = (11 * DPR) + 'px Inter,sans-serif';
+  ctx.textBaseline = 'middle';
+  if (S.showSin) {
+    glo(ctx, '#f5c842', 5 * DPR);
+    ctx.fillStyle = '#f5c842';
+    ctx.textAlign = 'left';
+    ctx.fillText('— sinθ', pL + 8 * DPR, pT + 16 * DPR);
+  }
+  if (S.showCos) {
+    noG(ctx);
+    glo(ctx, '#4dd9f5', 5 * DPR);
+    ctx.fillStyle = '#4dd9f5';
+    ctx.textAlign = 'left';
+    ctx.fillText('— cosθ', pL + 8 * DPR, pT + 32 * DPR);
+  }
+  noG(ctx);
+  ctx.restore();
+
+  ctx.save();
+  ctx.fillStyle = 'rgba(180,200,230,0.22)';
+  ctx.font = (10 * DPR) + 'px Inter,sans-serif';
+  ctx.textAlign = 'right';
+  ctx.textBaseline = 'top';
+  ctx.fillText('θ (radians)', pL + cw, pT + ch + 6 * DPR);
+  ctx.restore();
+}
+
+// ── HUD ───────────────────────────────────────────────────────────────────────
+function updateHUD() {
+  var sin = Math.sin(S.theta);
+  var cos = Math.cos(S.theta);
+  var deg = (((S.theta * 180 / Math.PI) % 360) + 360) % 360;
+  document.getElementById('vth').textContent = deg.toFixed(1) + '°';
+  document.getElementById('vs').textContent  = sin.toFixed(3);
+  document.getElementById('vc').textContent  = cos.toFixed(3);
+  document.getElementById('vt').textContent  = Math.abs(cos) < 0.005 ? '∞' : (sin / cos).toFixed(3);
+  if (!S.dragging) document.getElementById('sl').value = deg.toFixed(1);
+}
+
+// ── Arc trace ─────────────────────────────────────────────────────────────────
+function pushArc() {
+  S.arcTrace.push({ x: Math.cos(S.theta), y: Math.sin(S.theta) });
+  if (S.arcTrace.length > ARC_LEN) S.arcTrace.shift();
+}
+
+// ── Wave push (forward motion only) ──────────────────────────────────────────
+function tryPushWave(delta) {
+  if (delta <= 0) return;
+  S.waveAngle += delta;
+  if (S.waveAngle - S.lastWavePush >= WAVE_STEP) {
+    S.waveHist.push({
+      wa:  S.waveAngle,
+      sin: Math.sin(S.theta),
+      cos: Math.cos(S.theta)
+    });
+    if (S.waveHist.length > MAX_WAVE) S.waveHist.shift();
+    S.lastWavePush = S.waveAngle;
+  }
+  if (S.waveAngle >= PI2) S.complete = true;
+}
+
+// ── Render loop ───────────────────────────────────────────────────────────────
+function loop(ts) {
+  requestAnimationFrame(loop);
+  if (S.animating) {
+    var dt = S.lastTime ? Math.min(ts - S.lastTime, 50) : 16;
+    S.lastTime = ts;
+    var dT = S.speed * PI2 * (dt / 1000);
+    S.theta += dT;
+    tryPushWave(dT);
+    pushArc();
+    var deg = (((S.theta * 180 / Math.PI) % 360) + 360) % 360;
+    document.getElementById('sl').value = deg.toFixed(1);
+  } else {
+    S.lastTime = null;
+  }
+  drawCircle();
+  drawWave();
+  updateHUD();
+}
+requestAnimationFrame(loop);
+
+// ── Drag ──────────────────────────────────────────────────────────────────────
+var prevDT = null;
+
+function ptrPos(e) {
+  var r  = CC.getBoundingClientRect();
+  var cl = e.touches ? e.touches[0].clientX : e.clientX;
+  var ct = e.touches ? e.touches[0].clientY : e.clientY;
+  return { x: (cl - r.left) * DPR, y: (ct - r.top) * DPR };
+}
+
+CC.addEventListener('mousedown', startDrag);
+CC.addEventListener('touchstart', startDrag, { passive: true });
+
+function startDrag(e) {
+  S.dragging = true;
+  S.animating = false;
+  var bp = document.getElementById('bplay');
+  bp.textContent = '▶ Animate';
+  bp.className = 'btn on';
+  var p = ptrPos(e);
+  prevDT = Math.atan2(cyw(p.y), cxw(p.x));
+  S.theta = prevDT;
+  pushArc();
+}
+
+window.addEventListener('mousemove', onDrag);
+window.addEventListener('touchmove', onDrag, { passive: true });
+
+function onDrag(e) {
+  if (!S.dragging) return;
+  var p  = ptrPos(e);
+  var nT = Math.atan2(cyw(p.y), cxw(p.x));
+  var delta = nT - (prevDT || nT);
+  if (delta >  Math.PI) delta -= PI2;
+  if (delta < -Math.PI) delta += PI2;
+  S.theta = nT;
+  tryPushWave(delta);
+  prevDT = nT;
+  pushArc();
+}
+
+window.addEventListener('mouseup',  function() { S.dragging = false; prevDT = null; });
+window.addEventListener('touchend', function() { S.dragging = false; prevDT = null; });
+
+// ── Controls ──────────────────────────────────────────────────────────────────
+document.getElementById('sl').addEventListener('input', function(e) {
+  var deg   = parseFloat(e.target.value);
+  var nT    = deg * Math.PI / 180;
+  var delta = nT - S.theta;
+  S.theta   = nT;
+  tryPushWave(delta);
+  pushArc();
+});
+
+var bplay = document.getElementById('bplay');
+bplay.addEventListener('click', function() {
+  S.animating = !S.animating;
+  if (S.animating) {
+    bplay.textContent = '⏸ Pause';
+    bplay.className = 'btn on';
+  } else {
+    bplay.textContent = '▶ Animate';
+    bplay.className = 'btn on';
+  }
+});
+
+document.getElementById('breset').addEventListener('click', function() {
+  S.waveHist   = [];
+  S.waveAngle  = 0;
+  S.lastWavePush = -1e9;
+  S.arcTrace   = [];
+  S.complete   = false;
+  S.theta      = 0;
+  document.getElementById('sl').value = 0;
+});
+
+var bsin = document.getElementById('bsin');
+bsin.addEventListener('click', function() {
+  S.showSin = !S.showSin;
+  bsin.className = S.showSin ? 'btn son' : 'btn';
+  bsin.style.opacity = S.showSin ? '1' : '0.5';
+});
+
+var bcos = document.getElementById('bcos');
+bcos.addEventListener('click', function() {
+  S.showCos = !S.showCos;
+  bcos.className = S.showCos ? 'btn con' : 'btn';
+  bcos.style.opacity = S.showCos ? '1' : '0.5';
+});
+
+var btri = document.getElementById('btri');
+btri.addEventListener('click', function() {
+  S.showTri = !S.showTri;
+  btri.className = S.showTri ? 'btn on' : 'btn';
+  btri.style.opacity = S.showTri ? '1' : '0.5';
+});
+
+document.getElementById('spd').addEventListener('input', function(e) {
+  S.speed = parseFloat(e.target.value);
+  document.getElementById('spdv').textContent = S.speed.toFixed(1) + '×';
+});
+
+window.addEventListener('keydown', function(e) {
+  var step = (e.shiftKey ? 10 : 1) * Math.PI / 180;
+  if (e.key === 'ArrowRight') {
+    e.preventDefault();
+    S.theta += step; tryPushWave(step); pushArc();
+  } else if (e.key === 'ArrowLeft') {
+    e.preventDefault();
+    S.theta -= step; pushArc();
+  } else if (e.key === ' ') {
+    e.preventDefault();
+    bplay.click();
+  }
+});
+
+// Initial render
+pushArc();
+
+})();
+</script>
 </body>
 </html>
