@@ -1,779 +1,1060 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>The Shadow That Became a Wave</title>
-<style>
-*{margin:0;padding:0;box-sizing:border-box}
-:root{
-  --bg:#070b15;--sin:#f5c842;--cos:#4dd9f5;
-  --pt:#f8f4e8;--ring:#7a8fa8;--ax:rgba(180,200,230,.40);
-  --dim:rgba(180,200,230,.30);--tan:#f54d7d;
-}
-html,body{width:100%;height:100%;background:var(--bg);
-  font-family:'Inter',-apple-system,BlinkMacSystemFont,sans-serif;
-  color:var(--pt);overflow:hidden}
-#app{display:flex;flex-direction:column;height:100vh;width:100vw}
-#top{height:48px;display:flex;align-items:center;justify-content:space-between;
-  padding:0 20px;border-bottom:1px solid rgba(180,200,230,.08);flex-shrink:0}
-#title{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--dim)}
-#hud{display:flex;gap:20px;align-items:center}
-.hv{font-size:12px;font-family:'JetBrains Mono','Courier New',monospace;letter-spacing:.04em}
-.hs{color:var(--sin)}.hc{color:var(--cos)}.ht{color:var(--tan)}
-.hth{color:rgba(248,244,232,.75)}
-#row{display:flex;flex:1;overflow:hidden;min-height:0}
-#lp{width:44%;position:relative;border-right:1px solid rgba(180,200,230,.08)}
-#rp{flex:1;position:relative}
-#cc,#wc{display:block;width:100%;height:100%;cursor:crosshair}
-#bot{height:58px;display:flex;align-items:center;justify-content:center;
-  gap:14px;padding:0 16px;border-top:1px solid rgba(180,200,230,.08);
-  flex-shrink:0;background:rgba(7,11,21,.85);flex-wrap:wrap}
-input[type=range]{-webkit-appearance:none;appearance:none;
-  height:2px;background:rgba(180,200,230,.18);border-radius:2px;outline:none;cursor:pointer}
-input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;
-  width:13px;height:13px;border-radius:50%;cursor:pointer}
-#sl{width:180px}
-#sl::-webkit-slider-thumb{background:var(--pt);box-shadow:0 0 6px rgba(248,244,232,.5)}
-#spd{width:70px}
-#spd::-webkit-slider-thumb{background:rgba(180,200,230,.6)}
-.lbl{font-size:11px;color:var(--dim);letter-spacing:.06em;white-space:nowrap}
-#spdv{font-size:11px;font-family:monospace;color:var(--dim);width:30px}
-.btn{height:32px;padding:0 14px;border:1px solid rgba(180,200,230,.18);
-  border-radius:6px;background:rgba(180,200,230,.05);color:rgba(248,244,232,.75);
-  font-size:11px;letter-spacing:.08em;text-transform:uppercase;
-  cursor:pointer;transition:all .18s;font-family:inherit;white-space:nowrap}
-.btn:hover{background:rgba(180,200,230,.10);border-color:rgba(180,200,230,.35)}
-.on{background:rgba(248,244,232,.08)!important;border-color:rgba(248,244,232,.40)!important;
-  color:var(--pt)!important;box-shadow:0 0 10px rgba(248,244,232,.08)!important}
-.son{background:rgba(245,200,66,.08)!important;border-color:var(--sin)!important;
-  color:var(--sin)!important;box-shadow:0 0 10px rgba(245,200,66,.15)!important}
-.con{background:rgba(77,217,245,.08)!important;border-color:var(--cos)!important;
-  color:var(--cos)!important;box-shadow:0 0 10px rgba(77,217,245,.12)!important}
-@media(max-width:700px){
-  #row{flex-direction:column}
-  #lp{width:100%;height:52%;border-right:none;border-bottom:1px solid rgba(180,200,230,.08)}
-  #rp{height:48%}
-  #hud .hv:nth-child(n+3){display:none}
-  #bot{height:auto;padding:8px;gap:8px}
-  #sl{width:120px}
-}
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>The Geometry of Waves</title>
+    <style>
+        :root {
+            --bg-color: #030508;
+            --grid-color: rgba(255, 255, 255, 0.05);
+            --axis-color: rgba(255, 255, 255, 0.15);
+            --text-main: rgba(255, 255, 255, 0.95);
+            --text-muted: rgba(255, 255, 255, 0.5);
+            
+            /* Core Mathematical Colors */
+            --color-cyan: #00E5FF;    /* Circular Motion */
+            --color-amber: #FFAA00;   /* Sine Wave */
+            --color-magenta: #D500F9; /* Cosine Wave */
+            --color-beam: rgba(255, 255, 255, 0.4);
+            
+            --color-glass: rgba(10, 15, 25, 0.6);
+            --color-glass-border: rgba(255, 255, 255, 0.1);
+            --font-ui: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            --font-math: 'Courier New', Courier, monospace;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            user-select: none;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            font-family: var(--font-ui);
+            overflow: hidden;
+            width: 100vw;
+            height: 100vh;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        #canvas-container {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            z-index: 1;
+        }
+
+        canvas {
+            display: block;
+            width: 100%; height: 100%;
+        }
+
+        .ui-layer {
+            position: absolute;
+            z-index: 10;
+            pointer-events: none;
+            display: flex;
+            flex-direction: column;
+            width: 100%; height: 100%;
+        }
+
+        .glass-panel {
+            pointer-events: auto;
+            background: var(--color-glass);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid var(--color-glass-border);
+            border-radius: 12px;
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.5);
+            transition: opacity 0.5s ease, transform 0.5s ease;
+        }
+
+        #cinematic-overlay {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            display: flex; justify-content: center; align-items: center;
+            background: var(--bg-color);
+            z-index: 50;
+            transition: opacity 1.5s ease;
+        }
+
+        .narrative-text {
+            font-size: 3rem;
+            font-weight: 300;
+            letter-spacing: 2px;
+            text-align: center;
+            opacity: 0;
+            position: absolute;
+            transform: scale(0.95);
+            transition: all 1s ease;
+            text-shadow: 0 0 30px rgba(0, 229, 255, 0.4);
+        }
+
+        .narrative-text.active {
+            opacity: 1;
+            transform: scale(1);
+        }
+
+        #top-bar {
+            position: absolute;
+            top: 1.5rem;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 1rem;
+            padding: 0.75rem 1.5rem;
+            opacity: 0;
+        }
+
+        #teacher-panel {
+            position: absolute;
+            bottom: 2.5rem;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 90%;
+            max-width: 700px;
+            padding: 1.5rem 2rem;
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 1.25rem;
+            opacity: 0;
+        }
+
+        #teacher-text {
+            font-size: 1.25rem;
+            line-height: 1.6;
+            font-weight: 400;
+        }
+
+        .highlight-sine { color: var(--color-amber); font-weight: bold; }
+        .highlight-cos { color: var(--color-magenta); font-weight: bold; }
+        .highlight-cyan { color: var(--color-cyan); font-weight: bold; }
+
+        button {
+            background: transparent;
+            border: 1px solid var(--text-muted);
+            color: var(--text-main);
+            padding: 0.6rem 1.2rem;
+            border-radius: 6px;
+            font-family: inherit;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 0.95rem;
+            letter-spacing: 0.5px;
+        }
+
+        button:hover { background: rgba(255, 255, 255, 0.1); border-color: var(--text-main); }
+        button.active-btn { background: var(--text-main); color: var(--bg-color); font-weight: 600; }
+        button.primary-btn { background: var(--color-cyan); color: var(--bg-color); border: none; font-weight: bold; }
+        button.primary-btn:hover { background: #55ffff; box-shadow: 0 0 15px rgba(0, 229, 255, 0.5); }
+
+        #explorer-panel {
+            position: absolute;
+            top: 50%;
+            right: 1.5rem;
+            transform: translateY(-50%);
+            width: 320px;
+            padding: 1.5rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1.25rem;
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .control-group { display: flex; flex-direction: column; gap: 0.5rem; }
+        .control-label { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); display: flex; justify-content: space-between; }
+        
+        input[type=range] { -webkit-appearance: none; width: 100%; background: transparent; }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 18px; width: 18px;
+            border-radius: 50%;
+            background: var(--text-main);
+            cursor: pointer;
+            margin-top: -7px;
+            box-shadow: 0 0 10px rgba(255, 255, 255, 0.3);
+        }
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%; height: 4px; cursor: pointer; background: var(--axis-color); border-radius: 2px;
+        }
+
+        .toggle-row { display: flex; align-items: center; gap: 0.75rem; font-size: 0.9rem; cursor: pointer; }
+        .toggle-row input { accent-color: var(--color-cyan); transform: scale(1.2); cursor: pointer; }
+
+        #data-panel {
+            position: absolute;
+            top: 1.5rem;
+            left: 1.5rem;
+            padding: 1.25rem;
+            min-width: 220px;
+            opacity: 0;
+        }
+
+        .math-row {
+            display: flex;
+            justify-content: space-between;
+            font-family: var(--font-math);
+            font-size: 1.15rem;
+            margin-bottom: 0.5rem;
+        }
+
+        /* 5 Landmarks Table Overlay */
+        #landmarks-table {
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(5, 8, 15, 0.85);
+            padding: 2rem;
+            border-radius: 12px;
+            border: 1px solid var(--color-glass-border);
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s;
+            z-index: 20;
+        }
+        
+        table { border-collapse: collapse; width: 100%; font-family: var(--font-math); text-align: center; }
+        th, td { padding: 12px 20px; border-bottom: 1px solid var(--axis-color); }
+        th { color: var(--text-muted); font-family: var(--font-ui); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px; }
+
+        .hidden { display: none !important; }
+        .visible { opacity: 1 !important; pointer-events: auto !important; }
+        
+        /* Drag handle hint */
+        .drag-hint {
+            position: absolute;
+            color: var(--text-main);
+            font-size: 0.85rem;
+            background: rgba(0,0,0,0.7);
+            padding: 4px 8px;
+            border-radius: 4px;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.2s;
+            border: 1px solid var(--color-glass-border);
+        }
+
+        @media (max-width: 900px) {
+            #explorer-panel { top: auto; bottom: 1rem; right: 50%; transform: translateX(50%); width: 95%; flex-direction: row; flex-wrap: wrap; }
+            .control-group { flex: 1; min-width: 140px; }
+            #teacher-panel { bottom: 14rem; padding: 1rem; }
+            .narrative-text { font-size: 1.8rem; }
+            #data-panel { top: auto; bottom: 1rem; left: 1rem; right: auto; transform: none; }
+        }
+    </style>
 </head>
 <body>
-<div id="app">
-  <div id="top">
-    <div id="title">The Shadow That Became a Wave</div>
-    <div id="hud">
-      <div class="hv hth">&#952; = <span id="vth">0.0&deg;</span></div>
-      <div class="hv hs">sin&#952; = <span id="vs">0.000</span></div>
-      <div class="hv hc">cos&#952; = <span id="vc">1.000</span></div>
-      <div class="hv ht">tan&#952; = <span id="vt">0.000</span></div>
+
+    <div id="canvas-container">
+        <canvas id="math-canvas"></canvas>
+        <div id="drag-tooltip" class="drag-hint">↔ Drag point</div>
     </div>
-  </div>
-  <div id="row">
-    <div id="lp"><canvas id="cc"></canvas></div>
-    <div id="rp"><canvas id="wc"></canvas></div>
-  </div>
-  <div id="bot">
-    <span class="lbl">&#952;</span>
-    <input type="range" id="sl" min="0" max="360" step="0.5" value="0">
-    <button class="btn on" id="bplay">&#9654; Animate</button>
-    <button class="btn" id="breset">Reset Wave</button>
-    <button class="btn son" id="bsin">Sine</button>
-    <button class="btn con" id="bcos">Cosine</button>
-    <button class="btn on" id="btri">Triangle</button>
-    <span class="lbl">Speed</span>
-    <input type="range" id="spd" min="0.1" max="3" step="0.1" value="0.5">
-    <span id="spdv">0.5&#215;</span>
-  </div>
-</div>
-<script>
-(function(){
-'use strict';
-
-// ── Canvas Setup ──────────────────────────────────────────────────────────────
-var CC = document.getElementById('cc');
-var WC = document.getElementById('wc');
-var cc = CC.getContext('2d');
-var wc = WC.getContext('2d');
-var DPR = Math.min(window.devicePixelRatio || 1, 2);
-
-function resize() {
-  var lp = document.getElementById('lp');
-  var rp = document.getElementById('rp');
-  CC.width  = lp.clientWidth  * DPR;
-  CC.height = lp.clientHeight * DPR;
-  CC.style.width  = lp.clientWidth  + 'px';
-  CC.style.height = lp.clientHeight + 'px';
-  WC.width  = rp.clientWidth  * DPR;
-  WC.height = rp.clientHeight * DPR;
-  WC.style.width  = rp.clientWidth  + 'px';
-  WC.style.height = rp.clientHeight + 'px';
-}
-window.addEventListener('resize', resize);
-resize();
-
-// ── State ─────────────────────────────────────────────────────────────────────
-var S = {
-  theta: 0,
-  animating: false,
-  speed: 0.5,
-  showSin: true,
-  showCos: true,
-  showTri: true,
-  waveHist: [],
-  waveAngle: 0,
-  lastWavePush: -1e9,
-  arcTrace: [],
-  dragging: false,
-  lastTime: null,
-  complete: false
-};
-var WAVE_STEP = Math.PI / 90;
-var MAX_WAVE  = 2000;
-var ARC_LEN   = 80;
-var PI2       = Math.PI * 2;
-
-// ── Stars ─────────────────────────────────────────────────────────────────────
-var STARS = [];
-for (var i = 0; i < 90; i++) {
-  STARS.push({
-    rx: Math.random(), ry: Math.random(),
-    r:  Math.random() * 1.0 + 0.2,
-    a:  Math.random() * 0.45 + 0.08
-  });
-}
-
-function drawStars(ctx, W, H) {
-  ctx.save();
-  for (var i = 0; i < STARS.length; i++) {
-    var s = STARS[i];
-    ctx.beginPath();
-    ctx.arc(s.rx * W, s.ry * H, s.r * DPR, 0, PI2);
-    ctx.fillStyle = 'rgba(180,200,230,' + s.a + ')';
-    ctx.fill();
-  }
-  ctx.restore();
-}
-
-// ── Coordinate helpers ────────────────────────────────────────────────────────
-function SC()  { return Math.min(CC.width, CC.height) * 0.295; }
-function wx(v) { return CC.width  * 0.5 + v * SC(); }
-function wy(v) { return CC.height * 0.5 - v * SC(); }
-function cxw(p){ return (p - CC.width  * 0.5) / SC(); }
-function cyw(p){ return (CC.height * 0.5 - p) / SC(); }
-
-function glo(ctx, col, r) { ctx.shadowColor = col; ctx.shadowBlur = r * DPR; }
-function noG(ctx)          { ctx.shadowColor = 'transparent'; ctx.shadowBlur = 0; }
-function arc(ctx, x, y, r) { ctx.beginPath(); ctx.arc(x, y, r, 0, PI2); }
-
-// ── Draw: Circle Panel ────────────────────────────────────────────────────────
-function drawCircle() {
-  var ctx = cc;
-  var W = CC.width, H = CC.height, sc = SC();
-  var ox = W * 0.5, oy = H * 0.5;
-
-  ctx.fillStyle = '#070b15';
-  ctx.fillRect(0, 0, W, H);
-  drawStars(ctx, W, H);
-
-  // Grid
-  ctx.save();
-  ctx.strokeStyle = 'rgba(180,200,230,0.055)';
-  ctx.lineWidth = DPR;
-  for (var v = -2; v <= 2; v += 0.5) {
-    ctx.beginPath(); ctx.moveTo(wx(-2), wy(v)); ctx.lineTo(wx(2), wy(v)); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(wx(v), wy(-2)); ctx.lineTo(wx(v), wy(2)); ctx.stroke();
-  }
-  ctx.restore();
-
-  // Axes
-  ctx.save();
-  ctx.strokeStyle = 'rgba(180,200,230,0.38)';
-  ctx.lineWidth = DPR;
-  ctx.beginPath(); ctx.moveTo(wx(-1.78), oy); ctx.lineTo(wx(1.78), oy); ctx.stroke();
-  ctx.beginPath(); ctx.moveTo(ox, wy(-1.78)); ctx.lineTo(ox, wy(1.78)); ctx.stroke();
-  ctx.fillStyle = 'rgba(180,200,230,0.30)';
-  ctx.font = (10 * DPR) + 'px Inter,sans-serif';
-  var tks = [-1, 1];
-  for (var i = 0; i < tks.length; i++) {
-    var v = tks[i];
-    ctx.fillRect(wx(v) - DPR, oy - 4 * DPR, 2 * DPR, 8 * DPR);
-    ctx.textAlign = 'center'; ctx.textBaseline = 'top';
-    ctx.fillText(v === 1 ? '1' : '-1', wx(v), oy + 6 * DPR);
-    ctx.fillRect(ox - 4 * DPR, wy(v) - DPR, 8 * DPR, 2 * DPR);
-    ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
-    ctx.fillText(v === 1 ? '1' : '-1', ox - 8 * DPR, wy(v));
-  }
-  ctx.restore();
-
-  // Unit circle
-  ctx.save();
-  if (S.complete) {
-    glo(ctx, 'rgba(122,143,168,0.5)', 28 * DPR);
-    ctx.strokeStyle = 'rgba(122,143,168,0.15)';
-    ctx.lineWidth = 7 * DPR;
-    ctx.beginPath(); ctx.arc(ox, oy, sc, 0, PI2); ctx.stroke();
-  }
-  glo(ctx, '#7a8fa8', 14 * DPR);
-  ctx.strokeStyle = 'rgba(122,143,168,0.72)';
-  ctx.lineWidth = 1.8 * DPR;
-  ctx.beginPath(); ctx.arc(ox, oy, sc, 0, PI2); ctx.stroke();
-  noG(ctx);
-  ctx.restore();
-
-  // Arc trace
-  if (S.arcTrace.length > 1) {
-    ctx.save();
-    for (var i = 1; i < S.arcTrace.length; i++) {
-      var a = i / S.arcTrace.length;
-      glo(ctx, 'rgba(248,244,232,0.4)', 6 * a * DPR);
-      ctx.strokeStyle = 'rgba(248,244,232,' + (a * 0.52) + ')';
-      ctx.lineWidth = 1.8 * DPR;
-      ctx.beginPath();
-      ctx.moveTo(wx(S.arcTrace[i-1].x), wy(S.arcTrace[i-1].y));
-      ctx.lineTo(wx(S.arcTrace[i].x),   wy(S.arcTrace[i].y));
-      ctx.stroke();
-    }
-    noG(ctx);
-    ctx.restore();
-  }
-
-  var sin = Math.sin(S.theta);
-  var cos = Math.cos(S.theta);
-  var Px = wx(cos),  Py = wy(sin);
-  var Fx = wx(cos),  Fy = wy(0);
-  var Ox = wx(0),    Oy = wy(0);
-
-  // Cosine projection
-  if (S.showCos) {
-    var scry = wy(-1.5);
-    var sdx  = wx(cos);
-
-    ctx.save();
-    ctx.strokeStyle = 'rgba(77,217,245,0.12)';
-    ctx.lineWidth = 3 * DPR;
-    ctx.beginPath(); ctx.moveTo(wx(-1.35), scry); ctx.lineTo(wx(1.35), scry); ctx.stroke();
-    ctx.restore();
-
-    ctx.save();
-    ctx.strokeStyle = 'rgba(77,217,245,0.22)';
-    ctx.lineWidth = DPR;
-    ctx.setLineDash([5 * DPR, 5 * DPR]);
-    ctx.beginPath(); ctx.moveTo(Px, Py); ctx.lineTo(sdx, scry); ctx.stroke();
-    ctx.setLineDash([]);
-    ctx.restore();
-
-    ctx.save();
-    glo(ctx, '#4dd9f5', 12 * DPR);
-    ctx.strokeStyle = 'rgba(77,217,245,0.88)';
-    ctx.lineWidth = 2.5 * DPR;
-    ctx.beginPath(); ctx.moveTo(Ox, Oy); ctx.lineTo(Fx, Fy); ctx.stroke();
-    noG(ctx);
-    ctx.restore();
-
-    ctx.save();
-    glo(ctx, '#4dd9f5', 18 * DPR);
-    ctx.fillStyle = '#4dd9f5';
-    arc(ctx, sdx, scry, 5 * DPR); ctx.fill();
-    noG(ctx);
-    ctx.restore();
-
-    ctx.save();
-    ctx.fillStyle = 'rgba(77,217,245,0.85)';
-    ctx.font = 'italic ' + (11 * DPR) + 'px Inter,sans-serif';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText('cosθ', wx(cos * 0.5), wy(-0.11));
-    ctx.restore();
-  }
-
-  // Sine projection
-  if (S.showSin) {
-    var scrx = wx(-1.5);
-    var sdy  = wy(sin);
-
-    ctx.save();
-    ctx.strokeStyle = 'rgba(245,200,66,0.12)';
-    ctx.lineWidth = 3 * DPR;
-    ctx.beginPath(); ctx.moveTo(scrx, wy(-1.35)); ctx.lineTo(scrx, wy(1.35)); ctx.stroke();
-    ctx.restore();
-
-    ctx.save();
-    ctx.strokeStyle = 'rgba(245,200,66,0.22)';
-    ctx.lineWidth = DPR;
-    ctx.setLineDash([5 * DPR, 5 * DPR]);
-    ctx.beginPath(); ctx.moveTo(Px, Py); ctx.lineTo(scrx, sdy); ctx.stroke();
-    ctx.setLineDash([]);
-    ctx.restore();
-
-    ctx.save();
-    glo(ctx, '#f5c842', 12 * DPR);
-    ctx.strokeStyle = 'rgba(245,200,66,0.88)';
-    ctx.lineWidth = 2.5 * DPR;
-    ctx.beginPath(); ctx.moveTo(Px, Py); ctx.lineTo(Fx, Fy); ctx.stroke();
-    noG(ctx);
-    ctx.restore();
-
-    ctx.save();
-    glo(ctx, '#f5c842', 18 * DPR);
-    ctx.fillStyle = '#f5c842';
-    arc(ctx, scrx, sdy, 5 * DPR); ctx.fill();
-    noG(ctx);
-    ctx.restore();
-
-    if (Math.abs(sin) > 0.04) {
-      ctx.save();
-      ctx.strokeStyle = 'rgba(245,200,66,0.38)';
-      ctx.lineWidth = DPR;
-      var bx = scrx - 8 * DPR;
-      var my = wy(0);
-      ctx.beginPath(); ctx.moveTo(bx, sdy); ctx.lineTo(bx, my); ctx.stroke();
-      ctx.beginPath(); ctx.moveTo(bx - 3*DPR, sdy); ctx.lineTo(bx + 3*DPR, sdy); ctx.stroke();
-      ctx.beginPath(); ctx.moveTo(bx - 3*DPR, my);  ctx.lineTo(bx + 3*DPR, my);  ctx.stroke();
-      ctx.restore();
-    }
-
-    ctx.save();
-    ctx.fillStyle = 'rgba(245,200,66,0.85)';
-    ctx.font = 'italic ' + (11 * DPR) + 'px Inter,sans-serif';
-    ctx.textAlign = 'left';
-    ctx.textBaseline = 'middle';
-    var lbx = wx(cos + (cos >= 0 ? 0.13 : -0.22));
-    var lby = wy(sin * 0.5);
-    ctx.fillText('sinθ', lbx, lby);
-    ctx.restore();
-  }
-
-  // Right triangle
-  if (S.showTri) {
-    ctx.save();
-    ctx.beginPath();
-    ctx.moveTo(Ox, Oy); ctx.lineTo(Fx, Fy); ctx.lineTo(Px, Py);
-    ctx.closePath();
-    ctx.fillStyle = 'rgba(248,244,232,0.038)'; ctx.fill();
-    var rm  = 9 * DPR;
-    var sfx = cos >= 0 ? -rm : rm;
-    var sfy = sin >= 0 ? -rm : rm;
-    ctx.strokeStyle = 'rgba(180,200,230,0.28)';
-    ctx.lineWidth = DPR;
-    ctx.beginPath();
-    ctx.moveTo(Fx + sfx, Fy);
-    ctx.lineTo(Fx + sfx, Fy + sfy);
-    ctx.lineTo(Fx,       Fy + sfy);
-    ctx.stroke();
-    ctx.restore();
-  }
-
-  // Arm
-  ctx.save();
-  glo(ctx, 'rgba(248,244,232,0.55)', 10 * DPR);
-  ctx.strokeStyle = 'rgba(248,244,232,0.82)';
-  ctx.lineWidth = 2 * DPR;
-  ctx.beginPath(); ctx.moveTo(Ox, Oy); ctx.lineTo(Px, Py); ctx.stroke();
-  noG(ctx);
-  var ang  = S.theta;
-  var mx2  = wx(cos * 0.5);
-  var my2  = wy(sin * 0.5);
-  ctx.fillStyle = 'rgba(248,244,232,0.38)';
-  ctx.font = (11 * DPR) + 'px Inter,sans-serif';
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  ctx.fillText('1',
-    mx2 - Math.sin(ang) * 14 * DPR,
-    my2 - Math.cos(ang) * 14 * DPR);
-  ctx.restore();
-
-  // Angle arc
-  var nT = ((S.theta % PI2) + PI2) % PI2;
-  ctx.save();
-  ctx.strokeStyle = 'rgba(248,244,232,0.22)';
-  ctx.lineWidth = 1.5 * DPR;
-  ctx.beginPath();
-  ctx.arc(Ox, Oy, sc * 0.19, 0, -nT, true);
-  ctx.stroke();
-  var mA = nT / 2;
-  var lr = sc * 0.28;
-  ctx.fillStyle = 'rgba(248,244,232,0.55)';
-  ctx.font = 'italic ' + (12 * DPR) + 'px Georgia,serif';
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  ctx.fillText('θ', Ox + lr * Math.cos(mA), Oy - lr * Math.sin(mA));
-  ctx.restore();
-
-  // Origin dot
-  ctx.save();
-  ctx.fillStyle = 'rgba(180,200,230,0.55)';
-  arc(ctx, Ox, Oy, 4 * DPR); ctx.fill();
-  ctx.restore();
-
-  // Point P — layered glow
-  ctx.save();
-  glo(ctx, 'rgba(248,244,232,0.55)', 32 * DPR);
-  ctx.fillStyle = 'rgba(248,244,232,0.16)';
-  arc(ctx, Px, Py, 16 * DPR); ctx.fill();
-  glo(ctx, 'rgba(248,244,232,0.75)', 16 * DPR);
-  ctx.fillStyle = 'rgba(248,244,232,0.50)';
-  arc(ctx, Px, Py, 8 * DPR); ctx.fill();
-  noG(ctx);
-  ctx.fillStyle = '#f8f4e8';
-  arc(ctx, Px, Py, 4.5 * DPR); ctx.fill();
-  ctx.fillStyle = 'rgba(248,244,232,0.48)';
-  ctx.font = 'italic bold ' + (11 * DPR) + 'px Inter,sans-serif';
-  ctx.textAlign = 'left';
-  ctx.textBaseline = 'bottom';
-  ctx.fillText('P', Px + 8 * DPR, Py - 8 * DPR);
-  ctx.restore();
-}
-
-// ── Draw: Wave Panel ──────────────────────────────────────────────────────────
-function drawWave() {
-  var ctx = wc;
-  var W = WC.width, H = WC.height;
-
-  ctx.fillStyle = '#070b15';
-  ctx.fillRect(0, 0, W, H);
-  drawStars(ctx, W, H);
-
-  var pL = 52 * DPR, pR = 20 * DPR, pT = 28 * DPR, pB = 44 * DPR;
-  var cw = W - pL - pR;
-  var ch = H - pT - pB;
-  var midY = pT + ch * 0.5;
-  var yS   = ch / 2.2;
-
-  // Y axis labels and guidelines
-  ctx.save();
-  ctx.fillStyle = 'rgba(180,200,230,0.28)';
-  ctx.font = (10 * DPR) + 'px Inter,sans-serif';
-  ctx.textAlign = 'right';
-  ctx.textBaseline = 'middle';
-  var yv = [-1, -0.5, 0, 0.5, 1];
-  for (var i = 0; i < yv.length; i++) {
-    var v  = yv[i];
-    var yp = midY - v * yS;
-    ctx.fillText(v === 0 ? '0' : v.toString(), pL - 7 * DPR, yp);
-    if (v !== 0) {
-      ctx.save();
-      ctx.strokeStyle = 'rgba(180,200,230,0.06)';
-      ctx.lineWidth = DPR;
-      ctx.setLineDash([4 * DPR, 6 * DPR]);
-      ctx.beginPath(); ctx.moveTo(pL, yp); ctx.lineTo(pL + cw, yp); ctx.stroke();
-      ctx.setLineDash([]);
-      ctx.restore();
-    }
-  }
-  ctx.restore();
-
-  // Axes
-  ctx.save();
-  ctx.strokeStyle = 'rgba(180,200,230,0.32)';
-  ctx.lineWidth = DPR;
-  ctx.beginPath(); ctx.moveTo(pL, midY); ctx.lineTo(pL + cw, midY); ctx.stroke();
-  ctx.beginPath(); ctx.moveTo(pL, pT);   ctx.lineTo(pL, pT + ch);   ctx.stroke();
-  ctx.restore();
-
-  if (S.waveHist.length < 2) {
-    ctx.save();
-    ctx.fillStyle = 'rgba(180,200,230,0.14)';
-    ctx.font = (13 * DPR) + 'px Inter,sans-serif';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText('Press Animate — or drag P — to trace the wave', W * 0.5, H * 0.5);
-    ctx.restore();
-    return;
-  }
-
-  var totalSpan = Math.max(4 * Math.PI, S.waveAngle);
-  var xS   = cw / totalSpan;
-  var latX = pL + cw;
-
-  function rToX(wa) { return latX - (S.waveAngle - wa) * xS; }
-  function vToY(v)  { return midY - v * yS; }
-
-  // X axis labels
-  ctx.save();
-  ctx.fillStyle   = 'rgba(180,200,230,0.28)';
-  ctx.strokeStyle = 'rgba(180,200,230,0.06)';
-  ctx.font = (10 * DPR) + 'px Inter,sans-serif';
-  ctx.textAlign = 'center';
-  ctx.lineWidth = DPR;
-  var startWa = S.waveAngle - totalSpan;
-  var k0 = Math.ceil(startWa / Math.PI);
-  var k1 = Math.floor(S.waveAngle / Math.PI) + 1;
-  for (var k = k0; k <= k1; k++) {
-    var xp = rToX(k * Math.PI);
-    if (xp < pL || xp > pL + cw) continue;
-    ctx.setLineDash([4 * DPR, 6 * DPR]);
-    ctx.beginPath(); ctx.moveTo(xp, pT); ctx.lineTo(xp, pT + ch); ctx.stroke();
-    ctx.setLineDash([]);
-    var lbl = k === 0 ? '0' : k === 1 ? 'π' : k === -1 ? '-π' : k + 'π';
-    ctx.textBaseline = 'top';
-    ctx.fillText(lbl, xp, pT + ch + 6 * DPR);
-  }
-  ctx.restore();
-
-  // Clip to chart area
-  ctx.save();
-  ctx.beginPath(); ctx.rect(pL, pT, cw, ch); ctx.clip();
-
-  // Cosine trace
-  if (S.showCos && S.waveHist.length > 1) {
-    ctx.save();
-    glo(ctx, '#4dd9f5', 7 * DPR);
-    ctx.strokeStyle = 'rgba(77,217,245,0.72)';
-    ctx.lineWidth = 2 * DPR;
-    ctx.beginPath();
-    for (var i = 0; i < S.waveHist.length; i++) {
-      var p = S.waveHist[i];
-      if (i === 0) ctx.moveTo(rToX(p.wa), vToY(p.cos));
-      else         ctx.lineTo(rToX(p.wa), vToY(p.cos));
-    }
-    ctx.stroke(); noG(ctx);
-    var lp = S.waveHist[S.waveHist.length - 1];
-    glo(ctx, '#4dd9f5', 18 * DPR);
-    ctx.fillStyle = '#4dd9f5';
-    arc(ctx, rToX(lp.wa), vToY(lp.cos), 5 * DPR); ctx.fill();
-    noG(ctx);
-    ctx.restore();
-  }
-
-  // Sine trace
-  if (S.showSin && S.waveHist.length > 1) {
-    ctx.save();
-    glo(ctx, '#f5c842', 8 * DPR);
-    ctx.strokeStyle = 'rgba(245,200,66,0.88)';
-    ctx.lineWidth = 2.5 * DPR;
-    ctx.beginPath();
-    for (var i = 0; i < S.waveHist.length; i++) {
-      var p = S.waveHist[i];
-      if (i === 0) ctx.moveTo(rToX(p.wa), vToY(p.sin));
-      else         ctx.lineTo(rToX(p.wa), vToY(p.sin));
-    }
-    ctx.stroke(); noG(ctx);
-    var lp  = S.waveHist[S.waveHist.length - 1];
-    var lpx = rToX(lp.wa);
-    var lpy = vToY(lp.sin);
-    ctx.save();
-    ctx.strokeStyle = 'rgba(245,200,66,0.18)';
-    ctx.lineWidth = DPR;
-    ctx.setLineDash([3 * DPR, 4 * DPR]);
-    ctx.beginPath(); ctx.moveTo(lpx, lpy); ctx.lineTo(lpx, midY); ctx.stroke();
-    ctx.setLineDash([]);
-    ctx.restore();
-    glo(ctx, '#f5c842', 22 * DPR);
-    ctx.fillStyle = '#f5c842';
-    arc(ctx, lpx, lpy, 6 * DPR); ctx.fill();
-    noG(ctx);
-    ctx.restore();
-  }
-
-  ctx.restore(); // end clip
-
-  // Legend
-  ctx.save();
-  ctx.font = (11 * DPR) + 'px Inter,sans-serif';
-  ctx.textBaseline = 'middle';
-  if (S.showSin) {
-    glo(ctx, '#f5c842', 5 * DPR);
-    ctx.fillStyle = '#f5c842';
-    ctx.textAlign = 'left';
-    ctx.fillText('— sinθ', pL + 8 * DPR, pT + 16 * DPR);
-  }
-  if (S.showCos) {
-    noG(ctx);
-    glo(ctx, '#4dd9f5', 5 * DPR);
-    ctx.fillStyle = '#4dd9f5';
-    ctx.textAlign = 'left';
-    ctx.fillText('— cosθ', pL + 8 * DPR, pT + 32 * DPR);
-  }
-  noG(ctx);
-  ctx.restore();
-
-  ctx.save();
-  ctx.fillStyle = 'rgba(180,200,230,0.22)';
-  ctx.font = (10 * DPR) + 'px Inter,sans-serif';
-  ctx.textAlign = 'right';
-  ctx.textBaseline = 'top';
-  ctx.fillText('θ (radians)', pL + cw, pT + ch + 6 * DPR);
-  ctx.restore();
-}
-
-// ── HUD ───────────────────────────────────────────────────────────────────────
-function updateHUD() {
-  var sin = Math.sin(S.theta);
-  var cos = Math.cos(S.theta);
-  var deg = (((S.theta * 180 / Math.PI) % 360) + 360) % 360;
-  document.getElementById('vth').textContent = deg.toFixed(1) + '°';
-  document.getElementById('vs').textContent  = sin.toFixed(3);
-  document.getElementById('vc').textContent  = cos.toFixed(3);
-  document.getElementById('vt').textContent  = Math.abs(cos) < 0.005 ? '∞' : (sin / cos).toFixed(3);
-  if (!S.dragging) document.getElementById('sl').value = deg.toFixed(1);
-}
-
-// ── Arc trace ─────────────────────────────────────────────────────────────────
-function pushArc() {
-  S.arcTrace.push({ x: Math.cos(S.theta), y: Math.sin(S.theta) });
-  if (S.arcTrace.length > ARC_LEN) S.arcTrace.shift();
-}
-
-// ── Wave push (forward motion only) ──────────────────────────────────────────
-function tryPushWave(delta) {
-  if (delta <= 0) return;
-  S.waveAngle += delta;
-  if (S.waveAngle - S.lastWavePush >= WAVE_STEP) {
-    S.waveHist.push({
-      wa:  S.waveAngle,
-      sin: Math.sin(S.theta),
-      cos: Math.cos(S.theta)
-    });
-    if (S.waveHist.length > MAX_WAVE) S.waveHist.shift();
-    S.lastWavePush = S.waveAngle;
-  }
-  if (S.waveAngle >= PI2) S.complete = true;
-}
-
-// ── Render loop ───────────────────────────────────────────────────────────────
-function loop(ts) {
-  requestAnimationFrame(loop);
-  if (S.animating) {
-    var dt = S.lastTime ? Math.min(ts - S.lastTime, 50) : 16;
-    S.lastTime = ts;
-    var dT = S.speed * PI2 * (dt / 1000);
-    S.theta += dT;
-    tryPushWave(dT);
-    pushArc();
-    var deg = (((S.theta * 180 / Math.PI) % 360) + 360) % 360;
-    document.getElementById('sl').value = deg.toFixed(1);
-  } else {
-    S.lastTime = null;
-  }
-  drawCircle();
-  drawWave();
-  updateHUD();
-}
-requestAnimationFrame(loop);
-
-// ── Drag ──────────────────────────────────────────────────────────────────────
-var prevDT = null;
-
-function ptrPos(e) {
-  var r  = CC.getBoundingClientRect();
-  var cl = e.touches ? e.touches[0].clientX : e.clientX;
-  var ct = e.touches ? e.touches[0].clientY : e.clientY;
-  return { x: (cl - r.left) * DPR, y: (ct - r.top) * DPR };
-}
-
-CC.addEventListener('mousedown', startDrag);
-CC.addEventListener('touchstart', startDrag, { passive: true });
-
-function startDrag(e) {
-  S.dragging = true;
-  S.animating = false;
-  var bp = document.getElementById('bplay');
-  bp.textContent = '▶ Animate';
-  bp.className = 'btn on';
-  var p = ptrPos(e);
-  prevDT = Math.atan2(cyw(p.y), cxw(p.x));
-  S.theta = prevDT;
-  pushArc();
-}
-
-window.addEventListener('mousemove', onDrag);
-window.addEventListener('touchmove', onDrag, { passive: true });
-
-function onDrag(e) {
-  if (!S.dragging) return;
-  var p  = ptrPos(e);
-  var nT = Math.atan2(cyw(p.y), cxw(p.x));
-  var delta = nT - (prevDT || nT);
-  if (delta >  Math.PI) delta -= PI2;
-  if (delta < -Math.PI) delta += PI2;
-  S.theta = nT;
-  tryPushWave(delta);
-  prevDT = nT;
-  pushArc();
-}
-
-window.addEventListener('mouseup',  function() { S.dragging = false; prevDT = null; });
-window.addEventListener('touchend', function() { S.dragging = false; prevDT = null; });
-
-// ── Controls ──────────────────────────────────────────────────────────────────
-document.getElementById('sl').addEventListener('input', function(e) {
-  var deg   = parseFloat(e.target.value);
-  var nT    = deg * Math.PI / 180;
-  var delta = nT - S.theta;
-  S.theta   = nT;
-  tryPushWave(delta);
-  pushArc();
-});
-
-var bplay = document.getElementById('bplay');
-bplay.addEventListener('click', function() {
-  S.animating = !S.animating;
-  if (S.animating) {
-    bplay.textContent = '⏸ Pause';
-    bplay.className = 'btn on';
-  } else {
-    bplay.textContent = '▶ Animate';
-    bplay.className = 'btn on';
-  }
-});
-
-document.getElementById('breset').addEventListener('click', function() {
-  S.waveHist   = [];
-  S.waveAngle  = 0;
-  S.lastWavePush = -1e9;
-  S.arcTrace   = [];
-  S.complete   = false;
-  S.theta      = 0;
-  document.getElementById('sl').value = 0;
-});
-
-var bsin = document.getElementById('bsin');
-bsin.addEventListener('click', function() {
-  S.showSin = !S.showSin;
-  bsin.className = S.showSin ? 'btn son' : 'btn';
-  bsin.style.opacity = S.showSin ? '1' : '0.5';
-});
-
-var bcos = document.getElementById('bcos');
-bcos.addEventListener('click', function() {
-  S.showCos = !S.showCos;
-  bcos.className = S.showCos ? 'btn con' : 'btn';
-  bcos.style.opacity = S.showCos ? '1' : '0.5';
-});
-
-var btri = document.getElementById('btri');
-btri.addEventListener('click', function() {
-  S.showTri = !S.showTri;
-  btri.className = S.showTri ? 'btn on' : 'btn';
-  btri.style.opacity = S.showTri ? '1' : '0.5';
-});
-
-document.getElementById('spd').addEventListener('input', function(e) {
-  S.speed = parseFloat(e.target.value);
-  document.getElementById('spdv').textContent = S.speed.toFixed(1) + '×';
-});
-
-window.addEventListener('keydown', function(e) {
-  var step = (e.shiftKey ? 10 : 1) * Math.PI / 180;
-  if (e.key === 'ArrowRight') {
-    e.preventDefault();
-    S.theta += step; tryPushWave(step); pushArc();
-  } else if (e.key === 'ArrowLeft') {
-    e.preventDefault();
-    S.theta -= step; pushArc();
-  } else if (e.key === ' ') {
-    e.preventDefault();
-    bplay.click();
-  }
-});
-
-// Initial render
-pushArc();
-
-})();
-</script>
+
+    <div id="cinematic-overlay">
+        <div class="narrative-text" id="text-1">Where does the <span class="highlight-sine">SINE WAVE</span> come from?</div>
+        <div class="narrative-text" id="text-2">Is it just an abstract formula?</div>
+        <div class="narrative-text" id="text-3">Or is there a hidden motion behind it?</div>
+        <div class="narrative-text" id="text-4">Let's uncover the geometry.</div>
+    </div>
+
+    <div class="ui-layer">
+        
+        <div id="data-panel" class="glass-panel">
+            <div class="math-row">
+                <span>θ =</span>
+                <span class="highlight-cyan" id="val-theta">0.00 rad</span>
+            </div>
+            <div class="math-row" id="row-coords">
+                <span>P =</span>
+                <span>(<span id="val-x">1.00</span>, <span id="val-y">0.00</span>)</span>
+            </div>
+            <hr style="border:0; border-top: 1px solid var(--color-glass-border); margin: 10px 0;">
+            <div class="math-row" id="row-sin">
+                <span>sin(θ) =</span>
+                <span class="highlight-sine" id="val-sin">0.00</span>
+            </div>
+            <div class="math-row hidden" id="row-cos">
+                <span>cos(θ) =</span>
+                <span class="highlight-cos" id="val-cos">1.00</span>
+            </div>
+        </div>
+
+        <div id="top-bar" class="glass-panel">
+            <button id="btn-play">Pause</button>
+            <button id="btn-restart">↻ Reset</button>
+            <div style="width: 1px; background: var(--color-glass-border); margin: 0 5px;"></div>
+            <button id="btn-mode-guided" class="active-btn">Guided Lesson</button>
+            <button id="btn-mode-explore">Explore Freely</button>
+        </div>
+
+        <div id="teacher-panel" class="glass-panel">
+            <div id="teacher-text">Welcome to the laboratory.</div>
+            <button id="btn-next-scene" class="primary-btn">Next Step →</button>
+        </div>
+
+        <div id="landmarks-table">
+            <table>
+                <tr><th>θ (Angle)</th><th>Point P (x, y)</th><th>sin(θ)</th></tr>
+                <tr id="lm-0"><td>0</td><td>(1, 0)</td><td>0</td></tr>
+                <tr id="lm-1"><td>π/2</td><td>(0, 1)</td><td>1</td></tr>
+                <tr id="lm-2"><td>π</td><td>(-1, 0)</td><td>0</td></tr>
+                <tr id="lm-3"><td>3π/2</td><td>(0, -1)</td><td>-1</td></tr>
+                <tr id="lm-4"><td>2π</td><td>(1, 0)</td><td>0</td></tr>
+            </table>
+        </div>
+
+        <div id="explorer-panel" class="glass-panel">
+            <div style="font-weight: 600; margin-bottom: 0.5rem; text-align: center; font-size: 0.9rem; letter-spacing: 1px;">WAVE MECHANICS</div>
+            <div class="control-group">
+                <div class="control-label"><span>Amplitude (A)</span> <span id="lbl-amp">1.0</span></div>
+                <input type="range" id="sl-amp" min="0.2" max="2.0" step="0.1" value="1.0">
+            </div>
+            <div class="control-group">
+                <div class="control-label"><span>Angular Speed (ω)</span> <span id="lbl-freq">1.0</span></div>
+                <input type="range" id="sl-freq" min="0.5" max="3" step="0.1" value="1.0">
+            </div>
+            <div class="control-group">
+                <div class="control-label"><span>Phase Shift (φ)</span> <span id="lbl-phase">0.0π</span></div>
+                <input type="range" id="sl-phase" min="-2" max="2" step="0.25" value="0">
+            </div>
+            
+            <hr style="border:0; border-top: 1px solid var(--color-glass-border); margin: 10px 0;">
+            
+            <div style="font-weight: 600; margin-bottom: 0.5rem; font-size: 0.8rem; letter-spacing: 1px; color: var(--text-muted);">PROJECTIONS</div>
+            <label class="toggle-row"><input type="checkbox" id="chk-sine" checked> Sine (Vertical / Y)</label>
+            <label class="toggle-row"><input type="checkbox" id="chk-cos"> Cosine (Horizontal / X)</label>
+            <label class="toggle-row"><input type="checkbox" id="chk-beam" checked> Projection Beams</label>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('math-canvas');
+        const ctx = canvas.getContext('2d', { alpha: false });
+        
+        // UI Elements
+        const overlay = document.getElementById('cinematic-overlay');
+        const teacherText = document.getElementById('teacher-text');
+        const landmarksTable = document.getElementById('landmarks-table');
+        const dragTooltip = document.getElementById('drag-tooltip');
+
+        // Application State
+        const state = {
+            width: 0, height: 0, dpr: 1,
+            
+            // Time and Motion
+            t: 0,               // Master time variable (acts as the base angle for unrolling)
+            speed: 0.012,       // Base speed of time
+            isPlaying: true,
+            isDragging: false,
+            mode: 'guided',     // 'guided' or 'explore'
+            sceneIndex: -1,     // -1 = intro
+            
+            // Mathematical Parameters
+            A: 1.0,             // Amplitude
+            w: 1.0,             // Angular Frequency (omega)
+            phi: 0.0,           // Phase Shift
+            
+            // Layout Architecture
+            layout: { cx: 0, cy: 0, R: 0, gx: 0, gy: 0, gW: 0 },
+
+            // Visual Flags (Driven by scenes or toggles)
+            showGrid: false,
+            showAxes: false,
+            showCircle: false,
+            showPoint: false,
+            showAngle: false,
+            showSineProj: false,
+            showCosProj: false,
+            showSineGraph: false,
+            showCosGraph: false,
+            showBeam: false,
+            highlightQuadrants: false,
+            unwrapMode: false,
+            showPhaseAngle: false
+        };
+
+        // Standard Mathematical Colors
+        const C = {
+            bg: '#030508', grid: 'rgba(255, 255, 255, 0.07)', axis: 'rgba(255, 255, 255, 0.25)',
+            text: '#ffffff', cyan: '#00E5FF', amber: '#FFAA00', magenta: '#D500F9', beam: 'rgba(255,255,255,0.4)'
+        };
+
+        function resize() {
+            state.dpr = window.devicePixelRatio || 1;
+            state.width = window.innerWidth;
+            state.height = window.innerHeight;
+            
+            canvas.width = state.width * state.dpr;
+            canvas.height = state.height * state.dpr;
+            canvas.style.width = `${state.width}px`;
+            canvas.style.height = `${state.height}px`;
+            
+            ctx.scale(state.dpr, state.dpr);
+            
+            // Layout: Left (Circle) and Right (Graph)
+            const padding = Math.min(state.width * 0.05, 40);
+            
+            if (state.width > 800) {
+                // Desktop: Side by side
+                state.layout.R = Math.min(state.width * 0.12, state.height * 0.25);
+                state.layout.cx = padding + state.layout.R * 1.5;
+                state.layout.cy = state.height * 0.5;
+                
+                state.layout.gx = state.layout.cx + state.layout.R * 2.5;
+                state.layout.gy = state.height * 0.5;
+                state.layout.gW = state.width - state.layout.gx - padding * 2;
+            } else {
+                // Mobile: Side by side but much smaller, or stacked if extremely thin.
+                // Keeping side-by-side to preserve the "horizontal beam" physical intuition.
+                state.layout.R = state.width * 0.15;
+                state.layout.cx = padding + state.layout.R;
+                state.layout.cy = state.height * 0.4;
+                
+                state.layout.gx = state.layout.cx + state.layout.R * 1.8;
+                state.layout.gy = state.height * 0.4;
+                state.layout.gW = state.width - state.layout.gx - padding;
+            }
+        }
+        window.addEventListener('resize', resize);
+        resize();
+
+        const fmt = (val) => (val >= 0 ? "+" : "") + val.toFixed(2);
+        
+        function formatAngle(radians) {
+            // Normalize for display (0 to 2pi roughly)
+            let norm = radians % (Math.PI * 2);
+            if (norm < 0) norm += Math.PI * 2;
+            
+            const piFrac = norm / Math.PI;
+            if (Math.abs(piFrac) < 0.01 || Math.abs(piFrac - 2.0) < 0.01) return "0";
+            if (Math.abs(piFrac - 0.5) < 0.01) return "π/2";
+            if (Math.abs(piFrac - 1.0) < 0.01) return "π";
+            if (Math.abs(piFrac - 1.5) < 0.01) return "3π/2";
+            
+            return norm.toFixed(2) + " rad";
+        }
+
+        const scenes = [
+            {
+                text: "Here is a perfect <span class='highlight-cyan'>UNIT CIRCLE</span>. A point moves along its edge. This is simple circular motion.",
+                setup: () => {
+                    resetFlags();
+                    state.showGrid = true; state.showAxes = true; state.showCircle = true; 
+                    state.showPoint = true; state.showAngle = true;
+                    state.A = 1; state.w = 1; state.phi = 0; state.speed = 0.012; state.isPlaying = true;
+                    document.getElementById('row-cos').classList.add('hidden');
+                }
+            },
+            {
+                text: "Now, let's track only its <span class='highlight-sine'>VERTICAL HEIGHT</span>. Imagine a light shining from the side, casting a shadow on the y-axis.",
+                setup: () => {
+                    state.showSineProj = true;
+                }
+            },
+            {
+                text: "That vertical height is <span class='highlight-sine'>sin(θ)</span>. Let's record this height continuously as time (t) moves forward.",
+                setup: () => {
+                    state.showSineGraph = true; state.showBeam = true;
+                    state.t = 0; // Restart time to draw cleanly
+                }
+            },
+            {
+                text: "This shape is the <span class='highlight-sine'>SINE WAVE</span>. It is nothing more than the vertical shadow of circular motion unrolled over time.",
+                setup: () => {}
+            },
+            {
+                text: "Watch the 4 Quadrants. The circle geometry perfectly dictates when the wave rises, falls, and goes negative.",
+                setup: () => {
+                    state.highlightQuadrants = true;
+                }
+            },
+            {
+                text: "Let's pause at the 5 key landmarks of the cycle. Notice how the circle coordinates match the wave peaks and zero-crossings.",
+                setup: () => {
+                    state.highlightQuadrants = false;
+                    landmarksTable.classList.add('visible');
+                    // Snap to specific angles programmatically via a mini sequence
+                    state.isPlaying = false;
+                    state.t = 0;
+                    playLandmarkSequence();
+                }
+            },
+            {
+                text: "Can we go backwards? <br/><strong>Try dragging the dot on the graph!</strong> Notice how it directly drives the circle.",
+                setup: () => {
+                    landmarksTable.classList.remove('visible');
+                    state.isPlaying = false;
+                    document.getElementById('btn-play').innerText = "Play";
+                }
+            },
+            {
+                text: "What if we track the <span class='highlight-cos'>HORIZONTAL</span> position instead? Let's cast the shadow down to the x-axis.",
+                setup: () => {
+                    state.isPlaying = true;
+                    document.getElementById('btn-play').innerText = "Pause";
+                    state.showSineProj = false; state.showSineGraph = false; state.showBeam = false;
+                    state.showCosProj = true;
+                    document.getElementById('row-sin').classList.add('hidden');
+                    document.getElementById('row-cos').classList.remove('hidden');
+                }
+            },
+            {
+                text: "Recording this horizontal position generates the <span class='highlight-cos'>COSINE WAVE</span>.",
+                setup: () => {
+                    state.showCosGraph = true; state.showBeam = true; state.t = 0;
+                }
+            },
+            {
+                text: "Sine and Cosine are mathematical twins. They are the exact same shape, just starting from a different point.",
+                setup: () => {
+                    state.showSineGraph = true; state.showSineProj = true;
+                    state.showPhaseAngle = true;
+                    document.getElementById('row-sin').classList.remove('hidden');
+                }
+            },
+            {
+                text: "Watch closely as we <span class='highlight-cyan'>UNWRAP THE CIRCLE</span>. The arc length exactly equals the horizontal distance on the graph.",
+                setup: () => {
+                    state.showPhaseAngle = false;
+                    state.showCosGraph = false; state.showCosProj = false;
+                    state.unwrapMode = true; state.t = 0.01; state.speed = 0.008;
+                    document.getElementById('row-cos').classList.add('hidden');
+                }
+            },
+            {
+                text: "The laboratory is yours. Switch to <strong>'Explore Freely'</strong> to adjust Amplitude, Frequency, and Phase shift.",
+                setup: () => {
+                    state.unwrapMode = false; state.speed = 0.015;
+                    setMode('explore');
+                }
+            }
+        ];
+
+        function resetFlags() {
+            Object.keys(state).forEach(k => {
+                if(k.startsWith('show') || k === 'highlightQuadrants' || k === 'unwrapMode') state[k] = false;
+            });
+        }
+
+        async function playLandmarkSequence() {
+            if(state.sceneIndex !== 5) return;
+            const landmarks = [0, Math.PI/2, Math.PI, 3*Math.PI/2, 2*Math.PI];
+            for(let i=0; i<landmarks.length; i++) {
+                if(state.sceneIndex !== 5) break;
+                state.t = landmarks[i];
+                
+                // Highlight table row
+                for(let j=0; j<5; j++) document.getElementById(`lm-${j}`).style.backgroundColor = 'transparent';
+                document.getElementById(`lm-${i}`).style.backgroundColor = 'rgba(0, 229, 255, 0.2)';
+                
+                await new Promise(r => setTimeout(r, 2000));
+            }
+            if(state.sceneIndex === 5) {
+                // reset highlighting and loop
+                for(let j=0; j<5; j++) document.getElementById(`lm-${j}`).style.backgroundColor = 'transparent';
+                state.t = 0;
+                playLandmarkSequence();
+            }
+        }
+
+        function nextScene() {
+            state.sceneIndex++;
+            if (state.sceneIndex >= scenes.length) { setMode('explore'); return; }
+            
+            const scene = scenes[state.sceneIndex];
+            teacherText.innerHTML = scene.text;
+            scene.setup();
+            
+            // UI Bounce
+            const tp = document.getElementById('teacher-panel');
+            tp.style.transform = 'translateX(-50%) translateY(10px)';
+            setTimeout(() => tp.style.transform = 'translateX(-50%) translateY(0)', 50);
+        }
+
+        function drawBase() {
+            ctx.fillStyle = C.bg;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            if (!state.showGrid) return;
+            const {cx, cy, R, gx, gy, gW} = state.layout;
+
+            ctx.strokeStyle = C.grid; ctx.lineWidth = 1;
+            
+            // Grid Lines (Y-axis grid spans across both circle and graph)
+            ctx.beginPath();
+            for(let i = -2; i <= 2; i++) {
+                let y = cy + i*R;
+                ctx.moveTo(cx - 1.5*R, y); ctx.lineTo(cx + 1.5*R, y); // Circle side
+                ctx.moveTo(gx, y); ctx.lineTo(gx + gW, y);            // Graph side
+            }
+            // Vertical divisions on graph (0, pi/2, pi, 3pi/2, 2pi)
+            for(let i=0; i<=4; i++) {
+                let x = gx + (i/4) * gW;
+                ctx.moveTo(x, gy - 2*R); ctx.lineTo(x, gy + 2*R);
+            }
+            ctx.stroke();
+
+            // Highlight Quadrants if requested
+            if (state.highlightQuadrants) {
+                // We determine current quadrant based on theta
+                let normTheta = (state.w * state.t + state.phi) % (Math.PI*2);
+                if (normTheta < 0) normTheta += Math.PI*2;
+                let q = Math.floor(normTheta / (Math.PI/2)); // 0, 1, 2, 3
+                
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.05)';
+                // Highlight circle quadrant
+                ctx.beginPath();
+                ctx.moveTo(cx, cy);
+                ctx.arc(cx, cy, R*1.2, -q*(Math.PI/2), -(q+1)*(Math.PI/2), true); // Y is down, so negative angles
+                ctx.fill();
+                
+                // Highlight graph section
+                let qStartX = gx + (q/4)*gW;
+                ctx.fillRect(qStartX, gy - 1.5*R, gW/4, 3*R);
+            }
+
+            // Main Axes
+            if (!state.showAxes) return;
+            ctx.strokeStyle = C.axis; ctx.lineWidth = 2;
+            ctx.beginPath();
+            // Circle Axes
+            ctx.moveTo(cx - 1.5*R, cy); ctx.lineTo(cx + 1.5*R, cy); // X
+            ctx.moveTo(cx, cy - 1.5*R); ctx.lineTo(cx, cy + 1.5*R); // Y
+            // Graph Axes
+            ctx.moveTo(gx - 10, gy); ctx.lineTo(gx + gW + 20, gy); // X (Time/Angle)
+            ctx.moveTo(gx, gy - 1.5*R); ctx.lineTo(gx, gy + 1.5*R); // Y (Value)
+            ctx.stroke();
+
+            // Labels
+            ctx.fillStyle = C.text; ctx.font = '12px ' + state.fontFamily;
+            ctx.fillText("x", cx + 1.5*R + 5, cy + 15);
+            ctx.fillText("y", cx - 15, cy - 1.5*R - 5);
+            ctx.fillText("Time (t)", gx + gW + 5, gy + 20);
+            ctx.fillText("+1", gx - 25, gy - R + 4);
+            ctx.fillText("-1", gx - 25, gy + R + 4);
+            
+            const labels = ["0", "π/2", "π", "3π/2", "2π"];
+            for(let i=0; i<=4; i++) {
+                let x = gx + (i/4) * gW;
+                ctx.fillText(labels[i], x - 10, gy + 20);
+            }
+        }
+
+        function drawMathematicalWave(type, maxT, color) {
+            const {gx, gy, gW, R} = state.layout;
+            ctx.beginPath();
+            
+            // Draw procedurally to guarantee perfect smoothness
+            // We use small steps for t.
+            const step = 0.05;
+            let started = false;
+            
+            // We draw from t=0 up to the current maxT.
+            // Wait, if t > 2pi, we should either scroll or just wrap.
+            // For teaching clarity, the graph represents t from 0 to 2pi.
+            // If t > 2pi, we just modulo it for the drawing limit.
+            let limitT = maxT % (Math.PI * 2);
+            if (maxT > 0 && limitT === 0 && maxT >= Math.PI*2) limitT = Math.PI*2; // Draw full if exactly at multiple
+            
+            // Actually, continuous drawing over multiple cycles:
+            // The graph window is visually [0, 2pi].
+            // To make continuous looping look good, we can draw the whole wave,
+            // but just draw up to `limitT` for the "unrolling" effect in the first cycle.
+            let drawLimit = maxT > Math.PI * 2 ? Math.PI * 2 : limitT;
+
+            for(let t = 0; t <= drawLimit; t += step) {
+                let x = gx + (t / (Math.PI * 2)) * gW;
+                let currentTheta = state.w * t + state.phi;
+                
+                let mathY = type === 'sine' ? Math.sin(currentTheta) : Math.cos(currentTheta);
+                let y = gy - R * state.A * mathY; // Minus because Canvas Y is down
+                
+                if (!started) { ctx.moveTo(x, y); started = true; }
+                else { ctx.lineTo(x, y); }
+            }
+            
+            // Draw exact final point to ensure no gap
+            let finalTheta = state.w * drawLimit + state.phi;
+            let finalMathY = type === 'sine' ? Math.sin(finalTheta) : Math.cos(finalTheta);
+            ctx.lineTo(gx + (drawLimit/(Math.PI*2))*gW, gy - R * state.A * finalMathY);
+
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 3;
+            ctx.shadowBlur = 12;
+            ctx.shadowColor = color;
+            ctx.stroke();
+            ctx.shadowBlur = 0;
+            
+            return {
+                x: gx + (drawLimit/(Math.PI*2))*gW,
+                y: gy - R * state.A * finalMathY,
+                val: finalMathY * state.A
+            };
+        }
+
+        function renderScene() {
+            const {cx, cy, R, gx, gy, gW} = state.layout;
+            
+            // Calculate Current Mathematics
+            const limitT = state.t % (Math.PI * 2);
+            const currentTheta = state.w * limitT + state.phi;
+            
+            const mathX = state.A * Math.cos(currentTheta);
+            const mathY = state.A * Math.sin(currentTheta);
+            
+            const px = cx + mathX * R;
+            const py = cy - mathY * R; // Canvas Y inverted
+            
+            // Update UI
+            if (state.sceneIndex > -1) {
+                document.getElementById('val-theta').innerText = formatAngle(currentTheta);
+                document.getElementById('val-x').innerText = fmt(mathX);
+                document.getElementById('val-y').innerText = fmt(mathY);
+                document.getElementById('val-sin').innerText = fmt(mathY);
+                document.getElementById('val-cos').innerText = fmt(mathX);
+            }
+
+            // 1. Draw Unit Circle
+            if (state.showCircle) {
+                ctx.beginPath();
+                ctx.arc(cx, cy, R * state.A, 0, Math.PI * 2);
+                ctx.strokeStyle = 'rgba(255,255,255,0.2)';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+            }
+
+            // 2. Draw Angle Arc
+            if (state.showAngle) {
+                ctx.beginPath();
+                ctx.arc(cx, cy, R * 0.3, 0, -currentTheta, currentTheta > 0);
+                ctx.lineTo(cx, cy);
+                ctx.fillStyle = 'rgba(0, 229, 255, 0.15)';
+                ctx.fill();
+                
+                // Radius Line
+                ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(px, py);
+                ctx.strokeStyle = C.text; ctx.lineWidth = 2; ctx.stroke();
+            }
+
+            // "Unwrap the Circle" Visual Effect
+            if (state.unwrapMode) {
+                // Highlight Arc on Circle
+                ctx.beginPath();
+                ctx.arc(cx, cy, R * state.A, 0, -currentTheta, currentTheta > 0);
+                ctx.strokeStyle = C.amber; ctx.lineWidth = 6; ctx.stroke();
+                
+                // Highlight matching length on Graph X-axis
+                ctx.beginPath();
+                ctx.moveTo(gx, gy);
+                ctx.lineTo(gx + (limitT / (Math.PI*2)) * gW, gy);
+                ctx.strokeStyle = C.amber; ctx.lineWidth = 6; ctx.stroke();
+                
+                // Show connecting string unrolling
+                ctx.beginPath();
+                ctx.moveTo(px, py);
+                ctx.lineTo(gx + (limitT / (Math.PI*2)) * gW, gy);
+                ctx.strokeStyle = 'rgba(255, 170, 0, 0.4)';
+                ctx.setLineDash([4, 4]);
+                ctx.stroke();
+                ctx.setLineDash([]);
+            }
+
+            // 3. Projections on Circle
+            if (state.showSineProj) {
+                // Dropdown to X axis
+                ctx.beginPath(); ctx.moveTo(px, py); ctx.lineTo(px, cy);
+                ctx.strokeStyle = C.amber; ctx.setLineDash([4, 4]); ctx.lineWidth = 1.5; ctx.stroke();
+                
+                // Thick line on Y axis representing value
+                ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx, py);
+                ctx.strokeStyle = C.amber; ctx.setLineDash([]); ctx.lineWidth = 4; ctx.stroke();
+            }
+
+            if (state.showCosProj) {
+                // Dropdown to Y axis
+                ctx.beginPath(); ctx.moveTo(px, py); ctx.lineTo(cx, py);
+                ctx.strokeStyle = C.magenta; ctx.setLineDash([4, 4]); ctx.lineWidth = 1.5; ctx.stroke();
+                
+                // Thick line on X axis representing value
+                ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(px, cy);
+                ctx.strokeStyle = C.magenta; ctx.setLineDash([]); ctx.lineWidth = 4; ctx.stroke();
+            }
+
+            // 4. Draw Waves mathematically
+            let sineEndPoint, cosEndPoint;
+            
+            if (state.showSineGraph) {
+                sineEndPoint = drawMathematicalWave('sine', state.t, C.amber);
+            }
+            if (state.showCosGraph) {
+                cosEndPoint = drawMathematicalWave('cosine', state.t, C.magenta);
+            }
+
+            // 5. Draw Beams connecting Circle to Graph
+            if (state.showBeam) {
+                ctx.lineWidth = 1.5;
+                ctx.setLineDash([5, 5]);
+                
+                if (state.showSineGraph && sineEndPoint) {
+                    ctx.beginPath();
+                    // Horizontal beam connecting Y heights perfectly
+                    ctx.moveTo(px, py); 
+                    ctx.lineTo(sineEndPoint.x, sineEndPoint.y);
+                    ctx.strokeStyle = C.amber; ctx.globalAlpha = 0.5; ctx.stroke();
+                }
+                
+                if (state.showCosGraph && cosEndPoint) {
+                    ctx.beginPath();
+                    // Cosine beam: from horizontal position X, down to a visual guide, then across to Y of graph
+                    // Simple visual: draw from the X-axis projection point straight to the graph point
+                    ctx.moveTo(px, cy); 
+                    ctx.lineTo(px, cosEndPoint.y); // drop down/up to matching height
+                    ctx.lineTo(cosEndPoint.x, cosEndPoint.y); // shoot across
+                    ctx.strokeStyle = C.magenta; ctx.globalAlpha = 0.5; ctx.stroke();
+                }
+                
+                ctx.globalAlpha = 1.0; ctx.setLineDash([]);
+            }
+
+            // Draw End Points on Graphs
+            if (state.showSineGraph && sineEndPoint) {
+                ctx.beginPath(); ctx.arc(sineEndPoint.x, sineEndPoint.y, 6, 0, Math.PI*2);
+                ctx.fillStyle = C.amber; ctx.fill();
+            }
+            if (state.showCosGraph && cosEndPoint) {
+                ctx.beginPath(); ctx.arc(cosEndPoint.x, cosEndPoint.y, 6, 0, Math.PI*2);
+                ctx.fillStyle = C.magenta; ctx.fill();
+            }
+
+            // 6. Draw the Hero Rotating Point
+            if (state.showPoint) {
+                ctx.beginPath(); ctx.arc(px, py, 8, 0, Math.PI * 2);
+                ctx.fillStyle = C.cyan;
+                ctx.shadowBlur = 15; ctx.shadowColor = C.cyan; ctx.fill(); ctx.shadowBlur = 0;
+                
+                // Pulse if paused in guided mode
+                if (!state.isPlaying && state.mode === 'guided' && state.sceneIndex !== 6) {
+                    ctx.beginPath(); ctx.arc(px, py, 8 + Math.sin(Date.now()/150)*4, 0, Math.PI*2);
+                    ctx.strokeStyle = C.cyan; ctx.lineWidth = 2; ctx.stroke();
+                }
+            }
+            
+            // Phase indicator for Twins scene
+            if (state.showPhaseAngle) {
+                ctx.fillStyle = C.text;
+                ctx.font = '14px ' + state.fontFamily;
+                ctx.fillText("cos(θ) = sin(θ + π/2)", gx + gW/2 - 50, gy - 2*R - 10);
+            }
+        }
+
+        function animate() {
+            if (state.isPlaying && !state.isDragging) {
+                state.t += state.speed;
+                // If we are in "unwrap mode", stop at 2PI
+                if (state.unwrapMode && state.t >= Math.PI * 2) {
+                    state.t = Math.PI * 2;
+                    state.isPlaying = false;
+                }
+            }
+            
+            drawBase();
+            renderScene();
+            
+            requestAnimationFrame(animate);
+        }
+
+        async function runIntro() {
+            const texts = [
+                document.getElementById('text-1'),
+                document.getElementById('text-2'),
+                document.getElementById('text-3'),
+                document.getElementById('text-4')
+            ];
+            
+            const wait = (ms) => new Promise(r => setTimeout(r, ms));
+            
+            state.showPoint = true;
+            state.A = 1.3;
+            state.speed = 0.02;
+            
+            for(let i=0; i<texts.length; i++) {
+                await wait(1000);
+                texts[i].classList.add('active');
+                await wait(i === 0 ? 3500 : 2500);
+                if (i < texts.length - 1) texts[i].classList.remove('active');
+            }
+            
+            await wait(1000);
+            overlay.style.opacity = 0;
+            
+            setTimeout(() => {
+                overlay.style.display = 'none';
+                // Transition parameters to normal
+                let shrinkInt = setInterval(() => {
+                    state.A -= 0.01;
+                    if (state.A <= 1.0) {
+                        state.A = 1.0;
+                        clearInterval(shrinkInt);
+                        document.getElementById('top-bar').style.opacity = 1;
+                        document.getElementById('data-panel').style.opacity = 1;
+                        document.getElementById('teacher-panel').style.opacity = 1;
+                        nextScene();
+                    }
+                }, 16);
+            }, 1500);
+        }
+
+        function getPointerPos(e) {
+            const rect = canvas.getBoundingClientRect();
+            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+            return { x: clientX - rect.left, y: clientY - rect.top };
+        }
+
+        function handlePointerDown(e) {
+            if (state.sceneIndex < 0) return;
+            const pos = getPointerPos(e);
+            const {gx, gy, gW, R} = state.layout;
+            
+            // Check if clicking in the graph area
+            if (pos.x >= gx && pos.x <= gx + gW && pos.y >= gy - 2*R && pos.y <= gy + 2*R) {
+                state.isDragging = true;
+                state.wasPlaying = state.isPlaying;
+                state.isPlaying = false;
+                handlePointerMove(e); // Snap immediately
+            }
+        }
+
+        function handlePointerMove(e) {
+            const pos = getPointerPos(e);
+            const {gx, gy, gW, R} = state.layout;
+            
+            // Show tooltip hint if hovering graph
+            if (!state.isDragging && pos.x >= gx && pos.x <= gx + gW && pos.y >= gy - 2*R && pos.y <= gy + 2*R) {
+                dragTooltip.style.opacity = 1;
+                dragTooltip.style.left = (pos.x + 15) + 'px';
+                dragTooltip.style.top = (pos.y - 15) + 'px';
+                document.body.style.cursor = 'ew-resize';
+            } else {
+                dragTooltip.style.opacity = 0;
+                document.body.style.cursor = 'default';
+            }
+
+            if (!state.isDragging) return;
+            
+            // Map Mouse X directly to Time t
+            let progress = (pos.x - gx) / gW;
+            progress = Math.max(0, Math.min(1, progress)); // Clamp 0 to 1
+            
+            // Allow continuous dragging logic by keeping track of full rotations if desired,
+            // but for simplicity in teaching, clamp strictly to [0, 2pi] window
+            state.t = progress * Math.PI * 2;
+        }
+
+        function handlePointerUp() {
+            if (state.isDragging) {
+                state.isDragging = false;
+                if (state.wasPlaying && document.getElementById('btn-play').innerText === "Pause") {
+                    state.isPlaying = true;
+                }
+            }
+        }
+
+        canvas.addEventListener('mousedown', handlePointerDown);
+        window.addEventListener('mousemove', handlePointerMove);
+        window.addEventListener('mouseup', handlePointerUp);
+        
+        canvas.addEventListener('touchstart', handlePointerDown, {passive: false});
+        window.addEventListener('touchmove', (e) => { if(state.isDragging) e.preventDefault(); handlePointerMove(e); }, {passive: false});
+        window.addEventListener('touchend', handlePointerUp);
+
+        function setMode(mode) {
+            state.mode = mode;
+            const teacherPanel = document.getElementById('teacher-panel');
+            const explorerPanel = document.getElementById('explorer-panel');
+            
+            if (mode === 'explore') {
+                document.getElementById('btn-mode-explore').classList.add('active-btn');
+                document.getElementById('btn-mode-guided').classList.remove('active-btn');
+                teacherPanel.classList.remove('visible');
+                explorerPanel.classList.add('visible');
+                
+                // Reveal everything mathematically
+                resetFlags();
+                state.showGrid = true; state.showAxes = true; state.showCircle = true;
+                state.showPoint = true; state.showAngle = true;
+                
+                // Sync with UI checkboxes
+                state.showSineGraph = document.getElementById('chk-sine').checked;
+                state.showSineProj = state.showSineGraph;
+                state.showCosGraph = document.getElementById('chk-cos').checked;
+                state.showCosProj = state.showCosGraph;
+                state.showBeam = document.getElementById('chk-beam').checked;
+                
+                document.getElementById('row-sin').classList.toggle('hidden', !state.showSineGraph);
+                document.getElementById('row-cos').classList.toggle('hidden', !state.showCosGraph);
+                
+                landmarksTable.classList.remove('visible');
+                
+            } else {
+                document.getElementById('btn-mode-guided').classList.add('active-btn');
+                document.getElementById('btn-mode-explore').classList.remove('active-btn');
+                teacherPanel.classList.add('visible');
+                explorerPanel.classList.remove('visible');
+                
+                state.sceneIndex = -1;
+                nextScene();
+            }
+        }
+
+        // Top Bar Event Listeners
+        document.getElementById('btn-play').addEventListener('click', (e) => {
+            state.isPlaying = !state.isPlaying;
+            e.target.innerText = state.isPlaying ? "Pause" : "Play";
+        });
+        
+        document.getElementById('btn-restart').addEventListener('click', () => { state.t = 0; });
+        document.getElementById('btn-mode-guided').addEventListener('click', () => setMode('guided'));
+        document.getElementById('btn-mode-explore').addEventListener('click', () => setMode('explore'));
+        document.getElementById('btn-next-scene').addEventListener('click', nextScene);
+
+        // Explorer Mode Sliders
+        document.getElementById('sl-amp').addEventListener('input', (e) => {
+            state.A = parseFloat(e.target.value);
+            document.getElementById('lbl-amp').innerText = state.A.toFixed(1);
+        });
+        
+        document.getElementById('sl-freq').addEventListener('input', (e) => {
+            state.w = parseFloat(e.target.value);
+            document.getElementById('lbl-freq').innerText = state.w.toFixed(1);
+        });
+        
+        document.getElementById('sl-phase').addEventListener('input', (e) => {
+            state.phi = parseFloat(e.target.value) * Math.PI;
+            document.getElementById('lbl-phase').innerText = parseFloat(e.target.value).toFixed(2) + "π";
+        });
+
+        // Explorer Toggles
+        document.getElementById('chk-sine').addEventListener('change', (e) => {
+            state.showSineGraph = e.target.checked; state.showSineProj = e.target.checked;
+            document.getElementById('row-sin').classList.toggle('hidden', !e.target.checked);
+        });
+        document.getElementById('chk-cos').addEventListener('change', (e) => {
+            state.showCosGraph = e.target.checked; state.showCosProj = e.target.checked;
+            document.getElementById('row-cos').classList.toggle('hidden', !e.target.checked);
+        });
+        document.getElementById('chk-beam').addEventListener('change', (e) => state.showBeam = e.target.checked);
+
+        // Kickoff
+        requestAnimationFrame(animate);
+        runIntro();
+
+    </script>
 </body>
 </html>
