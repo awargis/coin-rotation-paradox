@@ -1,0 +1,779 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Shadow That Became a Wave</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#070b15;--sin:#f5c842;--cos:#4dd9f5;
+  --pt:#f8f4e8;--ring:#7a8fa8;--ax:rgba(180,200,230,.40);
+  --dim:rgba(180,200,230,.30);--tan:#f54d7d;
+}
+html,body{width:100%;height:100%;background:var(--bg);
+  font-family:'Inter',-apple-system,BlinkMacSystemFont,sans-serif;
+  color:var(--pt);overflow:hidden}
+#app{display:flex;flex-direction:column;height:100vh;width:100vw}
+#top{height:48px;display:flex;align-items:center;justify-content:space-between;
+  padding:0 20px;border-bottom:1px solid rgba(180,200,230,.08);flex-shrink:0}
+#title{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--dim)}
+#hud{display:flex;gap:20px;align-items:center}
+.hv{font-size:12px;font-family:'JetBrains Mono','Courier New',monospace;letter-spacing:.04em}
+.hs{color:var(--sin)}.hc{color:var(--cos)}.ht{color:var(--tan)}
+.hth{color:rgba(248,244,232,.75)}
+#row{display:flex;flex:1;overflow:hidden;min-height:0}
+#lp{width:44%;position:relative;border-right:1px solid rgba(180,200,230,.08)}
+#rp{flex:1;position:relative}
+#cc,#wc{display:block;width:100%;height:100%;cursor:crosshair}
+#bot{height:58px;display:flex;align-items:center;justify-content:center;
+  gap:14px;padding:0 16px;border-top:1px solid rgba(180,200,230,.08);
+  flex-shrink:0;background:rgba(7,11,21,.85);flex-wrap:wrap}
+input[type=range]{-webkit-appearance:none;appearance:none;
+  height:2px;background:rgba(180,200,230,.18);border-radius:2px;outline:none;cursor:pointer}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;
+  width:13px;height:13px;border-radius:50%;cursor:pointer}
+#sl{width:180px}
+#sl::-webkit-slider-thumb{background:var(--pt);box-shadow:0 0 6px rgba(248,244,232,.5)}
+#spd{width:70px}
+#spd::-webkit-slider-thumb{background:rgba(180,200,230,.6)}
+.lbl{font-size:11px;color:var(--dim);letter-spacing:.06em;white-space:nowrap}
+#spdv{font-size:11px;font-family:monospace;color:var(--dim);width:30px}
+.btn{height:32px;padding:0 14px;border:1px solid rgba(180,200,230,.18);
+  border-radius:6px;background:rgba(180,200,230,.05);color:rgba(248,244,232,.75);
+  font-size:11px;letter-spacing:.08em;text-transform:uppercase;
+  cursor:pointer;transition:all .18s;font-family:inherit;white-space:nowrap}
+.btn:hover{background:rgba(180,200,230,.10);border-color:rgba(180,200,230,.35)}
+.on{background:rgba(248,244,232,.08)!important;border-color:rgba(248,244,232,.40)!important;
+  color:var(--pt)!important;box-shadow:0 0 10px rgba(248,244,232,.08)!important}
+.son{background:rgba(245,200,66,.08)!important;border-color:var(--sin)!important;
+  color:var(--sin)!important;box-shadow:0 0 10px rgba(245,200,66,.15)!important}
+.con{background:rgba(77,217,245,.08)!important;border-color:var(--cos)!important;
+  color:var(--cos)!important;box-shadow:0 0 10px rgba(77,217,245,.12)!important}
+@media(max-width:700px){
+  #row{flex-direction:column}
+  #lp{width:100%;height:52%;border-right:none;border-bottom:1px solid rgba(180,200,230,.08)}
+  #rp{height:48%}
+  #hud .hv:nth-child(n+3){display:none}
+  #bot{height:auto;padding:8px;gap:8px}
+  #sl{width:120px}
+}
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="top">
+    <div id="title">The Shadow That Became a Wave</div>
+    <div id="hud">
+      <div class="hv hth">&#952; = <span id="vth">0.0&deg;</span></div>
+      <div class="hv hs">sin&#952; = <span id="vs">0.000</span></div>
+      <div class="hv hc">cos&#952; = <span id="vc">1.000</span></div>
+      <div class="hv ht">tan&#952; = <span id="vt">0.000</span></div>
+    </div>
+  </div>
+  <div id="row">
+    <div id="lp"><canvas id="cc"></canvas></div>
+    <div id="rp"><canvas id="wc"></canvas></div>
+  </div>
+  <div id="bot">
+    <span class="lbl">&#952;</span>
+    <input type="range" id="sl" min="0" max="360" step="0.5" value="0">
+    <button class="btn on" id="bplay">&#9654; Animate</button>
+    <button class="btn" id="breset">Reset Wave</button>
+    <button class="btn son" id="bsin">Sine</button>
+    <button class="btn con" id="bcos">Cosine</button>
+    <button class="btn on" id="btri">Triangle</button>
+    <span class="lbl">Speed</span>
+    <input type="range" id="spd" min="0.1" max="3" step="0.1" value="0.5">
+    <span id="spdv">0.5&#215;</span>
+  </div>
+</div>
+<script>
+(function(){
+'use strict';
+
+// ── Canvas Setup ──────────────────────────────────────────────────────────────
+var CC = document.getElementById('cc');
+var WC = document.getElementById('wc');
+var cc = CC.getContext('2d');
+var wc = WC.getContext('2d');
+var DPR = Math.min(window.devicePixelRatio || 1, 2);
+
+function resize() {
+  var lp = document.getElementById('lp');
+  var rp = document.getElementById('rp');
+  CC.width  = lp.clientWidth  * DPR;
+  CC.height = lp.clientHeight * DPR;
+  CC.style.width  = lp.clientWidth  + 'px';
+  CC.style.height = lp.clientHeight + 'px';
+  WC.width  = rp.clientWidth  * DPR;
+  WC.height = rp.clientHeight * DPR;
+  WC.style.width  = rp.clientWidth  + 'px';
+  WC.style.height = rp.clientHeight + 'px';
+}
+window.addEventListener('resize', resize);
+resize();
+
+// ── State ─────────────────────────────────────────────────────────────────────
+var S = {
+  theta: 0,
+  animating: false,
+  speed: 0.5,
+  showSin: true,
+  showCos: true,
+  showTri: true,
+  waveHist: [],
+  waveAngle: 0,
+  lastWavePush: -1e9,
+  arcTrace: [],
+  dragging: false,
+  lastTime: null,
+  complete: false
+};
+var WAVE_STEP = Math.PI / 90;
+var MAX_WAVE  = 2000;
+var ARC_LEN   = 80;
+var PI2       = Math.PI * 2;
+
+// ── Stars ─────────────────────────────────────────────────────────────────────
+var STARS = [];
+for (var i = 0; i < 90; i++) {
+  STARS.push({
+    rx: Math.random(), ry: Math.random(),
+    r:  Math.random() * 1.0 + 0.2,
+    a:  Math.random() * 0.45 + 0.08
+  });
+}
+
+function drawStars(ctx, W, H) {
+  ctx.save();
+  for (var i = 0; i < STARS.length; i++) {
+    var s = STARS[i];
+    ctx.beginPath();
+    ctx.arc(s.rx * W, s.ry * H, s.r * DPR, 0, PI2);
+    ctx.fillStyle = 'rgba(180,200,230,' + s.a + ')';
+    ctx.fill();
+  }
+  ctx.restore();
+}
+
+// ── Coordinate helpers ────────────────────────────────────────────────────────
+function SC()  { return Math.min(CC.width, CC.height) * 0.295; }
+function wx(v) { return CC.width  * 0.5 + v * SC(); }
+function wy(v) { return CC.height * 0.5 - v * SC(); }
+function cxw(p){ return (p - CC.width  * 0.5) / SC(); }
+function cyw(p){ return (CC.height * 0.5 - p) / SC(); }
+
+function glo(ctx, col, r) { ctx.shadowColor = col; ctx.shadowBlur = r * DPR; }
+function noG(ctx)          { ctx.shadowColor = 'transparent'; ctx.shadowBlur = 0; }
+function arc(ctx, x, y, r) { ctx.beginPath(); ctx.arc(x, y, r, 0, PI2); }
+
+// ── Draw: Circle Panel ────────────────────────────────────────────────────────
+function drawCircle() {
+  var ctx = cc;
+  var W = CC.width, H = CC.height, sc = SC();
+  var ox = W * 0.5, oy = H * 0.5;
+
+  ctx.fillStyle = '#070b15';
+  ctx.fillRect(0, 0, W, H);
+  drawStars(ctx, W, H);
+
+  // Grid
+  ctx.save();
+  ctx.strokeStyle = 'rgba(180,200,230,0.055)';
+  ctx.lineWidth = DPR;
+  for (var v = -2; v <= 2; v += 0.5) {
+    ctx.beginPath(); ctx.moveTo(wx(-2), wy(v)); ctx.lineTo(wx(2), wy(v)); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(wx(v), wy(-2)); ctx.lineTo(wx(v), wy(2)); ctx.stroke();
+  }
+  ctx.restore();
+
+  // Axes
+  ctx.save();
+  ctx.strokeStyle = 'rgba(180,200,230,0.38)';
+  ctx.lineWidth = DPR;
+  ctx.beginPath(); ctx.moveTo(wx(-1.78), oy); ctx.lineTo(wx(1.78), oy); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(ox, wy(-1.78)); ctx.lineTo(ox, wy(1.78)); ctx.stroke();
+  ctx.fillStyle = 'rgba(180,200,230,0.30)';
+  ctx.font = (10 * DPR) + 'px Inter,sans-serif';
+  var tks = [-1, 1];
+  for (var i = 0; i < tks.length; i++) {
+    var v = tks[i];
+    ctx.fillRect(wx(v) - DPR, oy - 4 * DPR, 2 * DPR, 8 * DPR);
+    ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+    ctx.fillText(v === 1 ? '1' : '-1', wx(v), oy + 6 * DPR);
+    ctx.fillRect(ox - 4 * DPR, wy(v) - DPR, 8 * DPR, 2 * DPR);
+    ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+    ctx.fillText(v === 1 ? '1' : '-1', ox - 8 * DPR, wy(v));
+  }
+  ctx.restore();
+
+  // Unit circle
+  ctx.save();
+  if (S.complete) {
+    glo(ctx, 'rgba(122,143,168,0.5)', 28 * DPR);
+    ctx.strokeStyle = 'rgba(122,143,168,0.15)';
+    ctx.lineWidth = 7 * DPR;
+    ctx.beginPath(); ctx.arc(ox, oy, sc, 0, PI2); ctx.stroke();
+  }
+  glo(ctx, '#7a8fa8', 14 * DPR);
+  ctx.strokeStyle = 'rgba(122,143,168,0.72)';
+  ctx.lineWidth = 1.8 * DPR;
+  ctx.beginPath(); ctx.arc(ox, oy, sc, 0, PI2); ctx.stroke();
+  noG(ctx);
+  ctx.restore();
+
+  // Arc trace
+  if (S.arcTrace.length > 1) {
+    ctx.save();
+    for (var i = 1; i < S.arcTrace.length; i++) {
+      var a = i / S.arcTrace.length;
+      glo(ctx, 'rgba(248,244,232,0.4)', 6 * a * DPR);
+      ctx.strokeStyle = 'rgba(248,244,232,' + (a * 0.52) + ')';
+      ctx.lineWidth = 1.8 * DPR;
+      ctx.beginPath();
+      ctx.moveTo(wx(S.arcTrace[i-1].x), wy(S.arcTrace[i-1].y));
+      ctx.lineTo(wx(S.arcTrace[i].x),   wy(S.arcTrace[i].y));
+      ctx.stroke();
+    }
+    noG(ctx);
+    ctx.restore();
+  }
+
+  var sin = Math.sin(S.theta);
+  var cos = Math.cos(S.theta);
+  var Px = wx(cos),  Py = wy(sin);
+  var Fx = wx(cos),  Fy = wy(0);
+  var Ox = wx(0),    Oy = wy(0);
+
+  // Cosine projection
+  if (S.showCos) {
+    var scry = wy(-1.5);
+    var sdx  = wx(cos);
+
+    ctx.save();
+    ctx.strokeStyle = 'rgba(77,217,245,0.12)';
+    ctx.lineWidth = 3 * DPR;
+    ctx.beginPath(); ctx.moveTo(wx(-1.35), scry); ctx.lineTo(wx(1.35), scry); ctx.stroke();
+    ctx.restore();
+
+    ctx.save();
+    ctx.strokeStyle = 'rgba(77,217,245,0.22)';
+    ctx.lineWidth = DPR;
+    ctx.setLineDash([5 * DPR, 5 * DPR]);
+    ctx.beginPath(); ctx.moveTo(Px, Py); ctx.lineTo(sdx, scry); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.restore();
+
+    ctx.save();
+    glo(ctx, '#4dd9f5', 12 * DPR);
+    ctx.strokeStyle = 'rgba(77,217,245,0.88)';
+    ctx.lineWidth = 2.5 * DPR;
+    ctx.beginPath(); ctx.moveTo(Ox, Oy); ctx.lineTo(Fx, Fy); ctx.stroke();
+    noG(ctx);
+    ctx.restore();
+
+    ctx.save();
+    glo(ctx, '#4dd9f5', 18 * DPR);
+    ctx.fillStyle = '#4dd9f5';
+    arc(ctx, sdx, scry, 5 * DPR); ctx.fill();
+    noG(ctx);
+    ctx.restore();
+
+    ctx.save();
+    ctx.fillStyle = 'rgba(77,217,245,0.85)';
+    ctx.font = 'italic ' + (11 * DPR) + 'px Inter,sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('cosθ', wx(cos * 0.5), wy(-0.11));
+    ctx.restore();
+  }
+
+  // Sine projection
+  if (S.showSin) {
+    var scrx = wx(-1.5);
+    var sdy  = wy(sin);
+
+    ctx.save();
+    ctx.strokeStyle = 'rgba(245,200,66,0.12)';
+    ctx.lineWidth = 3 * DPR;
+    ctx.beginPath(); ctx.moveTo(scrx, wy(-1.35)); ctx.lineTo(scrx, wy(1.35)); ctx.stroke();
+    ctx.restore();
+
+    ctx.save();
+    ctx.strokeStyle = 'rgba(245,200,66,0.22)';
+    ctx.lineWidth = DPR;
+    ctx.setLineDash([5 * DPR, 5 * DPR]);
+    ctx.beginPath(); ctx.moveTo(Px, Py); ctx.lineTo(scrx, sdy); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.restore();
+
+    ctx.save();
+    glo(ctx, '#f5c842', 12 * DPR);
+    ctx.strokeStyle = 'rgba(245,200,66,0.88)';
+    ctx.lineWidth = 2.5 * DPR;
+    ctx.beginPath(); ctx.moveTo(Px, Py); ctx.lineTo(Fx, Fy); ctx.stroke();
+    noG(ctx);
+    ctx.restore();
+
+    ctx.save();
+    glo(ctx, '#f5c842', 18 * DPR);
+    ctx.fillStyle = '#f5c842';
+    arc(ctx, scrx, sdy, 5 * DPR); ctx.fill();
+    noG(ctx);
+    ctx.restore();
+
+    if (Math.abs(sin) > 0.04) {
+      ctx.save();
+      ctx.strokeStyle = 'rgba(245,200,66,0.38)';
+      ctx.lineWidth = DPR;
+      var bx = scrx - 8 * DPR;
+      var my = wy(0);
+      ctx.beginPath(); ctx.moveTo(bx, sdy); ctx.lineTo(bx, my); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(bx - 3*DPR, sdy); ctx.lineTo(bx + 3*DPR, sdy); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(bx - 3*DPR, my);  ctx.lineTo(bx + 3*DPR, my);  ctx.stroke();
+      ctx.restore();
+    }
+
+    ctx.save();
+    ctx.fillStyle = 'rgba(245,200,66,0.85)';
+    ctx.font = 'italic ' + (11 * DPR) + 'px Inter,sans-serif';
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'middle';
+    var lbx = wx(cos + (cos >= 0 ? 0.13 : -0.22));
+    var lby = wy(sin * 0.5);
+    ctx.fillText('sinθ', lbx, lby);
+    ctx.restore();
+  }
+
+  // Right triangle
+  if (S.showTri) {
+    ctx.save();
+    ctx.beginPath();
+    ctx.moveTo(Ox, Oy); ctx.lineTo(Fx, Fy); ctx.lineTo(Px, Py);
+    ctx.closePath();
+    ctx.fillStyle = 'rgba(248,244,232,0.038)'; ctx.fill();
+    var rm  = 9 * DPR;
+    var sfx = cos >= 0 ? -rm : rm;
+    var sfy = sin >= 0 ? -rm : rm;
+    ctx.strokeStyle = 'rgba(180,200,230,0.28)';
+    ctx.lineWidth = DPR;
+    ctx.beginPath();
+    ctx.moveTo(Fx + sfx, Fy);
+    ctx.lineTo(Fx + sfx, Fy + sfy);
+    ctx.lineTo(Fx,       Fy + sfy);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  // Arm
+  ctx.save();
+  glo(ctx, 'rgba(248,244,232,0.55)', 10 * DPR);
+  ctx.strokeStyle = 'rgba(248,244,232,0.82)';
+  ctx.lineWidth = 2 * DPR;
+  ctx.beginPath(); ctx.moveTo(Ox, Oy); ctx.lineTo(Px, Py); ctx.stroke();
+  noG(ctx);
+  var ang  = S.theta;
+  var mx2  = wx(cos * 0.5);
+  var my2  = wy(sin * 0.5);
+  ctx.fillStyle = 'rgba(248,244,232,0.38)';
+  ctx.font = (11 * DPR) + 'px Inter,sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('1',
+    mx2 - Math.sin(ang) * 14 * DPR,
+    my2 - Math.cos(ang) * 14 * DPR);
+  ctx.restore();
+
+  // Angle arc
+  var nT = ((S.theta % PI2) + PI2) % PI2;
+  ctx.save();
+  ctx.strokeStyle = 'rgba(248,244,232,0.22)';
+  ctx.lineWidth = 1.5 * DPR;
+  ctx.beginPath();
+  ctx.arc(Ox, Oy, sc * 0.19, 0, -nT, true);
+  ctx.stroke();
+  var mA = nT / 2;
+  var lr = sc * 0.28;
+  ctx.fillStyle = 'rgba(248,244,232,0.55)';
+  ctx.font = 'italic ' + (12 * DPR) + 'px Georgia,serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('θ', Ox + lr * Math.cos(mA), Oy - lr * Math.sin(mA));
+  ctx.restore();
+
+  // Origin dot
+  ctx.save();
+  ctx.fillStyle = 'rgba(180,200,230,0.55)';
+  arc(ctx, Ox, Oy, 4 * DPR); ctx.fill();
+  ctx.restore();
+
+  // Point P — layered glow
+  ctx.save();
+  glo(ctx, 'rgba(248,244,232,0.55)', 32 * DPR);
+  ctx.fillStyle = 'rgba(248,244,232,0.16)';
+  arc(ctx, Px, Py, 16 * DPR); ctx.fill();
+  glo(ctx, 'rgba(248,244,232,0.75)', 16 * DPR);
+  ctx.fillStyle = 'rgba(248,244,232,0.50)';
+  arc(ctx, Px, Py, 8 * DPR); ctx.fill();
+  noG(ctx);
+  ctx.fillStyle = '#f8f4e8';
+  arc(ctx, Px, Py, 4.5 * DPR); ctx.fill();
+  ctx.fillStyle = 'rgba(248,244,232,0.48)';
+  ctx.font = 'italic bold ' + (11 * DPR) + 'px Inter,sans-serif';
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'bottom';
+  ctx.fillText('P', Px + 8 * DPR, Py - 8 * DPR);
+  ctx.restore();
+}
+
+// ── Draw: Wave Panel ──────────────────────────────────────────────────────────
+function drawWave() {
+  var ctx = wc;
+  var W = WC.width, H = WC.height;
+
+  ctx.fillStyle = '#070b15';
+  ctx.fillRect(0, 0, W, H);
+  drawStars(ctx, W, H);
+
+  var pL = 52 * DPR, pR = 20 * DPR, pT = 28 * DPR, pB = 44 * DPR;
+  var cw = W - pL - pR;
+  var ch = H - pT - pB;
+  var midY = pT + ch * 0.5;
+  var yS   = ch / 2.2;
+
+  // Y axis labels and guidelines
+  ctx.save();
+  ctx.fillStyle = 'rgba(180,200,230,0.28)';
+  ctx.font = (10 * DPR) + 'px Inter,sans-serif';
+  ctx.textAlign = 'right';
+  ctx.textBaseline = 'middle';
+  var yv = [-1, -0.5, 0, 0.5, 1];
+  for (var i = 0; i < yv.length; i++) {
+    var v  = yv[i];
+    var yp = midY - v * yS;
+    ctx.fillText(v === 0 ? '0' : v.toString(), pL - 7 * DPR, yp);
+    if (v !== 0) {
+      ctx.save();
+      ctx.strokeStyle = 'rgba(180,200,230,0.06)';
+      ctx.lineWidth = DPR;
+      ctx.setLineDash([4 * DPR, 6 * DPR]);
+      ctx.beginPath(); ctx.moveTo(pL, yp); ctx.lineTo(pL + cw, yp); ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.restore();
+    }
+  }
+  ctx.restore();
+
+  // Axes
+  ctx.save();
+  ctx.strokeStyle = 'rgba(180,200,230,0.32)';
+  ctx.lineWidth = DPR;
+  ctx.beginPath(); ctx.moveTo(pL, midY); ctx.lineTo(pL + cw, midY); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(pL, pT);   ctx.lineTo(pL, pT + ch);   ctx.stroke();
+  ctx.restore();
+
+  if (S.waveHist.length < 2) {
+    ctx.save();
+    ctx.fillStyle = 'rgba(180,200,230,0.14)';
+    ctx.font = (13 * DPR) + 'px Inter,sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('Press Animate — or drag P — to trace the wave', W * 0.5, H * 0.5);
+    ctx.restore();
+    return;
+  }
+
+  var totalSpan = Math.max(4 * Math.PI, S.waveAngle);
+  var xS   = cw / totalSpan;
+  var latX = pL + cw;
+
+  function rToX(wa) { return latX - (S.waveAngle - wa) * xS; }
+  function vToY(v)  { return midY - v * yS; }
+
+  // X axis labels
+  ctx.save();
+  ctx.fillStyle   = 'rgba(180,200,230,0.28)';
+  ctx.strokeStyle = 'rgba(180,200,230,0.06)';
+  ctx.font = (10 * DPR) + 'px Inter,sans-serif';
+  ctx.textAlign = 'center';
+  ctx.lineWidth = DPR;
+  var startWa = S.waveAngle - totalSpan;
+  var k0 = Math.ceil(startWa / Math.PI);
+  var k1 = Math.floor(S.waveAngle / Math.PI) + 1;
+  for (var k = k0; k <= k1; k++) {
+    var xp = rToX(k * Math.PI);
+    if (xp < pL || xp > pL + cw) continue;
+    ctx.setLineDash([4 * DPR, 6 * DPR]);
+    ctx.beginPath(); ctx.moveTo(xp, pT); ctx.lineTo(xp, pT + ch); ctx.stroke();
+    ctx.setLineDash([]);
+    var lbl = k === 0 ? '0' : k === 1 ? 'π' : k === -1 ? '-π' : k + 'π';
+    ctx.textBaseline = 'top';
+    ctx.fillText(lbl, xp, pT + ch + 6 * DPR);
+  }
+  ctx.restore();
+
+  // Clip to chart area
+  ctx.save();
+  ctx.beginPath(); ctx.rect(pL, pT, cw, ch); ctx.clip();
+
+  // Cosine trace
+  if (S.showCos && S.waveHist.length > 1) {
+    ctx.save();
+    glo(ctx, '#4dd9f5', 7 * DPR);
+    ctx.strokeStyle = 'rgba(77,217,245,0.72)';
+    ctx.lineWidth = 2 * DPR;
+    ctx.beginPath();
+    for (var i = 0; i < S.waveHist.length; i++) {
+      var p = S.waveHist[i];
+      if (i === 0) ctx.moveTo(rToX(p.wa), vToY(p.cos));
+      else         ctx.lineTo(rToX(p.wa), vToY(p.cos));
+    }
+    ctx.stroke(); noG(ctx);
+    var lp = S.waveHist[S.waveHist.length - 1];
+    glo(ctx, '#4dd9f5', 18 * DPR);
+    ctx.fillStyle = '#4dd9f5';
+    arc(ctx, rToX(lp.wa), vToY(lp.cos), 5 * DPR); ctx.fill();
+    noG(ctx);
+    ctx.restore();
+  }
+
+  // Sine trace
+  if (S.showSin && S.waveHist.length > 1) {
+    ctx.save();
+    glo(ctx, '#f5c842', 8 * DPR);
+    ctx.strokeStyle = 'rgba(245,200,66,0.88)';
+    ctx.lineWidth = 2.5 * DPR;
+    ctx.beginPath();
+    for (var i = 0; i < S.waveHist.length; i++) {
+      var p = S.waveHist[i];
+      if (i === 0) ctx.moveTo(rToX(p.wa), vToY(p.sin));
+      else         ctx.lineTo(rToX(p.wa), vToY(p.sin));
+    }
+    ctx.stroke(); noG(ctx);
+    var lp  = S.waveHist[S.waveHist.length - 1];
+    var lpx = rToX(lp.wa);
+    var lpy = vToY(lp.sin);
+    ctx.save();
+    ctx.strokeStyle = 'rgba(245,200,66,0.18)';
+    ctx.lineWidth = DPR;
+    ctx.setLineDash([3 * DPR, 4 * DPR]);
+    ctx.beginPath(); ctx.moveTo(lpx, lpy); ctx.lineTo(lpx, midY); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.restore();
+    glo(ctx, '#f5c842', 22 * DPR);
+    ctx.fillStyle = '#f5c842';
+    arc(ctx, lpx, lpy, 6 * DPR); ctx.fill();
+    noG(ctx);
+    ctx.restore();
+  }
+
+  ctx.restore(); // end clip
+
+  // Legend
+  ctx.save();
+  ctx.font = (11 * DPR) + 'px Inter,sans-serif';
+  ctx.textBaseline = 'middle';
+  if (S.showSin) {
+    glo(ctx, '#f5c842', 5 * DPR);
+    ctx.fillStyle = '#f5c842';
+    ctx.textAlign = 'left';
+    ctx.fillText('— sinθ', pL + 8 * DPR, pT + 16 * DPR);
+  }
+  if (S.showCos) {
+    noG(ctx);
+    glo(ctx, '#4dd9f5', 5 * DPR);
+    ctx.fillStyle = '#4dd9f5';
+    ctx.textAlign = 'left';
+    ctx.fillText('— cosθ', pL + 8 * DPR, pT + 32 * DPR);
+  }
+  noG(ctx);
+  ctx.restore();
+
+  ctx.save();
+  ctx.fillStyle = 'rgba(180,200,230,0.22)';
+  ctx.font = (10 * DPR) + 'px Inter,sans-serif';
+  ctx.textAlign = 'right';
+  ctx.textBaseline = 'top';
+  ctx.fillText('θ (radians)', pL + cw, pT + ch + 6 * DPR);
+  ctx.restore();
+}
+
+// ── HUD ───────────────────────────────────────────────────────────────────────
+function updateHUD() {
+  var sin = Math.sin(S.theta);
+  var cos = Math.cos(S.theta);
+  var deg = (((S.theta * 180 / Math.PI) % 360) + 360) % 360;
+  document.getElementById('vth').textContent = deg.toFixed(1) + '°';
+  document.getElementById('vs').textContent  = sin.toFixed(3);
+  document.getElementById('vc').textContent  = cos.toFixed(3);
+  document.getElementById('vt').textContent  = Math.abs(cos) < 0.005 ? '∞' : (sin / cos).toFixed(3);
+  if (!S.dragging) document.getElementById('sl').value = deg.toFixed(1);
+}
+
+// ── Arc trace ─────────────────────────────────────────────────────────────────
+function pushArc() {
+  S.arcTrace.push({ x: Math.cos(S.theta), y: Math.sin(S.theta) });
+  if (S.arcTrace.length > ARC_LEN) S.arcTrace.shift();
+}
+
+// ── Wave push (forward motion only) ──────────────────────────────────────────
+function tryPushWave(delta) {
+  if (delta <= 0) return;
+  S.waveAngle += delta;
+  if (S.waveAngle - S.lastWavePush >= WAVE_STEP) {
+    S.waveHist.push({
+      wa:  S.waveAngle,
+      sin: Math.sin(S.theta),
+      cos: Math.cos(S.theta)
+    });
+    if (S.waveHist.length > MAX_WAVE) S.waveHist.shift();
+    S.lastWavePush = S.waveAngle;
+  }
+  if (S.waveAngle >= PI2) S.complete = true;
+}
+
+// ── Render loop ───────────────────────────────────────────────────────────────
+function loop(ts) {
+  requestAnimationFrame(loop);
+  if (S.animating) {
+    var dt = S.lastTime ? Math.min(ts - S.lastTime, 50) : 16;
+    S.lastTime = ts;
+    var dT = S.speed * PI2 * (dt / 1000);
+    S.theta += dT;
+    tryPushWave(dT);
+    pushArc();
+    var deg = (((S.theta * 180 / Math.PI) % 360) + 360) % 360;
+    document.getElementById('sl').value = deg.toFixed(1);
+  } else {
+    S.lastTime = null;
+  }
+  drawCircle();
+  drawWave();
+  updateHUD();
+}
+requestAnimationFrame(loop);
+
+// ── Drag ──────────────────────────────────────────────────────────────────────
+var prevDT = null;
+
+function ptrPos(e) {
+  var r  = CC.getBoundingClientRect();
+  var cl = e.touches ? e.touches[0].clientX : e.clientX;
+  var ct = e.touches ? e.touches[0].clientY : e.clientY;
+  return { x: (cl - r.left) * DPR, y: (ct - r.top) * DPR };
+}
+
+CC.addEventListener('mousedown', startDrag);
+CC.addEventListener('touchstart', startDrag, { passive: true });
+
+function startDrag(e) {
+  S.dragging = true;
+  S.animating = false;
+  var bp = document.getElementById('bplay');
+  bp.textContent = '▶ Animate';
+  bp.className = 'btn on';
+  var p = ptrPos(e);
+  prevDT = Math.atan2(cyw(p.y), cxw(p.x));
+  S.theta = prevDT;
+  pushArc();
+}
+
+window.addEventListener('mousemove', onDrag);
+window.addEventListener('touchmove', onDrag, { passive: true });
+
+function onDrag(e) {
+  if (!S.dragging) return;
+  var p  = ptrPos(e);
+  var nT = Math.atan2(cyw(p.y), cxw(p.x));
+  var delta = nT - (prevDT || nT);
+  if (delta >  Math.PI) delta -= PI2;
+  if (delta < -Math.PI) delta += PI2;
+  S.theta = nT;
+  tryPushWave(delta);
+  prevDT = nT;
+  pushArc();
+}
+
+window.addEventListener('mouseup',  function() { S.dragging = false; prevDT = null; });
+window.addEventListener('touchend', function() { S.dragging = false; prevDT = null; });
+
+// ── Controls ──────────────────────────────────────────────────────────────────
+document.getElementById('sl').addEventListener('input', function(e) {
+  var deg   = parseFloat(e.target.value);
+  var nT    = deg * Math.PI / 180;
+  var delta = nT - S.theta;
+  S.theta   = nT;
+  tryPushWave(delta);
+  pushArc();
+});
+
+var bplay = document.getElementById('bplay');
+bplay.addEventListener('click', function() {
+  S.animating = !S.animating;
+  if (S.animating) {
+    bplay.textContent = '⏸ Pause';
+    bplay.className = 'btn on';
+  } else {
+    bplay.textContent = '▶ Animate';
+    bplay.className = 'btn on';
+  }
+});
+
+document.getElementById('breset').addEventListener('click', function() {
+  S.waveHist   = [];
+  S.waveAngle  = 0;
+  S.lastWavePush = -1e9;
+  S.arcTrace   = [];
+  S.complete   = false;
+  S.theta      = 0;
+  document.getElementById('sl').value = 0;
+});
+
+var bsin = document.getElementById('bsin');
+bsin.addEventListener('click', function() {
+  S.showSin = !S.showSin;
+  bsin.className = S.showSin ? 'btn son' : 'btn';
+  bsin.style.opacity = S.showSin ? '1' : '0.5';
+});
+
+var bcos = document.getElementById('bcos');
+bcos.addEventListener('click', function() {
+  S.showCos = !S.showCos;
+  bcos.className = S.showCos ? 'btn con' : 'btn';
+  bcos.style.opacity = S.showCos ? '1' : '0.5';
+});
+
+var btri = document.getElementById('btri');
+btri.addEventListener('click', function() {
+  S.showTri = !S.showTri;
+  btri.className = S.showTri ? 'btn on' : 'btn';
+  btri.style.opacity = S.showTri ? '1' : '0.5';
+});
+
+document.getElementById('spd').addEventListener('input', function(e) {
+  S.speed = parseFloat(e.target.value);
+  document.getElementById('spdv').textContent = S.speed.toFixed(1) + '×';
+});
+
+window.addEventListener('keydown', function(e) {
+  var step = (e.shiftKey ? 10 : 1) * Math.PI / 180;
+  if (e.key === 'ArrowRight') {
+    e.preventDefault();
+    S.theta += step; tryPushWave(step); pushArc();
+  } else if (e.key === 'ArrowLeft') {
+    e.preventDefault();
+    S.theta -= step; pushArc();
+  } else if (e.key === ' ') {
+    e.preventDefault();
+    bplay.click();
+  }
+});
+
+// Initial render
+pushArc();
+
+})();
+</script>
+</body>
+</html>
