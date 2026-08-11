@@ -1,0 +1,1289 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>The Mixing Tank — Rate In / Rate Out</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.css">
+
+<style>
+/* ============================================================
+   DESIGN TOKENS
+   Palette: void #05070a, steel #97a2b0, glass-blue #4fb3ff,
+   chemical #2fa8ff -> #6fe3ff, signal #ff6a4d (Rin/Rout),
+   ink #eef3f8
+   Type: Space Grotesk (display / titles), Inter (UI), JetBrains Mono (data)
+   ============================================================ */
+:root{
+  --void:#05070a;
+  --void-2:#0a0f16;
+  --panel:rgba(10,15,22,.58);
+  --panel-strong:rgba(8,12,18,.82);
+  --steel:#97a2b0;
+  --steel-dim:#4d5560;
+  --ink:#eef3f8;
+  --ink-dim:#8b96a3;
+  --chem:#4fc3ff;
+  --chem-2:#8fe9ff;
+  --signal:#ff6a4d;
+  --signal-dim:#c9563e;
+  --hair:rgba(151,162,176,.18);
+  --radius:2px;
+}
+*{box-sizing:border-box;}
+html,body{
+  margin:0; padding:0; width:100%; height:100%;
+  background:var(--void); overflow:hidden;
+  font-family:'Inter',sans-serif; color:var(--ink);
+  -webkit-font-smoothing:antialiased;
+}
+#canvas-container{position:fixed; inset:0; z-index:1;}
+#canvas-container canvas{display:block; width:100%; height:100%;}
+
+/* ---------- top bar ---------- */
+.top-bar{
+  position:fixed; top:0; left:0; right:0; z-index:20;
+  display:flex; justify-content:space-between; align-items:flex-start;
+  padding:26px 34px; pointer-events:none;
+}
+.brand{
+  font-family:'Space Grotesk',sans-serif; font-weight:600;
+  font-size:15px; letter-spacing:.32em; color:var(--ink);
+  opacity:.92; text-transform:uppercase;
+}
+.brand small{
+  display:block; margin-top:6px; font-family:'JetBrains Mono',monospace;
+  font-weight:400; letter-spacing:.1em; font-size:10px; color:var(--ink-dim);
+  text-transform:none;
+}
+.scene-counter{
+  font-family:'JetBrains Mono',monospace; font-size:12px; letter-spacing:.15em;
+  color:var(--ink-dim); text-align:right;
+}
+.scene-counter b{color:var(--chem-2); font-weight:500;}
+
+/* ---------- center titles (intro only — brief, then gets out of the way) ---------- */
+.title-stack{
+  position:fixed; left:50%; top:30%; transform:translate(-50%,-50%);
+  z-index:15; text-align:center; pointer-events:none;
+  width:min(640px,82vw);
+}
+.scene-title{
+  font-family:'Space Grotesk',sans-serif; font-weight:700;
+  font-size:clamp(22px,3.4vw,38px); letter-spacing:.05em;
+  color:var(--ink); text-transform:uppercase;
+  opacity:0; transform:translateY(10px); transition:opacity 1s ease, transform 1s ease;
+  text-shadow:0 2px 40px rgba(0,0,0,.7);
+}
+.scene-title.show{opacity:1; transform:translateY(0);}
+.scene-sub{
+  margin-top:10px; font-family:'Inter',sans-serif; font-weight:400;
+  font-size:clamp(12px,1.3vw,14px); color:var(--ink-dim); letter-spacing:.01em;
+  opacity:0; transform:translateY(8px); transition:opacity 1s ease .12s, transform 1s ease .12s;
+}
+.scene-sub.show{opacity:1; transform:translateY(0);}
+
+/* narrow strip, upper-left, well clear of the tank which sits center/right of frame */
+.context-strip{
+  position:fixed; left:34px; top:96px; z-index:15; pointer-events:none;
+  max-width:250px;
+}
+.annotation{
+  text-align:left;
+  font-family:'JetBrains Mono',monospace; font-size:10px; letter-spacing:.24em;
+  color:var(--chem-2); text-transform:uppercase;
+  opacity:0; transition:opacity .7s ease;
+  padding-left:10px; border-left:2px solid rgba(79,195,255,.5);
+}
+.annotation.show{opacity:.9;}
+
+.micro-phrase{
+  margin-top:10px; text-align:left;
+  font-family:'Inter',sans-serif; font-size:12.5px; color:var(--ink-dim);
+  opacity:0; transition:opacity .5s ease; line-height:1.5;
+  padding-left:10px;
+}
+.micro-phrase.show{opacity:.8;}
+
+/* ---------- equation dock — right edge, out of the tank's way ---------- */
+.equation-panel{
+  position:fixed; right:26px; top:50%; transform:translateY(-50%);
+  z-index:16; pointer-events:none; text-align:left;
+  opacity:0; transition:opacity .8s ease, transform .8s ease;
+  background:var(--panel); backdrop-filter:blur(10px);
+  border-left:1px solid var(--hair); padding:16px 20px;
+  border-radius:var(--radius); max-width:260px;
+}
+.equation-panel.show{opacity:1;}
+.equation-panel.hero{
+  padding:20px 24px; background:var(--panel-strong); max-width:300px;
+}
+.equation-panel .eq-label{
+  font-family:'JetBrains Mono',monospace; font-size:9px; letter-spacing:.2em;
+  color:var(--ink-dim); text-transform:uppercase; margin-bottom:8px;
+}
+.equation-panel .eq-katex{ color:var(--ink); font-size:.92em; }
+.equation-panel .eq-katex .base{ color:var(--ink); }
+.equation-panel.hero .eq-katex{ font-size:1.05em; }
+.equation-panel .eq-tag{
+  margin-top:10px; font-family:'Inter',sans-serif; font-size:11px;
+  color:var(--ink-dim); letter-spacing:.06em; text-transform:uppercase;
+}
+.unit-strip{
+  margin-top:8px; font-family:'JetBrains Mono',monospace; font-size:10px;
+  color:var(--chem-2); letter-spacing:.03em; opacity:.8;
+}
+@media (max-width:900px){
+  .equation-panel{ right:14px; max-width:200px; padding:12px 14px; }
+  .context-strip{ max-width:190px; }
+}
+@media (max-width:640px){
+  .equation-panel{ position:fixed; right:14px; left:14px; top:auto; bottom:112px; transform:none; max-width:none; }
+  .context-strip{ top:88px; }
+}
+
+/* ---------- cinematic vignette (cheap realism pass, no perf cost) ---------- */
+#vignette{
+  position:fixed; inset:0; z-index:12; pointer-events:none;
+  background:radial-gradient(ellipse at center, rgba(0,0,0,0) 45%, rgba(0,0,0,.42) 100%);
+}
+#grain-fade{
+  position:fixed; inset:0; z-index:11; pointer-events:none;
+  background:linear-gradient(180deg, rgba(0,0,0,.28) 0%, rgba(0,0,0,0) 16%, rgba(0,0,0,0) 78%, rgba(0,0,0,.32) 100%);
+}
+
+/* ---------- callout labels + connector lines (SVG) ---------- */
+#label-layer{position:fixed; inset:0; z-index:14; pointer-events:none;}
+.callout{
+  position:fixed; z-index:14; pointer-events:none;
+  transform:translate(-50%,-100%);
+  font-family:'JetBrains Mono',monospace; font-size:11px; letter-spacing:.06em;
+  color:var(--chem-2); background:var(--panel); border:1px solid var(--hair);
+  padding:5px 10px; border-radius:1px; white-space:nowrap;
+  opacity:0; transition:opacity .5s ease;
+}
+.callout.signal{ color:var(--signal); border-color:rgba(255,106,77,.35); }
+.callout.show{opacity:1;}
+
+/* ---------- bottom transport bar ---------- */
+.bottom-bar{
+  position:fixed; left:0; right:0; bottom:0; z-index:20;
+  padding:0 28px 20px; pointer-events:none;
+}
+.progress-track{
+  position:relative; height:2px; width:100%; background:var(--hair);
+  margin-bottom:16px; pointer-events:auto; cursor:pointer;
+}
+.progress-fill{
+  position:absolute; left:0; top:0; height:100%; background:var(--chem);
+  box-shadow:0 0 12px var(--chem); transition:width .5s cubic-bezier(.4,0,.2,1);
+}
+.progress-ticks{position:absolute; inset:0; display:flex; justify-content:space-between;}
+.progress-ticks span{width:1px; height:6px; background:var(--steel-dim); transform:translateY(-2px);}
+
+.transport-row{
+  display:flex; align-items:center; justify-content:space-between; pointer-events:none;
+}
+.transport-left, .transport-right{display:flex; align-items:center; gap:10px; pointer-events:auto;}
+.tbtn{
+  appearance:none; border:1px solid var(--hair); background:var(--panel);
+  color:var(--ink); font-family:'Inter',sans-serif; font-size:12px; letter-spacing:.08em;
+  padding:9px 16px; border-radius:1px; cursor:pointer; text-transform:uppercase;
+  backdrop-filter:blur(8px); transition:border-color .2s, color .2s, background .2s;
+  display:flex; align-items:center; gap:8px;
+}
+.tbtn:hover{border-color:var(--chem); color:var(--chem-2);}
+.tbtn.primary{border-color:rgba(79,195,255,.5); color:var(--chem-2);}
+.tbtn svg{width:12px; height:12px; display:block;}
+.mode-toggle{
+  display:flex; border:1px solid var(--hair); border-radius:1px; overflow:hidden; pointer-events:auto;
+}
+.mode-toggle button{
+  appearance:none; border:none; background:transparent; color:var(--ink-dim);
+  font-family:'Inter',sans-serif; font-size:11px; letter-spacing:.1em; text-transform:uppercase;
+  padding:9px 14px; cursor:pointer; transition:background .2s, color .2s;
+}
+.mode-toggle button.active{background:var(--chem); color:#03131d; font-weight:600;}
+
+/* ---------- side parameter drawer ---------- */
+.params-toggle{
+  position:fixed; right:26px; top:50%; transform:translateY(-50%) rotate(180deg);
+  writing-mode:vertical-rl; z-index:21; pointer-events:auto;
+  background:var(--panel); border:1px solid var(--hair); color:var(--ink-dim);
+  font-family:'JetBrains Mono',monospace; font-size:10px; letter-spacing:.2em;
+  padding:14px 8px; cursor:pointer; text-transform:uppercase; border-radius:1px;
+}
+.params-toggle:hover{color:var(--chem-2); border-color:var(--chem);}
+.params-drawer{
+  position:fixed; right:0; top:0; bottom:0; width:300px; z-index:22;
+  background:var(--panel-strong); backdrop-filter:blur(14px);
+  border-left:1px solid var(--hair); padding:80px 26px 26px;
+  transform:translateX(100%); transition:transform .45s cubic-bezier(.4,0,.2,1);
+  overflow-y:auto;
+}
+.params-drawer.open{transform:translateX(0);}
+.params-drawer h3{
+  font-family:'Space Grotesk',sans-serif; font-size:13px; letter-spacing:.18em;
+  text-transform:uppercase; color:var(--ink); margin:0 0 4px;
+}
+.params-drawer .sub{font-size:11px; color:var(--ink-dim); margin-bottom:22px;}
+.param-row{margin-bottom:20px;}
+.param-row label{
+  display:flex; justify-content:space-between; font-size:12px; color:var(--ink-dim);
+  margin-bottom:8px; font-family:'JetBrains Mono',monospace;
+}
+.param-row label b{color:var(--chem-2); font-weight:500;}
+.param-row input[type=range]{
+  -webkit-appearance:none; width:100%; height:2px; background:var(--hair); outline:none;
+}
+.param-row input[type=range]::-webkit-slider-thumb{
+  -webkit-appearance:none; width:12px; height:12px; border-radius:50%;
+  background:var(--chem); cursor:pointer; box-shadow:0 0 8px rgba(79,195,255,.7);
+}
+.time-readout{
+  margin-top:6px; padding:14px; border:1px solid var(--hair); font-size:11px;
+  font-family:'JetBrains Mono',monospace; color:var(--ink-dim); line-height:1.9;
+}
+.time-readout b{color:var(--chem-2); font-weight:500;}
+.reset-params{
+  width:100%; margin-top:8px; background:transparent; border:1px solid var(--hair);
+  color:var(--ink-dim); font-family:'Inter',sans-serif; font-size:11px; letter-spacing:.08em;
+  padding:10px; cursor:pointer; text-transform:uppercase; border-radius:1px;
+}
+.reset-params:hover{color:var(--chem-2); border-color:var(--chem);}
+
+/* ---------- explanation-mode extra HUD ---------- */
+.explain-hud{
+  position:fixed; left:28px; bottom:88px; z-index:15; pointer-events:none;
+  font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--ink-dim);
+  opacity:0; transition:opacity .5s ease; line-height:1.8;
+  border-left:2px solid var(--chem); padding-left:12px;
+}
+.explain-hud.show{opacity:.85;}
+.explain-hud b{color:var(--chem-2); font-weight:500;}
+
+/* ---------- start overlay ---------- */
+#start-overlay{
+  position:fixed; inset:0; z-index:50; background:var(--void);
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  transition:opacity 1s ease; text-align:center; padding:20px;
+}
+#start-overlay.hide{opacity:0; pointer-events:none;}
+#start-overlay .eyebrow{
+  font-family:'JetBrains Mono',monospace; font-size:11px; letter-spacing:.32em;
+  color:var(--chem-2); text-transform:uppercase; margin-bottom:18px; opacity:.85;
+}
+#start-overlay h1{
+  font-family:'Space Grotesk',sans-serif; font-weight:700; letter-spacing:.03em;
+  font-size:clamp(30px,6vw,58px); margin:0 0 14px; text-transform:uppercase;
+}
+#start-overlay p{
+  font-family:'Inter',sans-serif; color:var(--ink-dim); max-width:480px;
+  font-size:14px; line-height:1.7; margin:0 0 34px;
+}
+#start-btn{
+  appearance:none; border:1px solid var(--chem); background:transparent;
+  color:var(--chem-2); font-family:'Inter',sans-serif; font-size:13px; letter-spacing:.16em;
+  padding:15px 38px; cursor:pointer; text-transform:uppercase; border-radius:1px;
+  transition:background .25s, color .25s;
+}
+#start-btn:hover{background:var(--chem); color:#03131d;}
+
+.loading-tip{
+  position:fixed; bottom:24px; left:50%; transform:translateX(-50%); z-index:19;
+  font-family:'JetBrains Mono',monospace; font-size:10px; color:var(--ink-dim);
+  letter-spacing:.15em; opacity:.5;
+}
+
+@media (max-width:720px){
+  .params-drawer{width:82vw;}
+  .top-bar{padding:18px 18px;}
+  .brand{font-size:12px;}
+  .transport-row .tbtn span.lbl{display:none;}
+}
+</style>
+</head>
+<body>
+
+<div id="start-overlay">
+  <div class="eyebrow">A Differential-Equation Field Study</div>
+  <h1>The Mixing Tank</h1>
+  <p>How does the amount of chemical inside a stirred tank change with time? Watch the physical process first — the equation follows from what you see.</p>
+  <button id="start-btn">Begin ▸</button>
+  <div class="loading-tip">Space = Play/Pause · ← → = Scene · R = Reset</div>
+</div>
+
+<div id="canvas-container"></div>
+<div id="grain-fade"></div>
+<div id="vignette"></div>
+<svg id="label-layer"></svg>
+
+<div class="top-bar">
+  <div class="brand">Mixing Tank<small id="brand-sub">Rate In / Rate Out</small></div>
+  <div class="scene-counter">SCENE <b id="scene-num">01</b> / 10</div>
+</div>
+
+<div class="title-stack">
+  <div class="scene-title" id="scene-title"></div>
+  <div class="scene-sub" id="scene-sub"></div>
+</div>
+
+<div class="context-strip">
+  <div class="annotation" id="annotation"></div>
+  <div class="micro-phrase" id="micro-phrase"></div>
+</div>
+
+<div class="equation-panel" id="equation-panel">
+  <div class="eq-label" id="eq-label"></div>
+  <div class="eq-katex" id="eq-katex"></div>
+  <div class="unit-strip" id="eq-units"></div>
+  <div class="eq-tag" id="eq-tag"></div>
+</div>
+
+<div class="explain-hud" id="explain-hud"></div>
+
+<button class="params-toggle" id="params-toggle">Parameters</button>
+<div class="params-drawer" id="params-drawer">
+  <h3>Simulation Controls</h3>
+  <div class="sub">Adjust the physical parameters — the tank, particles and equations respond live.</div>
+
+  <div class="param-row">
+    <label>Inflow rate <span>Q<sub>in</sub></span> <b id="v-qin"></b></label>
+    <input type="range" id="s-qin" min="0.2" max="6" step="0.1" value="2">
+  </div>
+  <div class="param-row">
+    <label>Outflow rate <span>Q<sub>out</sub></span> <b id="v-qout"></b></label>
+    <input type="range" id="s-qout" min="0.2" max="6" step="0.1" value="2">
+  </div>
+  <div class="param-row">
+    <label>Incoming concentration <span>c<sub>in</sub></span> <b id="v-cin"></b></label>
+    <input type="range" id="s-cin" min="0" max="2" step="0.05" value="0.5">
+  </div>
+  <div class="param-row">
+    <label>Initial amount <span>A₀</span> <b id="v-a0"></b></label>
+    <input type="range" id="s-a0" min="0" max="50" step="1" value="0">
+  </div>
+  <div class="param-row">
+    <label>Initial volume <span>V₀</span> <b id="v-v0"></b></label>
+    <input type="range" id="s-v0" min="40" max="160" step="1" value="100">
+  </div>
+  <div class="param-row">
+    <label>Simulation time <span>t</span> <b id="v-t"></b></label>
+    <input type="range" id="s-t" min="0" max="40" step="0.1" value="0">
+  </div>
+
+  <div class="time-readout" id="time-readout"></div>
+  <button class="reset-params" id="reset-params">Reset Parameters</button>
+</div>
+
+<div class="bottom-bar">
+  <div class="progress-track" id="progress-track">
+    <div class="progress-fill" id="progress-fill"></div>
+    <div class="progress-ticks" id="progress-ticks"></div>
+  </div>
+  <div class="transport-row">
+    <div class="transport-left">
+      <button class="tbtn" id="btn-prev">◂ <span class="lbl">Prev</span></button>
+      <button class="tbtn primary" id="btn-play"><span id="play-icon">▶</span> <span class="lbl" id="play-label">Play</span></button>
+      <button class="tbtn" id="btn-next"><span class="lbl">Next</span> ▸</button>
+      <button class="tbtn" id="btn-reset">↺ <span class="lbl">Reset</span></button>
+    </div>
+    <div class="transport-right">
+      <div class="mode-toggle" id="mode-toggle">
+        <button class="active" data-mode="simulation">Simulation</button>
+        <button data-mode="explanation">Explanation</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.js"></script>
+<script>
+/* ================================================================
+   THE MIXING TANK — cinematic differential-equation explainer
+   Architecture:
+     1. Config / Scene data
+     2. Three.js core (renderer, camera, lights)
+     3. Tank builder (glass shell, frame, liquid, stirrer, pipes)
+     4. Chemical particle system (flow-field driven)
+     5. Camera rig (eased cinematic moves)
+     6. Physics model (dA/dt = cin*Qin - (A/V)*Qout, dV/dt = Qin-Qout)
+     7. UI controller (titles, equations, callouts, transport, params)
+     8. Scene manager (glue) + render loop
+   ================================================================ */
+
+/* ---------------- 1. SCENE DATA ---------------- */
+const SCENES = [
+  { // 0
+    title:"THE MIXING TANK",
+    sub:"How does the amount of chemical inside change with time?",
+    annotation:"", micro:[],
+    cam:{pos:[0,3.1,11.5], look:[0,2.0,0], fov:42},
+    camEnd:{pos:[0,2.6,7.6], look:[0,2.0,0]},
+    flow:{inflow:false, outflow:false, stir:.25, mixed:true},
+    eq:null, callouts:[]
+  },
+  { // 1
+    title:"", sub:"",
+    annotation:"CHEMICAL ENTERS",
+    micro:["How concentrated is the incoming solution?","How much solution enters per unit time?"],
+    cam:{pos:[-3.7,4.9,3.6], look:[-1.7,3.9,0.6], fov:36},
+    flow:{inflow:true, outflow:false, stir:.3, mixed:false},
+    eq:{label:"Rate In", tex:"\\text{Rate In} = \\text{Concentration} \\times \\text{Flow Rate}", tag:"", small:true},
+    callouts:[]
+  },
+  { // 2
+    title:"", sub:"",
+    annotation:"PERFECTLY MIXED",
+    micro:["At every instant, the concentration is approximately the same throughout the tank."],
+    cam:{pos:[0,1.15,4.4], look:[0,1.2,0], fov:44, orbit:true},
+    flow:{inflow:true, outflow:false, stir:1.5, mixed:true},
+    eq:null, callouts:[]
+  },
+  { // 3
+    title:"", sub:"Let A(t) = amount of chemical in the tank at time t",
+    annotation:"", micro:["We want to know how A(t) changes with time."],
+    cam:{pos:[0,2.7,8.3], look:[0,2.1,0], fov:40},
+    flow:{inflow:true, outflow:true, stir:1.0, mixed:true},
+    eq:{label:"Defining the unknown", tex:"A(t) \\;\\longrightarrow\\; \\dfrac{dA}{dt}", tag:"amount of chemical, at time t"},
+    callouts:[{id:'A', key:'liquidCenter', label:'A(t)', signal:false}]
+  },
+  { // 4
+    title:"", sub:"",
+    annotation:"RATE OF CHANGE OF CHEMICAL",
+    micro:[],
+    cam:{pos:[0,2.4,6.2], look:[0,2.0,0], fov:38},
+    flow:{inflow:false, outflow:false, stir:.35, mixed:true, dim:true},
+    eq:{label:"First major reveal", tex:"\\dfrac{dA}{dt} = \\text{RATE IN} - \\text{RATE OUT}", tag:"", hero:true},
+    callouts:[]
+  },
+  { // 5
+    title:"", sub:"",
+    annotation:"RATE IN",
+    micro:[],
+    cam:{pos:[-3.2,4.6,2.9], look:[-1.5,3.8,0.4], fov:34},
+    flow:{inflow:true, outflow:false, stir:.6, mixed:true},
+    eq:{label:"Rate In", tex:"\\text{Rate In} = c_{in}\\,Q_{in}", tag:""},
+    units:"amount⁄volume  ×  volume⁄time  →  amount⁄time",
+    callouts:[{id:'cin', key:'inletNozzle', label:'c_in', signal:true},{id:'qin', key:'inletPipe', label:'Q_in', signal:true}]
+  },
+  { // 6
+    title:"", sub:"",
+    annotation:"RATE OUT",
+    micro:["The tank is perfectly mixed, so the outgoing concentration equals the tank concentration."],
+    cam:{pos:[2.9,1.05,3.1], look:[1.6,0.75,0.4], fov:34},
+    flow:{inflow:false, outflow:true, stir:.6, mixed:true},
+    eq:{label:"Rate Out", tex:"\\text{Rate Out} = \\dfrac{A(t)}{V(t)}\\,Q_{out}", tag:""},
+    units:"amount⁄volume  ×  volume⁄time  →  amount⁄time",
+    callouts:[{id:'AV', key:'liquidCenter', label:'A(t)/V(t)', signal:false},{id:'qout', key:'outletPipe', label:'Q_out', signal:true}]
+  },
+  { // 7
+    title:"", sub:"",
+    annotation:"THE COMPLETE MODEL",
+    micro:[],
+    cam:{pos:[0,3.6,9.4], look:[0,2.0,0], fov:40},
+    flow:{inflow:true, outflow:true, stir:1.0, mixed:true},
+    eq:{label:"Combining both rates", tex:"\\dfrac{dA}{dt} = c_{in}Q_{in} \\;-\\; \\dfrac{A(t)}{V(t)}Q_{out}", tag:""},
+    callouts:[{id:'rin', key:'inletPipe', label:'RATE IN', signal:true},{id:'rout', key:'outletPipe', label:'RATE OUT', signal:true}]
+  },
+  { // 8
+    title:"", sub:"",
+    annotation:"VOLUME BALANCE",
+    micro:[],
+    cam:{pos:[0.4,2.05,7.7], look:[0,2.3,0], fov:38},
+    flow:{inflow:true, outflow:true, stir:.8, mixed:true},
+    eq:{label:"Volume changes independently", tex:"\\dfrac{dV}{dt} = Q_{in} - Q_{out}", tag:""},
+    callouts:[{id:'V', key:'liquidTop', label:'V(t)', signal:false}]
+  },
+  { // 9
+    title:"", sub:"",
+    annotation:"WHAT ENTERS − WHAT LEAVES",
+    micro:[],
+    cam:{pos:[0,2.25,6.7], look:[0,2.0,0], fov:38},
+    camEnd:{pos:[0,2.05,5.6], look:[0,2.0,0]},
+    flow:{inflow:true, outflow:true, stir:.55, mixed:true},
+    eq:{label:"The complete differential equation", tex:"\\dfrac{dA}{dt} = c_{in}Q_{in} - \\dfrac{A(t)}{V(t)}Q_{out}", tag:"Everything came from one simple idea.", hero:true},
+    callouts:[]
+  }
+];
+
+const state = {
+  sceneIndex:0, playing:false, mode:'simulation',
+  params:{ Qin:2, Qout:2, cin:0.5, A0:0, V0:100 },
+  t:0, A:0, V:100, autoT:true,
+  dwellTimer:0, DWELL:7.4,
+  transitioning:false,
+  camPos:new THREE.Vector3(), camLook:new THREE.Vector3(),
+  started:false
+};
+state.A = state.params.A0; state.V = state.params.V0;
+
+/* ---------------- 2. THREE CORE ---------------- */
+const container = document.getElementById('canvas-container');
+const renderer = new THREE.WebGLRenderer({antialias:true, alpha:false, powerPreference:'high-performance'});
+renderer.setPixelRatio(Math.min(window.devicePixelRatio,2));
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.outputEncoding = THREE.sRGBEncoding;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 0.98;
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+container.appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x05070a);
+scene.fog = new THREE.FogExp2(0x05070a, 0.045);
+
+const camera = new THREE.PerspectiveCamera(42, window.innerWidth/window.innerHeight, 0.1, 200);
+camera.position.set(0,3,11);
+state.camPos.copy(camera.position);
+state.camLook.set(0,2,0);
+
+// lighting
+const hemi = new THREE.HemisphereLight(0x9fc8ff, 0x0a0a10, 0.55);
+scene.add(hemi);
+const key = new THREE.DirectionalLight(0xffffff, 1.55);
+key.position.set(6,10,6);
+key.castShadow = true;
+key.shadow.mapSize.set(2048,2048);
+key.shadow.camera.near=1; key.shadow.camera.far=30;
+key.shadow.camera.left=-8; key.shadow.camera.right=8;
+key.shadow.camera.top=8; key.shadow.camera.bottom=-8;
+key.shadow.bias=-0.0015;
+scene.add(key);
+const rim = new THREE.DirectionalLight(0x4fc3ff, 1.1);
+rim.position.set(-7,5,-6);
+scene.add(rim);
+const fill = new THREE.PointLight(0x3ea8ff, 0.6, 20);
+fill.position.set(0,3,4);
+scene.add(fill);
+
+// floor
+const floorMat = new THREE.MeshStandardMaterial({color:0x0b0e13, roughness:0.85, metalness:0.15});
+const floor = new THREE.Mesh(new THREE.CircleGeometry(30,48), floorMat);
+floor.rotation.x = -Math.PI/2; floor.position.y = -0.02; floor.receiveShadow = true;
+scene.add(floor);
+
+// ambient background lab clutter (subtle, low-poly silhouettes -> depth)
+function addBackgroundLab(){
+  const mat = new THREE.MeshStandardMaterial({color:0x1a2028, metalness:0.8, roughness:0.35});
+  const group = new THREE.Group();
+  for(let i=0;i<7;i++){
+    const h = 2+Math.random()*3.2;
+    const r = 0.18+Math.random()*0.22;
+    const cyl = new THREE.Mesh(new THREE.CylinderGeometry(r,r,h,14), mat);
+    const ang = Math.random()*Math.PI*2;
+    const rad = 9+Math.random()*8;
+    cyl.position.set(Math.cos(ang)*rad, h/2, Math.sin(ang)*rad-2);
+    cyl.castShadow = true;
+    group.add(cyl);
+  }
+  const panel = new THREE.Mesh(new THREE.BoxGeometry(1.6,2.4,0.15),
+    new THREE.MeshStandardMaterial({color:0x161b22, metalness:0.5, roughness:0.5, emissive:0x0a2030, emissiveIntensity:0.15}));
+  panel.position.set(-6.5,1.2,-2.5);
+  group.add(panel);
+  scene.add(group);
+}
+addBackgroundLab();
+
+// ---- procedural environment map (soft studio gradient) for believable metal/glass reflections ----
+function buildEnvironment(){
+  const size = 256;
+  const canvas = document.createElement('canvas');
+  canvas.width = size*2; canvas.height = size;
+  const ctx = canvas.getContext('2d');
+  const grad = ctx.createLinearGradient(0,0,0,size);
+  grad.addColorStop(0,'#cfe6ff');
+  grad.addColorStop(0.28,'#7fa9c9');
+  grad.addColorStop(0.55,'#1b232d');
+  grad.addColorStop(0.8,'#0a0d12');
+  grad.addColorStop(1,'#05070a');
+  ctx.fillStyle = grad; ctx.fillRect(0,0,canvas.width,canvas.height);
+  // soft horizontal light bands (simulate overhead lab strip-lights reflecting in metal/glass)
+  ctx.globalAlpha = 0.5;
+  for(let i=0;i<3;i++){
+    ctx.fillStyle = '#eaf6ff';
+    const y = size*0.18 + i*size*0.03;
+    ctx.fillRect(0, y, canvas.width, 3);
+  }
+  ctx.globalAlpha = 1;
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.mapping = THREE.EquirectangularReflectionMapping;
+  tex.encoding = THREE.sRGBEncoding;
+  const pmrem = new THREE.PMREMGenerator(renderer);
+  pmrem.compileEquirectangularShader();
+  const envRT = pmrem.fromEquirectangular(tex);
+  scene.environment = envRT.texture;
+  tex.dispose(); pmrem.dispose();
+}
+buildEnvironment();
+
+/* ---------------- 3. TANK BUILDER ---------------- */
+const TANK = { radius:2.1, height:5.0, baseY:0.15 };
+const tankGroup = new THREE.Group();
+scene.add(tankGroup);
+const anchors = {}; // named world-space anchor points (updated in animate)
+
+// glass shell (open-ish look via transmission)
+const glassMat = new THREE.MeshPhysicalMaterial({
+  color:0xdfeaf2, transparent:true, opacity:0.22,
+  roughness:0.05, metalness:0, transmission:0.92, thickness:0.6,
+  ior:1.45, clearcoat:1, clearcoatRoughness:0.08, envMapIntensity:1.1,
+  side:THREE.DoubleSide
+});
+const glassShell = new THREE.Mesh(
+  new THREE.CylinderGeometry(TANK.radius, TANK.radius, TANK.height, 48, 1, true),
+  glassMat
+);
+glassShell.position.y = TANK.baseY + TANK.height/2;
+tankGroup.add(glassShell);
+
+// steel base + top rim
+const steelMat = new THREE.MeshStandardMaterial({color:0xb9c2cc, metalness:0.92, roughness:0.28});
+const baseRing = new THREE.Mesh(new THREE.CylinderGeometry(TANK.radius+0.08, TANK.radius+0.08, 0.16, 48), steelMat);
+baseRing.position.y = TANK.baseY;
+baseRing.castShadow = true; baseRing.receiveShadow = true;
+tankGroup.add(baseRing);
+const topRing = new THREE.Mesh(new THREE.CylinderGeometry(TANK.radius+0.08, TANK.radius+0.08, 0.16, 48), steelMat);
+topRing.position.y = TANK.baseY + TANK.height;
+topRing.castShadow = true;
+tankGroup.add(topRing);
+
+// cage frame (4 posts + cross bars, matching reference images)
+const cage = new THREE.Group();
+const postR = 0.055;
+const postOffset = TANK.radius + 0.55;
+const postH = TANK.height + 1.0;
+[[1,1],[1,-1],[-1,1],[-1,-1]].forEach(([sx,sz])=>{
+  const post = new THREE.Mesh(new THREE.CylinderGeometry(postR,postR,postH,14), steelMat);
+  post.position.set(sx*postOffset*0.62, TANK.baseY+postH/2-0.3, sz*postOffset*0.62);
+  post.castShadow = true;
+  cage.add(post);
+});
+function crossBar(y){
+  const grp = new THREE.Group();
+  [0,1,2,3].forEach(i=>{
+    const ang = i*Math.PI/2 + Math.PI/4;
+    const bar = new THREE.Mesh(new THREE.CylinderGeometry(postR*0.85,postR*0.85, postOffset*0.62*Math.SQRT2, 10), steelMat);
+    bar.position.set(0,y,0);
+    bar.rotation.z = Math.PI/2; bar.rotation.y = ang;
+    bar.castShadow = true;
+    grp.add(bar);
+  });
+  return grp;
+}
+cage.add(crossBar(TANK.baseY+0.05));
+cage.add(crossBar(TANK.baseY+TANK.height*0.55));
+cage.add(crossBar(TANK.baseY+postH-0.3));
+tankGroup.add(cage);
+
+// control panel prop (like reference: small box with buttons)
+const ctrlBox = new THREE.Group();
+const boxBody = new THREE.Mesh(new THREE.BoxGeometry(0.55,0.9,0.15),
+  new THREE.MeshStandardMaterial({color:0x1c2530, metalness:0.4, roughness:0.5}));
+ctrlBox.add(boxBody);
+for(let i=0;i<4;i++){
+  const btn = new THREE.Mesh(new THREE.CylinderGeometry(0.035,0.035,0.02,10),
+    new THREE.MeshStandardMaterial({
+      color: i===1? 0xff6a4d : 0x3ea8ff, emissive: i===1?0xff6a4d:0x3ea8ff, emissiveIntensity:0.6, metalness:0.3, roughness:0.4}));
+  btn.rotation.x = Math.PI/2;
+  btn.position.set(-0.14+ (i%2)*0.28, 0.28-Math.floor(i/2)*0.24, 0.09);
+  ctrlBox.add(btn);
+}
+ctrlBox.position.set(postOffset*0.62+0.7, 2.0, -0.5);
+tankGroup.add(ctrlBox);
+
+// liquid
+const liquidMat = new THREE.MeshPhysicalMaterial({
+  color:0x2f8fe0, transparent:true, opacity:0.72,
+  roughness:0.06, transmission:0.55, thickness:1.4, ior:1.33,
+  emissive:0x0a3a5c, emissiveIntensity:0.12,
+  clearcoat:0.4, clearcoatRoughness:0.15, envMapIntensity:0.9
+});
+// Unit-height geometry, scaled per-frame via liquid.scale.y — avoids rebuilding
+// geometry every frame (that was the main source of jank in the previous pass).
+let liquidHeight = 2.2;
+let liquidHeightDisplay = 2.2; // smoothed value actually applied to the mesh
+const liquidGeo = new THREE.CylinderGeometry(TANK.radius-0.05, TANK.radius-0.05, 1, 40, 1);
+liquidGeo.translate(0, 0.5, 0);
+const liquid = new THREE.Mesh(liquidGeo, liquidMat);
+liquid.position.y = TANK.baseY;
+liquid.scale.y = liquidHeight;
+tankGroup.add(liquid);
+
+// wavy top surface
+const surfSegs = 40;
+const surfGeo = new THREE.CircleGeometry(TANK.radius-0.06, surfSegs);
+const surfMat = new THREE.MeshPhysicalMaterial({
+  color:0x6fd0ff, transparent:true, opacity:0.5, roughness:0.05,
+  transmission:0.6, ior:1.33, side:THREE.DoubleSide
+});
+const surface = new THREE.Mesh(surfGeo, surfMat);
+surface.rotation.x = -Math.PI/2;
+tankGroup.add(surface);
+const surfBase = surfGeo.attributes.position.array.slice();
+
+// stirrer
+const stirrer = new THREE.Group();
+const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.045,0.045, TANK.height+0.6, 12), steelMat);
+shaft.position.y = TANK.baseY + (TANK.height+0.6)/2 + 0.5;
+stirrer.add(shaft);
+const paddleMat = new THREE.MeshStandardMaterial({color:0xa9b3bf, metalness:0.85, roughness:0.3});
+for(let i=0;i<2;i++){
+  const blade = new THREE.Mesh(new THREE.BoxGeometry(0.9,0.14,0.06), paddleMat);
+  blade.position.set(0, TANK.baseY+0.35, 0);
+  blade.rotation.y = i*Math.PI/2;
+  stirrer.add(blade);
+}
+stirrer.castShadow = true;
+tankGroup.add(stirrer);
+
+// inlet pipe (bends in from top-left)
+function tubeFromPoints(pts, radius, mat){
+  const curve = new THREE.CatmullRomCurve3(pts.map(p=>new THREE.Vector3(...p)));
+  const geo = new THREE.TubeGeometry(curve, 40, radius, 12, false);
+  const mesh = new THREE.Mesh(geo, mat);
+  mesh.castShadow = true;
+  return {mesh, curve};
+}
+const pipeMat = new THREE.MeshStandardMaterial({color:0xc7cfd8, metalness:0.95, roughness:0.22});
+const inletPts = [[-5.5,5.6,1.4],[-3.6,5.5,1.2],[-2.4,5.1,0.9],[-1.65,4.35,0.65]];
+const inletPipe = tubeFromPoints(inletPts, 0.11, pipeMat);
+tankGroup.add(inletPipe.mesh);
+const inletFlange = new THREE.Mesh(new THREE.CylinderGeometry(0.19,0.19,0.08,16), steelMat);
+inletFlange.position.set(-1.65,4.35,0.65);
+inletFlange.rotation.z = 1.0;
+tankGroup.add(inletFlange);
+
+const outletPts = [[1.55,0.65,0.55],[2.6,0.55,0.75],[4.2,0.35,0.9],[5.6,0.35,1.0]];
+const outletPipe = tubeFromPoints(outletPts, 0.11, pipeMat);
+tankGroup.add(outletPipe.mesh);
+const outletFlange = new THREE.Mesh(new THREE.CylinderGeometry(0.19,0.19,0.08,16), steelMat);
+outletFlange.position.set(1.55,0.65,0.55);
+outletFlange.rotation.z = 1.0;
+tankGroup.add(outletFlange);
+
+// flowing stream visuals (thin translucent tubes with animated dash-like opacity via shader-lite trick: moving texture offset)
+const streamMat = new THREE.MeshBasicMaterial({color:0x4fc3ff, transparent:true, opacity:0.55});
+const inletStream = new THREE.Mesh(new THREE.CylinderGeometry(0.05,0.06,0.9,10), streamMat);
+inletStream.position.set(-1.62,3.85,0.62); inletStream.rotation.z = 0.35;
+tankGroup.add(inletStream);
+const outletStreamMat = new THREE.MeshBasicMaterial({color:0x8fe9ff, transparent:true, opacity:0.5});
+const outletStream = new THREE.Mesh(new THREE.CylinderGeometry(0.05,0.06,0.9,10), outletStreamMat);
+outletStream.position.set(2.0,0.6,0.6); outletStream.rotation.z = 1.35;
+tankGroup.add(outletStream);
+
+// gauge prop on top
+const gauge = new THREE.Mesh(new THREE.CylinderGeometry(0.18,0.18,0.08,20),
+  new THREE.MeshStandardMaterial({color:0xe8ecef, metalness:0.4, roughness:0.4}));
+gauge.rotation.x = Math.PI/2;
+gauge.position.set(-0.6, TANK.baseY+TANK.height+0.55, 0.9);
+tankGroup.add(gauge);
+
+/* ---------------- 4. CHEMICAL PARTICLE SYSTEM ---------------- */
+function makeDotTexture(){
+  const c = document.createElement('canvas'); c.width=c.height=64;
+  const ctx = c.getContext('2d');
+  const g = ctx.createRadialGradient(32,32,0,32,32,32);
+  g.addColorStop(0,'rgba(140,225,255,1)');
+  g.addColorStop(0.4,'rgba(80,190,255,0.9)');
+  g.addColorStop(1,'rgba(40,140,220,0)');
+  ctx.fillStyle=g; ctx.fillRect(0,0,64,64);
+  return new THREE.CanvasTexture(c);
+}
+const dotTex = makeDotTexture();
+const N_PART = 520;
+const pPos = new Float32Array(N_PART*3);
+const pVel = [];
+const pState = []; // 'inside' | 'entering' | 'exiting'
+const tankCenter = new THREE.Vector3(0, TANK.baseY, 0);
+
+function randomInsideTank(yFrac){
+  const r = Math.sqrt(Math.random())*(TANK.radius-0.25);
+  const a = Math.random()*Math.PI*2;
+  const y = TANK.baseY + 0.15 + Math.random()*(liquidHeight*(yFrac||1)-0.2);
+  return new THREE.Vector3(Math.cos(a)*r, y, Math.sin(a)*r);
+}
+for(let i=0;i<N_PART;i++){
+  const p = randomInsideTank(1);
+  pPos[i*3]=p.x; pPos[i*3+1]=p.y; pPos[i*3+2]=p.z;
+  pVel.push(new THREE.Vector3());
+  pState.push('inside');
+}
+const pGeo = new THREE.BufferGeometry();
+pGeo.setAttribute('position', new THREE.BufferAttribute(pPos,3));
+const pMat = new THREE.PointsMaterial({
+  size:0.09, map:dotTex, transparent:true, opacity:0.95, depthWrite:false,
+  blending:THREE.AdditiveBlending, sizeAttenuation:true
+});
+const particles = new THREE.Points(pGeo, pMat);
+tankGroup.add(particles);
+
+const inletWorld = new THREE.Vector3(-1.6,4.15,0.6);
+const outletWorld = new THREE.Vector3(1.65,0.55,0.55);
+
+function updateParticles(dt, flow, stirAngle){
+  const posAttr = pGeo.attributes.position;
+  const t0 = performance.now()*0.001;
+  for(let i=0;i<N_PART;i++){
+    let x=posAttr.array[i*3], y=posAttr.array[i*3+1], z=posAttr.array[i*3+2];
+    let v = pVel[i];
+
+    if(pState[i]==='entering'){
+      const dir = new THREE.Vector3(0.35,-1,0.15).normalize();
+      v.lerp(dir.multiplyScalar(3.2), 0.08);
+      x += v.x*dt; y += v.y*dt; z += v.z*dt;
+      if(y < TANK.baseY + liquidHeight - 0.15){ pState[i]='inside'; }
+    } else if(pState[i]==='exiting'){
+      const toOut = outletWorld.clone().sub(new THREE.Vector3(x,y,z));
+      v.lerp(toOut.normalize().multiplyScalar(2.6), 0.15);
+      x += v.x*dt; y += v.y*dt; z += v.z*dt;
+      if(toOut.length() < 0.25){
+        if(flow.inflow && Math.random()<0.6){
+          const sp = inletWorld.clone().add(new THREE.Vector3((Math.random()-0.5)*0.2,0.15,(Math.random()-0.5)*0.2));
+          x=sp.x;y=sp.y;z=sp.z; pState[i]='entering'; v.set(0,0,0);
+        } else {
+          const p = randomInsideTank(1); x=p.x;y=p.y;z=p.z; pState[i]='inside'; v.set(0,0,0);
+        }
+      }
+    } else {
+      // inside: swirl + gentle turbulence + containment
+      const cx=x, cz=z;
+      const radial = Math.sqrt(cx*cx+cz*cz)+0.0001;
+      const ang = Math.atan2(cz,cx);
+      const swirl = flow.stir*0.9;
+      const newAng = ang + swirl*dt*(0.6+0.4*(1-radial/TANK.radius));
+      let nx = Math.cos(newAng)*radial, nz = Math.sin(newAng)*radial;
+
+      // turbulence
+      nx += Math.sin(t0*1.3 + i*0.37)*0.006;
+      nz += Math.cos(t0*1.1 + i*0.51)*0.006;
+      let ny = y + Math.sin(t0*0.8 + i*0.21)*0.004*flow.stir;
+
+      // gentle vertical circulation (rises near wall, sinks near center) -> mixing
+      const pull = (flow.mixed? 0.02 : 0.0);
+      const distFromCenterHeight = (y - (TANK.baseY+liquidHeight*0.5));
+      ny -= distFromCenterHeight*pull*dt*2;
+
+      // containment within current liquid volume
+      const rad2 = Math.sqrt(nx*nx+nz*nz);
+      const maxR = TANK.radius-0.18;
+      if(rad2>maxR){ const s=maxR/rad2; nx*=s; nz*=s; }
+      ny = Math.max(TANK.baseY+0.12, Math.min(TANK.baseY+liquidHeight-0.1, ny));
+
+      x=nx; y=ny; z=nz;
+
+      // capture near outlet
+      if(flow.outflow){
+        const d = Math.hypot(x-outletWorld.x, y-outletWorld.y, z-outletWorld.z);
+        if(d < 0.55 && Math.random()<0.02){ pState[i]='exiting'; }
+      }
+    }
+    posAttr.array[i*3]=x; posAttr.array[i*3+1]=y; posAttr.array[i*3+2]=z;
+  }
+  posAttr.needsUpdate = true;
+
+  // spawn new entering particles from idle pool when inflow active
+  if(flow.inflow){
+    let spawnBudget = 2;
+    for(let i=0;i<N_PART && spawnBudget>0;i++){
+      if(pState[i]==='inside' && Math.random()<0.004){
+        const sp = inletWorld.clone().add(new THREE.Vector3((Math.random()-0.5)*0.2,0.1,(Math.random()-0.5)*0.2));
+        posAttr.array[i*3]=sp.x; posAttr.array[i*3+1]=sp.y; posAttr.array[i*3+2]=sp.z;
+        pState[i]='entering'; pVel[i].set(0,0,0);
+        spawnBudget--;
+      }
+    }
+  }
+}
+
+/* ---------------- 5. CAMERA RIG ---------------- */
+let camFrom = {pos:new THREE.Vector3(0,3,11), look:new THREE.Vector3(0,2,0), fov:42};
+let camTo   = {pos:new THREE.Vector3(0,3,11), look:new THREE.Vector3(0,2,0), fov:42};
+let camT = 1, camDuration = 2.0;
+let orbitActive = false;
+
+function easeInOutCubic(x){ return x<0.5 ? 4*x*x*x : 1-Math.pow(-2*x+2,3)/2; }
+// gentler, more "dolly"-like ease for camera moves — slower start/end, less mechanical
+function easeInOutQuint(x){ return x<0.5 ? 16*x*x*x*x*x : 1-Math.pow(-2*x+2,5)/2; }
+
+function goToCamera(camDef, duration){
+  camFrom.pos.copy(camera.position);
+  camFrom.look.copy(state.camLook);
+  camFrom.fov = camera.fov;
+  camTo.pos.set(...camDef.pos);
+  camTo.look.set(...camDef.look);
+  camTo.fov = camDef.fov || camera.fov;
+  camT = 0; camDuration = duration || 2.2;
+  orbitActive = !!camDef.orbit;
+}
+
+function updateCamera(dt, elapsedInScene){
+  if(camT < 1){
+    camT = Math.min(1, camT + dt/camDuration);
+    const e = easeInOutQuint(camT);
+    const p = camFrom.pos.clone().lerp(camTo.pos, e);
+    const l = camFrom.look.clone().lerp(camTo.look, e);
+    camera.position.copy(p);
+    state.camLook.copy(l);
+    camera.fov = camFrom.fov + (camTo.fov-camFrom.fov)*e;
+    camera.updateProjectionMatrix();
+  } else {
+    // idle cinematic drift / optional slow orbit / optional push-in (camEnd)
+    const sc = SCENES[state.sceneIndex];
+    let base = camTo.pos.clone();
+    if(sc.camEnd){
+      const pushT = Math.min(1, elapsedInScene/ (state.DWELL*0.85));
+      const e = easeInOutCubic(pushT);
+      const endPos = new THREE.Vector3(...sc.camEnd.pos);
+      const endLook = new THREE.Vector3(...sc.camEnd.look);
+      base = camTo.pos.clone().lerp(endPos, e);
+      state.camLook.lerp(endLook, 0.02);
+    }
+    if(orbitActive){
+      const a = elapsedInScene*0.07;
+      base = new THREE.Vector3(Math.sin(a)*4.4, base.y, Math.cos(a)*4.4);
+    }
+    const bob = Math.sin(elapsedInScene*0.22)*0.015;
+    camera.position.set(base.x, base.y+bob, base.z);
+  }
+  camera.lookAt(state.camLook);
+}
+goToCamera(SCENES[0].cam, 0.01);
+
+/* ---------------- 6. PHYSICS MODEL ---------------- */
+function stepPhysics(A, V, t, dt){
+  const {Qin,Qout,cin} = state.params;
+  const rateIn = cin*Qin;
+  const rateOut = V>0.001 ? (A/V)*Qout : 0;
+  let dA = (rateIn - rateOut)*dt;
+  let dV = (Qin-Qout)*dt;
+  let newA = Math.max(0, A+dA);
+  let newV = Math.max(2, V+dV);
+  return {A:newA, V:newV};
+}
+function simulateTo(tTarget){
+  let A = state.params.A0, V = state.params.V0, t=0;
+  const dt = 0.05;
+  while(t < tTarget){
+    const step = Math.min(dt, tTarget-t);
+    const r = stepPhysics(A,V,t,step);
+    A=r.A; V=r.V; t+=step;
+  }
+  return {A,V};
+}
+
+/* ---------------- 7. UI CONTROLLER ---------------- */
+const el = id => document.getElementById(id);
+const sceneTitleEl = el('scene-title'), sceneSubEl = el('scene-sub');
+const annotationEl = el('annotation'), microEl = el('micro-phrase');
+const eqPanel = el('equation-panel'), eqLabel = el('eq-label'), eqKatex = el('eq-katex'), eqTag = el('eq-tag'), eqUnits = el('eq-units');
+const sceneNumEl = el('scene-num'), progressFill = el('progress-fill'), progressTicks = el('progress-ticks');
+const explainHud = el('explain-hud');
+const labelLayer = el('label-layer');
+
+// progress ticks
+SCENES.forEach(()=>{ const s=document.createElement('span'); progressTicks.appendChild(s); });
+
+let microTimer = null;
+function cycleMicro(list){
+  clearTimeout(microTimer);
+  if(!list || !list.length){ microEl.classList.remove('show'); return; }
+  let idx = 0;
+  function show(){
+    microEl.textContent = list[idx];
+    microEl.classList.add('show');
+    microTimer = setTimeout(()=>{
+      microEl.classList.remove('show');
+      microTimer = setTimeout(()=>{ idx=(idx+1)%list.length; show(); }, 550);
+    }, 2600);
+  }
+  show();
+}
+
+function renderEquation(eqDef){
+  if(!eqDef){ eqPanel.classList.remove('show'); return; }
+  eqPanel.classList.toggle('hero', !!eqDef.hero);
+  eqLabel.textContent = eqDef.label || '';
+  eqTag.textContent = eqDef.tag || '';
+  eqUnits.textContent = '';
+  try{
+    katex.render(eqDef.tex, eqKatex, {throwOnError:false, displayMode:true});
+  }catch(e){ eqKatex.textContent = eqDef.tex; }
+  requestAnimationFrame(()=> eqPanel.classList.add('show'));
+}
+
+// callouts (label + connector line to a projected 3D anchor)
+let activeCallouts = [];
+function setupCallouts(defs){
+  labelLayer.innerHTML = '';
+  document.querySelectorAll('.callout').forEach(n=>n.remove());
+  activeCallouts = (defs||[]).map(d=>{
+    const node = document.createElement('div');
+    node.className = 'callout' + (d.signal?' signal':'');
+    node.textContent = d.label;
+    document.body.appendChild(node);
+    const line = document.createElementNS('http://www.w3.org/2000/svg','line');
+    line.setAttribute('stroke', d.signal? '#ff6a4d':'#4fc3ff');
+    line.setAttribute('stroke-width','1');
+    line.setAttribute('opacity','0.55');
+    labelLayer.appendChild(line);
+    return {...d, node, line};
+  });
+  requestAnimationFrame(()=> activeCallouts.forEach(c=>c.node.classList.add('show')));
+}
+function updateCallouts(){
+  activeCallouts.forEach(c=>{
+    const world = anchors[c.key] || tankCenter;
+    const v = world.clone().project(camera);
+    const x = (v.x*0.5+0.5)*window.innerWidth;
+    const y = (-v.y*0.5+0.5)*window.innerHeight;
+    const labelY = y - 70;
+    c.node.style.left = x+'px';
+    c.node.style.top = labelY+'px';
+    c.line.setAttribute('x1', x); c.line.setAttribute('y1', labelY+14);
+    c.line.setAttribute('x2', x); c.line.setAttribute('y2', y);
+  });
+}
+
+function updateExplainHud(){
+  if(state.mode!=='explanation'){ explainHud.classList.remove('show'); return; }
+  const r = simulateTo(state.t);
+  explainHud.innerHTML =
+    `<b>Q_in</b> ${state.params.Qin.toFixed(1)} &nbsp; <b>Q_out</b> ${state.params.Qout.toFixed(1)}<br>`+
+    `<b>c_in</b> ${state.params.cin.toFixed(2)} &nbsp; <b>V(t)</b> ${r.V.toFixed(1)}<br>`+
+    `<b>A(t)</b> ${r.A.toFixed(2)} &nbsp; <b>t</b> ${state.t.toFixed(1)} min`;
+  explainHud.classList.add('show');
+}
+
+function applyScene(index, {instant=false}={}){
+  const sc = SCENES[index];
+  state.sceneIndex = index;
+  state.dwellTimer = 0;
+
+  sceneNumEl.textContent = String(index+1).padStart(2,'0');
+  progressFill.style.width = ((index)/(SCENES.length-1))*100 + '%';
+
+  sceneTitleEl.classList.remove('show'); sceneSubEl.classList.remove('show');
+  annotationEl.classList.remove('show'); eqPanel.classList.remove('show');
+  activeCallouts.forEach(c=>c.node.classList.remove('show'));
+
+  setTimeout(()=>{
+    sceneTitleEl.textContent = sc.title || '';
+    sceneSubEl.textContent = sc.sub || '';
+    if(sc.title) sceneTitleEl.classList.add('show');
+    if(sc.sub) sceneSubEl.classList.add('show');
+
+    annotationEl.textContent = sc.annotation || '';
+    if(sc.annotation) annotationEl.classList.add('show');
+
+    cycleMicro(sc.micro);
+    renderEquation(sc.eq);
+    if(sc.units) eqUnits.textContent = sc.units;
+    setupCallouts(sc.callouts);
+  }, sc.title||sc.eq ? 350 : 0);
+
+  goToCamera(sc.cam, instant?0.01:2.4);
+
+  // dim tank for "math focus" scenes
+  const targetOpacity = sc.flow.dim ? 0.35 : 1.0;
+  tankFadeTarget = targetOpacity;
+}
+let tankFadeTarget = 1.0, tankFadeCurrent = 1.0;
+
+function nextScene(){ if(state.sceneIndex < SCENES.length-1) applyScene(state.sceneIndex+1); }
+function prevScene(){ if(state.sceneIndex > 0) applyScene(state.sceneIndex-1); }
+function resetAll(){
+  state.playing=false; updatePlayBtn();
+  state.t=0; el('s-t').value=0;
+  applyScene(0, {instant:true});
+}
+
+// transport buttons
+el('btn-next').onclick = ()=>{ nextScene(); };
+el('btn-prev').onclick = ()=>{ prevScene(); };
+el('btn-reset').onclick = ()=>{ resetAll(); };
+function updatePlayBtn(){
+  el('play-icon').textContent = state.playing ? '❚❚' : '▶';
+  el('play-label').textContent = state.playing ? 'Pause' : 'Play';
+}
+el('btn-play').onclick = ()=>{ state.playing = !state.playing; updatePlayBtn(); };
+
+// progress track click-to-seek
+el('progress-track').onclick = (e)=>{
+  const r = e.currentTarget.getBoundingClientRect();
+  const frac = Math.min(1,Math.max(0,(e.clientX-r.left)/r.width));
+  applyScene(Math.round(frac*(SCENES.length-1)));
+};
+
+// mode toggle
+document.querySelectorAll('#mode-toggle button').forEach(btn=>{
+  btn.onclick = ()=>{
+    document.querySelectorAll('#mode-toggle button').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    state.mode = btn.dataset.mode;
+  };
+});
+
+// params drawer
+el('params-toggle').onclick = ()=> el('params-drawer').classList.toggle('open');
+function bindSlider(id, key, fmt){
+  const s = el(id), v = el('v-'+id.split('-')[1]);
+  const sync = ()=>{
+    state.params[key] = parseFloat(s.value);
+    v.textContent = fmt(parseFloat(s.value));
+  };
+  s.addEventListener('input', sync);
+  sync();
+}
+bindSlider('s-qin','Qin', x=>x.toFixed(1));
+bindSlider('s-qout','Qout', x=>x.toFixed(1));
+bindSlider('s-cin','cin', x=>x.toFixed(2));
+bindSlider('s-a0','A0', x=>x.toFixed(0));
+bindSlider('s-v0','V0', x=>x.toFixed(0));
+
+const timeSlider = el('s-t');
+timeSlider.addEventListener('input', ()=>{
+  state.autoT = false;
+  state.t = parseFloat(timeSlider.value);
+  el('v-t').textContent = state.t.toFixed(1)+' min';
+  applyPhysicsVisual();
+});
+el('reset-params').onclick = ()=>{
+  el('s-qin').value=2; el('s-qout').value=2; el('s-cin').value=0.5;
+  el('s-a0').value=0; el('s-v0').value=100; el('s-t').value=0;
+  ['s-qin','s-qout','s-cin','s-a0','s-v0'].forEach(id=>id);
+  state.params = {Qin:2,Qout:2,cin:0.5,A0:0,V0:100};
+  el('v-qin').textContent='2.0'; el('v-qout').textContent='2.0'; el('v-cin').textContent='0.50';
+  el('v-a0').textContent='0'; el('v-v0').textContent='100';
+  state.t=0; state.autoT=true; el('v-t').textContent='0.0 min';
+  applyPhysicsVisual();
+};
+
+function applyPhysicsVisual(){
+  const r = simulateTo(state.t);
+  state.A = r.A; state.V = r.V;
+  const targetHeight = THREE.MathUtils.clamp(1.2 + (state.V/state.params.V0)*1.4, 0.6, 4.2);
+  liquidHeight = THREE.MathUtils.lerp(liquidHeight, targetHeight, 1);
+  const conc = state.V>0? state.A/state.V : 0;
+  const normConc = THREE.MathUtils.clamp(conc/ (state.params.cin*1.2 + 0.001), 0, 1);
+  liquidMat.color.setHSL(0.56 - normConc*0.12, 0.75, 0.35+normConc*0.15);
+  el('time-readout').innerHTML =
+    `<b>t</b> = ${state.t.toFixed(1)} min<br><b>A(t)</b> = ${state.A.toFixed(2)} units<br><b>V(t)</b> = ${state.V.toFixed(1)} units<br><b>A/V</b> = ${conc.toFixed(3)}`;
+}
+applyPhysicsVisual();
+
+/* ---------------- 8. KEYBOARD + TOUCH ---------------- */
+window.addEventListener('keydown', (e)=>{
+  if(!state.started) return;
+  if(e.code==='Space'){ e.preventDefault(); state.playing=!state.playing; updatePlayBtn(); }
+  else if(e.code==='ArrowRight'){ nextScene(); }
+  else if(e.code==='ArrowLeft'){ prevScene(); }
+  else if(e.key==='r' || e.key==='R'){ resetAll(); }
+});
+let touchStartX=null;
+container.addEventListener('touchstart', e=>{ touchStartX = e.touches[0].clientX; }, {passive:true});
+container.addEventListener('touchend', e=>{
+  if(touchStartX===null) return;
+  const dx = e.changedTouches[0].clientX - touchStartX;
+  if(Math.abs(dx) > 60){ dx<0 ? nextScene() : prevScene(); }
+  touchStartX = null;
+}, {passive:true});
+
+/* ---------------- START ---------------- */
+el('start-btn').onclick = ()=>{
+  document.getElementById('start-overlay').classList.add('hide');
+  state.started = true;
+  applyScene(0, {instant:true});
+  setTimeout(()=>{ state.playing = true; updatePlayBtn(); }, 600);
+};
+
+/* ---------------- RESIZE ---------------- */
+window.addEventListener('resize', ()=>{
+  camera.aspect = window.innerWidth/window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+
+/* ---------------- RENDER LOOP ---------------- */
+const clock = new THREE.Clock();
+let sceneElapsed = 0;
+
+function animate(){
+  requestAnimationFrame(animate);
+  const dt = Math.min(clock.getDelta(), 0.05);
+
+  if(state.started){
+    sceneElapsed += dt;
+
+    if(state.playing){
+      state.dwellTimer += dt;
+      if(state.autoT){
+        state.t = Math.min(40, state.t + dt*0.6);
+        timeSlider.value = state.t;
+        el('v-t').textContent = state.t.toFixed(1)+' min';
+        applyPhysicsVisual();
+      }
+      if(state.dwellTimer > state.DWELL && state.sceneIndex < SCENES.length-1){
+        nextScene(); sceneElapsed = 0;
+      }
+    }
+
+    const sc = SCENES[state.sceneIndex];
+    updateCamera(dt, sceneElapsed);
+
+    // stirrer rotation
+    stirrer.rotation.y += sc.flow.stir * dt * 1.4;
+
+    // liquid level — smoothly interpolate and simply rescale the mesh (no geometry rebuild)
+    liquidHeightDisplay = THREE.MathUtils.lerp(liquidHeightDisplay, liquidHeight, Math.min(1, dt*1.6));
+    liquid.scale.y = Math.max(0.05, liquidHeightDisplay);
+    surface.position.y = TANK.baseY + liquidHeightDisplay;
+
+    // wavy surface displacement
+    const posAttr = surfGeo.attributes.position;
+    const time = clock.elapsedTime;
+    for(let i=0;i<posAttr.count;i++){
+      const bx = surfBase[i*3], by = surfBase[i*3+1];
+      const wave = Math.sin(bx*2.4+time*1.6)*0.02 + Math.cos(by*2.1+time*1.3)*0.02;
+      posAttr.array[i*3+2] = wave*(sc.flow.stir>0.7?1.6:0.8);
+    }
+    posAttr.needsUpdate = true;
+    surfGeo.computeVertexNormals();
+
+    // stream visibility
+    inletStream.visible = sc.flow.inflow;
+    outletStream.visible = sc.flow.outflow;
+    if(sc.flow.inflow) inletStream.position.y = 3.85 + Math.sin(time*8)*0.04;
+    if(sc.flow.outflow) outletStream.position.y = 0.6 + Math.sin(time*8+1)*0.04;
+
+    // tank fade for "math focus" scenes
+    tankFadeCurrent = THREE.MathUtils.lerp(tankFadeCurrent, tankFadeTarget, 0.04);
+    glassMat.opacity = 0.22*tankFadeCurrent + 0.02;
+    liquidMat.opacity = 0.72*Math.max(tankFadeCurrent,0.4);
+    key.intensity = 1.55*(0.6+0.4*tankFadeCurrent);
+
+    // particles
+    updateParticles(dt, sc.flow, stirrer.rotation.y);
+
+    // anchors (world space, updated for label projection)
+    anchors.liquidCenter = new THREE.Vector3(0, TANK.baseY+liquidHeight*0.55, 0);
+    anchors.liquidTop = new THREE.Vector3(0, TANK.baseY+liquidHeight, TANK.radius*0.6);
+    anchors.inletNozzle = inletWorld;
+    anchors.inletPipe = new THREE.Vector3(-2.6,5.1,0.9);
+    anchors.outletPipe = new THREE.Vector3(2.6,0.55,0.75);
+
+    updateCallouts();
+    updateExplainHud();
+  }
+
+  renderer.render(scene, camera);
+}
+animate();
+</script>
+</body>
+</html>
