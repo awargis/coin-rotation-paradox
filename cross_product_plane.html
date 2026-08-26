@@ -1,0 +1,1168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cross Product → Plane Normal (Enhanced)</title>
+    <style>
+        /* ── Reset & Base ── */
+        *,
+        *::before,
+        *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        html,
+        body {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background: #05070c;
+            font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+            color: #c9d6e3;
+            user-select: none;
+        }
+
+        /* ── Canvas ── */
+        #canvas-wrap {
+            position: absolute;
+            inset: 0;
+            cursor: grab;
+            z-index: 1;
+        }
+        #canvas-wrap.dragging {
+            cursor: grabbing;
+        }
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+
+        /* ── Error Banner ── */
+        #err {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.85);
+            color: #ff8080;
+            padding: 18px 28px;
+            border-radius: 12px;
+            font-size: 14px;
+            max-width: 80%;
+            display: none;
+            z-index: 99;
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(255, 80, 80, 0.25);
+            text-align: center;
+            line-height: 1.6;
+        }
+
+        /* ── Top Caption ── */
+        #caption {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            padding: 20px 28px 14px 28px;
+            background: linear-gradient(to bottom, rgba(4, 6, 10, 0.92) 0%, rgba(4, 6, 10, 0.5) 70%, transparent 100%);
+            pointer-events: none;
+            z-index: 10;
+        }
+        #caption h1 {
+            margin: 0 0 4px 0;
+            font-size: 14px;
+            letter-spacing: 0.16em;
+            text-transform: uppercase;
+            font-weight: 600;
+            color: #ffd23f;
+            opacity: 0.9;
+        }
+        #caption p {
+            margin: 0;
+            font-size: 16px;
+            font-weight: 400;
+            color: #eef3f8;
+            max-width: 680px;
+            line-height: 1.5;
+            text-shadow: 0 2px 16px rgba(0, 0, 0, 0.7);
+        }
+        #caption p .a {
+            color: #ff4d5e;
+            font-weight: 600;
+        }
+        #caption p .b {
+            color: #4dff8f;
+            font-weight: 600;
+        }
+        #caption p .x {
+            color: #ffd23f;
+            font-weight: 600;
+        }
+
+        /* ── Control Panel ── */
+        #panel {
+            position: absolute;
+            bottom: 24px;
+            left: 24px;
+            background: rgba(10, 14, 22, 0.78);
+            backdrop-filter: blur(14px);
+            border: 1px solid rgba(255, 255, 255, 0.07);
+            border-radius: 16px;
+            padding: 18px 20px 16px 20px;
+            width: 290px;
+            z-index: 10;
+            box-shadow: 0 24px 72px rgba(0, 0, 0, 0.7);
+            transition: width 0.2s;
+        }
+        #panel .section-title {
+            font-size: 10px;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            color: #8fa3b8;
+            font-weight: 600;
+            margin: 0 0 6px 0;
+        }
+        #panel .section-title:not(:first-of-type) {
+            margin-top: 12px;
+        }
+        .vec-group {
+            margin-bottom: 2px;
+        }
+        .row {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            margin-bottom: 2px;
+        }
+        .row .axis-label {
+            width: 14px;
+            font-size: 11px;
+            color: #7d90a5;
+            font-weight: 600;
+            text-align: right;
+        }
+        .row input[type="range"] {
+            flex: 1;
+            height: 3px;
+            -webkit-appearance: none;
+            appearance: none;
+            background: rgba(255, 255, 255, 0.12);
+            border-radius: 3px;
+            outline: none;
+            transition: background 0.15s;
+        }
+        .row input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 13px;
+            height: 13px;
+            border-radius: 50%;
+            background: #fff;
+            cursor: pointer;
+            box-shadow: 0 0 8px rgba(255, 255, 255, 0.5);
+            transition: transform 0.1s;
+        }
+        .row input[type="range"]::-webkit-slider-thumb:hover {
+            transform: scale(1.15);
+        }
+        .row input[type="range"]::-moz-range-thumb {
+            width: 13px;
+            height: 13px;
+            border-radius: 50%;
+            border: none;
+            background: #fff;
+            cursor: pointer;
+            box-shadow: 0 0 8px rgba(255, 255, 255, 0.5);
+        }
+        .row .val {
+            width: 36px;
+            font-size: 11px;
+            text-align: right;
+            color: #9fb0c2;
+            font-variant-numeric: tabular-nums;
+            font-weight: 500;
+        }
+
+        /* color-coded slider tracks */
+        .row.slider-a input[type="range"]::-webkit-slider-runnable-track {
+            background: linear-gradient(to right, rgba(255, 77, 94, 0.2), rgba(255, 77, 94, 0.45));
+        }
+        .row.slider-b input[type="range"]::-webkit-slider-runnable-track {
+            background: linear-gradient(to right, rgba(77, 255, 143, 0.2), rgba(77, 255, 143, 0.45));
+        }
+
+        /* ── Readout ── */
+        #readout {
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 1px solid rgba(255, 255, 255, 0.07);
+            font-size: 11px;
+            line-height: 1.8;
+            color: #8fa3b8;
+            font-variant-numeric: tabular-nums;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0 12px;
+        }
+        #readout .label {
+            color: #6a7d92;
+            font-weight: 400;
+        }
+        #readout .r-a {
+            color: #ff4d5e;
+        }
+        #readout .r-b {
+            color: #4dff8f;
+        }
+        #readout .r-x {
+            color: #ffd23f;
+        }
+        #readout .r-mag {
+            color: #8fe8ff;
+        }
+        #readout .r-angle {
+            color: #e8b0ff;
+        }
+        #readout .r-area {
+            color: #ffb07c;
+        }
+        #readout .r-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 0 2px;
+        }
+        #readout .r-row .label {
+            font-weight: 400;
+        }
+        #readout .r-row .value {
+            font-weight: 500;
+            letter-spacing: 0.02em;
+        }
+
+        /* ── Toolbar (bottom-right) ── */
+        #toolbar {
+            position: absolute;
+            bottom: 24px;
+            right: 24px;
+            z-index: 10;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            align-items: flex-end;
+        }
+        #toolbar button {
+            background: rgba(10, 14, 22, 0.7);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 10px;
+            padding: 8px 16px;
+            color: #c9d6e3;
+            font-size: 12px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            letter-spacing: 0.02em;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+        }
+        #toolbar button:hover {
+            background: rgba(30, 40, 60, 0.8);
+            border-color: rgba(255, 255, 255, 0.2);
+            transform: scale(1.03);
+        }
+        #toolbar button:active {
+            transform: scale(0.97);
+        }
+        #toolbar button .icon {
+            font-size: 14px;
+            line-height: 1;
+        }
+        #toolbar button.active {
+            border-color: #ffd23f;
+            color: #ffd23f;
+            box-shadow: 0 0 20px rgba(255, 210, 63, 0.15);
+        }
+        #toolbar .hint-text {
+            font-size: 10px;
+            color: #5c6d80;
+            text-align: right;
+            letter-spacing: 0.04em;
+            opacity: 0.7;
+            margin-top: 2px;
+        }
+
+        /* ── Responsive ── */
+        @media (max-width: 700px) {
+            #panel {
+                width: 230px;
+                padding: 14px 14px 12px 14px;
+                left: 12px;
+                bottom: 12px;
+            }
+            #panel .section-title {
+                font-size: 9px;
+            }
+            .row .val {
+                width: 30px;
+                font-size: 10px;
+            }
+            #readout {
+                font-size: 10px;
+                gap: 0 8px;
+                grid-template-columns: 1fr 1fr;
+            }
+            #caption p {
+                font-size: 13px;
+            }
+            #caption h1 {
+                font-size: 12px;
+            }
+            #toolbar {
+                bottom: 12px;
+                right: 12px;
+            }
+            #toolbar button {
+                padding: 6px 12px;
+                font-size: 11px;
+                border-radius: 8px;
+            }
+        }
+        @media (max-width: 450px) {
+            #panel {
+                width: 180px;
+                padding: 10px 10px 10px 10px;
+                left: 8px;
+                bottom: 8px;
+            }
+            .row .axis-label {
+                width: 10px;
+                font-size: 9px;
+            }
+            .row .val {
+                width: 24px;
+                font-size: 9px;
+            }
+            #readout {
+                font-size: 9px;
+                grid-template-columns: 1fr;
+                gap: 0;
+            }
+            #caption p {
+                font-size: 11px;
+            }
+            #toolbar button {
+                padding: 4px 10px;
+                font-size: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="canvas-wrap"></div>
+    <div id="err"></div>
+
+    <!-- ── Caption ── -->
+    <div id="caption">
+        <h1>Cross Product → Plane Normal</h1>
+        <p>
+            Two vectors <span class="a">A⃗</span> and <span class="b">B⃗</span>
+            define a plane. Their cross product <span class="x">A⃗ × B⃗</span>
+            is the normal direction.
+        </p>
+    </div>
+
+    <!-- ── Panel ── -->
+    <div id="panel">
+        <div class="section-title">Vector A</div>
+        <div class="vec-group">
+            <div class="row slider-a">
+                <span class="axis-label">X</span>
+                <input id="ax" type="range" min="-2.5" max="2.5" step="0.05" value="1.8">
+                <span class="val" id="ax-val"></span>
+            </div>
+            <div class="row slider-a">
+                <span class="axis-label">Y</span>
+                <input id="ay" type="range" min="-2.5" max="2.5" step="0.05" value="0">
+                <span class="val" id="ay-val"></span>
+            </div>
+            <div class="row slider-a">
+                <span class="axis-label">Z</span>
+                <input id="az" type="range" min="-2.5" max="2.5" step="0.05" value="0.6">
+                <span class="val" id="az-val"></span>
+            </div>
+        </div>
+
+        <div class="section-title">Vector B</div>
+        <div class="vec-group">
+            <div class="row slider-b">
+                <span class="axis-label">X</span>
+                <input id="bx" type="range" min="-2.5" max="2.5" step="0.05" value="0.4">
+                <span class="val" id="bx-val"></span>
+            </div>
+            <div class="row slider-b">
+                <span class="axis-label">Y</span>
+                <input id="by" type="range" min="-2.5" max="2.5" step="0.05" value="0">
+                <span class="val" id="by-val"></span>
+            </div>
+            <div class="row slider-b">
+                <span class="axis-label">Z</span>
+                <input id="bz" type="range" min="-2.5" max="2.5" step="0.05" value="2.0">
+                <span class="val" id="bz-val"></span>
+            </div>
+        </div>
+
+        <div id="readout">
+            <div class="r-row r-a">
+                <span class="label">A</span>
+                <span class="value">(<span id="ra">—</span>)</span>
+            </div>
+            <div class="r-row r-b">
+                <span class="label">B</span>
+                <span class="value">(<span id="rb">—</span>)</span>
+            </div>
+            <div class="r-row r-x">
+                <span class="label">A×B</span>
+                <span class="value">(<span id="rx">—</span>)</span>
+            </div>
+            <div class="r-row r-mag">
+                <span class="label">|A|</span>
+                <span class="value"><span id="rmag">—</span></span>
+            </div>
+            <div class="r-row r-mag">
+                <span class="label">|B|</span>
+                <span class="value"><span id="rmagb">—</span></span>
+            </div>
+            <div class="r-row r-mag">
+                <span class="label">|A×B|</span>
+                <span class="value"><span id="rmagx">—</span></span>
+            </div>
+            <div class="r-row r-angle">
+                <span class="label">∠ (A,B)</span>
+                <span class="value"><span id="rangle">—</span>°</span>
+            </div>
+            <div class="r-row r-area">
+                <span class="label">Area</span>
+                <span class="value"><span id="rarea">—</span></span>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── Toolbar ── -->
+    <div id="toolbar">
+        <button id="btn-auto" title="Auto-rotate view">
+            <span class="icon">⟳</span> Auto
+        </button>
+        <button id="btn-reset" title="Reset camera and vectors">
+            <span class="icon">⌖</span> Reset
+        </button>
+        <button id="btn-parallelogram" title="Toggle parallelogram" class="active">
+            <span class="icon">▱</span> Para
+        </button>
+        <div class="hint-text">drag · scroll · adjust sliders</div>
+    </div>
+
+    <!-- ── Three.js ── -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js">
+    </script>
+
+    <script>
+        (function() {
+            'use strict';
+
+            // ── Error handling ──
+            const errBox = document.getElementById('err');
+            if (typeof THREE === 'undefined') {
+                errBox.style.display = 'block';
+                errBox.textContent = 'Three.js failed to load from CDN. Please check your connection.';
+                return;
+            }
+            window.addEventListener('error', function(e) {
+                errBox.style.display = 'block';
+                errBox.textContent = 'Error: ' + (e.message || 'unknown error');
+            });
+
+            // ── DOM refs ──
+            const wrap = document.getElementById('canvas-wrap');
+            const sliderIds = ['ax', 'ay', 'az', 'bx', 'by', 'bz'];
+            const sliders = {};
+            const valEls = {};
+            sliderIds.forEach(id => {
+                sliders[id] = document.getElementById(id);
+                valEls[id] = document.getElementById(id + '-val');
+            });
+
+            const btnAuto = document.getElementById('btn-auto');
+            const btnReset = document.getElementById('btn-reset');
+            const btnPara = document.getElementById('btn-parallelogram');
+
+            // ── Scene setup ──
+            const scene = new THREE.Scene();
+            scene.fog = new THREE.FogExp2(0x05070c, 0.04);
+
+            const camera = new THREE.PerspectiveCamera(42, window.innerWidth / window.innerHeight, 0.1, 200);
+            const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.outputEncoding = THREE.sRGBEncoding;
+            renderer.toneMapping = THREE.ACESFilmicToneMapping;
+            renderer.toneMappingExposure = 1.2;
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+            renderer.shadowMap.bias = 0.0001;
+            wrap.appendChild(renderer.domElement);
+
+            // ── Camera orbit (damped) ──
+            const target = new THREE.Vector3(0, 0.3, 0);
+            let radius = 9.5,
+                theta = Math.PI * 0.28,
+                phi = Math.PI * 0.36;
+            let targetRadius = radius,
+                targetTheta = theta,
+                targetPhi = phi;
+            const minRadius = 3.0,
+                maxRadius = 20;
+            const minPhi = 0.12,
+                maxPhi = Math.PI - 0.12;
+            let autoRotate = false,
+                autoAngle = 0;
+
+            function updateCamera() {
+                const sinPhi = Math.sin(phi);
+                camera.position.set(
+                    target.x + radius * sinPhi * Math.sin(theta),
+                    target.y + radius * Math.cos(phi),
+                    target.z + radius * sinPhi * Math.cos(theta)
+                );
+                camera.lookAt(target);
+            }
+            updateCamera();
+
+            // ── Pointer / touch controls ──
+            let dragging = false,
+                lastX = 0,
+                lastY = 0;
+            wrap.addEventListener('pointerdown', (e) => {
+                dragging = true;
+                lastX = e.clientX;
+                lastY = e.clientY;
+                wrap.classList.add('dragging');
+                wrap.setPointerCapture(e.pointerId);
+            });
+            wrap.addEventListener('pointermove', (e) => {
+                if (!dragging) return;
+                const dx = e.clientX - lastX,
+                    dy = e.clientY - lastY;
+                lastX = e.clientX;
+                lastY = e.clientY;
+                targetTheta -= dx * 0.005;
+                targetPhi = Math.max(minPhi, Math.min(maxPhi, targetPhi - dy * 0.005));
+            });
+            window.addEventListener('pointerup', () => {
+                dragging = false;
+                wrap.classList.remove('dragging');
+            });
+            wrap.addEventListener('wheel', (e) => {
+                e.preventDefault();
+                targetRadius = Math.max(minRadius, Math.min(maxRadius, targetRadius + e.deltaY * 0.008));
+            }, { passive: false });
+
+            let pinchDist = null;
+            wrap.addEventListener('touchmove', (e) => {
+                if (e.touches.length === 2) {
+                    const dx = e.touches[0].clientX - e.touches[1].clientX;
+                    const dy = e.touches[0].clientY - e.touches[1].clientY;
+                    const d = Math.sqrt(dx * dx + dy * dy);
+                    if (pinchDist !== null) {
+                        targetRadius = Math.max(minRadius, Math.min(maxRadius, targetRadius - (d - pinchDist) * 0.015));
+                    }
+                    pinchDist = d;
+                }
+            }, { passive: true });
+            wrap.addEventListener('touchend', () => { pinchDist = null; });
+
+            // ── Lighting ──
+            scene.add(new THREE.AmbientLight(0x3a5068, 0.6));
+
+            const key = new THREE.DirectionalLight(0xdfeeff, 1.1);
+            key.position.set(6, 10, 4);
+            key.castShadow = true;
+            key.shadow.mapSize.set(2048, 2048);
+            key.shadow.camera.left = -10;
+            key.shadow.camera.right = 10;
+            key.shadow.camera.top = 10;
+            key.shadow.camera.bottom = -10;
+            key.shadow.bias = -0.001;
+            scene.add(key);
+
+            const rim = new THREE.DirectionalLight(0x3fd0ff, 0.5);
+            rim.position.set(-6, 3, -5);
+            scene.add(rim);
+
+            const fill = new THREE.PointLight(0xffd23f, 0.3, 20);
+            fill.position.set(0, 5, -3);
+            scene.add(fill);
+
+            const back = new THREE.DirectionalLight(0x6a7dff, 0.25);
+            back.position.set(-2, 1, -8);
+            scene.add(back);
+
+            // ── Ground ──
+            const grid = new THREE.GridHelper(32, 32, 0x1c3040, 0x101c28);
+            grid.position.y = -2.6;
+            grid.material.transparent = true;
+            grid.material.opacity = 0.3;
+            scene.add(grid);
+
+            const floorGeo = new THREE.CircleGeometry(16, 64);
+            const floorMat = new THREE.MeshStandardMaterial({ color: 0x060a10, roughness: 1, metalness: 0 });
+            const floor = new THREE.Mesh(floorGeo, floorMat);
+            floor.rotation.x = -Math.PI / 2;
+            floor.position.y = -2.62;
+            floor.receiveShadow = true;
+            scene.add(floor);
+
+            // ── Origin ──
+            const originGeo = new THREE.SphereGeometry(0.055, 24, 24);
+            const originMat = new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0x556677, emissiveIntensity: 0.5 });
+            scene.add(new THREE.Mesh(originGeo, originMat));
+
+            // ── Axis helpers (with labels) ──
+            function makeAxisLine(from, to, color) {
+                const mat = new THREE.LineBasicMaterial({ color, transparent: true, opacity: 0.25 });
+                const geo = new THREE.BufferGeometry().setFromPoints([from, to]);
+                return new THREE.Line(geo, mat);
+            }
+            const axLen = 4.5;
+            scene.add(makeAxisLine(new THREE.Vector3(-axLen, 0, 0), new THREE.Vector3(axLen, 0, 0), 0x667788));
+            scene.add(makeAxisLine(new THREE.Vector3(0, -axLen, 0), new THREE.Vector3(0, axLen, 0), 0x667788));
+            scene.add(makeAxisLine(new THREE.Vector3(0, 0, -axLen), new THREE.Vector3(0, 0, axLen), 0x667788));
+
+            // axis labels (sprites)
+            function makeTextSprite(text, color, pos) {
+                const canvas = document.createElement('canvas');
+                canvas.width = 128;
+                canvas.height = 64;
+                const ctx = canvas.getContext('2d');
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.font = '600 44px "Segoe UI", sans-serif';
+                ctx.shadowColor = 'rgba(0,0,0,0.8)';
+                ctx.shadowBlur = 12;
+                ctx.fillStyle = color;
+                ctx.fillText(text, 64, 36);
+                const tex = new THREE.CanvasTexture(canvas);
+                tex.encoding = THREE.sRGBEncoding;
+                const mat = new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false });
+                const sprite = new THREE.Sprite(mat);
+                sprite.position.copy(pos);
+                sprite.scale.set(0.8, 0.4, 1);
+                sprite.renderOrder = 999;
+                return sprite;
+            }
+            scene.add(makeTextSprite('X', '#8899aa', new THREE.Vector3(axLen + 0.5, 0, 0)));
+            scene.add(makeTextSprite('Y', '#8899aa', new THREE.Vector3(0, axLen + 0.5, 0)));
+            scene.add(makeTextSprite('Z', '#8899aa', new THREE.Vector3(0, 0, axLen + 0.5)));
+
+            // ── Helper: make vector sprite label ──
+            function makeVectorLabel(parts, colorHex) {
+                const dpr = 2;
+                const w = 380,
+                    h = 180;
+                const canvas = document.createElement('canvas');
+                canvas.width = w * dpr;
+                canvas.height = h * dpr;
+                const ctx = canvas.getContext('2d');
+                ctx.scale(dpr, dpr);
+                ctx.clearRect(0, 0, w, h);
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'alphabetic';
+                ctx.font = '700 68px Georgia, "Times New Roman", serif';
+
+                const gap = 12;
+                const widths = parts.map(p => ctx.measureText(p.text).width);
+                const total = widths.reduce((a, b) => a + b, 0) + gap * (parts.length - 1);
+                let cx = (w - total) / 2;
+                const baseY = h / 2 + 24;
+
+                parts.forEach((p, i) => {
+                    const pw = widths[i];
+                    const xc = cx + pw / 2;
+                    ctx.shadowColor = p.color;
+                    ctx.shadowBlur = 26;
+                    ctx.fillStyle = p.color;
+                    ctx.fillText(p.text, xc, baseY);
+                    ctx.shadowBlur = 0;
+                    ctx.fillStyle = '#ffffff';
+                    ctx.globalAlpha = 0.92;
+                    ctx.fillText(p.text, xc, baseY);
+                    ctx.globalAlpha = 1;
+
+                    if (p.arrow) {
+                        const arrowY = baseY - 62;
+                        const len = Math.max(pw * 0.76, 34);
+                        const x0 = xc - len / 2;
+                        const x1 = xc + len / 2;
+                        ctx.strokeStyle = p.color;
+                        ctx.fillStyle = p.color;
+                        ctx.lineWidth = 4.5;
+                        ctx.lineCap = 'round';
+                        ctx.shadowColor = p.color;
+                        ctx.shadowBlur = 18;
+                        ctx.beginPath();
+                        ctx.moveTo(x0, arrowY);
+                        ctx.lineTo(x1, arrowY);
+                        ctx.stroke();
+                        ctx.beginPath();
+                        ctx.moveTo(x1, arrowY);
+                        ctx.lineTo(x1 - 12, arrowY - 8);
+                        ctx.lineTo(x1 - 12, arrowY + 8);
+                        ctx.closePath();
+                        ctx.fill();
+                        ctx.shadowBlur = 0;
+                    }
+                    cx += pw + gap;
+                });
+
+                const tex = new THREE.CanvasTexture(canvas);
+                tex.encoding = THREE.sRGBEncoding;
+                tex.anisotropy = 4;
+                const mat = new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false, depthTest: false });
+                const sprite = new THREE.Sprite(mat);
+                const aspect = w / h;
+                const s = 0.58;
+                sprite.scale.set(s * aspect, s, 1);
+                sprite.renderOrder = 999;
+                return sprite;
+            }
+
+            function makeGlowSprite(colorHex) {
+                const size = 160;
+                const canvas = document.createElement('canvas');
+                canvas.width = size;
+                canvas.height = size;
+                const ctx = canvas.getContext('2d');
+                const grad = ctx.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size / 2);
+                const c = new THREE.Color(colorHex);
+                const cs = `rgb(${Math.round(c.r*255)},${Math.round(c.g*255)},${Math.round(c.b*255)})`;
+                grad.addColorStop(0, cs);
+                grad.addColorStop(0.3, cs);
+                grad.addColorStop(1, 'rgba(0,0,0,0)');
+                ctx.fillStyle = grad;
+                ctx.fillRect(0, 0, size, size);
+                const tex = new THREE.CanvasTexture(canvas);
+                const mat = new THREE.SpriteMaterial({ color: 0xffffff, map: tex, transparent: true, blending: THREE
+                        .AdditiveBlending, depthWrite: false, opacity: 0.8 });
+                const sprite = new THREE.Sprite(mat);
+                sprite.scale.set(0.8, 0.8, 0.8);
+                return sprite;
+            }
+
+            // ── Create vector group (oriented along local +Y) ──
+            function createVector(colorHex, labelParts) {
+                const group = new THREE.Group();
+
+                const shaftMat = new THREE.MeshStandardMaterial({
+                    color: colorHex,
+                    emissive: colorHex,
+                    emissiveIntensity: 0.3,
+                    metalness: 0.25,
+                    roughness: 0.35
+                });
+                const shaftGeo = new THREE.CylinderGeometry(0.05, 0.05, 1, 20);
+                shaftGeo.translate(0, 0.5, 0);
+                const shaft = new THREE.Mesh(shaftGeo, shaftMat);
+                shaft.castShadow = true;
+                group.add(shaft);
+
+                const tipMat = new THREE.MeshStandardMaterial({
+                    color: colorHex,
+                    emissive: colorHex,
+                    emissiveIntensity: 0.5,
+                    metalness: 0.2,
+                    roughness: 0.3
+                });
+                const tipGeo = new THREE.ConeGeometry(0.16, 0.36, 24);
+                tipGeo.translate(0, 0.18, 0);
+                const tip = new THREE.Mesh(tipGeo, tipMat);
+                tip.castShadow = true;
+                group.add(tip);
+
+                const glow = makeGlowSprite(colorHex);
+                group.add(glow);
+
+                const label = makeVectorLabel(labelParts, '#' + colorHex.toString(16).padStart(6, '0'));
+                group.add(label);
+
+                group.userData = { shaft, tip, glow, label };
+                scene.add(group);
+                return group;
+            }
+
+            const LOCAL_UP = new THREE.Vector3(0, 1, 0);
+
+            function orientVector(group, dir, length) {
+                const { shaft, tip, glow, label } = group.userData;
+                const len = Math.max(length, 0.0001);
+                const quat = new THREE.Quaternion().setFromUnitVectors(LOCAL_UP, dir);
+                group.quaternion.copy(quat);
+
+                shaft.scale.set(1, Math.max(len - 0.36, 0.001), 1);
+                tip.position.set(0, len - 0.18, 0);
+                glow.position.set(0, len, 0);
+                label.position.set(0, len + 0.36, 0);
+                group.visible = length > 0.02;
+            }
+
+            // ── Create vectors ──
+            const vecA = createVector(0xff4d5e, [{ text: 'A', color: '#ff4d5e', arrow: true }]);
+            const vecB = createVector(0x4dff8f, [{ text: 'B', color: '#4dff8f', arrow: true }]);
+            const vecX = createVector(0xffd23f, [
+                { text: 'A', color: '#ffd23f', arrow: true },
+                { text: '×', color: '#ffd23f', arrow: false },
+                { text: 'B', color: '#ffd23f', arrow: true }
+            ]);
+
+            // ── Plane ──
+            const planeSize = 6.5;
+            const planeGeo = new THREE.PlaneGeometry(planeSize, planeSize, 16, 16);
+            const planeMat = new THREE.MeshPhysicalMaterial({
+                color: 0x3fd0ff,
+                transparent: true,
+                opacity: 0.13,
+                side: THREE.DoubleSide,
+                roughness: 0.2,
+                metalness: 0,
+                transmission: 0.3,
+                clearcoat: 0.5,
+                emissive: 0x0e4a5c,
+                emissiveIntensity: 0.2,
+                depthWrite: false
+            });
+            const plane = new THREE.Mesh(planeGeo, planeMat);
+            scene.add(plane);
+
+            const edgesGeo = new THREE.EdgesGeometry(new THREE.PlaneGeometry(planeSize, planeSize));
+            const edgesMat = new THREE.LineBasicMaterial({ color: 0x8fe8ff, transparent: true, opacity: 0.35 });
+            const planeEdge = new THREE.LineSegments(edgesGeo, edgesMat);
+            scene.add(planeEdge);
+
+            const fineGrid = new THREE.GridHelper(planeSize, 12, 0x8fe8ff, 0x8fe8ff);
+            fineGrid.material.transparent = true;
+            fineGrid.material.opacity = 0.08;
+            scene.add(fineGrid);
+
+            const PLANE_LOCAL_NORMAL = new THREE.Vector3(0, 0, 1);
+
+            function orientPlane(normal) {
+                const quat = new THREE.Quaternion().setFromUnitVectors(PLANE_LOCAL_NORMAL, normal);
+                plane.quaternion.copy(quat);
+                planeEdge.quaternion.copy(quat);
+                fineGrid.quaternion.copy(quat);
+            }
+
+            // ── Parallelogram ──
+            let paraVisible = true;
+            const paraMat = new THREE.MeshPhysicalMaterial({
+                color: 0xffd23f,
+                transparent: true,
+                opacity: 0.15,
+                side: THREE.DoubleSide,
+                roughness: 0.4,
+                metalness: 0,
+                emissive: 0xffd23f,
+                emissiveIntensity: 0.05,
+                depthWrite: false
+            });
+            const paraGeo = new THREE.BufferGeometry();
+            const paraPositions = new Float32Array(12); // 2 triangles, 4 vertices
+            paraGeo.setAttribute('position', new THREE.BufferAttribute(paraPositions, 3));
+            paraGeo.setIndex([0, 1, 2, 0, 2, 3]);
+            paraGeo.computeVertexNormals();
+            const paraMesh = new THREE.Mesh(paraGeo, paraMat);
+            scene.add(paraMesh);
+
+            const paraEdgeMat = new THREE.LineBasicMaterial({
+                color: 0xffd23f,
+                transparent: true,
+                opacity: 0.5,
+                linewidth: 1
+            });
+            const paraEdgeGeo = new THREE.BufferGeometry();
+            const edgePositions = new Float32Array(12); // 4 edges, 2 pts each
+            paraEdgeGeo.setAttribute('position', new THREE.BufferAttribute(edgePositions, 3));
+            const paraEdge = new THREE.LineSegments(paraEdgeGeo, paraEdgeMat);
+            scene.add(paraEdge);
+
+            // ── Projection lines (dashed) ──
+            function makeDashedLine(from, to, color) {
+                const dist = from.distanceTo(to);
+                if (dist < 0.001) return null;
+                const mat = new THREE.LineDashedMaterial({
+                    color: color,
+                    dashSize: 0.08,
+                    gapSize: 0.06,
+                    transparent: true,
+                    opacity: 0.3,
+                    depthWrite: false
+                });
+                const geo = new THREE.BufferGeometry().setFromPoints([from, to]);
+                const line = new THREE.Line(geo, mat);
+                line.computeLineDistances();
+                return line;
+            }
+            const projLines = [];
+            const projColors = [0xff4d5e, 0x4dff8f, 0xffd23f];
+
+            function updateProjections(A, B, cross) {
+                // remove old
+                projLines.forEach(l => { if (l.parent) scene.remove(l); });
+                projLines.length = 0;
+
+                const groundY = -2.6;
+                const pts = [
+                    { vec: A, color: 0xff4d5e },
+                    { vec: B, color: 0x4dff8f },
+                    { vec: cross, color: 0xffd23f }
+                ];
+                pts.forEach(({ vec, color }) => {
+                    if (vec.length() < 0.05) return;
+                    const tip = vec.clone();
+                    const foot = new THREE.Vector3(tip.x, groundY, tip.z);
+                    if (Math.abs(tip.y - groundY) > 0.05) {
+                        const line = makeDashedLine(tip, foot, color);
+                        if (line) { scene.add(line);
+                            projLines.push(line); }
+                    }
+                    // also project to axes? keep it clean, just to ground
+                });
+            }
+
+            // ── Helper: clamp & ease ──
+            function clamp01(v) { return Math.max(0, Math.min(1, v)); }
+
+            function ease(t) { return t * t * (3 - 2 * t); }
+
+            function fmt(v) { return (Math.round(v * 100) / 100).toFixed(2); }
+
+            // ── Slider values ──
+            function getVectors() {
+                const A = new THREE.Vector3(
+                    parseFloat(sliders.ax.value),
+                    parseFloat(sliders.ay.value),
+                    parseFloat(sliders.az.value)
+                );
+                const B = new THREE.Vector3(
+                    parseFloat(sliders.bx.value),
+                    parseFloat(sliders.by.value),
+                    parseFloat(sliders.bz.value)
+                );
+                return { A, B };
+            }
+
+            // ── Update all scene elements ──
+            let animProgress = 0;
+            const animDuration = 2800;
+            let startTime = null;
+
+            function updateScene() {
+                const { A, B } = getVectors();
+
+                // update slider value displays
+                sliderIds.forEach(id => {
+                    valEls[id].textContent = fmt(parseFloat(sliders[id].value));
+                });
+
+                const lenA = A.length();
+                const lenB = B.length();
+                const dirA = lenA > 0.0001 ? A.clone().normalize() : new THREE.Vector3(1, 0, 0);
+                const dirB = lenB > 0.0001 ? B.clone().normalize() : new THREE.Vector3(0, 0, 1);
+
+                const cross = new THREE.Vector3().crossVectors(A, B);
+                const lenX = cross.length();
+                const dirX = lenX > 0.0001 ? cross.clone().normalize() : new THREE.Vector3(0, 1, 0);
+
+                // easing for intro animation
+                const eA = ease(clamp01((animProgress - 0.0) / 0.35));
+                const eB = ease(clamp01((animProgress - 0.12) / 0.35));
+                const eP = ease(clamp01((animProgress - 0.0) / 0.45));
+                const eX = ease(clamp01((animProgress - 0.5) / 0.4));
+
+                orientVector(vecA, dirA, lenA * eA);
+                orientVector(vecB, dirB, lenB * eB);
+                orientVector(vecX, dirX, lenX * eX);
+
+                orientPlane(dirX);
+                planeMat.opacity = 0.13 * eP;
+                edgesMat.opacity = 0.35 * eP;
+                fineGrid.material.opacity = 0.08 * eP;
+
+                // ── Parallelogram ──
+                const pA = A.clone();
+                const pB = B.clone();
+                const pSum = A.clone().add(B);
+
+                const positions = paraMesh.geometry.attributes.position.array;
+                // vertices: 0: origin, 1: A, 2: A+B, 3: B
+                positions[0] = 0;
+                positions[1] = 0;
+                positions[2] = 0;
+                positions[3] = pA.x;
+                positions[4] = pA.y;
+                positions[5] = pA.z;
+                positions[6] = pSum.x;
+                positions[7] = pSum.y;
+                positions[8] = pSum.z;
+                positions[9] = pB.x;
+                positions[10] = pB.y;
+                positions[11] = pB.z;
+                paraMesh.geometry.attributes.position.needsUpdate = true;
+                paraMesh.geometry.computeVertexNormals();
+                paraMesh.visible = paraVisible && lenA > 0.02 && lenB > 0.02;
+
+                // parallelogram edges
+                const edgePos = paraEdge.geometry.attributes.position.array;
+                const verts = [
+                    new THREE.Vector3(0, 0, 0),
+                    pA,
+                    pSum,
+                    pB
+                ];
+                const idx = [
+                    [0, 1],
+                    [1, 2],
+                    [2, 3],
+                    [3, 0]
+                ];
+                let k = 0;
+                idx.forEach(([i, j]) => {
+                    edgePos[k++] = verts[i].x;
+                    edgePos[k++] = verts[i].y;
+                    edgePos[k++] = verts[i].z;
+                    edgePos[k++] = verts[j].x;
+                    edgePos[k++] = verts[j].y;
+                    edgePos[k++] = verts[j].z;
+                });
+                paraEdge.geometry.attributes.position.needsUpdate = true;
+                paraEdge.visible = paraVisible && lenA > 0.02 && lenB > 0.02;
+                paraMat.opacity = 0.15 * eP;
+                paraEdgeMat.opacity = 0.5 * eP;
+
+                // ── Projection lines ──
+                updateProjections(A, B, cross);
+
+                // ── Readout ──
+                document.getElementById('ra').textContent = `${fmt(A.x)}, ${fmt(A.y)}, ${fmt(A.z)}`;
+                document.getElementById('rb').textContent = `${fmt(B.x)}, ${fmt(B.y)}, ${fmt(B.z)}`;
+                document.getElementById('rx').textContent = `${fmt(cross.x)}, ${fmt(cross.y)}, ${fmt(cross.z)}`;
+                document.getElementById('rmag').textContent = fmt(lenA);
+                document.getElementById('rmagb').textContent = fmt(lenB);
+                document.getElementById('rmagx').textContent = fmt(lenX);
+
+                // angle
+                let angleDeg = 0;
+                if (lenA > 0.001 && lenB > 0.001) {
+                    const cosA = Math.max(-1, Math.min(1, A.dot(B) / (lenA * lenB)));
+                    angleDeg = Math.acos(cosA) * 180 / Math.PI;
+                }
+                document.getElementById('rangle').textContent = fmt(angleDeg);
+
+                // area = |A×B|
+                document.getElementById('rarea').textContent = fmt(lenX);
+            }
+
+            // ── Slider events ──
+            sliderIds.forEach(id => {
+                sliders[id].addEventListener('input', updateScene);
+            });
+
+            // ── Buttons ──
+            btnAuto.addEventListener('click', () => {
+                autoRotate = !autoRotate;
+                btnAuto.classList.toggle('active', autoRotate);
+            });
+
+            btnReset.addEventListener('click', () => {
+                // reset camera
+                targetRadius = 9.5;
+                targetTheta = Math.PI * 0.28;
+                targetPhi = Math.PI * 0.36;
+                radius = targetRadius;
+                theta = targetTheta;
+                phi = targetPhi;
+                autoRotate = false;
+                btnAuto.classList.remove('active');
+                // reset sliders to default
+                sliders.ax.value = '1.8';
+                sliders.ay.value = '0';
+                sliders.az.value = '0.6';
+                sliders.bx.value = '0.4';
+                sliders.by.value = '0';
+                sliders.bz.value = '2.0';
+                // re-trigger animation
+                startTime = null;
+                animProgress = 0;
+                updateScene();
+            });
+
+            btnPara.addEventListener('click', () => {
+                paraVisible = !paraVisible;
+                btnPara.classList.toggle('active', paraVisible);
+                updateScene();
+            });
+            btnPara.classList.add('active');
+
+            // ── Resize ──
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            });
+
+            // ── Render loop ──
+            function animate(t) {
+                requestAnimationFrame(animate);
+
+                if (startTime === null) startTime = t;
+                animProgress = clamp01((t - startTime) / animDuration);
+
+                // auto-rotate
+                if (autoRotate) {
+                    targetTheta += 0.003;
+                }
+
+                // smooth camera follow
+                radius += (targetRadius - radius) * 0.1;
+                theta += (targetTheta - theta) * 0.1;
+                phi += (targetPhi - phi) * 0.1;
+                updateCamera();
+
+                // pulse glow on cross product
+                const pulse = 0.8 + Math.sin(t * 0.0022) * 0.12;
+                vecX.userData.glow.material.opacity = 0.8 * pulse;
+
+                updateScene();
+                renderer.render(scene, camera);
+            }
+
+            requestAnimationFrame(animate);
+
+            // initial update
+            setTimeout(updateScene, 50);
+
+            // ── Keyboard shortcut ──
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'r' || e.key === 'R') btnReset.click();
+                if (e.key === 'a' || e.key === 'A') btnAuto.click();
+                if (e.key === 'p' || e.key === 'P') btnPara.click();
+            });
+
+        })();
+    </script>
+
+</body>
+</html>
