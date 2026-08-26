@@ -1,0 +1,2065 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VECTOR LAB — Scalar Triple Product</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600&family=Manrope:wght@200;300;400;500&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+
+<script>
+  window.MathJax = {
+    tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] },
+    svg: { fontCache: 'global' },
+    startup: { typeset: false }
+  };
+</script>
+<script async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
+
+<style>
+:root {
+  --bg-deep: #050608;
+  --fg: #e8eef5;
+  --fg-soft: rgba(232,238,245,0.7);
+  --muted: rgba(232,238,245,0.4);
+  --dim: rgba(232,238,245,0.2);
+  --line: rgba(255,255,255,0.06);
+  --line-bright: rgba(255,255,255,0.12);
+  --panel: rgba(15,18,24,0.55);
+  --panel-solid: rgba(12,15,20,0.86);
+  --cyan: #5ee9ff;
+  --amber: #ff9b3d;
+  --violet: #b18cff;
+  --warn: #ff5e7e;
+  --font-display: 'Space Grotesk', system-ui, sans-serif;
+  --font-ui: 'Manrope', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+  --shadow-lg: 0 25px 80px rgba(0,0,0,0.6);
+  --shadow-md: 0 10px 30px rgba(0,0,0,0.4);
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+html, body {
+  height: 100%;
+  overflow: hidden;
+  background: var(--bg-deep);
+  color: var(--fg);
+  font-family: var(--font-ui);
+  font-weight: 300;
+  -webkit-font-smoothing: antialiased;
+  user-select: none;
+}
+
+body::before {
+  content: '';
+  position: fixed; inset: 0;
+  background: radial-gradient(ellipse 100% 80% at 50% 30%, rgba(20,25,35,0.75) 0%, rgba(5,6,8,1) 65%);
+  z-index: 0; pointer-events: none;
+}
+body::after {
+  content: '';
+  position: fixed; inset: 0;
+  background-image:
+    radial-gradient(circle at 16% 84%, rgba(94,233,255,0.045) 0%, transparent 38%),
+    radial-gradient(circle at 84% 16%, rgba(177,140,255,0.045) 0%, transparent 38%);
+  z-index: 0; pointer-events: none;
+}
+
+#canvas-container { position: fixed; inset: 0; z-index: 1; }
+#label-container { position: fixed; inset: 0; z-index: 2; pointer-events: none; }
+#canvas-container canvas { display: block; }
+
+.vignette {
+  position: fixed; inset: 0; z-index: 3; pointer-events: none;
+  background: radial-gradient(ellipse at center, transparent 52%, rgba(0,0,0,0.42) 100%);
+}
+.grain {
+  position: fixed; inset: -60%; width: 220%; height: 220%;
+  z-index: 4; pointer-events: none; opacity: 0.038;
+  background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="240" height="240"><filter id="n"><feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2"/><feColorMatrix type="saturate" values="0"/></filter><rect width="240" height="240" filter="url(%23n)" opacity="0.6"/></svg>');
+  animation: grainShift 0.9s steps(2) infinite;
+}
+@keyframes grainShift {
+  0% { transform: translate(0,0); }
+  25% { transform: translate(-1.5%,1%); }
+  50% { transform: translate(1%,-1.5%); }
+  75% { transform: translate(-1%,1.5%); }
+  100% { transform: translate(1.5%,-1%); }
+}
+
+#progress {
+  position: fixed; bottom: 0; left: 0; z-index: 11;
+  width: 100%; height: 2px;
+  background: rgba(94,233,255,0.45);
+  transform-origin: 0 50%;
+  transform: scaleX(0);
+  transition: opacity 0.8s;
+  pointer-events: none;
+}
+
+.ui {
+  position: fixed; inset: 0; z-index: 10;
+  pointer-events: none;
+  padding: 28px 36px;
+  display: grid;
+  grid-template-areas: "tl tr" "ce ce" "bl br";
+  grid-template-rows: auto 1fr auto;
+  grid-template-columns: 1fr 1fr;
+}
+.ui > * { pointer-events: auto; }
+
+.top-left { grid-area: tl; display: flex; flex-direction: column; gap: 4px; }
+.brand { display: flex; align-items: center; gap: 10px; }
+.brand-dot {
+  width: 6px; height: 6px;
+  background: var(--cyan); border-radius: 50%;
+  box-shadow: 0 0 14px var(--cyan);
+  animation: pulse 2.4s ease-in-out infinite;
+}
+@keyframes pulse {
+  0%,100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.35; transform: scale(0.65); }
+}
+.brand h1 {
+  font-family: var(--font-display);
+  font-weight: 500; font-size: 13px;
+  letter-spacing: 0.36em; color: var(--fg);
+}
+.subtitle {
+  font-family: var(--font-mono); font-size: 9.5px;
+  letter-spacing: 0.4em; color: var(--muted);
+  text-transform: uppercase; margin-left: 16px;
+}
+
+.top-right { grid-area: tr; display: flex; flex-direction: column; align-items: flex-end; gap: 10px; }
+.readout { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
+.readout-label {
+  font-family: var(--font-mono); font-size: 9px;
+  letter-spacing: 0.4em; color: var(--muted); text-transform: uppercase;
+}
+.readout-value {
+  font-family: var(--font-display); font-size: 34px;
+  font-weight: 300; color: var(--fg); line-height: 1;
+  letter-spacing: -0.02em; text-align: right;
+  font-variant-numeric: tabular-nums;
+  transition: color 0.4s;
+}
+.readout-value.zero { color: var(--warn); }
+.readout-value .unit { font-size: 12px; color: var(--muted); margin-left: 4px; }
+.mini-meters {
+  display: flex; gap: 14px;
+  font-family: var(--font-mono); font-size: 9px;
+  letter-spacing: 0.14em; color: var(--muted);
+}
+.mini-meters b { color: var(--fg-soft); font-weight: 400; font-variant-numeric: tabular-nums; }
+
+.stp-line {
+  font-family: var(--font-mono); font-size: 9.5px;
+  letter-spacing: 0.12em; color: var(--muted);
+  font-variant-numeric: tabular-nums; text-align: right;
+}
+
+.status-pill {
+  font-family: var(--font-mono); font-size: 10px;
+  letter-spacing: 0.28em; padding: 6px 14px;
+  border-radius: 100px;
+  background: rgba(94,233,255,0.06);
+  border: 1px solid rgba(94,233,255,0.18);
+  color: var(--cyan); text-transform: uppercase;
+  transition: all 0.45s ease;
+}
+.status-pill.coplanar {
+  background: rgba(255,94,126,0.08);
+  border-color: rgba(255,94,126,0.28);
+  color: var(--warn);
+}
+.status-pill.degenerate {
+  background: rgba(255,155,61,0.08);
+  border-color: rgba(255,155,61,0.28);
+  color: var(--amber);
+}
+
+.equation-display {
+  grid-area: ce; align-self: center; justify-self: center;
+  display: flex; flex-direction: column; align-items: center; gap: 10px;
+  pointer-events: none; margin-top: -9vh;
+  opacity: 0; transform: translateY(12px);
+  transition: opacity 0.7s ease, transform 0.7s ease;
+  font-size: 24px;
+}
+.equation-display.small { font-size: 15px; }
+.equation-display.visible { opacity: 1; transform: translateY(0); }
+.equation-display mjx-container { color: var(--fg); }
+#equation.plain {
+  font-family: var(--font-mono); font-size: 19px;
+  color: var(--fg); letter-spacing: 0.04em; white-space: nowrap;
+}
+.equation-display.small #equation.plain { font-size: 13px; }
+.equation-tag {
+  font-family: var(--font-mono); font-size: 9px;
+  letter-spacing: 0.5em; color: var(--cyan);
+  text-transform: uppercase; opacity: 0.7;
+}
+.equation-sub {
+  font-family: var(--font-mono); font-size: 10px;
+  letter-spacing: 0.3em; color: var(--muted); text-transform: uppercase;
+}
+
+.bottom-center {
+  grid-area: bl; justify-self: center; align-self: end;
+  display: flex; gap: 4px; padding: 5px;
+  background: var(--panel);
+  backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--line);
+  border-radius: 100px; box-shadow: var(--shadow-md);
+}
+.bottom-right {
+  grid-area: br; justify-self: end; align-self: end;
+  display: flex; gap: 6px;
+}
+
+.btn {
+  background: transparent; border: 1px solid transparent;
+  color: var(--fg-soft);
+  font-family: var(--font-mono); font-size: 10px;
+  letter-spacing: 0.32em; text-transform: uppercase;
+  padding: 10px 18px; cursor: pointer; border-radius: 100px;
+  transition: all 0.3s ease;
+}
+.btn:hover { color: var(--fg); background: rgba(255,255,255,0.03); }
+.btn.primary {
+  background: var(--panel);
+  backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+  border-color: var(--line); box-shadow: var(--shadow-md);
+}
+.btn.primary:hover { border-color: var(--line-bright); background: rgba(255,255,255,0.04); }
+.btn.active {
+  background: rgba(94,233,255,0.1);
+  border-color: rgba(94,233,255,0.3);
+  color: var(--cyan);
+}
+
+.panel {
+  position: fixed; z-index: 20;
+  background: var(--panel-solid);
+  backdrop-filter: blur(40px); -webkit-backdrop-filter: blur(40px);
+  border: 1px solid var(--line); border-radius: 14px;
+  padding: 22px; box-shadow: var(--shadow-lg);
+  opacity: 0; transform: translateY(16px) scale(0.96);
+  pointer-events: none;
+  transition: all 0.4s cubic-bezier(0.16,1,0.3,1);
+}
+.panel.visible { opacity: 1; transform: translateY(0) scale(1); pointer-events: auto; }
+.control-panel { bottom: 96px; right: 36px; width: 310px; }
+.advanced-panel { bottom: 96px; left: 36px; width: 288px; }
+
+.panel-header {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 16px; padding-bottom: 10px;
+  border-bottom: 1px solid var(--line);
+}
+.panel-title {
+  font-family: var(--font-mono); font-size: 9.5px;
+  letter-spacing: 0.36em; color: var(--fg); text-transform: uppercase;
+}
+.panel-close {
+  background: transparent; border: none; color: var(--muted);
+  cursor: pointer; width: 16px; height: 16px;
+  font-size: 14px; line-height: 1; transition: color 0.3s;
+}
+.panel-close:hover { color: var(--fg); }
+
+.vector-group { margin-bottom: 16px; }
+.vector-group:last-child { margin-bottom: 0; }
+.vector-header { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+.vector-color { width: 8px; height: 8px; border-radius: 50%; }
+.vector-name {
+  font-family: var(--font-mono); font-size: 10.5px;
+  color: var(--fg); letter-spacing: 0.18em; font-weight: 500;
+}
+.vector-magnitude {
+  font-family: var(--font-mono); font-size: 9.5px;
+  color: var(--muted); margin-left: auto;
+  font-variant-numeric: tabular-nums;
+}
+.component-row {
+  display: grid; grid-template-columns: 14px 1fr 46px;
+  align-items: center; gap: 10px; margin-bottom: 6px;
+}
+.component-label { font-family: var(--font-mono); font-size: 10px; color: var(--muted); }
+.component-slider {
+  -webkit-appearance: none; appearance: none;
+  width: 100%; height: 2px;
+  background: var(--line-bright); outline: none; border-radius: 2px;
+  transition: opacity 0.3s;
+}
+.component-slider:disabled { opacity: 0.3; }
+.component-slider::-webkit-slider-thumb {
+  -webkit-appearance: none; appearance: none;
+  width: 10px; height: 10px; background: var(--fg);
+  border-radius: 50%; cursor: pointer;
+  box-shadow: 0 0 10px rgba(255,255,255,0.4);
+  transition: transform 0.2s;
+}
+.component-slider::-webkit-slider-thumb:hover { transform: scale(1.4); }
+.component-slider::-moz-range-thumb {
+  width: 10px; height: 10px; background: var(--fg);
+  border-radius: 50%; cursor: pointer; border: none;
+}
+.component-value {
+  font-family: var(--font-mono); font-size: 10.5px;
+  color: var(--fg-soft); text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.metric-row {
+  display: flex; justify-content: space-between; align-items: baseline;
+  margin-bottom: 10px; padding-bottom: 8px;
+  border-bottom: 1px solid var(--line);
+}
+.metric-row:last-of-type { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
+.metric-label {
+  font-family: var(--font-mono); font-size: 9.5px;
+  color: var(--muted); letter-spacing: 0.18em; text-transform: uppercase;
+}
+.metric-value {
+  font-family: var(--font-mono); font-size: 13px;
+  color: var(--fg); font-variant-numeric: tabular-nums;
+}
+.metric-formula {
+  font-family: var(--font-mono); font-size: 8.5px;
+  color: var(--dim); margin-top: 2px;
+}
+.jee-line {
+  margin-top: 14px; padding-top: 12px;
+  border-top: 1px solid var(--line);
+  font-family: var(--font-mono); font-size: 9px;
+  letter-spacing: 0.08em; color: var(--muted); line-height: 1.8;
+}
+.jee-line b { color: var(--cyan); font-weight: 400; }
+
+.challenge-modal {
+  position: fixed; top: 50%; left: 50%;
+  transform: translate(-50%, -50%) scale(0.94);
+  z-index: 50; width: 470px; max-width: 90vw;
+  background: rgba(12,15,20,0.84);
+  backdrop-filter: blur(40px); -webkit-backdrop-filter: blur(40px);
+  border: 1px solid var(--line-bright); border-radius: 18px;
+  padding: 32px; box-shadow: var(--shadow-lg);
+  opacity: 0; pointer-events: none;
+  transition: all 0.4s cubic-bezier(0.16,1,0.3,1);
+}
+.challenge-modal.visible { opacity: 1; transform: translate(-50%, -50%) scale(1); pointer-events: auto; }
+.challenge-tag {
+  font-family: var(--font-mono); font-size: 9px;
+  letter-spacing: 0.4em; color: var(--cyan);
+  text-transform: uppercase; margin-bottom: 12px;
+}
+.challenge-question {
+  font-family: var(--font-display); font-size: 19px;
+  font-weight: 400; color: var(--fg);
+  line-height: 1.4; margin-bottom: 14px;
+}
+.challenge-formula {
+  font-family: var(--font-mono); font-size: 12px;
+  color: var(--cyan); margin-bottom: 20px;
+  padding: 12px 16px; background: rgba(94,233,255,0.04);
+  border-left: 2px solid var(--cyan); border-radius: 4px;
+}
+.challenge-options { display: flex; flex-direction: column; gap: 7px; }
+.challenge-option {
+  background: transparent; border: 1px solid var(--line-bright);
+  color: var(--fg-soft); font-family: var(--font-ui);
+  font-size: 13px; padding: 13px 16px; cursor: pointer;
+  border-radius: 8px; text-align: left; transition: all 0.3s;
+}
+.challenge-option:hover:not(:disabled) {
+  border-color: rgba(94,233,255,0.35);
+  background: rgba(94,233,255,0.04); color: var(--fg);
+}
+.challenge-option:disabled { cursor: default; }
+.challenge-option.correct {
+  border-color: var(--cyan); background: rgba(94,233,255,0.1); color: var(--cyan);
+}
+.challenge-option.wrong {
+  border-color: var(--warn); background: rgba(255,94,126,0.06); color: var(--warn);
+}
+.challenge-feedback {
+  font-family: var(--font-mono); font-size: 11.5px; line-height: 1.7;
+  color: var(--fg-soft); border-radius: 4px;
+  max-height: 0; opacity: 0; overflow: hidden;
+  transition: all 0.5s ease;
+}
+.challenge-feedback.visible {
+  max-height: 200px; opacity: 1;
+  margin-top: 14px; padding: 12px 16px;
+  background: rgba(94,233,255,0.04);
+  border-left: 2px solid var(--cyan);
+}
+
+.label-3d {
+  font-family: var(--font-mono); font-size: 11px;
+  letter-spacing: 0.2em; color: var(--fg); text-transform: uppercase;
+  background: rgba(8,10,14,0.7);
+  backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+  border: 1px solid var(--line-bright);
+  padding: 3px 9px; border-radius: 4px;
+  white-space: nowrap; pointer-events: none; user-select: none;
+  transition: opacity 0.4s;
+}
+.label-3d.cyan { color: var(--cyan); border-color: rgba(94,233,255,0.35); }
+.label-3d.amber { color: var(--amber); border-color: rgba(255,155,61,0.35); }
+.label-3d.violet { color: var(--violet); border-color: rgba(177,140,255,0.35); }
+.label-3d.white { color: var(--fg); }
+.label-3d.small { font-size: 9px; padding: 2px 6px; }
+.label-3d.axis {
+  background: transparent; border: none;
+  color: rgba(150,170,190,0.55); font-size: 9px;
+  padding: 0; letter-spacing: 0.1em; backdrop-filter: none;
+}
+
+.hint {
+  position: fixed; bottom: 100px; left: 50%;
+  transform: translateX(-50%);
+  font-family: var(--font-mono); font-size: 9.5px;
+  letter-spacing: 0.3em; color: var(--muted);
+  text-transform: uppercase; z-index: 5;
+  opacity: 0; transition: opacity 0.6s;
+  pointer-events: none; text-align: center;
+}
+.hint.visible { opacity: 1; }
+.hint-key {
+  display: inline-block; padding: 2px 6px;
+  border: 1px solid var(--line-bright); border-radius: 3px;
+  margin: 0 3px; color: var(--fg-soft);
+}
+
+.intro-fade {
+  position: fixed; inset: 0; background: var(--bg-deep);
+  z-index: 100; pointer-events: none;
+  opacity: 1; transition: opacity 1.5s ease;
+}
+.intro-fade.hidden { opacity: 0; }
+
+.loading {
+  position: fixed; inset: 0; z-index: 200;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--bg-deep); transition: opacity 0.8s ease;
+}
+.loading.hidden { opacity: 0; pointer-events: none; }
+.loading-text {
+  font-family: var(--font-mono); font-size: 10px;
+  letter-spacing: 0.4em; color: var(--muted); text-transform: uppercase;
+}
+.loading-dot {
+  display: inline-block; width: 4px; height: 4px;
+  background: var(--cyan); border-radius: 50%;
+  margin: 0 3px;
+  animation: bounce 1.4s infinite ease-in-out both;
+}
+.loading-dot:nth-child(1) { animation-delay: -0.32s; }
+.loading-dot:nth-child(2) { animation-delay: -0.16s; }
+@keyframes bounce {
+  0%,80%,100% { transform: scale(0.6); opacity: 0.4; }
+  40% { transform: scale(1); opacity: 1; }
+}
+
+@media (max-width: 768px) {
+  .ui { padding: 16px; }
+  .readout-value { font-size: 26px; }
+  .control-panel, .advanced-panel { width: calc(100vw - 32px); right: 16px; left: 16px; }
+  .challenge-modal { width: calc(100vw - 32px); padding: 22px; }
+  .equation-display { font-size: 17px; margin-top: -14vh; }
+}
+</style>
+</head>
+<body>
+  <div class="loading" id="loading">
+    <div class="loading-text">Initializing<span class="loading-dot"></span><span class="loading-dot"></span><span class="loading-dot"></span></div>
+  </div>
+  <div class="intro-fade" id="intro-fade"></div>
+
+  <div id="canvas-container"></div>
+  <div id="label-container"></div>
+  <div class="vignette"></div>
+  <div class="grain"></div>
+  <div id="progress"></div>
+
+  <div class="ui">
+    <div class="top-left">
+      <div class="brand">
+        <div class="brand-dot"></div>
+        <h1>VECTOR LAB</h1>
+      </div>
+      <div class="subtitle">Scalar Triple Product · Coplanarity</div>
+    </div>
+
+    <div class="top-right">
+      <div class="readout">
+        <div class="readout-label">Volume</div>
+        <div class="readout-value" id="volume-value-wrap"><span id="volume-value">0.00</span><span class="unit">u³</span></div>
+        <div class="mini-meters">
+          <span>BASE <b id="base-mini">0.00</b></span>
+          <span>HEIGHT <b id="height-mini">0.00</b></span>
+        </div>
+      </div>
+      <div class="stp-line" id="stp-line">A·(B×C) = —</div>
+      <div class="status-pill" id="status-pill">Calibrating</div>
+    </div>
+
+    <div class="equation-display" id="equation-display">
+      <div class="equation-tag" id="equation-tag"></div>
+      <div id="equation"></div>
+      <div class="equation-sub" id="equation-sub"></div>
+    </div>
+
+    <div class="bottom-center">
+      <button class="btn primary" id="btn-play">PLAY</button>
+      <button class="btn primary" id="btn-pause">PAUSE</button>
+      <button class="btn primary" id="btn-reset">RESET</button>
+    </div>
+
+    <div class="bottom-right">
+      <button class="btn primary" id="btn-insight">INSIGHT</button>
+      <button class="btn primary" id="btn-challenge">CHALLENGE</button>
+      <button class="btn primary" id="btn-controls">CONTROLS</button>
+    </div>
+  </div>
+
+  <div class="hint" id="hint">Drag the tip of <span class="hint-key">A</span> to pull it out of the plane · orbit · zoom</div>
+
+  <div class="panel control-panel" id="control-panel">
+    <div class="panel-header">
+      <div class="panel-title">Vector Components</div>
+      <button class="panel-close" id="close-controls">×</button>
+    </div>
+    <div class="vector-group">
+      <div class="vector-header">
+        <div class="vector-color" style="background:#5ee9ff;box-shadow:0 0 8px #5ee9ff"></div>
+        <div class="vector-name">VECTOR A</div>
+        <div class="vector-magnitude" id="mag-A">|A| = 0</div>
+      </div>
+      <div class="component-row"><div class="component-label">x</div><input type="range" class="component-slider" id="A-x" min="-4" max="4" step="0.05" value="0.6"><div class="component-value" id="A-x-val">0.60</div></div>
+      <div class="component-row"><div class="component-label">y</div><input type="range" class="component-slider" id="A-y" min="-4" max="4" step="0.05" value="2.0"><div class="component-value" id="A-y-val">2.00</div></div>
+      <div class="component-row"><div class="component-label">z</div><input type="range" class="component-slider" id="A-z" min="-4" max="4" step="0.05" value="2.4"><div class="component-value" id="A-z-val">2.40</div></div>
+    </div>
+    <div class="vector-group">
+      <div class="vector-header">
+        <div class="vector-color" style="background:#ff9b3d;box-shadow:0 0 8px #ff9b3d"></div>
+        <div class="vector-name">VECTOR B</div>
+        <div class="vector-magnitude" id="mag-B">|B| = 0</div>
+      </div>
+      <div class="component-row"><div class="component-label">x</div><input type="range" class="component-slider" id="B-x" min="-4" max="4" step="0.05" value="2.8"><div class="component-value" id="B-x-val">2.80</div></div>
+      <div class="component-row"><div class="component-label">y</div><input type="range" class="component-slider" id="B-y" min="-4" max="4" step="0.05" value="0.5"><div class="component-value" id="B-y-val">0.50</div></div>
+      <div class="component-row"><div class="component-label">z</div><input type="range" class="component-slider" id="B-z" min="-4" max="4" step="0.05" value="1.6"><div class="component-value" id="B-z-val">1.60</div></div>
+    </div>
+    <div class="vector-group">
+      <div class="vector-header">
+        <div class="vector-color" style="background:#b18cff;box-shadow:0 0 8px #b18cff"></div>
+        <div class="vector-name">VECTOR C</div>
+        <div class="vector-magnitude" id="mag-C">|C| = 0</div>
+      </div>
+      <div class="component-row"><div class="component-label">x</div><input type="range" class="component-slider" id="C-x" min="-4" max="4" step="0.05" value="1.2"><div class="component-value" id="C-x-val">1.20</div></div>
+      <div class="component-row"><div class="component-label">y</div><input type="range" class="component-slider" id="C-y" min="-4" max="4" step="0.05" value="2.2"><div class="component-value" id="C-y-val">2.20</div></div>
+      <div class="component-row"><div class="component-label">z</div><input type="range" class="component-slider" id="C-z" min="-4" max="4" step="0.05" value="0.6"><div class="component-value" id="C-z-val">0.60</div></div>
+    </div>
+  </div>
+
+  <div class="panel advanced-panel" id="advanced-panel">
+    <div class="panel-header">
+      <div class="panel-title">Numerical Verification</div>
+      <button class="panel-close" id="close-advanced">×</button>
+    </div>
+    <div class="metric-row"><div><div class="metric-label">Base Area</div><div class="metric-formula">|B × C|</div></div><div class="metric-value" id="metric-base">—</div></div>
+    <div class="metric-row"><div><div class="metric-label">Height</div><div class="metric-formula">|A·(B×C)| / |B×C|</div></div><div class="metric-value" id="metric-height">—</div></div>
+    <div class="metric-row"><div><div class="metric-label">Volume</div><div class="metric-formula">base × height</div></div><div class="metric-value" id="metric-vol-bh">—</div></div>
+    <div class="metric-row"><div><div class="metric-label">Scalar Triple</div><div class="metric-formula">A · (B × C)</div></div><div class="metric-value" id="metric-stp">—</div></div>
+    <div class="metric-row"><div><div class="metric-label">|STP|</div><div class="metric-formula">|A · (B × C)|</div></div><div class="metric-value" id="metric-vol-stp">—</div></div>
+    <div class="jee-line">
+      <b>[A B C]</b> = A · (B × C)<br>
+      |[A B C]| = volume<br>
+      [A B C] = 0 ⟺ coplanar
+    </div>
+  </div>
+
+  <div class="challenge-modal" id="challenge-modal">
+    <div class="challenge-tag" id="challenge-tag">Challenge 01</div>
+    <div class="challenge-question" id="challenge-question"></div>
+    <div class="challenge-formula" id="challenge-formula"></div>
+    <div class="challenge-options" id="challenge-options"></div>
+    <div class="challenge-feedback" id="challenge-feedback"></div>
+  </div>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+
+/* ============================================================
+   MATH ENGINE — real vector algebra drives every pixel
+   ============================================================ */
+const dotProduct      = (a, b) => a.x*b.x + a.y*b.y + a.z*b.z;
+const crossProduct    = (a, b) => new THREE.Vector3(a.y*b.z - a.z*b.y, a.z*b.x - a.x*b.z, a.x*b.y - a.y*b.x);
+const vectorMagnitude = a => Math.sqrt(a.x*a.x + a.y*a.y + a.z*a.z);
+const vectorAdd       = (a, b) => new THREE.Vector3(a.x+b.x, a.y+b.y, a.z+b.z);
+const vectorSubtract  = (a, b) => new THREE.Vector3(a.x-b.x, a.y-b.y, a.z-b.z);
+const scalarMultiply  = (a, k) => new THREE.Vector3(a.x*k, a.y*k, a.z*k);
+const vectorNormalize = a => { const m = vectorMagnitude(a); return m > 1e-12 ? scalarMultiply(a, 1/m) : new THREE.Vector3(0,1,0); };
+
+const EPS = 1e-8;
+const UP = new THREE.Vector3(0, 1, 0);
+const ZERO = new THREE.Vector3();
+const T1 = new THREE.Vector3(), T2 = new THREE.Vector3(), T3 = new THREE.Vector3(), T4 = new THREE.Vector3();
+
+const DEF = {
+  A: new THREE.Vector3(0.6, 2.0, 2.4),
+  B: new THREE.Vector3(2.8, 0.5, 1.6),
+  C: new THREE.Vector3(1.2, 2.2, 0.6)
+};
+
+/* ============================================================
+   STATE
+   ============================================================ */
+const state = {
+  A: DEF.A.clone(), B: DEF.B.clone(), C: DEF.C.clone(),
+  N: new THREE.Vector3(), nHat: new THREE.Vector3(0,1,0),
+  foot: new THREE.Vector3(),
+  baseArea: 0, height: 0, volume: 0, scalarTriple: 0,
+  isDegenerate: false, isCoplanar: false,
+  sweep: 0, extrude: 0, drop: 0,      // construction parameters
+  phase: 'intro', insightMode: false
+};
+
+const vis = {   // visibility weights, all tweened
+  origin: 0, axes: 0, grid: 0,
+  vectorA: 0, vectorB: 0, vectorC: 0, vectorN: 0,
+  base: 0, dashedH: 0, height: 0, aPerp: 0, aPar: 0, proj: 0,
+  boxFaces: 0, boxEdges: 0, areaLabel: 0, raMark: 0, footMark: 0,
+  coplanarPlane: 0
+};
+const grow = { A: 0, B: 0, C: 0, N: 0 };            // arrow growth
+const L = { key: 0.22, amb: 0.15, rim: 0.25, glow: 0.12, shaft: 0, warm: 0 }; // light rig
+const S = { az: 0.92, r: 26.5, y: 11.5, tx: 0, ty: 0.3, tz: 0, fov: 45 };     // camera rig
+const fx = { edgeBoost: 1, drama: 0 };
+
+function recompute() {
+  state.N.copy(crossProduct(state.B, state.C));
+  const nMag = vectorMagnitude(state.N);
+  state.baseArea = nMag;
+  if (nMag > EPS) state.nHat.copy(state.N).divideScalar(nMag);
+  else state.nHat.set(0, 1, 0);
+  state.scalarTriple = dotProduct(state.A, state.N);
+  state.volume = Math.abs(state.scalarTriple);
+  state.height = nMag > EPS ? state.volume / nMag : 0;
+  state.isDegenerate = nMag < EPS;
+  state.isCoplanar = Math.abs(state.scalarTriple) < EPS;
+}
+recompute();
+
+/* ============================================================
+   RENDERER / SCENE / CAMERA
+   ============================================================ */
+const container = document.getElementById('canvas-container');
+let renderer;
+try {
+  renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: 'high-performance' });
+} catch (e) {
+  document.querySelector('.loading-text').textContent = 'WebGL 2 required';
+  throw e;
+}
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setClearColor(0x000000, 0);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.15;
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+container.appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+scene.fog = new THREE.FogExp2(0x060708, 0.03);
+
+const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 200);
+
+const labelRenderer = new CSS2DRenderer();
+labelRenderer.setSize(window.innerWidth, window.innerHeight);
+labelRenderer.domElement.style.position = 'absolute';
+labelRenderer.domElement.style.top = '0';
+labelRenderer.domElement.style.pointerEvents = 'none';
+document.getElementById('label-container').appendChild(labelRenderer.domElement);
+
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.dampingFactor = 0.07;
+controls.rotateSpeed = 0.65;
+controls.zoomSpeed = 0.85;
+controls.minDistance = 4;
+controls.maxDistance = 34;
+controls.enabled = false;
+
+const pmrem = new THREE.PMREMGenerator(renderer);
+scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+pmrem.dispose();
+
+/* ============================================================
+   LIGHTING RIG — choreographed, warm-shifts on collapse
+   ============================================================ */
+const ambLight = new THREE.AmbientLight(0xffffff, 0.05);
+scene.add(ambLight);
+scene.add(new THREE.HemisphereLight(0x88aaff, 0x0a0a14, 0.18));
+
+const keyLight = new THREE.DirectionalLight(0xfff4e8, 0.3);
+keyLight.position.set(8, 12, 6);
+keyLight.castShadow = true;
+keyLight.shadow.mapSize.set(2048, 2048);
+keyLight.shadow.camera.near = 1; keyLight.shadow.camera.far = 40;
+keyLight.shadow.camera.left = -10; keyLight.shadow.camera.right = 10;
+keyLight.shadow.camera.top = 10;  keyLight.shadow.camera.bottom = -10;
+keyLight.shadow.bias = -0.0005;
+keyLight.shadow.radius = 5;
+scene.add(keyLight);
+
+const rimLight  = new THREE.DirectionalLight(0x5ee9ff, 0.15); rimLight.position.set(-7, 5, -9);  scene.add(rimLight);
+const fillLight = new THREE.DirectionalLight(0xb18cff, 0.08); fillLight.position.set(6, -3, -5); scene.add(fillLight);
+
+const originLight = new THREE.PointLight(0xdff4ff, 0, 14, 1.8);
+scene.add(originLight);
+
+const RIM_COLD = new THREE.Color(0x5ee9ff),  RIM_WARM  = new THREE.Color(0xff5e7e);
+const FILL_COLD = new THREE.Color(0xb18cff), GLOW_COLD = new THREE.Color(0x59d7e8), GLOW_WARM = new THREE.Color(0xff6b85);
+
+/* ============================================================
+   FLOOR — anti-aliased grid + light pool in one shader
+   ============================================================ */
+const floorUniforms = {
+  uGrid: { value: 0 }, uGlow: { value: 0.1 },
+  uGlowColor: { value: GLOW_COLD.clone() }
+};
+const floorMesh = new THREE.Mesh(
+  new THREE.PlaneGeometry(60, 60),
+  new THREE.ShaderMaterial({
+    uniforms: floorUniforms,
+    transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
+    vertexShader: `
+      varying vec3 vW;
+      void main(){ vec4 wp = modelMatrix * vec4(position,1.0); vW = wp.xyz;
+        gl_Position = projectionMatrix * viewMatrix * wp; }`,
+    fragmentShader: `
+      uniform float uGrid; uniform float uGlow; uniform vec3 uGlowColor;
+      varying vec3 vW;
+      float gridLine(vec2 p, float sp){
+        vec2 q = abs(fract(p / sp - 0.5) - 0.5) * sp;
+        vec2 fw = fwidth(p) + 1e-5;
+        vec2 a = 1.0 - smoothstep(vec2(0.0), fw * 1.4, q);
+        return max(a.x, a.y);
+      }
+      void main(){
+        vec2 p = vW.xz;
+        float g = min(gridLine(p, 1.0) * 0.32 + gridLine(p, 5.0) * 0.78, 1.0);
+        float r = length(p);
+        float fade = 1.0 - smoothstep(5.0, 22.0, r);
+        float glow = exp(-r * r / 22.0) * uGlow;
+        vec3 col = vec3(0.42, 0.50, 0.60) * g * fade * uGrid + uGlowColor * glow * 0.55;
+        float a = clamp(g * fade * uGrid * 0.5 + glow, 0.0, 1.0);
+        gl_FragColor = vec4(col, a);
+      }`
+  })
+);
+floorMesh.rotation.x = -Math.PI / 2;
+floorMesh.renderOrder = 1;
+scene.add(floorMesh);
+
+const shadowCatcher = new THREE.Mesh(
+  new THREE.PlaneGeometry(40, 40),
+  new THREE.ShadowMaterial({ opacity: 0.3 })
+);
+shadowCatcher.rotation.x = -Math.PI / 2;
+shadowCatcher.position.y = 0.001;
+shadowCatcher.receiveShadow = true;
+shadowCatcher.renderOrder = 0;
+scene.add(shadowCatcher);
+
+/* ============================================================
+   AXES (minimal)
+   ============================================================ */
+const axesGroup = new THREE.Group();
+function makeAxis(dir) {
+  return new THREE.Line(
+    new THREE.BufferGeometry().setFromPoints([dir.clone().multiplyScalar(-5), dir.clone().multiplyScalar(5)]),
+    new THREE.LineBasicMaterial({ color: 0x3a4a5e, transparent: true, opacity: 0 })
+  );
+}
+axesGroup.add(makeAxis(new THREE.Vector3(1,0,0)));
+axesGroup.add(makeAxis(new THREE.Vector3(0,1,0)));
+axesGroup.add(makeAxis(new THREE.Vector3(0,0,1)));
+scene.add(axesGroup);
+
+/* ============================================================
+   STARFIELD (twinkling) · LIGHT SHAFT · DUST MOTES
+   ============================================================ */
+function makeStars() {
+  const n = 520;
+  const pos = new Float32Array(n*3), phase = new Float32Array(n), size = new Float32Array(n);
+  for (let i = 0; i < n; i++) {
+    const r = 30 + Math.random()*26;
+    const t = Math.random()*Math.PI*2, p = Math.acos(2*Math.random()-1);
+    pos[i*3] = r*Math.sin(p)*Math.cos(t); pos[i*3+1] = r*Math.cos(p); pos[i*3+2] = r*Math.sin(p)*Math.sin(t);
+    phase[i] = Math.random(); size[i] = 0.6 + Math.random();
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  g.setAttribute('aPhase', new THREE.BufferAttribute(phase, 1));
+  g.setAttribute('aSize', new THREE.BufferAttribute(size, 1));
+  const m = new THREE.ShaderMaterial({
+    uniforms: { uTime: { value: 0 } },
+    transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
+    vertexShader: `
+      attribute float aPhase; attribute float aSize; uniform float uTime; varying float vA;
+      void main(){
+        vA = 0.35 + 0.65 * (0.5 + 0.5 * sin(uTime * (0.4 + aPhase) + aPhase * 40.0));
+        vec4 mv = modelViewMatrix * vec4(position, 1.0);
+        gl_PointSize = aSize * (170.0 / -mv.z);
+        gl_Position = projectionMatrix * mv;
+      }`,
+    fragmentShader: `
+      varying float vA;
+      void main(){
+        float d = length(gl_PointCoord - 0.5);
+        float a = vA * smoothstep(0.5, 0.12, d) * 0.55;
+        gl_FragColor = vec4(vec3(0.72, 0.80, 0.92) * a, a);
+      }`
+  });
+  return new THREE.Points(g, m);
+}
+const stars = makeStars();
+scene.add(stars);
+
+const shaftUniforms = { uTime: { value: 0 }, uIntensity: { value: 0 } };
+const shaft = new THREE.Mesh(
+  new THREE.CylinderGeometry(0.9, 3.8, 9, 48, 1, true),
+  new THREE.ShaderMaterial({
+    uniforms: shaftUniforms,
+    transparent: true, depthWrite: false, side: THREE.DoubleSide,
+    blending: THREE.AdditiveBlending,
+    vertexShader: `
+      varying vec3 vW; varying vec3 vN; varying float vH; varying float vA;
+      void main(){
+        vH = (position.y + 4.5) / 9.0;
+        vA = uv.x * 6.28318;
+        vec4 wp = modelMatrix * vec4(position, 1.0);
+        vW = wp.xyz; vN = normalize(mat3(modelMatrix) * normal);
+        gl_Position = projectionMatrix * viewMatrix * wp;
+      }`,
+    fragmentShader: `
+      uniform float uIntensity; uniform float uTime;
+      varying vec3 vW; varying vec3 vN; varying float vH; varying float vA;
+      void main(){
+        vec3 V = normalize(cameraPosition - vW);
+        float body = pow(abs(dot(normalize(vN), V)), 2.4);
+        float vert = smoothstep(0.02, 0.35, vH) * (1.0 - 0.8 * smoothstep(0.5, 1.0, vH));
+        float streak = 0.78 + 0.22 * sin(vA * 6.0 + uTime * 0.22) * sin(vA * 2.0 - uTime * 0.13);
+        float a = uIntensity * body * vert * streak * 0.9;
+        gl_FragColor = vec4(vec3(0.72, 0.86, 1.0) * a, a);
+      }`
+  })
+);
+shaft.position.y = 4.5;
+shaft.renderOrder = 2;
+scene.add(shaft);
+
+const moteUniforms = { uTime: { value: 0 }, uIntensity: { value: 0 } };
+(function makeMotes(){
+  const n = 130;
+  const pos = new Float32Array(n*3), seed = new Float32Array(n), size = new Float32Array(n);
+  for (let i = 0; i < n; i++) {
+    const y = Math.random()*9, t = y/9;
+    const maxR = (3.8 + (0.9 - 3.8)*t) * 0.92;
+    const ang = Math.random()*Math.PI*2, r = Math.sqrt(Math.random())*maxR;
+    pos[i*3] = Math.cos(ang)*r; pos[i*3+1] = y; pos[i*3+2] = Math.sin(ang)*r;
+    seed[i] = Math.random(); size[i] = 5 + Math.random()*9;
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  g.setAttribute('aSeed', new THREE.BufferAttribute(seed, 1));
+  g.setAttribute('aSize', new THREE.BufferAttribute(size, 1));
+  const m = new THREE.ShaderMaterial({
+    uniforms: moteUniforms,
+    transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
+    vertexShader: `
+      attribute float aSeed; attribute float aSize;
+      uniform float uTime; varying float vA;
+      void main(){
+        vec3 p = position;
+        p.y = mod(position.y + uTime * (0.10 + aSeed * 0.15), 9.0);
+        p.xz *= (1.0 - 0.045 * p.y);
+        vA = 0.4 + 0.6 * (0.5 + 0.5 * sin(uTime * (0.8 + aSeed) + aSeed * 40.0));
+        vec4 mv = modelViewMatrix * vec4(p, 1.0);
+        gl_PointSize = aSize * (26.0 / -mv.z);
+        gl_Position = projectionMatrix * mv;
+      }`,
+    fragmentShader: `
+      uniform float uIntensity; varying float vA;
+      void main(){
+        float d = length(gl_PointCoord - 0.5);
+        float a = uIntensity * vA * smoothstep(0.5, 0.1, d) * 0.5;
+        gl_FragColor = vec4(vec3(0.75, 0.88, 1.0) * a, a);
+      }`
+  });
+  const pts = new THREE.Points(g, m);
+  pts.renderOrder = 3;
+  scene.add(pts);
+})();
+
+/* ============================================================
+   SCENE OBJECT CLASSES
+   ============================================================ */
+function makeLabel(text, className) {
+  const div = document.createElement('div');
+  div.className = `label-3d ${className || ''}`;
+  div.textContent = text;
+  return { div, obj: new CSS2DObject(div) };
+}
+
+class VectorArrow {
+  constructor(colorHex, labelClass, text) {
+    this.color = new THREE.Color(colorHex);
+    this.mat = new THREE.MeshStandardMaterial({
+      color: this.color, emissive: this.color, emissiveIntensity: 0.85,
+      metalness: 0.3, roughness: 0.35, transparent: true, opacity: 0,
+      envMapIntensity: 0.5
+    });
+
+    // scaled group: shaft only (unit length along +Y)
+    this.group = new THREE.Group();
+    const shaftGeo = new THREE.CylinderGeometry(0.034, 0.034, 0.94, 16);
+    shaftGeo.translate(0, 0.47, 0);
+    this.shaft = new THREE.Mesh(shaftGeo, this.mat);
+    this.shaft.castShadow = true;
+    this.group.add(this.shaft);
+
+    const lab = makeLabel(text, labelClass);
+    this.labelEl = lab.div; this.labelObj = lab.obj;
+    this.labelObj.position.set(0, 1.22, 0);
+    this.group.add(this.labelObj);
+    scene.add(this.group);
+
+    // unscaled head (constant size)
+    const headGeo = new THREE.ConeGeometry(0.085, 0.17, 20);
+    headGeo.translate(0, 0.085, 0);
+    this.head = new THREE.Mesh(headGeo, this.mat);
+    this.head.castShadow = true;
+    scene.add(this.head);
+
+    // halo at tip
+    this.haloMat = new THREE.SpriteMaterial({
+      color: this.color, transparent: true, opacity: 0,
+      blending: THREE.AdditiveBlending, depthWrite: false
+    });
+    this.halo = new THREE.Sprite(this.haloMat);
+    this.halo.scale.setScalar(0.5);
+    scene.add(this.halo);
+
+    // invisible drag handle
+    this.handle = new THREE.Mesh(
+      new THREE.SphereGeometry(0.26, 8, 8),
+      new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false, depthTest: false })
+    );
+    scene.add(this.handle);
+
+    this.tipWorld = new THREE.Vector3();
+    this.group.visible = this.head.visible = this.halo.visible = false;
+  }
+
+  set(v, g) {
+    const len0 = v.length();
+    if (len0 < 1e-6) {
+      this.group.visible = this.head.visible = this.halo.visible = false;
+      this.handle.position.set(0,0,0); this.tipWorld.set(0,0,0);
+      return;
+    }
+    const len = len0 * Math.max(g, 1e-4);
+    this.group.visible = this.head.visible = this.halo.visible = true;
+    const th = THREE.MathUtils.clamp(1.3 - len * 0.12, 0.6, 1.3);
+    this.group.scale.set(th, len, th);
+    T1.copy(v).divideScalar(len0);
+    this.group.quaternion.setFromUnitVectors(UP, T1);
+    this.tipWorld.copy(v).multiplyScalar(g);
+    this.handle.position.copy(this.tipWorld);
+    this.halo.position.copy(this.tipWorld);
+    const headLen = 0.17 * th;
+    this.head.position.copy(this.tipWorld).addScaledVector(T1, -headLen);
+    this.head.quaternion.copy(this.group.quaternion);
+    this.head.scale.setScalar(th);
+  }
+
+  setOpacity(o) {
+    this.mat.opacity = o;
+    this.haloMat.opacity = o * 0.4;
+    this.labelEl.style.opacity = o;
+  }
+}
+
+class GlowSegment {
+  constructor(colorHex, radius = 0.02) {
+    this.mat = new THREE.MeshBasicMaterial({
+      color: colorHex, transparent: true, opacity: 0,
+      blending: THREE.AdditiveBlending, depthWrite: false
+    });
+    const geo = new THREE.CylinderGeometry(radius, radius, 1, 10, 1, true);
+    geo.translate(0, 0.5, 0);
+    this.mesh = new THREE.Mesh(geo, this.mat);
+    this.mesh.renderOrder = 6;
+    this.mesh.visible = false;
+    scene.add(this.mesh);
+  }
+  set(a, b) {
+    T2.subVectors(b, a);
+    const len = T2.length();
+    this.mesh.visible = len > 1e-4 && this.mat.opacity > 0.002;
+    if (!this.mesh.visible) return;
+    this.mesh.position.copy(a);
+    this.mesh.scale.set(1, len, 1);
+    this.mesh.quaternion.setFromUnitVectors(UP, T2.divideScalar(len));
+  }
+  setOpacity(o) { this.mat.opacity = o; this.mesh.visible = this.mat.opacity > 0.002 && this.mesh.scale.y > 1e-3; }
+}
+
+class DashedLine3 {
+  constructor(colorHex, dashed) {
+    this.geom = new THREE.BufferGeometry();
+    this.geom.setAttribute('position', new THREE.BufferAttribute(new Float32Array(6), 3).setUsage(THREE.DynamicDrawUsage));
+    this.mat = dashed
+      ? new THREE.LineDashedMaterial({ color: colorHex, dashSize: 0.16, gapSize: 0.1, transparent: true, opacity: 0, depthWrite: false })
+      : new THREE.LineBasicMaterial({ color: colorHex, transparent: true, opacity: 0, depthWrite: false });
+    this.line = new THREE.Line(this.geom, this.mat);
+    this.line.renderOrder = 5;
+    scene.add(this.line);
+  }
+  set(a, b) {
+    const p = this.geom.attributes.position.array;
+    p[0]=a.x; p[1]=a.y; p[2]=a.z; p[3]=b.x; p[4]=b.y; p[5]=b.z;
+    this.geom.attributes.position.needsUpdate = true;
+    if (this.mat.isLineDashedMaterial) this.line.computeLineDistances();
+  }
+  setOpacity(o) { this.mat.opacity = o; }
+}
+
+const SURFACE_VERT = `
+  attribute float aParam;
+  varying vec3 vW; varying float vP;
+  void main(){
+    vP = aParam;
+    vec4 wp = modelMatrix * vec4(position, 1.0);
+    vW = wp.xyz;
+    gl_Position = projectionMatrix * viewMatrix * wp;
+  }`;
+
+class Parallelogram {
+  constructor() {
+    this.pos = new Float32Array(12);
+    this.geo = new THREE.BufferGeometry();
+    this.geo.setAttribute('position', new THREE.BufferAttribute(this.pos, 3).setUsage(THREE.DynamicDrawUsage));
+    this.geo.setAttribute('aParam', new THREE.BufferAttribute(new Float32Array([0,0,1,1]), 1));
+    this.geo.setIndex([0,1,2, 0,2,3]);
+    this.mat = new THREE.ShaderMaterial({
+      uniforms: {
+        uColor: { value: new THREE.Color(0x9fe8ff) },
+        uOpacity: { value: 0 }, uSweep: { value: 0 }
+      },
+      transparent: true, depthWrite: false, side: THREE.DoubleSide,
+      vertexShader: SURFACE_VERT,
+      fragmentShader: `
+        uniform vec3 uColor; uniform float uOpacity; uniform float uSweep;
+        varying vec3 vW; varying float vP;
+        void main(){
+          vec3 N = normalize(cross(dFdx(vW), dFdy(vW)));
+          vec3 V = normalize(cameraPosition - vW);
+          float fres = pow(1.0 - abs(dot(N, V)), 2.2);
+          float lead = 0.0;
+          if (uSweep < 0.999)
+            lead = smoothstep(uSweep - 0.22, uSweep, vP) * (1.0 - smoothstep(0.97, 1.0, uSweep));
+          vec3 col = uColor * (0.30 + 0.85 * fres) + vec3(1.0) * lead * 1.6;
+          float a = uOpacity * (0.35 + 0.65 * fres + lead * 0.8);
+          gl_FragColor = vec4(col, clamp(a, 0.0, 1.0));
+        }`
+    });
+    this.mesh = new THREE.Mesh(this.geo, this.mat);
+    this.mesh.renderOrder = 2;
+    scene.add(this.mesh);
+
+    this.outline = new THREE.LineLoop(
+      new THREE.BufferGeometry().setAttribute('position', new THREE.BufferAttribute(new Float32Array(12), 3).setUsage(THREE.DynamicDrawUsage)),
+      new THREE.LineBasicMaterial({ color: 0xbfeaff, transparent: true, opacity: 0, depthWrite: false })
+    );
+    this.outline.renderOrder = 5;
+    scene.add(this.outline);
+
+    this.leadPos = new Float32Array(6);
+    this.leadEdge = new THREE.Line(
+      new THREE.BufferGeometry().setAttribute('position', new THREE.BufferAttribute(this.leadPos, 3).setUsage(THREE.DynamicDrawUsage)),
+      new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false })
+    );
+    this.leadEdge.renderOrder = 6;
+    scene.add(this.leadEdge);
+  }
+  set(B, C, s) {
+    const p = this.pos;
+    p[0]=0; p[1]=0; p[2]=0;
+    p[3]=B.x; p[4]=B.y; p[5]=B.z;
+    p[6]=B.x + C.x*s; p[7]=B.y + C.y*s; p[8]=B.z + C.z*s;
+    p[9]=C.x*s; p[10]=C.y*s; p[11]=C.z*s;
+    this.geo.attributes.position.needsUpdate = true;
+    this.outline.geometry.attributes.position.array.set(p);
+    this.outline.geometry.attributes.position.needsUpdate = true;
+    const lp = this.leadPos;
+    lp[0]=p[9]; lp[1]=p[10]; lp[2]=p[11];
+    lp[3]=p[6]; lp[4]=p[7]; lp[5]=p[8];
+    this.leadEdge.geometry.attributes.position.needsUpdate = true;
+  }
+  setOpacity(o) {
+    this.mat.uniforms.uOpacity.value = o * 0.85;
+    this.mat.uniforms.uSweep.value = state.sweep;
+    this.outline.material.opacity = o * 0.5;
+    const leadA = state.sweep >= 0.999 ? 0 : o * 0.9 * Math.min(1, (1 - state.sweep) * 4);
+    this.leadEdge.material.opacity = leadA;
+  }
+}
+
+class Parallelepiped {
+  constructor() {
+    this.pos = new Float32Array(24);
+    this.geo = new THREE.BufferGeometry();
+    this.geo.setAttribute('position', new THREE.BufferAttribute(this.pos, 3).setUsage(THREE.DynamicDrawUsage));
+    this.geo.setAttribute('aParam', new THREE.BufferAttribute(new Float32Array([0,0,0,0,1,1,1,1]), 1));
+    this.geo.setIndex([
+      0,1,2, 0,2,3,   4,6,5, 4,7,6,
+      0,4,5, 0,5,1,   1,5,6, 1,6,2,
+      2,6,7, 2,7,3,   3,7,4, 3,4,0
+    ]);
+    this.mat = new THREE.ShaderMaterial({
+      uniforms: {
+        uColor: { value: new THREE.Color(0xbfe4f2) },
+        uOpacity: { value: 0 }, uExtrude: { value: 0 }
+      },
+      transparent: true, depthWrite: false, side: THREE.DoubleSide,
+      vertexShader: SURFACE_VERT,
+      fragmentShader: `
+        uniform vec3 uColor; uniform float uOpacity; uniform float uExtrude;
+        varying vec3 vW; varying float vP;
+        void main(){
+          vec3 N = normalize(cross(dFdx(vW), dFdy(vW)));
+          vec3 V = normalize(cameraPosition - vW);
+          float fres = pow(1.0 - abs(dot(N, V)), 2.6);
+          vec3 L1 = normalize(vec3(0.55, 0.85, 0.4));
+          vec3 L2 = normalize(vec3(-0.65, 0.25, -0.6));
+          float s1 = pow(max(dot(reflect(-L1, N), V), 0.0), 90.0);
+          float s2 = pow(max(dot(reflect(-L2, N), V), 0.0), 50.0);
+          float lead = 0.0;
+          if (uExtrude < 0.999)
+            lead = smoothstep(uExtrude - 0.15, uExtrude, vP) * (1.0 - smoothstep(0.97, 1.0, uExtrude));
+          vec3 col = uColor * (0.20 + 0.80 * fres) + vec3(1.0) * s1 * 0.9
+                   + uColor * s2 * 0.6 + vec3(1.0) * lead * 1.4;
+          float a = uOpacity * (0.14 + 0.72 * fres + s1 * 0.4) + lead * 0.5;
+          gl_FragColor = vec4(col, clamp(a, 0.0, 1.0));
+        }`
+    });
+    this.mesh = new THREE.Mesh(this.geo, this.mat);
+    this.mesh.renderOrder = 3;
+    scene.add(this.mesh);
+
+    this.edgePos = new Float32Array(72);
+    this.edgeMat = new THREE.LineBasicMaterial({
+      color: 0xa8d8f0, transparent: true, opacity: 0,
+      blending: THREE.AdditiveBlending, depthWrite: false
+    });
+    this.edges = new THREE.LineSegments(
+      new THREE.BufferGeometry().setAttribute('position', new THREE.BufferAttribute(this.edgePos, 3).setUsage(THREE.DynamicDrawUsage)),
+      this.edgeMat
+    );
+    this.edges.renderOrder = 6;
+    scene.add(this.edges);
+  }
+  set(A, B, C, e) {
+    const p = this.pos;
+    p[0]=0; p[1]=0; p[2]=0;
+    p[3]=B.x; p[4]=B.y; p[5]=B.z;
+    p[6]=B.x+C.x; p[7]=B.y+C.y; p[8]=B.z+C.z;
+    p[9]=C.x; p[10]=C.y; p[11]=C.z;
+    p[12]=A.x*e; p[13]=A.y*e; p[14]=A.z*e;
+    p[15]=A.x*e+B.x; p[16]=A.y*e+B.y; p[17]=A.z*e+B.z;
+    p[18]=A.x*e+B.x+C.x; p[19]=A.y*e+B.y+C.y; p[20]=A.z*e+B.z+C.z;
+    p[21]=A.x*e+C.x; p[22]=A.y*e+C.y; p[23]=A.z*e+C.z;
+    this.geo.attributes.position.needsUpdate = true;
+    this.mat.uniforms.uExtrude.value = e;
+
+    const E = [[0,1],[1,2],[2,3],[3,0],[4,5],[5,6],[6,7],[7,4],[0,4],[1,5],[2,6],[3,7]];
+    const ep = this.edgePos;
+    let i = 0;
+    for (const [a,b] of E) {
+      ep[i++]=p[a*3]; ep[i++]=p[a*3+1]; ep[i++]=p[a*3+2];
+      ep[i++]=p[b*3]; ep[i++]=p[b*3+1]; ep[i++]=p[b*3+2];
+    }
+    this.edges.geometry.attributes.position.needsUpdate = true;
+  }
+  setFacesOpacity(o) { this.mat.uniforms.uOpacity.value = o; }
+  setEdgesOpacity(o) { this.edgeMat.opacity = o; }
+}
+
+class FittedPlane {
+  constructor() {
+    this.mat = new THREE.ShaderMaterial({
+      uniforms: { uOpacity: { value: 0 }, uColor: { value: new THREE.Color(0x9fe8ff) } },
+      transparent: true, depthWrite: false, side: THREE.DoubleSide,
+      blending: THREE.AdditiveBlending,
+      vertexShader: `
+        varying vec2 vL;
+        void main(){ vL = position.xy;
+          gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
+      fragmentShader: `
+        uniform float uOpacity; uniform vec3 uColor; varying vec2 vL;
+        float gridLine(vec2 p, float sp){
+          vec2 q = abs(fract(p / sp - 0.5) - 0.5) * sp;
+          vec2 fw = fwidth(p) + 1e-5;
+          vec2 a = 1.0 - smoothstep(vec2(0.0), fw * 1.4, q);
+          return max(a.x, a.y);
+        }
+        void main(){
+          float g = gridLine(vL, 1.25);
+          float f = 1.0 - smoothstep(2.8, 4.9, length(vL));
+          float a = uOpacity * f * (0.06 + g * 0.5);
+          gl_FragColor = vec4(uColor * a, a);
+        }`
+    });
+    this.mesh = new THREE.Mesh(new THREE.PlaneGeometry(10, 10), this.mat);
+    this.mesh.renderOrder = 4;
+    scene.add(this.mesh);
+  }
+  setNormal(n) { this.mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0,0,1), n); }
+  setOpacity(o) { this.mat.uniforms.uOpacity.value = o; }
+}
+
+class Pulse {
+  constructor() {
+    this.mat = new THREE.LineBasicMaterial({
+      color: 0xffffff, transparent: true, opacity: 0,
+      blending: THREE.AdditiveBlending, depthWrite: false
+    });
+    const pts = [];
+    for (let i = 0; i <= 90; i++) {
+      const a = i/90 * Math.PI * 2;
+      pts.push(new THREE.Vector3(Math.cos(a), Math.sin(a), 0));
+    }
+    this.line = new THREE.LineLoop(new THREE.BufferGeometry().setFromPoints(pts), this.mat);
+    this.line.renderOrder = 7;
+    this.line.visible = false;
+    scene.add(this.line);
+    this.tw = null;
+  }
+  trigger(pos, normal, delay, maxR) {
+    const q = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0,0,1), normal);
+    if (this.tw) this.tw.kill();
+    const o = { t: 0 };
+    this.tw = gsap.to(o, {
+      t: 1, duration: 1.5, ease: 'power2.out', delay,
+      onStart: () => { this.line.visible = true; this.line.position.copy(pos); this.line.quaternion.copy(q); },
+      onUpdate: () => {
+        this.line.scale.setScalar(0.15 + o.t * maxR);
+        this.mat.opacity = 0.55 * (1 - o.t);
+      },
+      onComplete: () => { this.line.visible = false; }
+    });
+  }
+}
+
+/* ============================================================
+   INSTANTIATE SCENE OBJECTS
+   ============================================================ */
+const originSphere = new THREE.Mesh(
+  new THREE.SphereGeometry(0.07, 24, 24),
+  new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0 })
+);
+scene.add(originSphere);
+
+const arrowA = new VectorArrow(0x5ee9ff, 'cyan',   'A');
+const arrowB = new VectorArrow(0xff9b3d, 'amber',  'B');
+const arrowC = new VectorArrow(0xb18cff, 'violet', 'C');
+const arrowN = new VectorArrow(0xe8f8ff, 'white',  'B×C');
+
+const baseSurface = new Parallelogram();
+const box = new Parallelepiped();
+const fittedPlane = new FittedPlane();
+
+const dashedH    = new DashedLine3(0xffffff, true);   // dropping perpendicular
+const dashedPar  = new DashedLine3(0x5ee9ff, true);   // in-plane component of A
+const segPerp    = new GlowSegment(0x5ee9ff, 0.022);  // glowing A⊥
+const segProj    = new GlowSegment(0xe8f8ff, 0.02);   // A projected onto n̂
+
+const footMarker = new THREE.Mesh(
+  new THREE.SphereGeometry(0.045, 16, 16),
+  new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false })
+);
+scene.add(footMarker);
+
+// right-angle mark (3-point polyline)
+const raPos = new Float32Array(9);
+const raLine = new THREE.Line(
+  new THREE.BufferGeometry().setAttribute('position', new THREE.BufferAttribute(raPos, 3).setUsage(THREE.DynamicDrawUsage)),
+  new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0, depthWrite: false })
+);
+raLine.renderOrder = 5;
+scene.add(raLine);
+function setRightAngle(foot, nDir, e, s) {
+  const p = raPos;
+  p[0]=foot.x+e.x*s; p[1]=foot.y+e.y*s; p[2]=foot.z+e.z*s;
+  p[3]=p[0]+nDir.x*s; p[4]=p[1]+nDir.y*s; p[5]=p[2]+nDir.z*s;
+  p[6]=foot.x+nDir.x*s; p[7]=foot.y+nDir.y*s; p[8]=foot.z+nDir.z*s;
+  raLine.geometry.attributes.position.needsUpdate = true;
+}
+
+// floating labels
+const hLab = makeLabel('h', 'small white');
+const hLabelEl = hLab.div; const hLabel = hLab.obj; scene.add(hLabel);
+const areaLab = makeLabel('', 'small white');
+const areaLabelEl = areaLab.div; const areaLabel = areaLab.obj; scene.add(areaLabel);
+const axisLabs = [];
+[['x', 5.3, 0, 0], ['y', 0, 5.3, 0], ['z', 0, 0, 5.3]].forEach(([t, x, y, z]) => {
+  const l = makeLabel(t, 'small axis');
+  l.obj.position.set(x, y, z);
+  scene.add(l.obj);
+  axisLabs.push(l.div);
+});
+
+const pulses = [new Pulse(), new Pulse()];
+function pulseAt(pos, normal) {
+  pulses[0].trigger(pos, normal, 0, 3.4);
+  pulses[1].trigger(pos, normal, 0.18, 2.4);
+}
+
+/* ============================================================
+   POST-PROCESSING — HDR target, bloom, correct output
+   ============================================================ */
+const rtSize = renderer.getDrawingBufferSize(new THREE.Vector2());
+const composer = new EffectComposer(renderer,
+  new THREE.WebGLRenderTarget(rtSize.x, rtSize.y, { samples: 4, type: THREE.HalfFloatType }));
+composer.addPass(new RenderPass(scene, camera));
+const bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 0.5, 0.55, 0.62);
+composer.addPass(bloomPass);
+composer.addPass(new OutputPass());
+
+/* ============================================================
+   EQUATIONS (MathJax with plain-text fallback)
+   ============================================================ */
+const equationEl = document.getElementById('equation');
+const equationDisplayEl = document.getElementById('equation-display');
+const equationTagEl = document.getElementById('equation-tag');
+const equationSubEl = document.getElementById('equation-sub');
+let mathJaxReady = false, lastTex = null;
+
+function setEquation(tag, tex, sub = '', plain = '', small = false) {
+  if (tex === lastTex) { equationDisplayEl.classList.add('visible'); return; }
+  lastTex = tex;
+  equationTagEl.textContent = tag || '';
+  equationSubEl.textContent = sub || '';
+  equationDisplayEl.classList.toggle('small', small);
+  equationEl.classList.remove('plain');
+  if (mathJaxReady && window.MathJax && window.MathJax.typesetPromise) {
+    equationEl.innerHTML = `\\[${tex}\\]`;
+    window.MathJax.typesetPromise([equationEl]).catch(() => {});
+  } else {
+    equationEl.textContent = plain || tex;
+    equationEl.classList.add('plain');
+  }
+  equationDisplayEl.classList.add('visible');
+}
+function hideEquation() {
+  equationDisplayEl.classList.remove('visible');
+  lastTex = null;
+}
+function E(tag, tex, sub, plain, small) { setEquation(tag, tex, sub, plain, small); }
+function eqOut() { hideEquation(); }
+
+/* ============================================================
+   CAMERA RIG
+   ============================================================ */
+let lastFov = 45;
+function applyCamState() {
+  camera.position.set(Math.cos(S.az) * S.r, S.y, Math.sin(S.az) * S.r);
+  camera.lookAt(S.tx, S.ty, S.tz);
+  if (Math.abs(S.fov - lastFov) > 0.01) {
+    camera.fov = S.fov; camera.updateProjectionMatrix(); lastFov = S.fov;
+  }
+}
+
+/* ============================================================
+   PER-FRAME UPDATE
+   ============================================================ */
+function updateSceneFromState(t) {
+  const A = state.A, B = state.B, C = state.C, v = vis;
+  const deg = state.isDegenerate;
+
+  arrowA.set(A, grow.A);
+  arrowB.set(B, grow.B);
+  arrowC.set(C, grow.C);
+  if (deg) arrowN.set(ZERO, 0);
+  else arrowN.set(T4.copy(state.nHat).multiplyScalar(Math.min(3.4, state.baseArea)), grow.N);
+
+  arrowA.setOpacity(v.vectorA);
+  arrowB.setOpacity(v.vectorB);
+  arrowC.setOpacity(v.vectorC);
+  arrowN.setOpacity(deg ? 0 : v.vectorN);
+
+  baseSurface.set(B, C, state.sweep);
+  baseSurface.setOpacity(v.base);
+  box.set(A, B, C, state.extrude);
+  box.setFacesOpacity(v.boxFaces * 0.9);
+  box.setEdgesOpacity(v.boxEdges * fx.edgeBoost * (0.55 + 0.14 * Math.sin(t * 1.7)));
+
+  if (!deg) {
+    const dist = A.dot(state.nHat);
+    T3.copy(A).addScaledVector(state.nHat, -dist);      // foot
+    state.foot.copy(T3);
+    T1.copy(A).multiplyScalar(grow.A);                  // displayed tip
+
+    T2.copy(T1).lerp(T3, state.drop);                   // drop endpoint
+    dashedH.set(T1, T2);
+    dashedH.setOpacity(v.dashedH);
+
+    segPerp.set(T3, T1);
+    segPerp.setOpacity(v.aPerp);
+
+    dashedPar.set(ZERO, T3);
+    dashedPar.setOpacity(v.aPar);
+
+    T2.copy(state.nHat).multiplyScalar(dist);           // signed projection on n̂
+    segProj.set(ZERO, T2);
+    segProj.setOpacity(v.proj);
+
+    footMarker.position.copy(T3);
+    footMarker.material.opacity = v.footMark * 0.95;
+
+    if (v.raMark > 0.01) {
+      T2.copy(T3);
+      if (T2.lengthSq() > 1e-6) T2.normalize(); else T2.copy(B).normalize();
+      const sign = dist >= 0 ? 1 : -1;
+      T4.copy(state.nHat).multiplyScalar(sign);
+      setRightAngle(T3, T4, T2, Math.min(0.24, state.height * 0.3 + 0.08));
+    }
+    raLine.material.opacity = v.raMark * 0.7;
+
+    hLabelEl.style.opacity = v.height;
+    hLabel.position.copy(T1).lerp(T3, 0.55);
+  } else {
+    dashedH.setOpacity(0); segPerp.setOpacity(0); dashedPar.setOpacity(0); segProj.setOpacity(0);
+    footMarker.material.opacity = 0; raLine.material.opacity = 0;
+    hLabelEl.style.opacity = 0;
+  }
+
+  const areaText = `|B×C| = ${state.baseArea.toFixed(2)}`;
+  if (areaLabelEl.textContent !== areaText) areaLabelEl.textContent = areaText;
+  areaLabelEl.style.opacity = v.areaLabel * 0.9;
+  T2.copy(B).add(C).multiplyScalar(0.5);
+  areaLabel.position.copy(T2);
+
+  if (!deg) fittedPlane.setNormal(state.nHat);
+  fittedPlane.setOpacity(v.coplanarPlane);
+
+  originSphere.material.opacity = v.origin;
+  originLight.intensity = v.origin * (2.2 + 0.5 * Math.sin(t * 1.3));
+
+  const axO = v.axes * 0.22;
+  axesGroup.children.forEach(c => c.material.opacity = axO);
+  axisLabs.forEach(el => el.style.opacity = v.axes * 0.55);
+}
+
+let lastCoplanar = false, lastPulseT = -10;
+function updateCoplanarityFX(t, dt) {
+  const target = (state.isCoplanar && !state.isDegenerate) ? 1 : 0;
+  fx.drama += (target - fx.drama) * (1 - Math.exp(-6 * dt));
+  if (state.isCoplanar !== lastCoplanar) {
+    if (state.isCoplanar && !state.isDegenerate && state.baseArea > 1e-4 && (t - lastPulseT) > 0.5) {
+      pulseAt(state.foot, state.nHat);
+      lastPulseT = t;
+    }
+    lastCoplanar = state.isCoplanar;
+  }
+}
+
+function updateLights(t) {
+  const warm = Math.min(1, L.warm + fx.drama);
+  keyLight.intensity = 0.22 + L.key * 1.35;
+  ambLight.intensity = 0.04 + L.amb * 0.16;
+  rimLight.intensity = 0.08 + L.rim * 0.75;
+  fillLight.intensity = 0.05 + L.amb * 0.22;
+  rimLight.color.copy(RIM_COLD).lerp(RIM_WARM, warm * 0.85);
+  fillLight.color.copy(FILL_COLD).lerp(RIM_WARM, warm * 0.5);
+  floorUniforms.uGlowColor.value.copy(GLOW_COLD).lerp(GLOW_WARM, warm);
+  floorUniforms.uGlow.value = L.glow * (1 - 0.25 * warm);
+  floorUniforms.uGrid.value = vis.grid;
+  shaftUniforms.uIntensity.value = L.shaft * (1 - 0.45 * warm) * 0.09;
+  shaftUniforms.uTime.value = t;
+  moteUniforms.uIntensity.value = L.shaft * (1 - 0.4 * warm);
+  moteUniforms.uTime.value = t;
+  stars.material.uniforms.uTime.value = t;
+}
+
+/* ============================================================
+   UI — meters, status, panels
+   ============================================================ */
+const volEl = document.getElementById('volume-value');
+const volWrapEl = document.getElementById('volume-value-wrap');
+const baseMiniEl = document.getElementById('base-mini');
+const hMiniEl = document.getElementById('height-mini');
+const stpEl = document.getElementById('stp-line');
+const pillEl = document.getElementById('status-pill');
+const hintEl = document.getElementById('hint');
+const progressEl = document.getElementById('progress');
+const btnPlay = document.getElementById('btn-play');
+const btnPause = document.getElementById('btn-pause');
+const btnInsight = document.getElementById('btn-insight');
+const btnChallenge = document.getElementById('btn-challenge');
+const btnControls = document.getElementById('btn-controls');
+const controlPanel = document.getElementById('control-panel');
+const advancedPanel = document.getElementById('advanced-panel');
+const challengeModal = document.getElementById('challenge-modal');
+
+let dVol = 0, dBase = 0, dH = 0, metricClock = 0;
+const lastStrings = {};
+function setText(el, key, s) {
+  if (lastStrings[key] !== s) { el.textContent = s; lastStrings[key] = s; }
+}
+function fmt(x) {
+  if (!isFinite(x)) return '—';
+  if (Math.abs(x) < 0.005) return '0.00';
+  return Math.abs(x) >= 100 ? x.toFixed(1) : x.toFixed(2);
+}
+
+function updateUI(dt) {
+  const k = 1 - Math.exp(-10 * dt);
+  dVol += (state.volume - dVol) * k;
+  dBase += (state.baseArea - dBase) * k;
+  dH += (state.height - dH) * k;
+
+  setText(volEl, 'vol', fmt(dVol));
+  volWrapEl.classList.toggle('zero', Math.abs(dVol) < 0.005);
+  setText(baseMiniEl, 'base', fmt(dBase));
+  setText(hMiniEl, 'h', fmt(dH));
+  setText(stpEl, 'stp', `A·(B×C) = ${state.scalarTriple.toFixed(2)}`);
+
+  if (state.isDegenerate) { setText(pillEl, 'pill', 'Degenerate Base'); pillEl.className = 'status-pill degenerate'; }
+  else if (state.isCoplanar) { setText(pillEl, 'pill', 'Coplanar'); pillEl.className = 'status-pill coplanar'; }
+  else { setText(pillEl, 'pill', 'Non-Coplanar'); pillEl.className = 'status-pill'; }
+
+  const playing = TL && !TL.paused() && TL.progress() < 1;
+  btnPlay.classList.toggle('active', playing);
+  btnPause.classList.toggle('active', TL && TL.paused() && TL.progress() < 1);
+  if (TL) {
+    progressEl.style.transform = `scaleX(${TL.progress()})`;
+    progressEl.style.opacity = TL.progress() < 1 ? 1 : 0;
+  }
+
+  metricClock += dt;
+  if (metricClock > 0.1) {
+    metricClock = 0;
+    setText(document.getElementById('metric-base'), 'mb', state.baseArea.toFixed(3));
+    setText(document.getElementById('metric-height'), 'mh', state.height.toFixed(3));
+    setText(document.getElementById('metric-vol-bh'), 'mvbh', (state.baseArea * state.height).toFixed(3));
+    setText(document.getElementById('metric-stp'), 'mstp', state.scalarTriple.toFixed(3));
+    setText(document.getElementById('metric-vol-stp'), 'mvstp', state.volume.toFixed(3));
+    setText(document.getElementById('mag-A'), 'ma', `|A| = ${vectorMagnitude(state.A).toFixed(2)}`);
+    setText(document.getElementById('mag-B'), 'mb2', `|B| = ${vectorMagnitude(state.B).toFixed(2)}`);
+    setText(document.getElementById('mag-C'), 'mc', `|C| = ${vectorMagnitude(state.C).toFixed(2)}`);
+  }
+}
+
+/* ============================================================
+   SLIDERS
+   ============================================================ */
+function lockInputs(locked) {
+  document.querySelectorAll('.component-slider').forEach(s => s.disabled = locked);
+}
+function syncSlidersFromState() {
+  ['A','B','C'].forEach(name => ['x','y','z'].forEach(axis => {
+    document.getElementById(`${name}-${axis}`).value = state[name][axis];
+    document.getElementById(`${name}-${axis}-val`).textContent = state[name][axis].toFixed(2);
+  }));
+}
+['A','B','C'].forEach(name => ['x','y','z'].forEach(axis => {
+  document.getElementById(`${name}-${axis}`).addEventListener('input', e => {
+    state[name][axis] = parseFloat(e.target.value);
+    document.getElementById(`${name}-${axis}-val`).textContent = state[name][axis].toFixed(2);
+  });
+}));
+
+/* ============================================================
+   DRAG A ALONG THE NORMAL (pull A out of the plane)
+   ============================================================ */
+const raycaster = new THREE.Raycaster();
+const mouse = new THREE.Vector2();
+let isDragging = false;
+const dragPlane = new THREE.Plane();
+const dragFoot = new THREE.Vector3();
+const projV = new THREE.Vector3();
+
+function getMouseNDC(e) {
+  const r = renderer.domElement.getBoundingClientRect();
+  mouse.x = ((e.clientX - r.left) / r.width) * 2 - 1;
+  mouse.y = -((e.clientY - r.top) / r.height) * 2 + 1;
+}
+function nearTipA(e) {
+  projV.copy(arrowA.tipWorld).project(camera);
+  const sx = (projV.x * 0.5 + 0.5) * window.innerWidth;
+  const sy = (-projV.y * 0.5 + 0.5) * window.innerHeight;
+  return Math.hypot(e.clientX - sx, e.clientY - sy) < 36;
+}
+function tryStartDrag(e) {
+  if (state.phase !== 'interactive' || state.insightMode || vis.vectorA < 0.5) return false;
+  if (state.isDegenerate) return false;
+  if (nearTipA(e)) return true;
+  getMouseNDC(e);
+  raycaster.setFromCamera(mouse, camera);
+  return raycaster.intersectObject(arrowA.handle, false).length > 0;
+}
+
+renderer.domElement.addEventListener('pointerdown', e => {
+  if (!tryStartDrag(e)) return;
+  isDragging = true;
+  controls.enabled = false;
+  renderer.domElement.setPointerCapture(e.pointerId);
+  gsap.killTweensOf(state.A);
+  const dist = state.A.dot(state.nHat);
+  dragFoot.copy(state.A).addScaledVector(state.nHat, -dist);
+  const camDir = new THREE.Vector3();
+  camera.getWorldDirection(camDir);
+  dragPlane.setFromNormalAndCoplanarPoint(camDir, state.A.clone());
+  renderer.domElement.style.cursor = 'grabbing';
+  hintEl.classList.remove('visible');
+});
+
+renderer.domElement.addEventListener('pointermove', e => {
+  if (isDragging) {
+    getMouseNDC(e);
+    raycaster.setFromCamera(mouse, camera);
+    if (raycaster.ray.intersectPlane(dragPlane, T1)) {
+      const h = THREE.MathUtils.clamp(T1.clone().sub(dragFoot).dot(state.nHat), -5, 5);
+      state.A.copy(dragFoot).addScaledVector(state.nHat, h);
+      syncSlidersFromState();
+    }
+  } else {
+    renderer.domElement.style.cursor = tryStartDrag(e) ? 'grab' : '';
+  }
+});
+
+window.addEventListener('pointerup', () => {
+  if (isDragging) {
+    isDragging = false;
+    renderer.domElement.style.cursor = '';
+    if (state.phase === 'interactive' && !state.insightMode) controls.enabled = true;
+  }
+});
+
+/* ============================================================
+   CINEMATIC TIMELINE
+   ============================================================ */
+let TL = null, orbitTween = null, insightSaved = null;
+
+function resetToStart() {
+  state.phase = 'intro';
+  controls.enabled = false;
+  state.A.copy(DEF.A); state.B.copy(DEF.B); state.C.copy(DEF.C);
+  state.sweep = 0; state.extrude = 0; state.drop = 0;
+  Object.assign(vis, {
+    origin: 0, axes: 0, grid: 0, vectorA: 0, vectorB: 0, vectorC: 0, vectorN: 0,
+    base: 0, dashedH: 0, height: 0, aPerp: 0, aPar: 0, proj: 0,
+    boxFaces: 0, boxEdges: 0, areaLabel: 0, raMark: 0, footMark: 0, coplanarPlane: 0
+  });
+  Object.assign(grow, { A: 0, B: 0, C: 0, N: 0 });
+  Object.assign(L, { key: 0.22, amb: 0.15, rim: 0.25, glow: 0.12, shaft: 0, warm: 0 });
+  Object.assign(S, { az: 0.92, r: 26.5, y: 11.5, tx: 0, ty: 0.3, tz: 0, fov: 45 });
+  fx.edgeBoost = 1; fx.drama = 0; lastCoplanar = false;
+  hLabelEl.textContent = 'h';
+  dVol = 0; dBase = 0; dH = 0;
+  syncSlidersFromState();
+  hideEquation();
+  hintEl.classList.remove('visible');
+  lockInputs(true);
+}
+
+function finishInteractive() {
+  state.phase = 'interactive';
+  controls.target.set(S.tx, S.ty, S.tz);
+  controls.enabled = true;
+  controls.update();
+  lockInputs(false);
+  hintEl.classList.add('visible');
+  setTimeout(() => hintEl.classList.remove('visible'), 8000);
+}
+
+function buildTimeline() {
+  if (TL) TL.kill();
+  gsap.killTweensOf([state, state.A, vis, grow, L, S, fx]);
+  resetToStart();
+  recompute();
+
+  // collapse target computed from the reset vectors
+  const A0 = state.A.clone();
+  const footT = A0.clone().addScaledVector(state.nHat, -A0.dot(state.nHat));
+
+  const tl = gsap.timeline({ paused: true });
+  TL = tl;
+
+  /* ---- S0 : silence ---- */
+  tl.to(S, { r: 16.4, y: 7.4, ty: 0.35, duration: 3.4, ease: 'power2.inOut' }, 0);
+  tl.to(vis, { origin: 1, duration: 1.8, ease: 'power2.out' }, 0.6);
+  tl.to(vis, { axes: 1, grid: 1, duration: 2.2 }, 1.8);
+  tl.to(L, { key: 1, amb: 1, rim: 0.35, glow: 0.8, shaft: 0.55, duration: 2.6 }, 2.4);
+
+  /* ---- S1 : vectors emerge ---- */
+  tl.to(grow, { B: 1, duration: 1.4, ease: 'power3.out' }, 3.6);
+  tl.to(vis, { vectorB: 1, duration: 1.1 }, 3.6);
+  tl.to(grow, { C: 1, duration: 1.4, ease: 'power3.out' }, 4.6);
+  tl.to(vis, { vectorC: 1, duration: 1.1 }, 4.6);
+  tl.to(grow, { A: 1, duration: 1.4, ease: 'power3.out' }, 5.6);
+  tl.to(vis, { vectorA: 1, duration: 1.1 }, 5.6);
+  tl.call(() => E('THE EXPRESSION', '\\boxed{\\;\\vec{A}\\cdot(\\vec{B}\\times\\vec{C})\\;}', '', 'A · (B × C)'), null, 7.4);
+  tl.to(S, { r: 14.2, y: 6.6, duration: 1.9, ease: 'power1.inOut' }, 7.4);
+  tl.call(eqOut, null, 9.8);
+
+  /* ---- S2 : the base sweeps out ---- */
+  tl.call(() => E('THE BASE', '\\left|\\vec{B}\\times\\vec{C}\\right|', 'base area', '|B × C| — base area'), null, 10.2);
+  tl.to(S, { az: 1.25, r: 11.5, y: 7.8, duration: 2.6, ease: 'power2.inOut' }, 10.0);
+  tl.to(state, { sweep: 1, duration: 2.2, ease: 'power2.inOut' }, 10.8);
+  tl.to(vis, { base: 1, duration: 1.6 }, 10.8);
+  tl.to(vis, { areaLabel: 1, duration: 0.7 }, 12.9);
+  tl.call(eqOut, null, 13.4);
+
+  /* ---- S3 : the height drops ---- */
+  tl.call(() => E('THE HEIGHT', 'h', 'perpendicular distance from A to the base', 'h — perpendicular distance'), null, 13.9);
+  tl.to(S, { az: 2.45, r: 10.5, y: 5.4, duration: 4.4, ease: 'sine.inOut' }, 13.9);
+  tl.to(state, { drop: 1, duration: 1.9, ease: 'power2.inOut' }, 14.1);
+  tl.to(vis, { dashedH: 1, height: 1, duration: 1.2 }, 14.1);
+  tl.to(vis, { raMark: 1, footMark: 1, duration: 0.6 }, 16.2);
+  tl.call(() => { hLabelEl.textContent = 'h = A⊥'; }, null, 16.6);
+  tl.call(() => E('THE HEIGHT', 'h = A_\\perp', 'perpendicular component of A', 'h = A⊥'), null, 16.7);
+  tl.to(vis, { aPerp: 1, duration: 1.2 }, 16.6);
+  tl.to(vis, { aPar: 0.55, dashedH: 0.35, duration: 1.0 }, 17.0);
+  tl.call(eqOut, null, 18.6);
+
+  /* ---- S4 : the normal + the bridge ---- */
+  tl.call(() => E('THE NORMAL', '\\vec{B}\\times\\vec{C}', 'perpendicular to the base', 'B × C — normal to the base'), null, 19.0);
+  tl.to(S, { az: 2.75, y: 6.0, duration: 3.4, ease: 'sine.inOut' }, 18.9);
+  tl.to(grow, { N: 1, duration: 1.5, ease: 'power3.out' }, 19.2);
+  tl.to(vis, { vectorN: 1, duration: 1.1 }, 19.2);
+  tl.to(vis, { proj: 0.85, duration: 1.0 }, 20.0);
+  tl.call(() => E('THE BRIDGE', '\\vec{A}\\cdot(\\vec{B}\\times\\vec{C})', 'height × base area', 'A · (B × C) — height × base area'), null, 20.8);
+  tl.call(eqOut, null, 22.4);
+
+  /* ---- S5 : volume construction ---- */
+  tl.call(() => E('CONSTRUCTION', 'V=\\text{base}\\times\\text{height}', 'building the parallelepiped', 'V = base × height'), null, 22.8);
+  tl.to(S, { az: 3.6, r: 13.4, y: 7.4, tx: 0.8, ty: 1.0, tz: 0.55, duration: 4.2, ease: 'power2.inOut' }, 22.8);
+  tl.to(state, { extrude: 1, duration: 2.8, ease: 'power2.inOut' }, 23.2);
+  tl.to(vis, { boxEdges: 1, duration: 1.4 }, 23.4);
+  tl.to(vis, { boxFaces: 1, duration: 1.8 }, 24.4);
+  tl.to(vis, { axes: 0.22, grid: 0.45, duration: 1.8 }, 26.2);
+  tl.fromTo(fx, { edgeBoost: 1.9 }, { edgeBoost: 1.0, duration: 1.6, ease: 'power2.out' }, 27.4);
+  tl.call(() => E('THE VOLUME', '\\boxed{\\;V=\\left|\\vec{A}\\cdot(\\vec{B}\\times\\vec{C})\\right|\\;}', 'base area × height', 'V = |A · (B × C)|'), null, 27.4);
+  tl.to(S, { az: 3.6 + Math.PI, r: 13.6, y: 7.0, duration: 5.0, ease: 'sine.inOut' }, 27.6);
+  tl.call(eqOut, null, 32.8);
+
+  /* ---- S6 : the question ---- */
+  tl.call(() => E('QUESTION', '\\text{What if }\\vec{A}\\text{ enters the }(\\vec{B},\\vec{C})\\text{ plane?}', '', 'What if A enters the (B, C) plane?', true), null, 33.2);
+  tl.to(S, { az: 7.1, r: 11.0, y: 3.6, duration: 3.0, ease: 'power2.inOut' }, 33.2);
+  tl.call(eqOut, null, 36.2);
+
+  /* ---- S7 : the collapse ---- */
+  tl.to(state.A, { x: footT.x, y: footT.y, z: footT.z, duration: 4.6, ease: 'power2.inOut' }, 36.6);
+  tl.to(S, { az: 7.5, r: 10.2, y: 2.4, fov: 52, duration: 4.6, ease: 'power2.inOut' }, 36.6);
+  tl.to(L, { warm: 1, key: 0.7, duration: 3.6 }, 37.2);
+  tl.call(() => E('COLLAPSE', '\\boxed{\\;V=0\\;}', 'the height has vanished', 'V = 0'), null, 41.4);
+  tl.to(vis, { coplanarPlane: 0.8, duration: 1.2 }, 41.6);
+  tl.to(S, { az: 7.9, r: 9.6, y: 1.7, fov: 48, duration: 3.0, ease: 'power2.inOut' }, 43.8);
+  tl.call(() => E('COPLANARITY', '\\boxed{\\;\\vec{A}\\cdot(\\vec{B}\\times\\vec{C})=0\\;}', '', 'A · (B × C) = 0'), null, 44.0);
+  tl.call(eqOut, null, 45.7);
+  tl.call(() => E('COPLANARITY', '\\boxed{\\;\\vec{A},\\;\\vec{B},\\;\\vec{C}\\;\\text{are coplanar}\\;}', '', 'A, B, C are coplanar'), null, 45.9);
+  tl.call(eqOut, null, 47.7);
+  tl.to(vis, { coplanarPlane: 0, duration: 0.9 }, 47.9);
+  tl.to(L, { warm: 0, key: 1, duration: 2.2 }, 48.0);
+
+  /* ---- S8 : recovery ---- */
+  tl.to(state.A, { x: A0.x, y: A0.y, z: A0.z, duration: 3.2, ease: 'power2.inOut' }, 48.6);
+  tl.to(S, { az: 8.6, r: 12.6, y: 6.6, fov: 45, duration: 3.4, ease: 'power2.inOut' }, 48.6);
+  tl.call(() => E('CONTINUITY', 'V=\\left|\\vec{A}\\cdot(\\vec{B}\\times\\vec{C})\\right|', 'a continuous condition, not a trick', 'V = |A · (B × C)|'), null, 49.2);
+  tl.call(eqOut, null, 51.8);
+
+  /* ---- S9 : finale ---- */
+  tl.call(() => E('PRINCIPLE', '\\boxed{\\;V=0\\;\\iff\\;\\vec{A},\\vec{B},\\vec{C}\\;\\text{coplanar}\\;}', '', 'V = 0  ⟺  A, B, C coplanar'), null, 52.2);
+  tl.to(S, { az: 9.3, r: 13.2, y: 7.2, duration: 3.0, ease: 'power2.inOut' }, 52.2);
+  tl.call(finishInteractive, null, 55.4);
+
+  return tl;
+}
+
+/* ============================================================
+   INSIGHT MODE
+   ============================================================ */
+function ensureInteractive() {
+  if (TL && TL.progress() < 1) TL.progress(1);
+}
+function startInsightOrbit() {
+  const a0 = Math.atan2(camera.position.z, camera.position.x);
+  const r = Math.hypot(camera.position.x, camera.position.z);
+  const y = camera.position.y;
+  const o = { a: a0 };
+  orbitTween = gsap.to(o, {
+    a: a0 + Math.PI * 2, duration: 30, ease: 'none', repeat: -1,
+    onUpdate: () => {
+      camera.position.set(Math.cos(o.a) * r, y + Math.sin(o.a * 2) * 0.5, Math.sin(o.a) * r);
+      camera.lookAt(0.4, 0.9, 0.3);
+    }
+  });
+}
+function enterInsight() {
+  ensureInteractive();
+  if (state.insightMode) return;
+  state.insightMode = true;
+  btnInsight.classList.add('active');
+  advancedPanel.classList.add('visible');
+  controls.enabled = false;
+  insightSaved = { A: state.A.clone() };
+  const plan = () => {
+    gsap.to(vis, { coplanarPlane: 1, duration: 1.2 });
+    setEquation('INSIGHT', '\\boxed{\\;\\vec{A}\\cdot(\\vec{B}\\times\\vec{C})=0\\;}',
+      'one plane contains A, B and C', 'A·(B×C) = 0 — one plane contains A, B, C');
+    startInsightOrbit();
+  };
+  if (!state.isCoplanar && !state.isDegenerate) {
+    T1.copy(state.A).addScaledVector(state.nHat, -state.A.dot(state.nHat));
+    gsap.to(state.A, { x: T1.x, y: T1.y, z: T1.z, duration: 2, ease: 'power2.inOut', onComplete: plan });
+  } else plan();
+}
+function exitInsight(restore = true) {
+  if (!state.insightMode) return;
+  state.insightMode = false;
+  btnInsight.classList.remove('active');
+  if (orbitTween) { orbitTween.kill(); orbitTween = null; }
+  gsap.to(vis, { coplanarPlane: 0, duration: 0.8 });
+  if (restore && insightSaved) {
+    gsap.to(state.A, { x: insightSaved.A.x, y: insightSaved.A.y, z: insightSaved.A.z, duration: 1.8, ease: 'power2.inOut' });
+  }
+  hideEquation();
+  controls.target.set(0.8, 1.0, 0.55);
+  controls.enabled = state.phase === 'interactive';
+  controls.update();
+}
+btnInsight.addEventListener('click', () => state.insightMode ? exitInsight() : enterInsight());
+
+/* ============================================================
+   CHALLENGE MODE
+   ============================================================ */
+const challenges = [
+  {
+    tag: 'Challenge 01',
+    question: 'What happens when A enters the B-C plane?',
+    formula: 'A → plane of B and C',
+    options: ['Volume increases', 'Volume remains constant', 'Volume becomes zero'],
+    correct: 2,
+    feedback: 'A in the (B, C) plane ⇒ perpendicular height h = 0.  V = |B×C| × 0 = 0,  so A·(B×C) = 0.',
+    demo: () => {
+      T1.copy(state.A).addScaledVector(state.nHat, -state.A.dot(state.nHat));
+      gsap.to(state.A, { x: T1.x, y: T1.y, z: T1.z, duration: 2.6, ease: 'power2.inOut' });
+    }
+  },
+  {
+    tag: 'Challenge 02',
+    question: 'What does A·(B×C) = 0 tell you?',
+    formula: 'A · (B × C) = 0',
+    options: ['A is perpendicular to B', 'A is perpendicular to C', 'A, B and C are coplanar'],
+    correct: 2,
+    feedback: 'A·(B×C) = 0 ⇒ A has zero component along the normal B×C ⇒ A lies in the plane of B and C. All three vectors are coplanar.',
+    demo: () => { gsap.to(vis, { coplanarPlane: 0.9, duration: 1.2 }); }
+  }
+];
+let challengeOpen = false, currentChallenge = 0, savedA = null;
+
+function openChallenge() {
+  ensureInteractive();
+  challengeOpen = true;
+  btnChallenge.classList.add('active');
+  savedA = state.A.clone();
+  hideEquation();
+  showChallenge(0);
+}
+function showChallenge(idx) {
+  const ch = challenges[idx];
+  document.getElementById('challenge-tag').textContent = ch.tag;
+  document.getElementById('challenge-question').textContent = ch.question;
+  document.getElementById('challenge-formula').textContent = ch.formula;
+  const opts = document.getElementById('challenge-options');
+  opts.innerHTML = '';
+  ch.options.forEach((opt, i) => {
+    const b = document.createElement('button');
+    b.className = 'challenge-option';
+    b.textContent = opt;
+    b.addEventListener('click', () => handleAnswer(i));
+    opts.appendChild(b);
+  });
+  document.getElementById('challenge-feedback').classList.remove('visible');
+  challengeModal.classList.add('visible');
+}
+function handleAnswer(i) {
+  const ch = challenges[currentChallenge];
+  const buttons = document.querySelectorAll('.challenge-option');
+  if (i !== ch.correct) {
+    buttons[i].classList.add('wrong');
+    setTimeout(() => buttons[i].classList.remove('wrong'), 700);
+    return;
+  }
+  buttons.forEach(b => b.disabled = true);
+  buttons[i].classList.add('correct');
+  const fb = document.getElementById('challenge-feedback');
+  fb.textContent = ch.feedback;
+  fb.classList.add('visible');
+  if (ch.demo) ch.demo();
+  setTimeout(() => {
+    currentChallenge++;
+    if (currentChallenge < challenges.length) showChallenge(currentChallenge);
+    else closeChallenge(true);
+  }, 3400);
+}
+function closeChallenge(restore = true) {
+  if (!challengeOpen) return;
+  challengeOpen = false;
+  currentChallenge = 0;
+  btnChallenge.classList.remove('active');
+  challengeModal.classList.remove('visible');
+  gsap.to(vis, { coplanarPlane: 0, duration: 0.7 });
+  if (restore) {
+    if (savedA) gsap.to(state.A, { x: savedA.x, y: savedA.y, z: savedA.z, duration: 1.6, ease: 'power2.inOut' });
+    setEquation('PRINCIPLE', '\\boxed{\\;V=\\left|\\vec{A}\\cdot(\\vec{B}\\times\\vec{C})\\right|\\;}',
+      'a signed volume', 'V = |A · (B × C)|');
+  }
+}
+btnChallenge.addEventListener('click', () => challengeOpen ? closeChallenge(true) : openChallenge());
+
+/* ============================================================
+   TRANSPORT BUTTONS + KEYBOARD
+   ============================================================ */
+function hardReset() {
+  exitInsight(false);
+  closeChallenge(false);
+  buildTimeline();
+  TL.play();
+}
+document.getElementById('btn-play').addEventListener('click', () => {
+  if (!TL) return;
+  if (TL.paused() && TL.progress() < 1) TL.play();
+  else if (TL.progress() >= 1) hardReset();
+});
+document.getElementById('btn-pause').addEventListener('click', () => { if (TL) TL.pause(); });
+document.getElementById('btn-reset').addEventListener('click', hardReset);
+
+btnControls.addEventListener('click', () => {
+  const on = controlPanel.classList.toggle('visible');
+  advancedPanel.classList.toggle('visible', on);
+  btnControls.classList.toggle('active', on);
+});
+document.getElementById('close-controls').addEventListener('click', () => {
+  controlPanel.classList.remove('visible');
+  advancedPanel.classList.remove('visible');
+  btnControls.classList.remove('active');
+});
+document.getElementById('close-advanced').addEventListener('click', () => advancedPanel.classList.remove('visible'));
+
+window.addEventListener('keydown', e => {
+  if (e.key === 'Escape' && TL && TL.progress() < 1) { TL.progress(1); TL.play(); }
+  if (e.code === 'Space' && !challengeOpen) {
+    e.preventDefault();
+    if (!TL) return;
+    if (TL.paused() && TL.progress() < 1) TL.play();
+    else if (!TL.paused() && TL.progress() < 1) TL.pause();
+  }
+});
+
+/* ============================================================
+   RESIZE + RENDER LOOP
+   ============================================================ */
+window.addEventListener('resize', () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  composer.setSize(window.innerWidth, window.innerHeight);
+  bloomPass.setSize(window.innerWidth, window.innerHeight);
+  labelRenderer.setSize(window.innerWidth, window.innerHeight);
+});
+
+const clock = new THREE.Clock();
+function animate() {
+  requestAnimationFrame(animate);
+  const dt = Math.min(clock.getDelta(), 0.05);
+  const t = clock.elapsedTime;
+
+  if (state.phase === 'interactive' && !state.insightMode) controls.update();
+  else if (!state.insightMode) applyCamState();
+
+  recompute();
+  stars.rotation.y = t * 0.006;
+  updateCoplanarityFX(t, dt);
+  updateSceneFromState(t);
+  updateLights(t);
+  updateUI(dt);
+
+  composer.render();
+  labelRenderer.render(scene, camera);
+}
+
+/* ============================================================
+   BOOT — with MathJax timeout fallback
+   ============================================================ */
+let started = false;
+function init() {
+  if (started) return;
+  started = true;
+  document.getElementById('loading').classList.add('hidden');
+  buildTimeline();
+  animate();
+  setTimeout(() => {
+    document.getElementById('intro-fade').classList.add('hidden');
+    TL.play();
+  }, 500);
+}
+(function boot() {
+  let waited = 0;
+  const mj = window.MathJax;
+  if (mj && mj.startup && mj.startup.promise) {
+    mj.startup.promise
+      .then(() => { mathJaxReady = true; init(); })
+      .catch(() => { mathJaxReady = false; init(); });
+    setTimeout(() => { if (!started) { mathJaxReady = !!(mj.typesetPromise); init(); } }, 4500);
+  } else {
+    waited += 120;
+    if (waited > 4500) init();
+    else setTimeout(boot, 120);
+  }
+})();
+</script>
+</body>
+</html>
