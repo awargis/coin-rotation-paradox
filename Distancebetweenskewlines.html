@@ -1,0 +1,2374 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>Common Normal — The Shortest Distance Between Skew Lines</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+                "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+            }
+        }
+    </script>
+
+    <style>
+        :root {
+            --bg-0: #05060a;
+            --bg-1: #0a0d14;
+            --panel: rgba(10, 13, 20, 0.72);
+            --panel-solid: #0d1018;
+            --panel-border: rgba(255, 255, 255, 0.07);
+            --text-0: #eef1f6;
+            --text-1: #9aa2b4;
+            --text-2: #5c6478;
+            --crimson: #ff3b5c;
+            --crimson-soft: rgba(255, 59, 92, 0.25);
+            --cyan: #2ad9ff;
+            --cyan-soft: rgba(42, 217, 255, 0.25);
+            --gold: #ffd873;
+            --gold-soft: rgba(255, 216, 115, 0.25);
+            --radius: 14px;
+            --mono: 'IBM Plex Mono', monospace;
+            --sans: 'Space Grotesk', sans-serif;
+            --shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
+        }
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        html,
+        body {
+            width: 100%;
+            height: 100%;
+            background: var(--bg-0);
+            color: var(--text-0);
+            font-family: var(--sans);
+            overflow: hidden;
+            -webkit-font-smoothing: antialiased;
+            user-select: none;
+        }
+        #canvas-wrap {
+            position: fixed;
+            inset: 0;
+        }
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+
+        .glass {
+            background: var(--panel);
+            border: 1px solid var(--panel-border);
+            backdrop-filter: blur(20px) saturate(150%);
+            -webkit-backdrop-filter: blur(20px) saturate(150%);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+        }
+
+        /* ===== HUD top-left ===== */
+        #hud {
+            position: fixed;
+            top: 18px;
+            left: 18px;
+            z-index: 20;
+            width: 300px;
+            padding: 16px 18px;
+            max-height: calc(100vh - 36px);
+            overflow-y: auto;
+            transition: opacity 0.3s ease;
+        }
+        #hud::-webkit-scrollbar {
+            width: 2px;
+        }
+        #hud::-webkit-scrollbar-thumb {
+            background: var(--gold);
+            border-radius: 4px;
+        }
+        .hud-title {
+            font-size: 10px;
+            letter-spacing: 0.18em;
+            color: var(--text-2);
+            margin-bottom: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+        .hud-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            font-family: var(--mono);
+            font-size: 12px;
+            padding: 4px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.035);
+        }
+        .hud-row:last-child {
+            border-bottom: none;
+        }
+        .hud-row .k {
+            color: var(--text-1);
+            font-size: 10.5px;
+        }
+        .hud-row .v {
+            color: var(--text-0);
+            font-weight: 500;
+            text-align: right;
+            font-size: 11px;
+        }
+        .hud-row .v.gold {
+            color: var(--gold);
+        }
+        .hud-row .v.crimson {
+            color: var(--crimson);
+        }
+        .hud-row .v.cyan {
+            color: var(--cyan);
+        }
+        .hud-row .v.dim {
+            color: var(--text-2);
+        }
+        #relationship-chip {
+            margin-top: 12px;
+            padding: 8px 12px;
+            border-radius: 8px;
+            text-align: center;
+            font-family: var(--mono);
+            font-size: 10.5px;
+            letter-spacing: 0.1em;
+            font-weight: 600;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            transition: all 0.3s ease;
+        }
+        .chip-skew {
+            background: var(--gold-soft);
+            color: var(--gold);
+            border-color: rgba(255, 216, 115, 0.35);
+        }
+        .chip-parallel {
+            background: var(--cyan-soft);
+            color: var(--cyan);
+            border-color: rgba(42, 217, 255, 0.35);
+        }
+        .chip-intersect {
+            background: var(--crimson-soft);
+            color: var(--crimson);
+            border-color: rgba(255, 59, 92, 0.35);
+        }
+
+        /* ===== Narration banner ===== */
+        #narration {
+            position: fixed;
+            top: 18px;
+            left: 50%;
+            transform: translateX(-50%) translateY(-20px);
+            z-index: 20;
+            width: min(600px, 70vw);
+            padding: 16px 28px;
+            text-align: center;
+            opacity: 0;
+            transition: opacity 0.6s cubic-bezier(0.22, 1, 0.36, 1), transform 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+            pointer-events: none;
+        }
+        #narration.show {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+        }
+        #narration .eyebrow {
+            font-size: 10px;
+            letter-spacing: 0.18em;
+            color: var(--gold);
+            font-weight: 600;
+            margin-bottom: 4px;
+            text-transform: uppercase;
+        }
+        #narration .line {
+            font-size: 15px;
+            line-height: 1.5;
+            color: var(--text-0);
+            font-weight: 500;
+        }
+        #narration .formula {
+            font-family: var(--mono);
+            font-size: 13px;
+            color: var(--gold);
+            margin-top: 6px;
+            padding: 4px 12px;
+            display: inline-block;
+            background: rgba(255, 216, 115, 0.06);
+            border-radius: 6px;
+            border: 1px solid rgba(255, 216, 115, 0.08);
+        }
+
+        /* ===== Transport bottom-center ===== */
+        #transport {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 20;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 14px;
+            border-radius: 16px;
+        }
+        .tbtn {
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid var(--panel-border);
+            color: var(--text-0);
+            width: 38px;
+            height: 38px;
+            border-radius: 10px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: 0.15s ease;
+            font-size: 14px;
+            font-weight: 500;
+            background: rgba(255, 255, 255, 0.03);
+        }
+        .tbtn:hover {
+            background: rgba(255, 255, 255, 0.10);
+            border-color: rgba(255, 255, 255, 0.15);
+        }
+        .tbtn:active {
+            transform: scale(0.92);
+        }
+        .tbtn.play {
+            width: 46px;
+            height: 46px;
+            background: linear-gradient(135deg, var(--gold), #f5c84a);
+            color: #1a1400;
+            border: none;
+            box-shadow: 0 4px 20px rgba(255, 216, 115, 0.3);
+        }
+        .tbtn.play:hover {
+            background: linear-gradient(135deg, #ffe08f, #ffd873);
+            box-shadow: 0 4px 30px rgba(255, 216, 115, 0.5);
+            transform: scale(1.04);
+        }
+        .tbtn.play:active {
+            transform: scale(0.92);
+        }
+        #step-dots {
+            display: flex;
+            gap: 5px;
+            margin: 0 6px;
+            align-items: center;
+        }
+        .dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.12);
+            transition: 0.25s ease;
+            cursor: pointer;
+        }
+        .dot.active {
+            background: var(--gold);
+            width: 18px;
+            border-radius: 3px;
+        }
+        .dot:hover {
+            background: rgba(255, 255, 255, 0.25);
+        }
+
+        /* ===== Right control drawer ===== */
+        #drawer-toggle {
+            position: fixed;
+            top: 18px;
+            right: 18px;
+            z-index: 25;
+            width: 42px;
+            height: 42px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 16px;
+            color: var(--text-0);
+            border-radius: 12px;
+            transition: 0.2s ease;
+        }
+        #drawer-toggle:hover {
+            background: rgba(255, 255, 255, 0.08);
+        }
+        #drawer {
+            position: fixed;
+            top: 0;
+            right: 0;
+            height: 100%;
+            width: 340px;
+            z-index: 22;
+            padding: 78px 20px 24px;
+            overflow-y: auto;
+            background: var(--panel);
+            border-left: 1px solid var(--panel-border);
+            backdrop-filter: blur(24px) saturate(160%);
+            -webkit-backdrop-filter: blur(24px) saturate(160%);
+            transform: translateX(100%);
+            transition: transform 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+            box-shadow: -10px 0 60px rgba(0, 0, 0, 0.3);
+        }
+        #drawer::-webkit-scrollbar {
+            width: 2px;
+        }
+        #drawer::-webkit-scrollbar-thumb {
+            background: var(--gold);
+            border-radius: 4px;
+        }
+        #drawer.open {
+            transform: translateX(0);
+        }
+        .section-title {
+            font-size: 9.5px;
+            letter-spacing: 0.18em;
+            color: var(--text-2);
+            font-weight: 600;
+            margin: 20px 0 10px;
+            text-transform: uppercase;
+        }
+        .section-title:first-child {
+            margin-top: 0;
+        }
+        .mode-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 6px;
+        }
+        .mbtn {
+            background: rgba(255, 255, 255, 0.035);
+            border: 1px solid var(--panel-border);
+            color: var(--text-1);
+            padding: 8px 6px;
+            font-size: 10.5px;
+            border-radius: 8px;
+            cursor: pointer;
+            text-align: center;
+            font-family: var(--sans);
+            font-weight: 500;
+            transition: 0.15s ease;
+            letter-spacing: 0.02em;
+        }
+        .mbtn:hover {
+            background: rgba(255, 255, 255, 0.07);
+            color: var(--text-0);
+            border-color: rgba(255, 255, 255, 0.12);
+        }
+        .mbtn.active {
+            background: var(--gold-soft);
+            border-color: rgba(255, 216, 115, 0.5);
+            color: var(--gold);
+        }
+        .mbtn.full {
+            grid-column: 1 / -1;
+        }
+        .mbtn.hero {
+            background: linear-gradient(135deg, rgba(255, 216, 115, 0.18), rgba(255, 216, 115, 0.05));
+            border-color: rgba(255, 216, 115, 0.35);
+            color: var(--gold);
+            font-weight: 600;
+        }
+        .mbtn.hero:hover {
+            background: linear-gradient(135deg, rgba(255, 216, 115, 0.25), rgba(255, 216, 115, 0.08));
+        }
+        .mbtn.preset {
+            font-size: 10px;
+            padding: 6px 4px;
+        }
+        .mbtn.preset.skew {
+            border-left: 2px solid var(--gold);
+        }
+        .mbtn.preset.parallel {
+            border-left: 2px solid var(--cyan);
+        }
+        .mbtn.preset.intersect {
+            border-left: 2px solid var(--crimson);
+        }
+
+        .slider-block {
+            margin-bottom: 10px;
+        }
+        .slider-label {
+            display: flex;
+            justify-content: space-between;
+            font-size: 10px;
+            color: var(--text-1);
+            font-family: var(--mono);
+            margin-bottom: 3px;
+        }
+        .slider-label b {
+            color: var(--text-0);
+            font-weight: 500;
+        }
+        input[type="range"] {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 100%;
+            height: 2px;
+            border-radius: 2px;
+            background: rgba(255, 255, 255, 0.10);
+            outline: none;
+            transition: 0.2s ease;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: var(--gold);
+            cursor: pointer;
+            border: 2px solid #0a0d14;
+            box-shadow: 0 0 12px rgba(255, 216, 115, 0.5);
+            transition: 0.15s ease;
+        }
+        input[type="range"]::-webkit-slider-thumb:hover {
+            transform: scale(1.15);
+        }
+        input[type="range"]::-moz-range-thumb {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: var(--gold);
+            cursor: pointer;
+            border: 2px solid #0a0d14;
+            box-shadow: 0 0 12px rgba(255, 216, 115, 0.5);
+        }
+        .vec-group {
+            border: 1px solid var(--panel-border);
+            border-radius: 10px;
+            padding: 12px;
+            margin-bottom: 12px;
+            background: rgba(255, 255, 255, 0.015);
+        }
+        .vec-group.l1 {
+            border-left: 2px solid var(--crimson);
+        }
+        .vec-group.l2 {
+            border-left: 2px solid var(--cyan);
+        }
+        .vec-group h4 {
+            margin: 0 0 6px;
+            font-size: 10.5px;
+            letter-spacing: 0.06em;
+            color: var(--text-0);
+            font-weight: 600;
+        }
+
+        /* ===== JEE mode overlay ===== */
+        #jee-panel {
+            position: fixed;
+            left: 50%;
+            bottom: 96px;
+            transform: translateX(-50%) translateY(20px);
+            z-index: 21;
+            width: min(480px, 84vw);
+            padding: 18px 22px;
+            display: none;
+            text-align: center;
+            opacity: 0;
+            transition: opacity 0.4s ease, transform 0.4s ease;
+        }
+        #jee-panel.show {
+            display: block;
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+        }
+        #jee-panel .eq {
+            font-family: var(--mono);
+            font-size: 12.5px;
+            color: var(--text-0);
+            margin: 3px 0;
+            padding: 3px 0;
+        }
+        #jee-panel .eq .hl-crimson {
+            color: var(--crimson);
+        }
+        #jee-panel .eq .hl-cyan {
+            color: var(--cyan);
+        }
+        #jee-panel .eq .hl-gold {
+            color: var(--gold);
+        }
+        #jee-panel .step-text {
+            font-size: 11px;
+            color: var(--gold);
+            margin: 10px 0 6px;
+            letter-spacing: 0.04em;
+            font-weight: 500;
+            min-height: 2em;
+        }
+        #jee-panel button {
+            margin-top: 10px;
+            background: linear-gradient(135deg, var(--gold), #f5c84a);
+            color: #1a1400;
+            border: none;
+            padding: 8px 20px;
+            border-radius: 8px;
+            font-family: var(--sans);
+            font-weight: 600;
+            cursor: pointer;
+            font-size: 11.5px;
+            transition: 0.15s ease;
+            box-shadow: 0 4px 20px rgba(255, 216, 115, 0.2);
+        }
+        #jee-panel button:hover {
+            transform: scale(1.03);
+            box-shadow: 0 4px 30px rgba(255, 216, 115, 0.4);
+        }
+        #jee-panel button:active {
+            transform: scale(0.94);
+        }
+
+        /* ===== status chip bottom-left ===== */
+        #status-chip {
+            position: fixed;
+            bottom: 20px;
+            left: 18px;
+            z-index: 20;
+            padding: 8px 14px;
+            font-family: var(--mono);
+            font-size: 10px;
+            color: var(--text-2);
+            letter-spacing: 0.06em;
+            border-radius: 10px;
+            border: 1px solid var(--panel-border);
+            background: rgba(10, 13, 20, 0.5);
+            backdrop-filter: blur(12px);
+        }
+        #status-chip .dot-status {
+            display: inline-block;
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            margin-right: 6px;
+            background: var(--gold);
+            animation: pulse-dot 2s infinite;
+        }
+        @keyframes pulse-dot {
+            0%,
+            100% {
+                opacity: 1;
+                transform: scale(1);
+            }
+            50% {
+                opacity: 0.4;
+                transform: scale(0.7);
+            }
+        }
+
+        /* ===== Loading ===== */
+        #loading {
+            position: fixed;
+            inset: 0;
+            z-index: 99;
+            background: var(--bg-0);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            gap: 16px;
+            transition: opacity 0.8s ease;
+        }
+        #loading .spin {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            border: 2px solid rgba(255, 216, 115, 0.15);
+            border-top-color: var(--gold);
+            animation: spin 1s linear infinite;
+        }
+        #loading .ltxt {
+            font-family: var(--mono);
+            font-size: 11px;
+            letter-spacing: 0.18em;
+            color: var(--text-2);
+        }
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        /* ===== Responsive ===== */
+        @media (max-width: 860px) {
+            #hud {
+                width: auto;
+                min-width: 150px;
+                max-width: 60vw;
+                padding: 12px 14px;
+                top: 12px;
+                left: 12px;
+                font-size: 10px;
+            }
+            .hud-row {
+                font-size: 10px;
+            }
+            .hud-row .v {
+                font-size: 10px;
+            }
+            #narration {
+                width: 88vw;
+                padding: 12px 16px;
+                top: auto;
+                bottom: 140px;
+            }
+            #narration .line {
+                font-size: 13px;
+            }
+            #drawer {
+                width: 86vw;
+                padding: 70px 16px 20px;
+            }
+            #transport {
+                bottom: 12px;
+                padding: 6px 10px;
+                gap: 4px;
+            }
+            .tbtn {
+                width: 32px;
+                height: 32px;
+                font-size: 12px;
+            }
+            .tbtn.play {
+                width: 40px;
+                height: 40px;
+            }
+            #status-chip {
+                display: none;
+            }
+            #jee-panel {
+                width: 90vw;
+                bottom: 130px;
+                padding: 14px 16px;
+            }
+            #jee-panel .eq {
+                font-size: 11px;
+            }
+            #drawer-toggle {
+                top: 12px;
+                right: 12px;
+                width: 36px;
+                height: 36px;
+                font-size: 14px;
+            }
+        }
+        @media (max-width: 500px) {
+            #hud {
+                max-width: 50vw;
+                padding: 10px 12px;
+                top: 10px;
+                left: 10px;
+            }
+            .hud-row {
+                font-size: 8.5px;
+                padding: 2px 0;
+            }
+            .hud-row .v {
+                font-size: 8.5px;
+            }
+            #narration .line {
+                font-size: 11.5px;
+            }
+            #narration .formula {
+                font-size: 10.5px;
+            }
+            #transport {
+                gap: 3px;
+                padding: 4px 8px;
+            }
+            .tbtn {
+                width: 28px;
+                height: 28px;
+                font-size: 10px;
+                border-radius: 7px;
+            }
+            .tbtn.play {
+                width: 34px;
+                height: 34px;
+            }
+            #step-dots {
+                gap: 3px;
+            }
+            .dot {
+                width: 4px;
+                height: 4px;
+            }
+            .dot.active {
+                width: 12px;
+            }
+        }
+
+        /* Keyboard hint */
+        .kbd-hint {
+            position: fixed;
+            bottom: 76px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 15;
+            font-size: 10px;
+            color: var(--text-2);
+            font-family: var(--mono);
+            letter-spacing: 0.06em;
+            opacity: 0.4;
+            pointer-events: none;
+            transition: opacity 0.5s ease;
+        }
+        @media (max-width: 600px) {
+            .kbd-hint {
+                display: none;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="loading"><div class="spin"></div><div class="ltxt">CALIBRATING SPACE …</div></div>
+
+    <div id="canvas-wrap"><canvas id="c"></canvas></div>
+
+    <!-- HUD -->
+    <div id="hud" class="glass">
+        <div class="hud-title">⬡ VECTOR HUD</div>
+        <div class="hud-row"><span class="k">b₁</span><span class="v crimson" id="hud-b1">—</span></div>
+        <div class="hud-row"><span class="k">b₂</span><span class="v cyan" id="hud-b2">—</span></div>
+        <div class="hud-row"><span class="k">b₁ × b₂</span><span class="v gold" id="hud-cross">—</span></div>
+        <div class="hud-row"><span class="k">|b₁ × b₂|</span><span class="v gold" id="hud-crossmag">—</span></div>
+        <div class="hud-row"><span class="k">current distance</span><span class="v" id="hud-current">—</span></div>
+        <div class="hud-row"><span class="k">shortest d</span><span class="v gold" id="hud-shortest">—</span></div>
+        <div class="hud-row"><span class="k">AB · b₁</span><span class="v dim" id="hud-dot1">—</span></div>
+        <div class="hud-row"><span class="k">AB · b₂</span><span class="v dim" id="hud-dot2">—</span></div>
+        <div class="hud-row"><span class="k">λ*</span><span class="v" id="hud-lambda">—</span></div>
+        <div class="hud-row"><span class="k">μ*</span><span class="v" id="hud-mu">—</span></div>
+        <div id="relationship-chip" class="chip-skew">RELATIONSHIP: SKEW</div>
+    </div>
+
+    <!-- Narration -->
+    <div id="narration" class="glass">
+        <div class="eyebrow" id="narr-eyebrow">WELCOME</div>
+        <div class="line" id="narr-line">Two rails, floating through space.</div>
+        <div class="formula" id="narr-formula"></div>
+    </div>
+
+    <!-- JEE Panel -->
+    <div id="jee-panel" class="glass">
+        <div class="eq" id="jee-l1">L₁ : r = a₁ + λb₁</div>
+        <div class="eq" id="jee-l2">L₂ : r = a₂ + μb₂</div>
+        <div class="step-text" id="jee-step">FIND THE SHORTEST DISTANCE</div>
+        <button id="jee-reveal-btn">Reveal next step</button>
+    </div>
+
+    <!-- Status -->
+    <div id="status-chip" class="glass"><span class="dot-status"></span>solver active · λ, μ live</div>
+
+    <!-- Transport -->
+    <div id="transport" class="glass">
+        <div class="tbtn" id="btn-prev" title="Previous (←)">‹</div>
+        <div class="tbtn play" id="btn-play" title="Play lesson (Space)">▶</div>
+        <div class="tbtn" id="btn-next" title="Next (→)">›</div>
+        <div id="step-dots"></div>
+        <div class="tbtn" id="btn-reset" title="Reset (R)">⟲</div>
+    </div>
+
+    <div class="kbd-hint">← → · Space · R · Drag to orbit</div>
+
+    <!-- Drawer toggle -->
+    <div id="drawer-toggle" class="glass" title="Controls (C)">⚙</div>
+
+    <!-- Drawer -->
+    <div id="drawer">
+        <div class="section-title">Guided discovery</div>
+        <div class="mode-grid">
+            <div class="mbtn hero full" id="btn-show-direction">✦ SHOW ME THE DIRECTION</div>
+            <div class="mbtn full" id="btn-find-shortest">⚡ FIND SHORTEST</div>
+            <div class="mbtn" id="btn-show-connectors">📏 ALL CONNECTORS</div>
+            <div class="mbtn" id="btn-show-normal">⊥ COMMON NORMAL</div>
+            <div class="mbtn" id="btn-show-plane">▢ NORMAL PLANE</div>
+            <div class="mbtn" id="btn-show-volume">📦 TRIPLE PRODUCT</div>
+            <div class="mbtn" id="btn-explore">🖱 DRAG POINTS</div>
+            <div class="mbtn" id="btn-jee">🎯 JEE MODE</div>
+        </div>
+
+        <div class="section-title">Configuration presets</div>
+        <div class="mode-grid">
+            <div class="mbtn preset skew" id="preset-skew">SKEW</div>
+            <div class="mbtn preset parallel" id="preset-parallel">∥ PARALLEL</div>
+            <div class="mbtn preset intersect" id="preset-intersect">∩ INTERSECT</div>
+            <div class="mbtn preset" id="preset-random">🎲 RANDOM</div>
+        </div>
+
+        <div class="section-title">Line 1 — a₁, b₁</div>
+        <div class="vec-group l1">
+            <h4>Point a₁</h4>
+            <div class="slider-block"><div class="slider-label"><span>a₁x</span><b id="lbl-a1x">0</b></div><input type="range" id="s-a1x" min="-6" max="6" step="0.1"></div>
+            <div class="slider-block"><div class="slider-label"><span>a₁y</span><b id="lbl-a1y">0</b></div><input type="range" id="s-a1y" min="-6" max="6" step="0.1"></div>
+            <div class="slider-block"><div class="slider-label"><span>a₁z</span><b id="lbl-a1z">0</b></div><input type="range" id="s-a1z" min="-6" max="6" step="0.1"></div>
+            <h4 style="margin-top: 10px;">Direction b₁</h4>
+            <div class="slider-block"><div class="slider-label"><span>b₁x</span><b id="lbl-b1x">0</b></div><input type="range" id="s-b1x" min="-3" max="3" step="0.1"></div>
+            <div class="slider-block"><div class="slider-label"><span>b₁y</span><b id="lbl-b1y">0</b></div><input type="range" id="s-b1y" min="-3" max="3" step="0.1"></div>
+            <div class="slider-block"><div class="slider-label"><span>b₁z</span><b id="lbl-b1z">0</b></div><input type="range" id="s-b1z" min="-3" max="3" step="0.1"></div>
+        </div>
+
+        <div class="section-title">Line 2 — a₂, b₂</div>
+        <div class="vec-group l2">
+            <h4>Point a₂</h4>
+            <div class="slider-block"><div class="slider-label"><span>a₂x</span><b id="lbl-a2x">0</b></div><input type="range" id="s-a2x" min="-6" max="6" step="0.1"></div>
+            <div class="slider-block"><div class="slider-label"><span>a₂y</span><b id="lbl-a2y">0</b></div><input type="range" id="s-a2y" min="-6" max="6" step="0.1"></div>
+            <div class="slider-block"><div class="slider-label"><span>a₂z</span><b id="lbl-a2z">0</b></div><input type="range" id="s-a2z" min="-6" max="6" step="0.1"></div>
+            <h4 style="margin-top: 10px;">Direction b₂</h4>
+            <div class="slider-block"><div class="slider-label"><span>b₂x</span><b id="lbl-b2x">0</b></div><input type="range" id="s-b2x" min="-3" max="3" step="0.1"></div>
+            <div class="slider-block"><div class="slider-label"><span>b₂y</span><b id="lbl-b2y">0</b></div><input type="range" id="s-b2y" min="-3" max="3" step="0.1"></div>
+            <div class="slider-block"><div class="slider-label"><span>b₂z</span><b id="lbl-b2z">0</b></div><input type="range" id="s-b2z" min="-3" max="3" step="0.1"></div>
+        </div>
+    </div>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+        import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+        import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+        import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+        import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
+        import { FXAAShader } from 'three/addons/shaders/FXAAShader.js';
+
+        /* ============================================================
+           COLOR / CONSTANTS
+           ============================================================ */
+        const COL = {
+            crimson: 0xff3b5c,
+            crimsonDim: 0x53101c,
+            cyan: 0x2ad9ff,
+            cyanDim: 0x0a3a45,
+            gold: 0xffd873,
+            goldDim: 0x4a3d14,
+            white: 0xf3f5fa,
+            grid: 0x1b2130,
+            axis: 0x394358,
+            bg: 0x05060a,
+        };
+        const EPS = 1e-4;
+
+        /* ============================================================
+           SCENE / RENDERER / CAMERA
+           ============================================================ */
+        const canvas = document.getElementById('c');
+        const renderer = new THREE.WebGLRenderer({
+            canvas,
+            antialias: true,
+            alpha: false,
+            powerPreference: 'high-performance'
+        });
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        renderer.outputColorSpace = THREE.SRGBColorSpace;
+        renderer.toneMapping = THREE.ACESFilmicToneMapping;
+        renderer.toneMappingExposure = 1.05;
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(COL.bg);
+        scene.fog = new THREE.FogExp2(COL.bg, 0.022);
+
+        const camera = new THREE.PerspectiveCamera(40, window.innerWidth / window.innerHeight, 0.1, 200);
+        camera.position.set(12, 9, 16);
+
+        const controls = new OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.06;
+        controls.minDistance = 3;
+        controls.maxDistance = 60;
+        controls.target.set(0, 0, 0);
+        controls.update();
+
+        /* Post-processing */
+        const composer = new EffectComposer(renderer);
+        composer.addPass(new RenderPass(scene, camera));
+
+        const bloom = new UnrealBloomPass(
+            new THREE.Vector2(window.innerWidth, window.innerHeight),
+            0.45, 0.55, 0.15
+        );
+        composer.addPass(bloom);
+
+        const fxaa = new ShaderPass(FXAAShader);
+        composer.addPass(fxaa);
+
+        function resize() {
+            const w = window.innerWidth,
+                h = window.innerHeight;
+            renderer.setSize(w, h);
+            composer.setSize(w, h);
+            camera.aspect = w / h;
+            camera.updateProjectionMatrix();
+            const pr = renderer.getPixelRatio();
+            fxaa.material.uniforms['resolution'].value.set(1 / (w * pr), 1 / (h * pr));
+        }
+        window.addEventListener('resize', resize);
+        resize();
+
+        /* ============================================================
+           LIGHTING
+           ============================================================ */
+        const ambient = new THREE.AmbientLight(0x8899bb, 0.35);
+        scene.add(ambient);
+
+        const key = new THREE.DirectionalLight(0xffffff, 1.3);
+        key.position.set(8, 14, 6);
+        key.castShadow = true;
+        scene.add(key);
+
+        const rim = new THREE.DirectionalLight(0x5588ff, 0.5);
+        rim.position.set(-10, -4, -8);
+        scene.add(rim);
+
+        const fillGold = new THREE.PointLight(0xffd873, 0.6, 30, 2);
+        fillGold.position.set(0, 6, 0);
+        scene.add(fillGold);
+
+        const fillBlue = new THREE.PointLight(0x4488ff, 0.3, 25, 2);
+        fillBlue.position.set(-4, -2, 6);
+        scene.add(fillBlue);
+
+        /* ============================================================
+           AMBIENT PARTICLES
+           ============================================================ */
+        function buildParticles() {
+            const N = 900;
+            const pos = new Float32Array(N * 3);
+            const sizes = new Float32Array(N);
+            for (let i = 0; i < N; i++) {
+                const r = 20 + Math.random() * 26;
+                const theta = Math.random() * Math.PI * 2;
+                const phi = Math.acos(2 * Math.random() - 1);
+                pos[i * 3 + 0] = r * Math.sin(phi) * Math.cos(theta);
+                pos[i * 3 + 1] = (Math.random() - 0.5) * 28;
+                pos[i * 3 + 2] = r * Math.sin(phi) * Math.sin(theta);
+                sizes[i] = 0.015 + Math.random() * 0.035;
+            }
+            const geo = new THREE.BufferGeometry();
+            geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+            geo.setAttribute('size', new THREE.BufferAttribute(sizes, 1));
+            const mat = new THREE.PointsMaterial({
+                color: 0x7a86a0,
+                size: 0.035,
+                transparent: true,
+                opacity: 0.4,
+                sizeAttenuation: true,
+                blending: THREE.AdditiveBlending,
+                depthWrite: false,
+            });
+            const pts = new THREE.Points(geo, mat);
+            scene.add(pts);
+            return pts;
+        }
+        const particles = buildParticles();
+
+        /* ============================================================
+           ORIGIN / AXES / GRID
+           ============================================================ */
+        const worldGroup = new THREE.Group();
+        scene.add(worldGroup);
+
+        function makeAxisLine(dir, len, color) {
+            const geo = new THREE.BufferGeometry().setFromPoints([
+                dir.clone().multiplyScalar(-len),
+                dir.clone().multiplyScalar(len)
+            ]);
+            const mat = new THREE.LineBasicMaterial({ color, transparent: true, opacity: 0.25 });
+            return new THREE.Line(geo, mat);
+        }
+        const axesGroup = new THREE.Group();
+        axesGroup.add(makeAxisLine(new THREE.Vector3(1, 0, 0), 10, COL.axis));
+        axesGroup.add(makeAxisLine(new THREE.Vector3(0, 1, 0), 10, COL.axis));
+        axesGroup.add(makeAxisLine(new THREE.Vector3(0, 0, 1), 10, COL.axis));
+        worldGroup.add(axesGroup);
+
+        const gridHelper = new THREE.GridHelper(26, 26, 0x1b2130, 0x121826);
+        gridHelper.position.y = -6.5;
+        gridHelper.material.transparent = true;
+        gridHelper.material.opacity = 0.3;
+        worldGroup.add(gridHelper);
+
+        const originMarker = new THREE.Mesh(
+            new THREE.SphereGeometry(0.05, 16, 16),
+            new THREE.MeshBasicMaterial({ color: 0xffffff })
+        );
+        worldGroup.add(originMarker);
+
+        /* ============================================================
+           MATH ENGINE
+           ============================================================ */
+        function closestPointsBetweenLines(a1, b1, a2, b2) {
+            const n = new THREE.Vector3().crossVectors(b1, b2);
+            const nLenSq = n.lengthSq();
+            const w0 = new THREE.Vector3().subVectors(a1, a2);
+
+            if (nLenSq < 1e-8) {
+                const b1n = b1.clone().normalize();
+                const t = w0.dot(b1n);
+                const proj = a1.clone().sub(b1n.clone().multiplyScalar(t));
+                const d = proj.distanceTo(a2);
+                return { P: a1.clone(), Q: a2.clone(), d, lambda: 0, mu: 0, n, parallel: true, intersecting: false };
+            }
+
+            const a = b1.dot(b1),
+                b = b1.dot(b2),
+                c = b2.dot(b2);
+            const dd = b1.dot(w0),
+                e = b2.dot(w0);
+            const denom = a * c - b * b;
+            const lambda = (b * e - c * dd) / denom;
+            const mu = (a * e - b * dd) / denom;
+
+            const P = a1.clone().addScaledVector(b1, lambda);
+            const Q = a2.clone().addScaledVector(b2, mu);
+            const d = P.distanceTo(Q);
+            const intersecting = d < 0.03;
+
+            return { P, Q, d, lambda, mu, n, parallel: false, intersecting };
+        }
+
+        /* ============================================================
+           STATE
+           ============================================================ */
+        const state = {
+            a1: new THREE.Vector3(-3, -3, 2),
+            b1: new THREE.Vector3(2, 1, -1),
+            a2: new THREE.Vector3(3, 2, -2),
+            b2: new THREE.Vector3(-1, 2, 1),
+            showConnectors: false,
+            showNormal: false,
+            showPlane: false,
+            showVolume: false,
+            exploreMode: false,
+            tA: 0,
+            tB: 0,
+        };
+
+        /* ============================================================
+           GEOMETRY HELPERS (enhanced)
+           ============================================================ */
+        function cylinderBetween(start, end, radius, material, segments = 10) {
+            const dir = new THREE.Vector3().subVectors(end, start);
+            const len = dir.length() || 0.0001;
+            const geo = new THREE.CylinderGeometry(radius, radius, 1, segments, 1, false);
+            const mesh = new THREE.Mesh(geo, material);
+            mesh.scale.set(1, len, 1);
+            mesh.position.copy(start).addScaledVector(dir, 0.5);
+            const quat = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir.clone().normalize());
+            mesh.quaternion.copy(quat);
+            mesh.castShadow = true;
+            return mesh;
+        }
+
+        function coneAt(point, dir, color, size = 0.18) {
+            const geo = new THREE.ConeGeometry(size * 0.5, size * 1.6, 14);
+            const mat = new THREE.MeshStandardMaterial({
+                color,
+                emissive: color,
+                emissiveIntensity: 0.8,
+                roughness: 0.3,
+                metalness: 0.2,
+            });
+            const mesh = new THREE.Mesh(geo, mat);
+            mesh.position.copy(point);
+            const quat = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir.clone().normalize());
+            mesh.quaternion.copy(quat);
+            mesh.castShadow = true;
+            return mesh;
+        }
+
+        function sphereAt(point, color, r = 0.09, emissiveIntensity = 1.0) {
+            const mat = new THREE.MeshStandardMaterial({
+                color,
+                emissive: color,
+                emissiveIntensity,
+                roughness: 0.25,
+                metalness: 0.15,
+            });
+            const mesh = new THREE.Mesh(new THREE.SphereGeometry(r, 24, 24), mat);
+            mesh.position.copy(point);
+            mesh.castShadow = true;
+            return mesh;
+        }
+
+        function glowRingAt(point, color, radius = 0.22) {
+            const geo = new THREE.RingGeometry(radius * 0.3, radius, 32);
+            const mat = new THREE.MeshBasicMaterial({
+                color,
+                transparent: true,
+                opacity: 0.25,
+                side: THREE.DoubleSide,
+                depthWrite: false,
+                blending: THREE.AdditiveBlending,
+            });
+            const mesh = new THREE.Mesh(geo, mat);
+            mesh.position.copy(point);
+            mesh.lookAt(camera.position);
+            return mesh;
+        }
+
+        function rightAngleGlyph(point, dir1, dir2, color = COL.gold, size = 0.4) {
+            const u = dir1.clone().normalize().multiplyScalar(size);
+            const v = dir2.clone().normalize().multiplyScalar(size);
+            const p0 = point.clone(),
+                p1 = point.clone().add(u),
+                p2 = point.clone().add(u).add(v),
+                p3 = point.clone().add(v);
+            const geo = new THREE.BufferGeometry().setFromPoints([p1, p2, p2, p3]);
+            const mat = new THREE.LineBasicMaterial({ color, transparent: true, opacity: 0.9 });
+            return new THREE.LineSegments(geo, mat);
+        }
+
+        function makeTextSprite(text, { color = '#eef1f6', size = 64, weight = 600, font = 'Space Grotesk', bg = null } =
+            {}) {
+            const canvasEl = document.createElement('canvas');
+            const ctx = canvasEl.getContext('2d');
+            const scale = 4;
+            ctx.font = `${weight} ${size * scale}px ${font}`;
+            const metrics = ctx.measureText(text);
+            const padX = 16 * scale;
+            canvasEl.width = metrics.width + padX * 2;
+            canvasEl.height = size * scale * 1.5;
+            ctx.font = `${weight} ${size * scale}px ${font}`;
+            ctx.fillStyle = color;
+            ctx.textBaseline = 'middle';
+            ctx.textAlign = 'center';
+            if (bg) { ctx.fillStyle = bg;
+                ctx.fillRect(0, 0, canvasEl.width, canvasEl.height);
+                ctx.fillStyle = color; }
+            ctx.fillText(text, canvasEl.width / 2, canvasEl.height / 2);
+            const tex = new THREE.CanvasTexture(canvasEl);
+            tex.colorSpace = THREE.SRGBColorSpace;
+            tex.needsUpdate = true;
+            const mat = new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false });
+            const sprite = new THREE.Sprite(mat);
+            const aspect = canvasEl.width / canvasEl.height;
+            const h = 0.55;
+            sprite.scale.set(h * aspect, h, 1);
+            sprite.userData.setText = (newText) => {
+                ctx.clearRect(0, 0, canvasEl.width, canvasEl.height);
+                ctx.font = `${weight} ${size * scale}px ${font}`;
+                ctx.fillStyle = color;
+                ctx.fillText(newText, canvasEl.width / 2, canvasEl.height / 2);
+                tex.needsUpdate = true;
+            };
+            return sprite;
+        }
+
+        /* ============================================================
+           LINE OBJECTS (L1 / L2) — enhanced with glow
+           ============================================================ */
+        const linesGroup = new THREE.Group();
+        worldGroup.add(linesGroup);
+
+        function lineMaterial(color) {
+            return new THREE.MeshPhysicalMaterial({
+                color,
+                emissive: color,
+                emissiveIntensity: 0.5,
+                roughness: 0.2,
+                metalness: 0.6,
+                clearcoat: 0.05,
+                clearcoatRoughness: 0.3,
+            });
+        }
+
+        const l1Mat = lineMaterial(COL.crimson);
+        const l2Mat = lineMaterial(COL.cyan);
+        let l1Mesh, l2Mesh, l1Arrow, l2Arrow, l1Label, l2Label;
+        let l1Glow, l2Glow;
+
+        function rebuildLines() {
+            [l1Mesh, l2Mesh, l1Arrow, l2Arrow, l1Label, l2Label, l1Glow, l2Glow].forEach(o => { if (o) linesGroup.remove(
+                o); });
+            const HALF = 12;
+            const b1n = state.b1.clone().normalize();
+            const b2n = state.b2.clone().normalize();
+
+            const l1start = state.a1.clone().addScaledVector(b1n, -HALF);
+            const l1end = state.a1.clone().addScaledVector(b1n, HALF);
+            l1Mesh = cylinderBetween(l1start, l1end, 0.04, l1Mat);
+            linesGroup.add(l1Mesh);
+
+            // Glow tube
+            const glowMat = new THREE.MeshBasicMaterial({
+                color: COL.crimson,
+                transparent: true,
+                opacity: 0.08,
+                blending: THREE.AdditiveBlending,
+                depthWrite: false,
+            });
+            l1Glow = cylinderBetween(l1start, l1end, 0.12, glowMat);
+            linesGroup.add(l1Glow);
+
+            l1Arrow = coneAt(state.a1.clone().addScaledVector(b1n, 2.8), b1n, COL.crimson, 0.22);
+            linesGroup.add(l1Arrow);
+            l1Label = makeTextSprite('L₁', { color: '#ff3b5c', size: 48 });
+            l1Label.position.copy(l1end).addScaledVector(b1n, 0.4);
+            linesGroup.add(l1Label);
+
+            const l2start = state.a2.clone().addScaledVector(b2n, -HALF);
+            const l2end = state.a2.clone().addScaledVector(b2n, HALF);
+            l2Mesh = cylinderBetween(l2start, l2end, 0.04, l2Mat);
+            linesGroup.add(l2Mesh);
+
+            const glowMat2 = new THREE.MeshBasicMaterial({
+                color: COL.cyan,
+                transparent: true,
+                opacity: 0.08,
+                blending: THREE.AdditiveBlending,
+                depthWrite: false,
+            });
+            l2Glow = cylinderBetween(l2start, l2end, 0.12, glowMat2);
+            linesGroup.add(l2Glow);
+
+            l2Arrow = coneAt(state.a2.clone().addScaledVector(b2n, 2.8), b2n, COL.cyan, 0.22);
+            linesGroup.add(l2Arrow);
+            l2Label = makeTextSprite('L₂', { color: '#2ad9ff', size: 48 });
+            l2Label.position.copy(l2end).addScaledVector(b2n, 0.4);
+            linesGroup.add(l2Label);
+        }
+
+        /* ============================================================
+           SHORTEST CONNECTOR GROUP
+           ============================================================ */
+        const shortestGroup = new THREE.Group();
+        worldGroup.add(shortestGroup);
+        let shortestConnector = null,
+            ptA_marker = null,
+            ptB_marker = null;
+        let rightAngleA = null,
+            rightAngleB = null,
+            distLabel = null;
+        let connectorGlow = null;
+
+        function rebuildShortest(solved) {
+            [shortestConnector, ptA_marker, ptB_marker, rightAngleA, rightAngleB, distLabel, connectorGlow].forEach(o => {
+                if (o) shortestGroup.remove(o);
+            });
+            const { P, Q, d } = solved;
+
+            const goldMat = new THREE.MeshPhysicalMaterial({
+                color: COL.gold,
+                emissive: COL.gold,
+                emissiveIntensity: 1.2,
+                roughness: 0.2,
+                metalness: 0.5,
+                clearcoat: 0.1,
+            });
+            shortestConnector = cylinderBetween(P, Q, 0.05, goldMat);
+            shortestGroup.add(shortestConnector);
+
+            const glowMat = new THREE.MeshBasicMaterial({
+                color: COL.gold,
+                transparent: true,
+                opacity: 0.15,
+                blending: THREE.AdditiveBlending,
+                depthWrite: false,
+            });
+            connectorGlow = cylinderBetween(P, Q, 0.16, glowMat);
+            shortestGroup.add(connectorGlow);
+
+            ptA_marker = sphereAt(P, COL.gold, 0.085, 1.6);
+            ptB_marker = sphereAt(Q, COL.gold, 0.085, 1.6);
+            shortestGroup.add(ptA_marker, ptB_marker);
+
+            // Pulse rings
+            const ringA = glowRingAt(P, COL.gold, 0.25);
+            const ringB = glowRingAt(Q, COL.gold, 0.25);
+            shortestGroup.add(ringA, ringB);
+
+            const connDir = new THREE.Vector3().subVectors(Q, P).normalize();
+            rightAngleA = rightAngleGlyph(P, connDir, state.b1.clone().normalize());
+            rightAngleB = rightAngleGlyph(Q, connDir.clone().negate(), state.b2.clone().normalize());
+            shortestGroup.add(rightAngleA, rightAngleB);
+
+            distLabel = makeTextSprite(`d = ${d.toFixed(3)}`, { color: '#ffd873', size: 36 });
+            distLabel.position.copy(P).lerp(Q, 0.5).add(new THREE.Vector3(0, 0.4, 0));
+            shortestGroup.add(distLabel);
+        }
+
+        /* ============================================================
+           CONNECTOR FAMILY
+           ============================================================ */
+        const familyGroup = new THREE.Group();
+        worldGroup.add(familyGroup);
+        let familyOffsets = [-2.8, -1.4, 0, 1.4, 2.8];
+
+        function rebuildFamily(solved) {
+            while (familyGroup.children.length) familyGroup.remove(familyGroup.children[0]);
+            if (!state.showConnectors) return;
+
+            familyOffsets.forEach((off, i) => {
+                const lambdaOff = solved.lambda + off * 0.5;
+                const muOff = solved.mu - off * 0.4;
+                const P = state.a1.clone().addScaledVector(state.b1, lambdaOff);
+                const Q = state.a2.clone().addScaledVector(state.b2, muOff);
+                const alpha = 0.2 + 0.6 * (1 - Math.abs(off) / 5);
+                const mat = new THREE.MeshPhysicalMaterial({
+                    color: 0xc9d2e0,
+                    emissive: 0xc9d2e0,
+                    emissiveIntensity: 0.15,
+                    roughness: 0.5,
+                    metalness: 0.1,
+                    transparent: true,
+                    opacity: alpha,
+                });
+                const seg = cylinderBetween(P, Q, 0.02, mat);
+                familyGroup.add(seg);
+
+                if (i === 2) {
+                    const lbl = makeTextSprite(`d₀ = ${P.distanceTo(Q).toFixed(2)}`, { color: '#c9d2e0', size: 26 });
+                    lbl.position.copy(P).lerp(Q, 0.5).add(new THREE.Vector3(0, 0.3, 0));
+                    familyGroup.add(lbl);
+                }
+            });
+        }
+
+        /* ============================================================
+           VECTOR ARROWS (enhanced)
+           ============================================================ */
+        const vectorGroup = new THREE.Group();
+        worldGroup.add(vectorGroup);
+
+        function arrowVec(origin, dir, len, color, label) {
+            const g = new THREE.Group();
+            const end = origin.clone().addScaledVector(dir.clone().normalize(), len);
+            const mat = new THREE.MeshPhysicalMaterial({
+                color,
+                emissive: color,
+                emissiveIntensity: 0.8,
+                roughness: 0.25,
+                metalness: 0.3,
+            });
+            g.add(cylinderBetween(origin, end, 0.04, mat));
+            g.add(coneAt(end, dir, color, 0.22));
+            if (label) {
+                const lbl = makeTextSprite(label, { color: '#' + color.toString(16).padStart(6, '0'), size: 32 });
+                lbl.position.copy(end).addScaledVector(dir.clone().normalize(), 0.35);
+                g.add(lbl);
+            }
+            return g;
+        }
+
+        function rebuildVectors(solved) {
+            while (vectorGroup.children.length) vectorGroup.remove(vectorGroup.children[0]);
+            if (!state.showNormal) return;
+            const origin = solved.P.clone();
+
+            // b1 and b2 with labels
+            vectorGroup.add(arrowVec(origin, state.b1, 2.2, COL.crimson, 'b₁'));
+            vectorGroup.add(arrowVec(origin, state.b2, 2.2, COL.cyan, 'b₂'));
+
+            const nUnit = solved.n.clone().normalize();
+            vectorGroup.add(arrowVec(origin, nUnit, 2.8, COL.gold, 'n = b₁×b₂'));
+
+            // Parallelogram
+            const b1n = state.b1.clone().normalize().multiplyScalar(2.2);
+            const b2n = state.b2.clone().normalize().multiplyScalar(2.2);
+            const p0 = origin,
+                p1 = origin.clone().add(b1n),
+                p2 = origin.clone().add(b1n).add(b2n),
+                p3 = origin.clone().add(b2n);
+            const pgeo = new THREE.BufferGeometry();
+            const verts = new Float32Array([
+                p0.x, p0.y, p0.z, p1.x, p1.y, p1.z, p2.x, p2.y, p2.z,
+                p0.x, p0.y, p0.z, p2.x, p2.y, p2.z, p3.x, p3.y, p3.z,
+            ]);
+            pgeo.setAttribute('position', new THREE.BufferAttribute(verts, 3));
+            pgeo.computeVertexNormals();
+            const pmat = new THREE.MeshBasicMaterial({
+                color: COL.gold,
+                transparent: true,
+                opacity: 0.10,
+                side: THREE.DoubleSide,
+                blending: THREE.AdditiveBlending,
+                depthWrite: false,
+            });
+            vectorGroup.add(new THREE.Mesh(pgeo, pmat));
+
+            // border
+            const borderMat = new THREE.LineBasicMaterial({ color: COL.gold, transparent: true, opacity: 0.15 });
+            const borderPts = [p0, p1, p2, p3, p0];
+            const bgeo = new THREE.BufferGeometry().setFromPoints(borderPts);
+            vectorGroup.add(new THREE.Line(bgeo, borderMat));
+        }
+
+        /* ============================================================
+           COMMON NORMAL PLANE
+           ============================================================ */
+        const planeGroup = new THREE.Group();
+        worldGroup.add(planeGroup);
+
+        function rebuildPlane(solved) {
+            while (planeGroup.children.length) planeGroup.remove(planeGroup.children[0]);
+            if (!state.showPlane) return;
+            const nUnit = solved.n.clone().normalize();
+            const size = 8;
+            const geo = new THREE.PlaneGeometry(size, size, 1, 1);
+            const mat = new THREE.MeshPhysicalMaterial({
+                color: COL.gold,
+                transparent: true,
+                opacity: 0.05,
+                side: THREE.DoubleSide,
+                roughness: 0.5,
+                metalness: 0.0,
+                depthWrite: false,
+            });
+            const mesh = new THREE.Mesh(geo, mat);
+            mesh.position.copy(solved.P).lerp(solved.Q, 0.5);
+            mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), nUnit);
+            planeGroup.add(mesh);
+
+            const wire = new THREE.LineSegments(
+                new THREE.EdgesGeometry(geo),
+                new THREE.LineBasicMaterial({ color: COL.gold, transparent: true, opacity: 0.2 })
+            );
+            wire.position.copy(mesh.position);
+            wire.quaternion.copy(mesh.quaternion);
+            planeGroup.add(wire);
+
+            // Grid lines on plane
+            const gridMat = new THREE.LineBasicMaterial({ color: COL.gold, transparent: true, opacity: 0.06 });
+            for (let i = -4; i <= 4; i += 1) {
+                const pts1 = [
+                    new THREE.Vector3(-size / 2, i * (size / 10), 0),
+                    new THREE.Vector3(size / 2, i * (size / 10), 0)
+                ];
+                const pts2 = [
+                    new THREE.Vector3(i * (size / 10), -size / 2, 0),
+                    new THREE.Vector3(i * (size / 10), size / 2, 0)
+                ];
+                const g1 = new THREE.BufferGeometry().setFromPoints(pts1);
+                const g2 = new THREE.BufferGeometry().setFromPoints(pts2);
+                const l1 = new THREE.Line(g1, gridMat);
+                const l2 = new THREE.Line(g2, gridMat);
+                l1.position.copy(mesh.position);
+                l1.quaternion.copy(mesh.quaternion);
+                l2.position.copy(mesh.position);
+                l2.quaternion.copy(mesh.quaternion);
+                planeGroup.add(l1, l2);
+            }
+        }
+
+        /* ============================================================
+           PARALLELEPIPED / VOLUME
+           ============================================================ */
+        const volumeGroup = new THREE.Group();
+        worldGroup.add(volumeGroup);
+
+        function rebuildVolume(solved) {
+            while (volumeGroup.children.length) volumeGroup.remove(volumeGroup.children[0]);
+            if (!state.showVolume) return;
+
+            const v3 = new THREE.Vector3().subVectors(state.a2, state.a1);
+            const maxLen = Math.max(state.b1.length(), state.b2.length(), v3.length(), 0.001);
+            const scale = 3.2 / maxLen;
+            const e1 = state.b1.clone().multiplyScalar(scale);
+            const e2 = state.b2.clone().multiplyScalar(scale);
+            const e3 = v3.clone().multiplyScalar(scale);
+            const O = state.a1.clone();
+
+            const verts = [
+                O,
+                O.clone().add(e1),
+                O.clone().add(e2),
+                O.clone().add(e3),
+                O.clone().add(e1).add(e2),
+                O.clone().add(e1).add(e3),
+                O.clone().add(e2).add(e3),
+                O.clone().add(e1).add(e2).add(e3)
+            ];
+            const edges = [
+                [0, 1],
+                [0, 2],
+                [0, 3],
+                [1, 4],
+                [1, 5],
+                [2, 4],
+                [2, 6],
+                [3, 5],
+                [3, 6],
+                [4, 7],
+                [5, 7],
+                [6, 7]
+            ];
+            const edgeMat = new THREE.LineBasicMaterial({ color: COL.gold, transparent: true, opacity: 0.5 });
+            edges.forEach(([i, j]) => {
+                const geo = new THREE.BufferGeometry().setFromPoints([verts[i], verts[j]]);
+                volumeGroup.add(new THREE.Line(geo, edgeMat));
+            });
+
+            // Faces
+            const faceMat = new THREE.MeshPhysicalMaterial({
+                color: COL.cyan,
+                transparent: true,
+                opacity: 0.06,
+                side: THREE.DoubleSide,
+                roughness: 0.5,
+                metalness: 0.0,
+                depthWrite: false,
+            });
+            const faceIndices = [
+                [0, 1, 4, 2],
+                [0, 1, 5, 3],
+                [0, 2, 6, 3],
+                [7, 4, 1, 5],
+                [7, 4, 2, 6],
+                [7, 5, 3, 6]
+            ];
+            faceIndices.forEach((idx) => {
+                const pts = idx.map(i => verts[i]);
+                const geo = new THREE.BufferGeometry();
+                const v = new Float32Array([
+                    pts[0].x, pts[0].y, pts[0].z,
+                    pts[1].x, pts[1].y, pts[1].z,
+                    pts[2].x, pts[2].y, pts[2].z,
+                    pts[0].x, pts[0].y, pts[0].z,
+                    pts[2].x, pts[2].y, pts[2].z,
+                    pts[3].x, pts[3].y, pts[3].z,
+                ]);
+                geo.setAttribute('position', new THREE.BufferAttribute(v, 3));
+                geo.computeVertexNormals();
+                volumeGroup.add(new THREE.Mesh(geo, faceMat));
+            });
+
+            // Height segment
+            const nBase = new THREE.Vector3().crossVectors(e1, e2).normalize();
+            const top = O.clone().add(e3);
+            const proj = e3.dot(nBase);
+            const foot = top.clone().addScaledVector(nBase, -proj);
+            const heightMat = new THREE.MeshPhysicalMaterial({
+                color: 0xffffff,
+                emissive: COL.gold,
+                emissiveIntensity: 1.0,
+                roughness: 0.3,
+                metalness: 0.2,
+            });
+            volumeGroup.add(cylinderBetween(top, foot, 0.04, heightMat));
+            const hLbl = makeTextSprite(`height = ${Math.abs(proj).toFixed(2)}`, { color: '#ffd873', size: 28 });
+            hLbl.position.copy(top).lerp(foot, 0.5).add(new THREE.Vector3(0.4, 0, 0));
+            volumeGroup.add(hLbl);
+
+            const vol = Math.abs(e1.dot(new THREE.Vector3().crossVectors(e2, e3)));
+            const vLbl = makeTextSprite(`VOLUME = ${vol.toFixed(2)}`, { color: '#eef1f6', size: 26 });
+            vLbl.position.copy(O).add(e1.clone().multiplyScalar(0.4)).add(e2.clone().multiplyScalar(0.4)).add(e3.clone()
+                .multiplyScalar(0.6));
+            volumeGroup.add(vLbl);
+        }
+
+        /* ============================================================
+           EXPLORE MODE (enhanced drag)
+           ============================================================ */
+        const exploreGroup = new THREE.Group();
+        worldGroup.add(exploreGroup);
+        let exploreConnector = null,
+            exploreA = null,
+            exploreB = null,
+            prevExploreDist = null;
+        let exploreArrowLabel = null,
+            exploreGlow = null;
+        let dragTarget = null;
+        let dragPointer = null;
+
+        function rebuildExplore() {
+            while (exploreGroup.children.length) exploreGroup.remove(exploreGroup.children[0]);
+            if (!state.exploreMode) return;
+            const b1n = state.b1.clone().normalize();
+            const b2n = state.b2.clone().normalize();
+            const A = state.a1.clone().addScaledVector(b1n, state.tA);
+            const B = state.a2.clone().addScaledVector(b2n, state.tB);
+            const d = A.distanceTo(B);
+
+            const mat = new THREE.MeshPhysicalMaterial({
+                color: 0xffffff,
+                emissive: 0xffffff,
+                emissiveIntensity: 0.5,
+                roughness: 0.3,
+                metalness: 0.1,
+            });
+            exploreConnector = cylinderBetween(A, B, 0.04, mat);
+            exploreGroup.add(exploreConnector);
+
+            const glowMat = new THREE.MeshBasicMaterial({
+                color: 0xffffff,
+                transparent: true,
+                opacity: 0.08,
+                blending: THREE.AdditiveBlending,
+                depthWrite: false,
+            });
+            exploreGlow = cylinderBetween(A, B, 0.14, glowMat);
+            exploreGroup.add(exploreGlow);
+
+            exploreA = sphereAt(A, 0xffffff, 0.12, 1.4);
+            exploreB = sphereAt(B, 0xffffff, 0.12, 1.4);
+            exploreA.userData.dragId = 'A';
+            exploreB.userData.dragId = 'B';
+            exploreGroup.add(exploreA, exploreB);
+
+            // Labels on drag points
+            const lA = makeTextSprite('A', { color: '#ffffff', size: 30 });
+            lA.position.copy(A).add(new THREE.Vector3(0.25, 0.25, 0));
+            exploreGroup.add(lA);
+            const lB = makeTextSprite('B', { color: '#ffffff', size: 30 });
+            lB.position.copy(B).add(new THREE.Vector3(0.25, 0.25, 0));
+            exploreGroup.add(lB);
+
+            let trend = '';
+            if (prevExploreDist !== null) {
+                if (d < prevExploreDist - 0.002) trend = '  ↓ DISTANCE';
+                else if (d > prevExploreDist + 0.002) trend = '  ↑ DISTANCE';
+            }
+            const solvedNow = closestPointsBetweenLines(state.a1, state.b1, state.a2, state.b2);
+            if (Math.abs(d - solvedNow.d) < 0.03) trend = '  ★ MINIMUM';
+
+            const color = Math.abs(d - solvedNow.d) < 0.03 ? '#ffd873' : '#eef1f6';
+            exploreArrowLabel = makeTextSprite(`AB = ${d.toFixed(3)}${trend}`, { color, size: 30 });
+            exploreArrowLabel.position.copy(A).lerp(B, 0.5).add(new THREE.Vector3(0, 0.35, 0));
+            exploreGroup.add(exploreArrowLabel);
+        }
+
+        /* Drag handling */
+        const raycaster = new THREE.Raycaster();
+        const pointerNDC = new THREE.Vector2();
+
+        function solveClosestParam(rayOrigin, rayDir, linePoint, lineDirUnit) {
+            const u = lineDirUnit;
+            const v = rayDir.clone().normalize();
+            const w0 = new THREE.Vector3().subVectors(linePoint, rayOrigin);
+            const a = u.dot(u),
+                b = u.dot(v),
+                c = v.dot(v);
+            const d = u.dot(w0),
+                e = v.dot(w0);
+            const denom = a * c - b * b;
+            if (Math.abs(denom) < 1e-6) return 0;
+            const sC = (b * e - c * d) / denom;
+            return -sC;
+        }
+
+        renderer.domElement.addEventListener('pointerdown', (ev) => {
+            if (!state.exploreMode) return;
+            pointerNDC.x = (ev.clientX / window.innerWidth) * 2 - 1;
+            pointerNDC.y = -(ev.clientY / window.innerHeight) * 2 + 1;
+            raycaster.setFromCamera(pointerNDC, camera);
+            const hits = raycaster.intersectObjects([exploreA, exploreB].filter(Boolean));
+            if (hits.length) {
+                dragTarget = hits[0].object.userData.dragId;
+                controls.enabled = false;
+                dragPointer = { x: ev.clientX, y: ev.clientY };
+                renderer.domElement.style.cursor = 'grabbing';
+            }
+        });
+
+        window.addEventListener('pointermove', (ev) => {
+            if (!dragTarget) return;
+            pointerNDC.x = (ev.clientX / window.innerWidth) * 2 - 1;
+            pointerNDC.y = -(ev.clientY / window.innerHeight) * 2 + 1;
+            raycaster.setFromCamera(pointerNDC, camera);
+            const ray = raycaster.ray;
+
+            if (dragTarget === 'A') {
+                const b1n = state.b1.clone().normalize();
+                const t = solveClosestParam(ray.origin, ray.direction, state.a1, b1n);
+                prevExploreDist = state.a1.clone().addScaledVector(b1n, state.tA).distanceTo(
+                    state.a2.clone().addScaledVector(state.b2.clone().normalize(), state.tB)
+                );
+                state.tA = THREE.MathUtils.clamp(t, -9, 9);
+            } else {
+                const b2n = state.b2.clone().normalize();
+                const t = solveClosestParam(ray.origin, ray.direction, state.a2, b2n);
+                prevExploreDist = state.a1.clone().addScaledVector(state.b1.clone().normalize(), state.tA).distanceTo(
+                    state.a2.clone().addScaledVector(b2n, state.tB)
+                );
+                state.tB = THREE.MathUtils.clamp(t, -9, 9);
+            }
+            rebuildExplore();
+            renderer.domElement.style.cursor = 'grabbing';
+        });
+
+        window.addEventListener('pointerup', () => {
+            if (dragTarget) {
+                dragTarget = null;
+                controls.enabled = true;
+                renderer.domElement.style.cursor = 'default';
+            }
+        });
+
+        /* ============================================================
+           MASTER UPDATE
+           ============================================================ */
+        let lastSolved = null;
+
+        function fullRebuild() {
+            rebuildLines();
+            const solved = closestPointsBetweenLines(state.a1, state.b1, state.a2, state.b2);
+            lastSolved = solved;
+            rebuildShortest(solved);
+            rebuildFamily(solved);
+            rebuildVectors(solved);
+            rebuildPlane(solved);
+            rebuildVolume(solved);
+            rebuildExplore();
+            updateHUD(solved);
+        }
+
+        function updateHUD(solved) {
+            const f = (v) => `(${v.x.toFixed(1)}, ${v.y.toFixed(1)}, ${v.z.toFixed(1)})`;
+            document.getElementById('hud-b1').textContent = f(state.b1);
+            document.getElementById('hud-b2').textContent = f(state.b2);
+            document.getElementById('hud-cross').textContent = f(solved.n);
+            document.getElementById('hud-crossmag').textContent = solved.n.length().toFixed(3);
+            document.getElementById('hud-current').textContent = solved.d.toFixed(3);
+            document.getElementById('hud-shortest').textContent = solved.parallel ? '—' : solved.d.toFixed(3);
+            document.getElementById('hud-lambda').textContent = solved.parallel ? '—' : solved.lambda.toFixed(3);
+            document.getElementById('hud-mu').textContent = solved.parallel ? '—' : solved.mu.toFixed(3);
+
+            const AB = new THREE.Vector3().subVectors(solved.Q, solved.P);
+            document.getElementById('hud-dot1').textContent = AB.dot(state.b1).toFixed(3);
+            document.getElementById('hud-dot2').textContent = AB.dot(state.b2).toFixed(3);
+
+            const chip = document.getElementById('relationship-chip');
+            if (solved.parallel) {
+                chip.className = 'chip-parallel';
+                chip.textContent = '∥ PARALLEL · no unique common normal';
+            } else if (solved.intersecting) {
+                chip.className = 'chip-intersect';
+                chip.textContent = '∩ INTERSECTING · d = 0';
+            } else {
+                chip.className = 'chip-skew';
+                chip.textContent = '↗ SKEW · unique common normal';
+            }
+
+            document.getElementById('jee-l1').innerHTML =
+                `L₁ : r = a₁ + λb₁  &nbsp; <span class="hl-crimson">a₁${f(state.a1)}</span>  <span class="hl-crimson">b₁${f(state.b1)}</span>`;
+            document.getElementById('jee-l2').innerHTML =
+                `L₂ : r = a₂ + μb₂  &nbsp; <span class="hl-cyan">a₂${f(state.a2)}</span>  <span class="hl-cyan">b₂${f(state.b2)}</span>`;
+        }
+
+        /* ============================================================
+           SLIDER BINDING
+           ============================================================ */
+        const sliderMap = [
+            ['s-a1x', 'lbl-a1x', 'a1', 'x'],
+            ['s-a1y', 'lbl-a1y', 'a1', 'y'],
+            ['s-a1z', 'lbl-a1z', 'a1', 'z'],
+            ['s-b1x', 'lbl-b1x', 'b1', 'x'],
+            ['s-b1y', 'lbl-b1y', 'b1', 'y'],
+            ['s-b1z', 'lbl-b1z', 'b1', 'z'],
+            ['s-a2x', 'lbl-a2x', 'a2', 'x'],
+            ['s-a2y', 'lbl-a2y', 'a2', 'y'],
+            ['s-a2z', 'lbl-a2z', 'a2', 'z'],
+            ['s-b2x', 'lbl-b2x', 'b2', 'x'],
+            ['s-b2y', 'lbl-b2y', 'b2', 'y'],
+            ['s-b2z', 'lbl-b2z', 'b2', 'z'],
+        ];
+
+        function syncSlidersFromState() {
+            sliderMap.forEach(([sid, lid, vec, axis]) => {
+                const val = state[vec][axis];
+                document.getElementById(sid).value = val;
+                document.getElementById(lid).textContent = val.toFixed(1);
+            });
+        }
+        sliderMap.forEach(([sid, lid, vec, axis]) => {
+            document.getElementById(sid).addEventListener('input', (e) => {
+                const val = parseFloat(e.target.value);
+                state[vec][axis] = val;
+                document.getElementById(lid).textContent = val.toFixed(1);
+                fullRebuild();
+            });
+        });
+
+        /* ============================================================
+           MODE BUTTONS
+           ============================================================ */
+        function toggleBtn(id, key) {
+            const el = document.getElementById(id);
+            el.addEventListener('click', () => {
+                state[key] = !state[key];
+                el.classList.toggle('active', state[key]);
+                fullRebuild();
+            });
+        }
+        toggleBtn('btn-show-connectors', 'showConnectors');
+        toggleBtn('btn-show-normal', 'showNormal');
+        toggleBtn('btn-show-plane', 'showPlane');
+        toggleBtn('btn-show-volume', 'showVolume');
+
+        document.getElementById('btn-explore').addEventListener('click', (e) => {
+            state.exploreMode = !state.exploreMode;
+            e.target.classList.toggle('active', state.exploreMode);
+            if (state.exploreMode) {
+                state.tA = lastSolved ? lastSolved.lambda : 0;
+                state.tB = lastSolved ? lastSolved.mu : 0;
+                prevExploreDist = null;
+                // turn off other modes for clarity
+                state.showConnectors = false;
+                state.showNormal = false;
+                state.showPlane = false;
+                state.showVolume = false;
+                document.querySelectorAll('.mode-grid .mbtn').forEach(b => {
+                    if (b.id.startsWith('btn-show')) b.classList.remove('active');
+                });
+            }
+            fullRebuild();
+        });
+
+        document.getElementById('btn-find-shortest').addEventListener('click', () => {
+            if (!lastSolved) return;
+            flyCameraTo(shortestViewFor(lastSolved), 1.6);
+            narrate('⚡ SHORTEST CONNECTOR',
+                'The gold segment is the unique shortest bridge between the two rails.',
+                `d = ${lastSolved.d.toFixed(3)}`
+            );
+        });
+
+        document.getElementById('btn-show-direction').addEventListener('click', () => {
+            showMeTheDirection();
+        });
+
+        /* Presets */
+        function applyPreset(a1, b1, a2, b2) {
+            state.a1.copy(a1);
+            state.b1.copy(b1);
+            state.a2.copy(a2);
+            state.b2.copy(b2);
+            syncSlidersFromState();
+            fullRebuild();
+        }
+
+        document.getElementById('preset-skew').addEventListener('click', () => {
+            applyPreset(
+                new THREE.Vector3(-3, -3, 2),
+                new THREE.Vector3(2, 1, -1),
+                new THREE.Vector3(3, 2, -2),
+                new THREE.Vector3(-1, 2, 1)
+            );
+            narrate('📐 SKEW PRESET', 'Non-parallel, non-intersecting — the classic case.', '');
+        });
+        document.getElementById('preset-parallel').addEventListener('click', () => {
+            applyPreset(
+                new THREE.Vector3(-3, -2, 1),
+                new THREE.Vector3(1, 1, 0.5),
+                new THREE.Vector3(2, 3, -2),
+                new THREE.Vector3(2, 2, 1)
+            );
+            narrate('∥ PARALLEL PRESET', 'b₁ × b₂ = 0 — the common-normal formula needs special handling.',
+            '');
+        });
+        document.getElementById('preset-intersect').addEventListener('click', () => {
+            applyPreset(
+                new THREE.Vector3(-2, -2, 0),
+                new THREE.Vector3(1, 1, 0),
+                new THREE.Vector3(2, -2, 0),
+                new THREE.Vector3(-1, 1, 0)
+            );
+            narrate('∩ INTERSECTING PRESET', 'The two lines meet — shortest distance collapses to d = 0.',
+            '');
+        });
+        document.getElementById('preset-random').addEventListener('click', () => {
+            const R = () => (Math.random() * 8 - 4);
+            const RB = () => (Math.random() * 3 - 1.5) + (Math.random() < 0.5 ? 0.6 : -0.6);
+            applyPreset(
+                new THREE.Vector3(R(), R(), R()),
+                new THREE.Vector3(RB(), RB(), RB()),
+                new THREE.Vector3(R(), R(), R()),
+                new THREE.Vector3(RB(), RB(), RB())
+            );
+            narrate('🎲 RANDOM', 'A fresh pair of skew lines — the solver adapts instantly.', '');
+        });
+
+        /* JEE Mode */
+        let jeeStage = 0;
+        const jeeStages = [
+            'Identify b₁, the direction vector of L₁.',
+            'Identify b₂, the direction vector of L₂.',
+            'Construct n = b₁ × b₂ — the common normal.',
+            'This n is the direction of the shortest connector.',
+            'd = |(a₂ − a₁)·n| / |n|'
+        ];
+
+        document.getElementById('btn-jee').addEventListener('click', (e) => {
+            const panel = document.getElementById('jee-panel');
+            const isOpen = panel.classList.toggle('show');
+            e.target.classList.toggle('active', isOpen);
+            document.getElementById('hud').style.display = isOpen ? 'none' : 'block';
+            if (isOpen) {
+                state.showNormal = false;
+                state.showConnectors = false;
+                state.showPlane = false;
+                state.showVolume = false;
+                document.querySelectorAll('.mode-grid .mbtn').forEach(b => {
+                    if (b.id.startsWith('btn-show')) b.classList.remove('active');
+                });
+            }
+            jeeStage = 0;
+            document.getElementById('jee-step').textContent = 'FIND THE SHORTEST DISTANCE';
+            fullRebuild();
+            if (isOpen) stopLesson();
+        });
+
+        document.getElementById('jee-reveal-btn').addEventListener('click', () => {
+            if (jeeStage < jeeStages.length) {
+                document.getElementById('jee-step').textContent = jeeStages[jeeStage];
+                if (jeeStage === 2 || jeeStage === 3) {
+                    state.showNormal = true;
+                    document.getElementById('btn-show-normal').classList.add('active');
+                }
+                if (jeeStage === 4) {
+                    document.getElementById('hud').style.display = 'block';
+                }
+                jeeStage++;
+                fullRebuild();
+            } else {
+                document.getElementById('jee-step').textContent =
+                    `✅ d = ${lastSolved ? lastSolved.d.toFixed(3) : '—'}  —  SOLVED`;
+            }
+        });
+
+        /* Drawer toggle */
+        document.getElementById('drawer-toggle').addEventListener('click', () => {
+            document.getElementById('drawer').classList.toggle('open');
+        });
+
+        /* ============================================================
+           NARRATION + CAMERA CHOREOGRAPHY
+           ============================================================ */
+        function narrate(eyebrow, line, formula) {
+            const el = document.getElementById('narration');
+            document.getElementById('narr-eyebrow').textContent = eyebrow;
+            document.getElementById('narr-line').textContent = line;
+            document.getElementById('narr-formula').textContent = formula || '';
+            el.classList.add('show');
+        }
+
+        let camAnim = null;
+
+        function flyCameraTo({ pos, target }, duration = 1.8) {
+            camAnim = {
+                fromPos: camera.position.clone(),
+                toPos: pos.clone(),
+                fromTarget: controls.target.clone(),
+                toTarget: target.clone(),
+                t0: performance.now(),
+                duration: duration * 1000
+            };
+        }
+
+        function easeInOutCubic(x) { return x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2; }
+
+        function shortestViewFor(solved) {
+            const mid = solved.P.clone().lerp(solved.Q, 0.5);
+            const dir = new THREE.Vector3().subVectors(solved.Q, solved.P).normalize();
+            const perp = new THREE.Vector3(dir.y, -dir.x, dir.z + 0.4).normalize();
+            const pos = mid.clone().addScaledVector(perp, 9).add(new THREE.Vector3(0, 3.5, 0));
+            return { pos, target: mid };
+        }
+
+        function showMeTheDirection() {
+            state.showNormal = true;
+            document.getElementById('btn-show-normal').classList.add('active');
+            fullRebuild();
+            if (!lastSolved) return;
+            const solved = lastSolved;
+            const mid = solved.P.clone().lerp(solved.Q, 0.5);
+            const nUnit = solved.n.clone().normalize();
+            const viewPos = mid.clone().addScaledVector(nUnit, 10).add(new THREE.Vector3(2, 3, 2));
+            flyCameraTo({ pos: viewPos, target: mid }, 2.2);
+            narrate('✦ SHOW ME THE DIRECTION',
+                'Camera aligning to the common normal — perpendicular to both rails at once.',
+                'n = b₁ × b₂  ∥  shortest connector'
+            );
+        }
+
+        /* ============================================================
+           TEACHING SEQUENCE (auto lesson)
+           ============================================================ */
+        const steps = [{
+            eyebrow: '🚀 THE SETUP',
+            line: 'Two rails, floating through different directions in space.',
+            formula: '',
+            cam: () => ({ pos: new THREE.Vector3(12, 9, 16), target: new THREE.Vector3(0, 0, 0) }),
+            enter() { state.showConnectors = false;
+                state.showNormal = false;
+                state.showPlane = false;
+                state.showVolume = false;
+                state.exploreMode = false;
+                syncModeButtons();
+                fullRebuild(); }
+        }, {
+            eyebrow: '📏 HOW CLOSE ARE THEY?',
+            line: 'There are infinitely many segments that could join L₁ to L₂.',
+            formula: '',
+            cam: () => ({ pos: new THREE.Vector3(10, 7, 14), target: new THREE.Vector3(0, 0, 0) }),
+            enter() { state.showConnectors = true;
+                syncModeButtons();
+                fullRebuild(); }
+        }, {
+            eyebrow: '❌ NOT EVERY CONNECTOR IS SHORTEST',
+            line: 'Most connecting segments are slanted — not perpendicular to either line.',
+            formula: '',
+            cam: () => ({ pos: new THREE.Vector3(9, 6, 12), target: new THREE.Vector3(0, 0, 0) }),
+            enter() { state.showConnectors = true;
+                syncModeButtons();
+                fullRebuild(); }
+        }, {
+            eyebrow: '🔍 THE SEARCH',
+            line: 'Sliding both points along their lines, the connector shrinks toward a minimum.',
+            formula: '',
+            cam: () => shortestViewFor(lastSolved || closestPointsBetweenLines(state.a1, state.b1, state.a2, state
+                .b2)),
+            enter() { state.showConnectors = false;
+                syncModeButtons();
+                fullRebuild();
+                animateSearch(); }
+        }, {
+            eyebrow: '✨ THE AHA MOMENT',
+            line: 'At the minimum, the connector is perpendicular to BOTH lines.',
+            formula: 'PQ ⟂ L₁  and  PQ ⟂ L₂',
+            cam: () => shortestViewFor(lastSolved || closestPointsBetweenLines(state.a1, state.b1, state.a2, state
+                .b2)),
+            enter() { fullRebuild(); }
+        }, {
+            eyebrow: '🔄 PROVE IT — ROTATE AWAY',
+            line: 'Nudge the connector off perpendicular — it gets longer. Return to 90° and it shrinks back.',
+            formula: '',
+            cam: () => shortestViewFor(lastSolved || closestPointsBetweenLines(state.a1, state.b1, state.a2, state
+                .b2)),
+            enter() { fullRebuild();
+                animateRotationProof(); }
+        }, {
+            eyebrow: '⊥ THE COMMON NORMAL',
+            line: 'b₁ and b₂ are the two rail directions. Their cross product points perpendicular to both.',
+            formula: 'n = b₁ × b₂',
+            cam: () => {
+                const solved = lastSolved || closestPointsBetweenLines(state.a1, state.b1, state.a2, state.b2);
+                const mid = solved.P.clone().lerp(solved.Q, 0.5);
+                return { pos: mid.clone().add(new THREE.Vector3(8, 6, 8)), target: mid };
+            },
+            enter() { state.showNormal = true;
+                syncModeButtons();
+                fullRebuild(); }
+        }, {
+            eyebrow: '▢ COMMON NORMAL PLANE',
+            line: 'Every direction perpendicular to both rails lies in this plane.',
+            formula: '',
+            cam: () => {
+                const solved = lastSolved || closestPointsBetweenLines(state.a1, state.b1, state.a2, state.b2);
+                const mid = solved.P.clone().lerp(solved.Q, 0.5);
+                return { pos: mid.clone().add(new THREE.Vector3(7, 7, 9)), target: mid };
+            },
+            enter() { state.showPlane = true;
+                syncModeButtons();
+                fullRebuild(); }
+        }, {
+            eyebrow: '📦 VOLUME → AREA → HEIGHT',
+            line: 'Triple product is a volume; cross-product magnitude is base area. Divide — height = d.',
+            formula: 'd = Volume / |b₁ × b₂|',
+            cam: () => {
+                const O = state.a1;
+                return { pos: O.clone().add(new THREE.Vector3(9, 7, 9)), target: O.clone().add(new THREE.Vector3(1,
+                        1, 1)) };
+            },
+            enter() { state.showVolume = true;
+                syncModeButtons();
+                fullRebuild(); }
+        }, {
+            eyebrow: '🏁 THE RESULT',
+            line: 'Shortest distance = common normal.',
+            formula: 'd = |(a₂−a₁)·(b₁×b₂)| / |b₁×b₂|',
+            cam: () => ({ pos: new THREE.Vector3(12, 9, 16), target: new THREE.Vector3(0, 0, 0) }),
+            enter() { fullRebuild(); }
+        }, ];
+
+        function syncModeButtons() {
+            document.getElementById('btn-show-connectors').classList.toggle('active', state.showConnectors);
+            document.getElementById('btn-show-normal').classList.toggle('active', state.showNormal);
+            document.getElementById('btn-show-plane').classList.toggle('active', state.showPlane);
+            document.getElementById('btn-show-volume').classList.toggle('active', state.showVolume);
+        }
+
+        let curStep = 0;
+        let lessonPlaying = false;
+        let lessonTimer = null;
+        const dotsWrap = document.getElementById('step-dots');
+        steps.forEach((_, i) => {
+            const d = document.createElement('div');
+            d.className = 'dot';
+            d.addEventListener('click', () => { stopLesson();
+                gotoStep(i); });
+            dotsWrap.appendChild(d);
+        });
+
+        function renderDots() {
+            [...dotsWrap.children].forEach((d, i) => d.classList.toggle('active', i === curStep));
+        }
+
+        function gotoStep(i) {
+            curStep = THREE.MathUtils.clamp(i, 0, steps.length - 1);
+            const s = steps[curStep];
+            narrate(s.eyebrow, s.line, s.formula);
+            flyCameraTo(s.cam(), 1.8);
+            s.enter();
+            renderDots();
+        }
+
+        document.getElementById('btn-next').addEventListener('click', () => { stopLesson();
+            gotoStep(curStep + 1); });
+        document.getElementById('btn-prev').addEventListener('click', () => { stopLesson();
+            gotoStep(curStep - 1); });
+        document.getElementById('btn-reset').addEventListener('click', () => {
+            stopLesson();
+            applyPreset(
+                new THREE.Vector3(-3, -3, 2),
+                new THREE.Vector3(2, 1, -1),
+                new THREE.Vector3(3, 2, -2),
+                new THREE.Vector3(-1, 2, 1)
+            );
+            gotoStep(0);
+        });
+
+        function playLesson() {
+            lessonPlaying = true;
+            document.getElementById('btn-play').textContent = '❚❚';
+            const advance = () => {
+                if (!lessonPlaying) return;
+                if (curStep >= steps.length - 1) { stopLesson(); return; }
+                gotoStep(curStep + 1);
+                lessonTimer = setTimeout(advance, 5000);
+            };
+            lessonTimer = setTimeout(advance, 5000);
+        }
+
+        function stopLesson() {
+            lessonPlaying = false;
+            document.getElementById('btn-play').textContent = '▶';
+            clearTimeout(lessonTimer);
+        }
+        document.getElementById('btn-play').addEventListener('click', () => {
+            if (lessonPlaying) stopLesson();
+            else { if (curStep === 0) gotoStep(0);
+                playLesson(); }
+        });
+
+        /* Search animation */
+        let searchAnim = null;
+
+        function animateSearch() {
+            const solved = lastSolved || closestPointsBetweenLines(state.a1, state.b1, state.a2, state.b2);
+            searchAnim = {
+                t0: performance.now(),
+                duration: 2800,
+                lambdaFrom: solved.lambda - 4.0,
+                muFrom: solved.mu + 3.2,
+                lambdaTo: solved.lambda,
+                muTo: solved.mu,
+            };
+        }
+
+        let rotationAnim = null;
+
+        function animateRotationProof() {
+            const solved = lastSolved || closestPointsBetweenLines(state.a1, state.b1, state.a2, state.b2);
+            rotationAnim = { t0: performance.now(), duration: 3800, baseMu: solved.mu, baseLambda: solved.lambda };
+        }
+
+        let liveOverrideConnector = null,
+            liveOverrideLabel = null,
+            liveOverrideGlow = null;
+
+        function clearLiveOverride() {
+            if (liveOverrideConnector) { shortestGroup.remove(liveOverrideConnector);
+                liveOverrideConnector = null; }
+            if (liveOverrideLabel) { shortestGroup.remove(liveOverrideLabel);
+                liveOverrideLabel = null; }
+            if (liveOverrideGlow) { shortestGroup.remove(liveOverrideGlow);
+                liveOverrideGlow = null; }
+        }
+
+        /* ============================================================
+           KEYBOARD SHORTCUTS
+           ============================================================ */
+        document.addEventListener('keydown', (e) => {
+            if (e.target.tagName === 'INPUT') return;
+            switch (e.key) {
+                case 'ArrowRight':
+                    e.preventDefault();
+                    stopLesson();
+                    gotoStep(curStep + 1);
+                    break;
+                case 'ArrowLeft':
+                    e.preventDefault();
+                    stopLesson();
+                    gotoStep(curStep - 1);
+                    break;
+                case ' ':
+                    e.preventDefault();
+                    document.getElementById('btn-play').click();
+                    break;
+                case 'r':
+                case 'R':
+                    document.getElementById('btn-reset').click();
+                    break;
+                case 'c':
+                case 'C':
+                    document.getElementById('drawer-toggle').click();
+                    break;
+            }
+        });
+
+        /* ============================================================
+           ANIMATION LOOP
+           ============================================================ */
+        const clock = new THREE.Clock();
+
+        function animate() {
+            requestAnimationFrame(animate);
+            const dt = clock.getDelta();
+
+            particles.rotation.y += dt * 0.006;
+            particles.rotation.x += dt * 0.002;
+
+            // Pulse glow rings in explore mode
+            if (state.exploreMode) {
+                exploreGroup.children.forEach(child => {
+                    if (child.isMesh && child.geometry.type === 'RingGeometry') {
+                        const s = 1 + 0.08 * Math.sin(performance.now() * 0.003);
+                        child.scale.set(s, s, s);
+                    }
+                });
+            }
+
+            if (camAnim) {
+                const now = performance.now();
+                let t = (now - camAnim.t0) / camAnim.duration;
+                if (t >= 1) { t = 1; }
+                const te = easeInOutCubic(t);
+                camera.position.lerpVectors(camAnim.fromPos, camAnim.toPos, te);
+                controls.target.lerpVectors(camAnim.fromTarget, camAnim.toTarget, te);
+                if (t >= 1) camAnim = null;
+            }
+
+            if (searchAnim) {
+                const now = performance.now();
+                let t = (now - searchAnim.t0) / searchAnim.duration;
+                if (t > 1) t = 1;
+                const te = easeInOutCubic(t);
+                const lambda = THREE.MathUtils.lerp(searchAnim.lambdaFrom, searchAnim.lambdaTo, te);
+                const mu = THREE.MathUtils.lerp(searchAnim.muFrom, searchAnim.muTo, te);
+                const P = state.a1.clone().addScaledVector(state.b1, lambda);
+                const Q = state.a2.clone().addScaledVector(state.b2, mu);
+                clearLiveOverride();
+                const mat = new THREE.MeshPhysicalMaterial({
+                    color: 0xffffff,
+                    emissive: t > 0.85 ? COL.gold : 0xffffff,
+                    emissiveIntensity: 1.0 + t * 0.8,
+                    roughness: 0.3,
+                    metalness: 0.2,
+                });
+                liveOverrideConnector = cylinderBetween(P, Q, 0.045, mat);
+                shortestGroup.add(liveOverrideConnector);
+
+                const glowMat = new THREE.MeshBasicMaterial({
+                    color: t > 0.85 ? COL.gold : 0xffffff,
+                    transparent: true,
+                    opacity: 0.08,
+                    blending: THREE.AdditiveBlending,
+                    depthWrite: false,
+                });
+                liveOverrideGlow = cylinderBetween(P, Q, 0.16, glowMat);
+                shortestGroup.add(liveOverrideGlow);
+
+                liveOverrideLabel = makeTextSprite(
+                    `D = ${P.distanceTo(Q).toFixed(2)}${t > 0.85 ? ' ✦ MIN' : ''}`,
+                    { color: t > 0.85 ? '#ffd873' : '#eef1f6', size: 28 }
+                );
+                liveOverrideLabel.position.copy(P).lerp(Q, 0.5).add(new THREE.Vector3(0, 0.4, 0));
+                shortestGroup.add(liveOverrideLabel);
+                if (t >= 1) { searchAnim = null;
+                    clearLiveOverride(); }
+            }
+
+            if (rotationAnim) {
+                const now = performance.now();
+                let t = (now - rotationAnim.t0) / rotationAnim.duration;
+                if (t > 1) t = 1;
+                const wave = t < 0.5 ? (t / 0.5) : (1 - (t - 0.5) / 0.5);
+                const offset = wave * 2.0;
+                const mu = rotationAnim.baseMu + offset;
+                const P = state.a1.clone().addScaledVector(state.b1, rotationAnim.baseLambda);
+                const Q = state.a2.clone().addScaledVector(state.b2, mu);
+                clearLiveOverride();
+                const isMin = wave < 0.04;
+                const mat = new THREE.MeshPhysicalMaterial({
+                    color: isMin ? COL.gold : 0xff8877,
+                    emissive: isMin ? COL.gold : 0xff5544,
+                    emissiveIntensity: 1.2,
+                    roughness: 0.3,
+                    metalness: 0.2,
+                });
+                liveOverrideConnector = cylinderBetween(P, Q, 0.045, mat);
+                shortestGroup.add(liveOverrideConnector);
+
+                const glowMat = new THREE.MeshBasicMaterial({
+                    color: isMin ? COL.gold : 0xff5544,
+                    transparent: true,
+                    opacity: 0.08,
+                    blending: THREE.AdditiveBlending,
+                    depthWrite: false,
+                });
+                liveOverrideGlow = cylinderBetween(P, Q, 0.16, glowMat);
+                shortestGroup.add(liveOverrideGlow);
+
+                liveOverrideLabel = makeTextSprite(
+                    isMin ? '✦ MINIMUM' : '↗ NOT MINIMUM',
+                    { color: isMin ? '#ffd873' : '#ff8877', size: 28 }
+                );
+                liveOverrideLabel.position.copy(P).lerp(Q, 0.5).add(new THREE.Vector3(0, 0.45, 0));
+                shortestGroup.add(liveOverrideLabel);
+                if (t >= 1) { rotationAnim = null;
+                    clearLiveOverride(); }
+            }
+
+            controls.update();
+            composer.render();
+        }
+
+        /* ============================================================
+           INIT
+           ============================================================ */
+        syncSlidersFromState();
+        fullRebuild();
+        narrate('🚀 WELCOME', 'Two rails, floating in different directions through space.',
+            'Press ▶ to begin the lesson · drag to orbit'
+        );
+        setTimeout(() => {
+            document.getElementById('loading').style.opacity = '0';
+            setTimeout(() => document.getElementById('loading').style.display = 'none', 700);
+        }, 500);
+        renderDots();
+        animate();
+
+        // Handle drawer close on outside click
+        document.addEventListener('click', (e) => {
+            const drawer = document.getElementById('drawer');
+            const toggle = document.getElementById('drawer-toggle');
+            if (drawer.classList.contains('open') &&
+                !drawer.contains(e.target) &&
+                !toggle.contains(e.target)) {
+                drawer.classList.remove('open');
+            }
+        });
+    </script>
+</body>
+</html>
