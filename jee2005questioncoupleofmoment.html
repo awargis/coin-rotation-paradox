@@ -1,779 +1,854 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>JEE Physics: Parallel Forces & Coplanar Couple</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;700&display=swap');
-
-        :root {
-            --color-bg: #020617; /* slate-950 */
-            --color-force: #38bdf8; /* sky-400 */
-            --color-resultant: #fbbf24; /* amber-400 */
-            --color-couple: #f472b6; /* pink-400 */
-            --color-glass: rgba(255, 255, 255, 0.03);
-            --color-glass-border: rgba(255, 255, 255, 0.1);
-        }
-
-        body {
-            margin: 0;
-            overflow: hidden;
-            background-color: var(--color-bg);
-            color: #f8fafc;
-            font-family: 'Inter', sans-serif;
-            -webkit-font-smoothing: antialiased;
-            touch-action: none; /* Prevent pinch zoom on touch */
-        }
-
-        .glass-panel {
-            background: var(--color-glass);
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
-            border: 1px solid var(--color-glass-border);
-            border-radius: 1rem;
-            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.5);
-        }
-
-        .math-font {
-            font-family: 'JetBrains Mono', monospace;
-        }
-
-        input[type=range] {
-            -webkit-appearance: none;
-            width: 100%;
-            background: transparent;
-            height: 4px;
-            border-radius: 2px;
-            outline: none;
-        }
-
-        input[type=range]::-webkit-slider-thumb {
-            -webkit-appearance: none;
-            height: 16px;
-            width: 16px;
-            border-radius: 50%;
-            background: #ffffff;
-            cursor: pointer;
-            box-shadow: 0 0 10px rgba(255,255,255,0.5);
-            transition: transform 0.1s;
-        }
-        
-        input[type=range]:active::-webkit-slider-thumb {
-            transform: scale(1.2);
-        }
-
-        input[type=range]::-webkit-slider-runnable-track {
-            width: 100%;
-            height: 4px;
-            cursor: pointer;
-            background: rgba(255, 255, 255, 0.2);
-            border-radius: 2px;
-        }
-
-        .cinematic-text {
-            opacity: 0;
-            transform: translateY(20px);
-            transition: all 0.8s cubic-bezier(0.16, 1, 0.3, 1);
-        }
-
-        .cinematic-text.visible {
-            opacity: 1;
-            transform: translateY(0);
-        }
-
-        /* Custom scrollbar for HUD if needed on small screens */
-        ::-webkit-scrollbar { width: 6px; }
-        ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 3px; }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Parallel Forces &amp; Couple — Cinematic Physics Lab</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{ --acc:#9fdcff; --amber:#ffb45e; --rose:#ff7d9d; }
+  html,body{ height:100%; background:#08090c; }
+  body{ font-family:"Space Grotesk","Segoe UI",sans-serif; color:#dfe4ea; overflow:hidden;
+        -webkit-font-smoothing:antialiased; }
+  .mono{ font-family:"IBM Plex Mono",ui-monospace,monospace; font-variant-numeric:tabular-nums; }
+  .glass{ background:rgba(13,15,19,.58); backdrop-filter:blur(16px); -webkit-backdrop-filter:blur(16px);
+          border:1px solid rgba(255,255,255,.08); box-shadow:0 12px 44px rgba(0,0,0,.5); }
+  canvas{ display:block; }
+  /* ---- sliders ---- */
+  input[type=range]{ -webkit-appearance:none; appearance:none; width:100%; height:22px; background:transparent; cursor:pointer; }
+  input[type=range]::-webkit-slider-runnable-track{ height:2px; border-radius:2px;
+    background:linear-gradient(90deg, rgba(159,220,255,.55) var(--p,50%), rgba(255,255,255,.13) var(--p,50%)); }
+  input[type=range]::-webkit-slider-thumb{ -webkit-appearance:none; width:13px; height:13px; border-radius:50%;
+    background:#e9edf2; margin-top:-5.5px; box-shadow:0 0 0 3px rgba(233,237,242,.12); transition:box-shadow .2s; }
+  input[type=range]:hover::-webkit-slider-thumb{ box-shadow:0 0 0 6px rgba(159,220,255,.15); }
+  input[type=range]::-moz-range-track{ height:2px; border-radius:2px; background:rgba(255,255,255,.13); }
+  input[type=range]::-moz-range-progress{ height:2px; border-radius:2px; background:rgba(159,220,255,.55); }
+  input[type=range]::-moz-range-thumb{ width:13px; height:13px; border:none; border-radius:50%; background:#e9edf2; }
+  /* ---- buttons ---- */
+  .ibtn{ width:32px; height:32px; display:grid; place-items:center; border:1px solid rgba(255,255,255,.09);
+         border-radius:8px; color:#b8c0ca; background:rgba(255,255,255,.03); transition:all .2s; }
+  .ibtn:hover{ border-color:rgba(255,255,255,.25); color:#fff; background:rgba(255,255,255,.06); }
+  .ibtn.active{ color:var(--acc); border-color:rgba(159,220,255,.45); }
+  .ebtn{ height:32px; padding:0 12px; display:flex; align-items:center; gap:7px; font-size:10px; letter-spacing:.22em;
+         border:1px solid rgba(159,220,255,.35); border-radius:8px; color:#cfeafi; color:#cfe9fb;
+         background:rgba(159,220,255,.06); transition:all .2s; }
+  .ebtn:hover{ background:rgba(159,220,255,.14); border-color:rgba(159,220,255,.6); }
+  /* ---- toggle ---- */
+  .tgl{ width:30px; height:16px; border-radius:8px; background:rgba(255,255,255,.12); position:relative; transition:.25s; flex:none; }
+  .tgl::after{ content:''; position:absolute; top:2px; left:2px; width:12px; height:12px; border-radius:50%;
+               background:#cfd6de; transition:.25s; }
+  input:checked + .tgl{ background:rgba(159,220,255,.35); }
+  input:checked + .tgl::after{ left:16px; background:#eaf6ff; }
+  /* ---- caption / formula ---- */
+  #caption{ transition:opacity .3s; }
+  .frm{ opacity:0; transform:translateY(9px); transition:opacity .6s, transform .6s; }
+  .frm.on{ opacity:1; transform:none; }
+  #formula{ transition:opacity .8s; }
+  #ahaTx{ transition:opacity .9s; }
+  .chip{ background:rgba(13,15,19,.6); backdrop-filter:blur(10px); border:1px solid rgba(255,255,255,.08);
+         border-radius:8px; padding:4px 10px; }
+</style>
 </head>
-<body class="relative w-screen h-screen flex flex-col items-center justify-center">
+<body>
+<div id="app" class="h-[100dvh] flex flex-col">
 
-    <!-- WebGL/Canvas Layer -->
-    <canvas id="simCanvas" class="absolute inset-0 z-0"></canvas>
+  <!-- ================= HEADER ================= -->
+  <header class="flex items-center justify-between px-4 md:px-6 h-12 shrink-0 border-b border-white/[.06]">
+    <div class="flex items-center gap-3 min-w-0">
+      <h1 class="text-[11px] md:text-[12px] tracking-[.3em] font-medium text-zinc-300 whitespace-nowrap">
+        PARALLEL FORCES <span class="text-zinc-600">&amp;</span> COUPLE
+      </h1>
+      <span class="hidden sm:inline text-[9px] tracking-[.2em] text-zinc-600 border border-white/10 rounded px-1.5 py-0.5">JEE MAIN 2005</span>
+    </div>
+    <div class="flex items-center gap-1.5">
+      <button id="btnPlay"  class="ibtn" title="Play sequence"><svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></button>
+      <button id="btnPause" class="ibtn" title="Pause / resume"><svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M6 5h4v14H6zM14 5h4v14h-4z"/></svg></button>
+      <button id="btnReset" class="ibtn" title="Reset"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 12a9 9 0 1 0 3-6.7M3 4v5h5"/></svg></button>
+      <button id="btnExp"   class="ebtn ml-1"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h10M18 18h2"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="16" cy="18" r="2"/></svg>EXPERIMENT</button>
+    </div>
+  </header>
 
-    <!-- UI Overlay Layer -->
-    <div class="absolute inset-0 z-10 pointer-events-none flex flex-col justify-between p-4 md:p-6 lg:p-8">
-        
-        <!-- Top Section: Title & HUD -->
-        <div class="flex flex-col md:flex-row justify-between items-start gap-4 w-full max-w-7xl mx-auto">
-            
-            <!-- Header -->
-            <div class="glass-panel p-4 md:p-6 pointer-events-auto flex flex-col max-w-md">
-                <div class="flex items-center gap-3 mb-2">
-                    <div class="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></div>
-                    <span class="text-xs font-bold tracking-widest text-slate-400 uppercase">Interactive Simulation</span>
-                </div>
-                <h1 class="text-xl md:text-2xl font-semibold mb-2 leading-tight">Coplanar Couple & Line of Action</h1>
-                <p class="text-sm text-slate-400">JEE Main 2005 Concept: A couple of moment <span class="text-pink-400 math-font italic">H</span> shifts the resultant of parallel forces without changing its magnitude.</p>
-                
-                <div class="flex gap-3 mt-4">
-                    <button id="btnPlay" class="px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg text-xs font-semibold transition-colors flex items-center gap-2">
-                        <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg> Play Cinematic
-                    </button>
-                    <button id="btnSkip" class="px-4 py-2 border border-white/20 hover:bg-white/10 rounded-lg text-xs font-semibold transition-colors flex items-center gap-2">
-                        Experiment Mode
-                    </button>
-                </div>
-            </div>
+  <!-- ================= STAGE ================= -->
+  <main id="stage" class="relative flex-1 min-h-[340px] overflow-hidden">
+    <canvas id="cv" class="absolute inset-0 w-full h-full"></canvas>
 
-            <!-- Math HUD -->
-            <div id="mathHUD" class="glass-panel p-4 md:p-6 pointer-events-auto min-w-[240px] opacity-0 transition-opacity duration-1000">
-                <h2 class="text-xs font-bold tracking-widest text-slate-400 uppercase mb-4 border-b border-white/10 pb-2">Real-Time Data</h2>
-                
-                <div class="space-y-3 math-font text-sm">
-                    <div class="flex justify-between items-center text-sky-300">
-                        <span>Force A</span>
-                        <span id="hudA">40 N</span>
-                    </div>
-                    <div class="flex justify-between items-center text-sky-300">
-                        <span>Force B</span>
-                        <span id="hudB">60 N</span>
-                    </div>
-                    <div class="flex justify-between items-center border-t border-white/10 pt-2 text-amber-300 font-semibold">
-                        <span>Resultant R</span>
-                        <span id="hudR">100 N</span>
-                    </div>
-                    <div class="flex justify-between items-center text-pink-300 mt-4">
-                        <span>Couple H</span>
-                        <span id="hudH">200 N·m</span>
-                    </div>
-                    <div class="flex justify-between items-center border-t border-white/10 pt-2 text-white font-bold bg-white/5 p-2 rounded-md mt-2">
-                        <span>Shift x = H/R</span>
-                        <span id="hudX">2.00 m</span>
-                    </div>
-                </div>
-            </div>
-        </div>
+    <!-- phase caption -->
+    <div id="caption" class="absolute top-3 left-1/2 -translate-x-1/2 text-[9px] md:text-[10px] tracking-[.34em] text-zinc-400 opacity-0 whitespace-nowrap pointer-events-none"></div>
 
-        <!-- Cinematic Aha Moment Overlay -->
-        <div id="cinematicOverlay" class="absolute inset-0 flex items-center justify-center pointer-events-none z-20">
-            <div class="glass-panel p-8 md:p-12 text-center max-w-2xl transform scale-95 opacity-0 transition-all duration-1000 flex flex-col items-center" id="ahaPanel">
-                <h2 class="text-2xl md:text-4xl font-bold mb-6 text-white tracking-tight" id="ahaTitle">The couple shifts the line of action.</h2>
-                <div class="math-font text-xl md:text-3xl space-y-4 text-slate-300" id="ahaMath">
-                    <div class="opacity-0 transition-opacity duration-1000 delay-500" id="ahaLine1">Resultant <span class="text-amber-400 font-bold">R = A + B</span></div>
-                    <div class="opacity-0 transition-opacity duration-1000 delay-1500" id="ahaLine2">Moment Balance: <span class="text-amber-400 font-bold">R</span> × <span class="text-white font-bold">x</span> = <span class="text-pink-400 font-bold">H</span></div>
-                    <div class="opacity-0 transition-opacity duration-1000 delay-2500 text-white font-bold text-3xl md:text-5xl mt-6 p-4 bg-white/5 rounded-xl border border-white/10" id="ahaLine3">x = H / (A+B)</div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Bottom Section: Controls -->
-        <div id="controlsContainer" class="w-full max-w-4xl mx-auto glass-panel p-4 md:p-6 pointer-events-auto opacity-0 transition-opacity duration-1000 translate-y-10 transition-transform">
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                
-                <!-- Slider A -->
-                <div class="flex flex-col">
-                    <div class="flex justify-between items-end mb-2">
-                        <label class="text-xs font-bold text-sky-400 uppercase tracking-wider">Force A</label>
-                        <span class="math-font text-sm font-semibold" id="valA">40 N</span>
-                    </div>
-                    <input type="range" id="sliderA" min="10" max="100" value="40" step="1">
-                </div>
-
-                <!-- Slider B -->
-                <div class="flex flex-col">
-                    <div class="flex justify-between items-end mb-2">
-                        <label class="text-xs font-bold text-sky-400 uppercase tracking-wider">Force B</label>
-                        <span class="math-font text-sm font-semibold" id="valB">60 N</span>
-                    </div>
-                    <input type="range" id="sliderB" min="10" max="100" value="60" step="1">
-                </div>
-
-                <!-- Slider Distance -->
-                <div class="flex flex-col">
-                    <div class="flex justify-between items-end mb-2">
-                        <label class="text-xs font-bold text-slate-400 uppercase tracking-wider">Distance d</label>
-                        <span class="math-font text-sm font-semibold" id="valD">4.0 m</span>
-                    </div>
-                    <input type="range" id="sliderD" min="1" max="10" value="4" step="0.1">
-                </div>
-
-                <!-- Slider H -->
-                <div class="flex flex-col">
-                    <div class="flex justify-between items-end mb-2">
-                        <label class="text-xs font-bold text-pink-400 uppercase tracking-wider">Couple H</label>
-                        <span class="math-font text-sm font-semibold" id="valH">200 N·m</span>
-                    </div>
-                    <input type="range" id="sliderH" min="0" max="500" value="200" step="5">
-                </div>
-
-            </div>
-        </div>
+    <!-- math HUD -->
+    <div class="glass absolute top-3 right-3 rounded-xl px-4 py-3 w-40 sm:w-48 select-none">
+      <div class="grid grid-cols-2 gap-x-3 gap-y-1 text-[9px] tracking-[.14em] text-zinc-500">
+        <div class="flex justify-between"><span>A</span><span id="hudA" class="mono text-zinc-300 text-[10px]">40 N</span></div>
+        <div class="flex justify-between"><span>B</span><span id="hudB" class="mono text-zinc-300 text-[10px]">60 N</span></div>
+        <div class="flex justify-between"><span>H</span><span id="hudH" class="mono text-zinc-300 text-[10px]">200 N·m</span></div>
+        <div class="flex justify-between"><span>d</span><span id="hudD" class="mono text-zinc-300 text-[10px]">4.0 m</span></div>
+      </div>
+      <div class="my-2.5 h-px bg-white/[.07]"></div>
+      <div class="text-[9px] tracking-[.2em] text-zinc-500">R = A + B</div>
+      <div class="flex items-baseline gap-2 mt-0.5">
+        <span class="text-[15px] font-semibold" style="color:var(--acc)">R</span>
+        <span id="hudR" class="mono text-[17px] text-zinc-100">100</span>
+        <span class="text-[10px] text-zinc-500">N</span>
+      </div>
+      <div class="text-[9px] tracking-[.2em] text-zinc-500 mt-2.5">x = H / R</div>
+      <div class="flex items-baseline gap-2 mt-0.5">
+        <span class="text-[15px] font-semibold italic" style="color:var(--acc)">x</span>
+        <span id="hudX" class="mono text-[17px] text-zinc-100">2.00</span>
+        <span class="text-[10px] text-zinc-500">m</span>
+      </div>
     </div>
 
-    <script>
-        /**
-         * PHYSICS SIMULATION ENGINE & RENDERER
-         */
-        const canvas = document.getElementById('simCanvas');
-        const ctx = canvas.getContext('2d');
-        let pixelRatio = window.devicePixelRatio || 1;
+    <!-- moment balance (Show Physics) -->
+    <div id="physChip" class="glass absolute bottom-3 left-3 rounded-xl px-4 py-2.5 hidden select-none">
+      <div class="text-[8.5px] tracking-[.28em] text-zinc-500 mb-1.5">MOMENT BALANCE</div>
+      <div id="physEq1" class="mono text-[10.5px] text-zinc-300">A·a = B·b = 96.0 N·m</div>
+      <div id="physEq2" class="mono text-[10.5px] text-zinc-300 mt-0.5">a + b = d = 4.00 m</div>
+    </div>
 
-        // UI Elements
-        const DOM = {
-            sliderA: document.getElementById('sliderA'),
-            sliderB: document.getElementById('sliderB'),
-            sliderD: document.getElementById('sliderD'),
-            sliderH: document.getElementById('sliderH'),
-            valA: document.getElementById('valA'),
-            valB: document.getElementById('valB'),
-            valD: document.getElementById('valD'),
-            valH: document.getElementById('valH'),
-            hudA: document.getElementById('hudA'),
-            hudB: document.getElementById('hudB'),
-            hudR: document.getElementById('hudR'),
-            hudH: document.getElementById('hudH'),
-            hudX: document.getElementById('hudX'),
-            mathHUD: document.getElementById('mathHUD'),
-            controls: document.getElementById('controlsContainer'),
-            btnPlay: document.getElementById('btnPlay'),
-            btnSkip: document.getElementById('btnSkip'),
-            ahaPanel: document.getElementById('ahaPanel'),
-            ahaLine1: document.getElementById('ahaLine1'),
-            ahaLine2: document.getElementById('ahaLine2'),
-            ahaLine3: document.getElementById('ahaLine3')
-        };
+    <!-- status indicators -->
+    <div id="status" class="absolute bottom-3 right-3 hidden flex-wrap gap-1.5 justify-end max-w-[72%] select-none">
+      <div class="chip"><div class="text-[8px] tracking-[.22em] text-zinc-500">RESULTANT</div><div id="stR" class="mono text-[11px] text-zinc-100">100 N</div></div>
+      <div class="chip"><div class="text-[8px] tracking-[.22em] text-zinc-500">DISPLACEMENT</div><div id="stX" class="mono text-[11px] text-zinc-100">2.00 m</div></div>
+      <div class="chip"><div class="text-[8px] tracking-[.22em] text-zinc-500">DIRECTION</div>
+        <div class="flex items-center gap-1 text-[11px] text-zinc-100">
+          <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg>UPWARD</div></div>
+      <div class="chip"><div class="text-[8px] tracking-[.22em] text-zinc-500">EFFECT OF COUPLE</div><div id="stEff" class="mono text-[11px]" style="color:var(--acc)">LINE SHIFTED</div></div>
+    </div>
 
-        // State Machine & Physics Data
-        const state = {
-            mode: 'cinematic', // 'cinematic' | 'interactive'
-            time: 0,
-            
-            // Target physics values (from user input or sequence)
-            target: { A: 40, B: 60, d: 4, H: 200 },
-            
-            // Current visual physics values (interpolated)
-            current: { A: 0, B: 0, d: 4, H: 0 },
-            
-            // Derived physics values (calculated every frame)
-            physics: {
-                R: 0,
-                x_A: 0,      // Position of A
-                x_B: 0,      // Position of B
-                x_R_init: 0, // Initial CM of forces
-                x_shift: 0,  // Shift due to couple
-                x_R_final: 0 // Final shifted position
-            },
+    <!-- cinematic formula overlay -->
+    <div id="formula" class="absolute inset-0 grid place-items-center pointer-events-none opacity-0">
+      <div class="glass rounded-2xl px-8 py-6 text-center mx-4 max-w-[92vw]">
+        <div id="fl1" class="frm mono text-[14px] md:text-[15px] text-zinc-200">R = A + B = 100 N</div>
+        <div id="fl2" class="frm mono text-[14px] md:text-[15px] text-zinc-200 mt-3">x = H / R</div>
+        <div id="fl3" class="frm mono text-[14px] md:text-[15px] text-zinc-200 mt-3">x = H / (A + B)</div>
+        <div id="fl4" class="frm mono text-[20px] md:text-[24px] mt-3" style="color:var(--acc)">x = 200 / 100 = 2.00 m</div>
+        <div id="ahaTx" class="opacity-0 pt-4 mt-4 border-t border-white/10">
+          <div class="text-[9px] md:text-[10px] tracking-[.3em] text-zinc-300">THE COUPLE DOES NOT CHANGE R</div>
+          <div class="text-[9px] md:text-[10px] tracking-[.3em] text-zinc-400 mt-1.5">IT ONLY SHIFTS ITS LINE OF ACTION</div>
+          <div class="mono text-[11px] text-zinc-500 mt-2">R · x = H</div>
+        </div>
+      </div>
+    </div>
+  </main>
 
-            // Animation Opacities & Visual states
-            anim: {
-                rod: 0,
-                forceA: 0,
-                forceB: 0,
-                resultantInit: 0,
-                couple: 0,
-                shiftProgress: 0,
-                dimension: 0,
-                coupleAngle: 0
-            },
-            
-            particles: []
-        };
+  <!-- ================= CONTROLS ================= -->
+  <footer class="shrink-0 border-t border-white/[.06] px-4 md:px-6 pt-2.5 pb-3">
+    <div id="ctrlWrap" class="grid grid-cols-2 lg:grid-cols-4 gap-x-6 gap-y-1.5 transition-opacity duration-500 opacity-40 pointer-events-none">
+      <div>
+        <div class="flex justify-between text-[9px] tracking-[.2em] text-zinc-500"><span>FORCE A</span><span id="vA" class="mono text-zinc-300 text-[11px]">40 N</span></div>
+        <input id="sA" type="range" min="10" max="100" step="1" value="40">
+      </div>
+      <div>
+        <div class="flex justify-between text-[9px] tracking-[.2em] text-zinc-500"><span>FORCE B</span><span id="vB" class="mono text-zinc-300 text-[11px]">60 N</span></div>
+        <input id="sB" type="range" min="10" max="100" step="1" value="60">
+      </div>
+      <div>
+        <div class="flex justify-between text-[9px] tracking-[.2em] text-zinc-500"><span>COUPLE MOMENT H</span><span id="vH" class="mono text-zinc-300 text-[11px]">200 N·m</span></div>
+        <input id="sH" type="range" min="0" max="500" step="5" value="200">
+      </div>
+      <div>
+        <div class="flex justify-between text-[9px] tracking-[.2em] text-zinc-500"><span>SEPARATION d</span><span id="vD" class="mono text-zinc-300 text-[11px]">4.0 m</span></div>
+        <input id="sD" type="range" min="0.5" max="10" step="0.1" value="4">
+      </div>
+    </div>
+    <div class="mt-1.5 flex items-center justify-between gap-4">
+      <label class="flex items-center gap-2.5 cursor-pointer select-none">
+        <input id="tglPhys" type="checkbox" class="hidden">
+        <span class="tgl"></span>
+        <span class="text-[9px] tracking-[.24em] text-zinc-500">SHOW PHYSICS</span>
+      </label>
+      <p id="hint" class="text-[9px] tracking-[.18em] text-zinc-600 text-right truncate">SEQUENCE RUNNING · PRESS EXPERIMENT TO SKIP</p>
+    </div>
+  </footer>
+</div>
 
-        // Constants
-        const PIXELS_PER_METER = 60;
-        const FORCE_SCALE = 3; // pixels per Newton
-        const Y_BASE = 50; // pixels down from center where rod is
+<script>
+(function(){
+'use strict';
 
-        // Resize Handler
-        function resize() {
-            canvas.width = window.innerWidth * pixelRatio;
-            canvas.height = window.innerHeight * pixelRatio;
-            canvas.style.width = window.innerWidth + 'px';
-            canvas.style.height = window.innerHeight + 'px';
-            // Reset particles on resize to prevent weird boundaries
-            state.particles = [];
-        }
-        window.addEventListener('resize', resize);
-        resize();
+/* ============================================================
+   1 · PHYSICS  (pure — kept fully separate from rendering)
+============================================================ */
+const FS = 0.034;                                        // world metres per newton (visual scale)
+const physics = {
+  R      : (A,B)   => A + B,
+  xRes   : (A,B,d) => (A*(-d/2) + B*(d/2)) / (A + B),     // centre of parallel forces, rel. to pair centre
+  shift  : (H,A,B) => H / (A + B)                          // x = H / R  (metres)
+};
 
-        // Easing Functions
-        const easeOutExpo = x => x === 1 ? 1 : 1 - Math.pow(2, -10 * x);
-        const easeInOutCubic = x => x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2;
-        const lerp = (start, end, amt) => (1 - amt) * start + amt * end;
+/* ============================================================
+   2 · STATE  (targets vs. smoothed view)
+============================================================ */
+const sim  = { A:40, B:60, H:200, d:4 };                 // slider targets
+const view = {                                           // smoothed / timeline-driven
+  A:40, B:60, H:200, d:4,
+  rodIn:0, growA:0, growB:0, rGrow:0, abAlpha:0, mergeEnv:0,
+  coupleIn:0, coupleFade:1, shiftP:0, dimGrow:0, ahaDim:0, sceneDim:0,
+  shift:0, xR:0, xR2:0, zoomPulse:0, hA:0, hB:0, hR:0
+};
+const tl  = { t:0, playing:true, interactive:false };
+const cam = { x:0, y:-1.2, s:36 };
+const par = { x:0, y:0 };                                // mouse parallax
+let   animT = 0, lastScene = '', interactiveDone = false;
 
-        /**
-         * PHYSICS CALCULATIONS
-         */
-        function updatePhysics() {
-            const c = state.current;
-            const p = state.physics;
+/* ============================================================
+   3 · TIMELINE
+============================================================ */
+const SEQ = [
+  ['lab',       2.2], ['forceA', 2.4], ['forceB',   2.4],
+  ['resultant', 3.4], ['couple', 3.2], ['shift',    3.8],
+  ['dimension', 2.2], ['formula',5.4], ['settle',   2.6]
+];
+const TOTAL = SEQ.reduce((s,x)=>s+x[1], 0);
+const CAPTIONS = {
+  lab:'THE RIGID BODY', forceA:'FORCE A', forceB:'LIKE PARALLEL FORCES',
+  resultant:'RESULTANT · CENTER OF PARALLEL FORCES', couple:'COUPLE MOMENT H',
+  shift:'THE LINE OF ACTION SHIFTS', dimension:'DISPLACEMENT x',
+  formula:'THE KEY RELATION', settle:''
+};
 
-            // Forces
-            p.R = c.A + c.B;
-            
-            // Positions (Centered around 0)
-            p.x_A = -c.d / 2;
-            p.x_B =  c.d / 2;
-            
-            // Initial Resultant Position (Center of parallel forces)
-            if (p.R > 0) {
-                p.x_R_init = (c.A * p.x_A + c.B * p.x_B) / p.R;
-            } else {
-                p.x_R_init = 0;
-            }
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+const lerp =(a,b,t)=>a+(b-a)*t;
+const eOutC  = t=>1-Math.pow(1-t,3);
+const eInOutC= t=>t<.5 ? 4*t*t*t : 1-Math.pow(-2*t+2,3)/2;
 
-            // Displacement due to Couple
-            if (p.R > 0) {
-                p.x_shift = c.H / p.R; 
-            } else {
-                p.x_shift = 0;
-            }
+function runTimeline(t){
+  let acc=0, name='end', u=1;
+  for(const [n,d] of SEQ){ if(t < acc+d){ name=n; u=(t-acc)/d; break; } acc+=d; }
+  if(name==='end'){ setInteractive(); return; }
+  if(name!==lastScene){ onEnter(name); lastScene=name; }
 
-            // In interactive mode, shift is immediate. In cinematic, it interpolates.
-            let actualShift = state.mode === 'interactive' ? p.x_shift : p.x_shift * state.anim.shiftProgress;
-            
-            p.x_R_final = p.x_R_init + actualShift;
-        }
+  const V=view;
+  V.rodIn=0; V.growA=0; V.growB=0; V.rGrow=0; V.abAlpha=0; V.mergeEnv=0;
+  V.coupleIn=0; V.coupleFade=1; V.shiftP=0; V.dimGrow=0; V.ahaDim=0;
+  let dimT=0;
 
-        /**
-         * CINEMATIC SEQUENCE TIMELINE
-         */
-        const timeline = [
-            { time: 0.0, action: () => { } },
-            { time: 1.0, duration: 1.5, action: (t) => { state.anim.rod = easeOutExpo(t); } },
-            { time: 2.5, duration: 1.0, action: (t) => { state.current.A = lerp(0, state.target.A, easeOutExpo(t)); state.anim.forceA = t; } },
-            { time: 4.0, duration: 1.0, action: (t) => { state.current.B = lerp(0, state.target.B, easeOutExpo(t)); state.anim.forceB = t; } },
-            { time: 5.5, duration: 1.0, action: (t) => { state.anim.resultantInit = easeOutExpo(t); } },
-            { time: 7.0, duration: 1.0, action: (t) => { state.current.H = lerp(0, state.target.H, easeOutExpo(t)); state.anim.couple = t; } },
-            { time: 9.0, duration: 2.0, action: (t) => { state.anim.shiftProgress = easeInOutCubic(t); } },
-            { time: 11.5, duration: 1.0, action: (t) => { state.anim.dimension = easeOutExpo(t); DOM.mathHUD.style.opacity = t; } },
-            { time: 13.0, action: () => { showAhaMoment(); } },
-            { time: 20.0, action: () => { hideAhaMoment(); startInteractiveMode(); } }
-        ];
+  switch(name){
+    case 'lab':      V.rodIn = eOutC(u); break;
+    case 'forceA':   V.rodIn=1; V.growA = eOutC(clamp(u*1.25,0,1)); break;
+    case 'forceB':   V.rodIn=1; V.growA=1; V.growB = eOutC(clamp(u*1.25,0,1)); break;
+    case 'resultant':{
+      V.rodIn=1; V.growA=1; V.growB=1;
+      V.mergeEnv = u<0.38 ? Math.sin(Math.PI*u/0.38) : 0;
+      V.rGrow    = eInOutC(clamp((u-0.36)/0.5,0,1));
+      V.abAlpha  = u<0.38 ? 1 : (u<0.62 ? lerp(1,0.45,(u-0.38)/0.24) : lerp(0.45,0.85,(u-0.62)/0.28));
+      break;
+    }
+    case 'couple':   V.rodIn=1; V.growA=1; V.growB=1; V.rGrow=1; V.abAlpha=0.85;
+                     V.coupleIn = eInOutC(clamp(u*1.2,0,1)); dimT=0.20; break;
+    case 'shift':    V.rodIn=1; V.growA=1; V.growB=1; V.rGrow=1; V.abAlpha=0.6;
+                     V.coupleIn=1; dimT=0.15;
+                     V.shiftP = eInOutC(u);
+                     V.coupleFade = u<0.42 ? 1 : lerp(1,0.4,clamp((u-0.42)/0.34,0,1));
+                     break;
+    case 'dimension':V.rodIn=1; V.growA=1; V.growB=1; V.rGrow=1; V.abAlpha=0.85;
+                     V.coupleIn=1; V.coupleFade=0.55; V.shiftP=1; dimT=0.06;
+                     V.dimGrow = eOutC(clamp(u*1.3,0,1)); break;
+    case 'formula':{
+      V.rodIn=V.growA=V.growB=V.rGrow=V.coupleIn=V.shiftP=1; V.abAlpha=0.85;
+      V.coupleFade=0.55; V.dimGrow=1; dimT=0.04;
+      setFormula(u>0.54?4 : u>0.38?3 : u>0.22?2 : u>0.06?1 : 0);
+      if(u>0.66) V.ahaDim = eInOutC(clamp((u-0.66)/0.16,0,1));
+      break;
+    }
+    case 'settle':{
+      V.rodIn=V.growA=V.growB=V.rGrow=V.coupleIn=V.shiftP=V.dimGrow=1; V.abAlpha=0.85;
+      V.coupleFade=0.55;
+      V.ahaDim = 1 - eInOutC(clamp((u-0.5)/0.4,0,1));
+      if(u>0.72) hideFormula();
+      break;
+    }
+  }
+  V.formulaHold = (name==='formula' || (name==='settle' && u<=0.72));
+  formulaEl.classList.toggle('opacity-0', !V.formulaHold);
+  ahaTx.classList.toggle('opacity-0', V.ahaDim < 0.5);
 
-        function showAhaMoment() {
-            DOM.ahaPanel.classList.remove('opacity-0', 'scale-95');
-            DOM.ahaPanel.classList.add('opacity-100', 'scale-100');
-            setTimeout(() => DOM.ahaLine1.classList.remove('opacity-0'), 500);
-            setTimeout(() => DOM.ahaLine2.classList.remove('opacity-0'), 1500);
-            setTimeout(() => DOM.ahaLine3.classList.remove('opacity-0'), 2500);
-        }
+  const k = 1-Math.exp(-(dtS||0.016)*3);
+  V.sceneDim += (dimT - V.sceneDim)*k;
+}
 
-        function hideAhaMoment() {
-            DOM.ahaPanel.classList.remove('opacity-100', 'scale-100');
-            DOM.ahaPanel.classList.add('opacity-0', 'scale-95');
-            DOM.ahaLine1.classList.add('opacity-0');
-            DOM.ahaLine2.classList.add('opacity-0');
-            DOM.ahaLine3.classList.add('opacity-0');
-        }
+function onEnter(name){
+  setCaption(CAPTIONS[name] || '');
+  if(name==='shift' || name==='formula') view.zoomPulse = 0.08;
+  if(name==='formula'){
+    set('fl1', `R = A + B = ${sim.A+sim.B} N`);
+    set('fl4', `x = ${sim.H} / ${sim.A+sim.B} = ${(sim.H/(sim.A+sim.B)).toFixed(2)} m`);
+  }
+}
+function setFormula(n){
+  ['fl1','fl2','fl3','fl4'].forEach((id,i)=> document.getElementById(id).classList.toggle('on', i<n));
+}
+function hideFormula(){
+  formulaEl.classList.add('opacity-0');
+  ahaTx.classList.add('opacity-0');
+}
 
-        function startInteractiveMode() {
-            if (state.mode === 'interactive') return;
-            state.mode = 'interactive';
-            hideAhaMoment();
-            
-            // Show Controls
-            DOM.controls.classList.remove('opacity-0', 'translate-y-10');
-            DOM.mathHUD.style.opacity = 1;
+/* ============================================================
+   4 · INTERACTIVE MODE
+============================================================ */
+function setInteractive(){
+  if(tl.interactive) return;
+  tl.interactive = true; tl.playing = true; interactiveDone = true;
+  ctrlWrap.classList.remove('opacity-40','pointer-events-none');
+  statusEl.classList.remove('hidden'); statusEl.classList.add('flex');
+  hideFormula();
+  setCaption('INTERACTIVE MODE');
+  hint.textContent = 'INTERACTIVE · ADJUST PARAMETERS — THE SYSTEM RESPONDS LIVE';
+}
+function applyInteractive(dt){
+  const k  = 1-Math.exp(-dt*5);
+  const k2 = 1-Math.exp(-dt*2.5);
+  view.A+=(sim.A-view.A)*k; view.B+=(sim.B-view.B)*k;
+  view.H+=(sim.H-view.H)*k; view.d+=(sim.d-view.d)*k;
+  view.rodIn+=(1-view.rodIn)*k2; view.growA+=(1-view.growA)*k;
+  view.growB+=(1-view.growB)*k;  view.rGrow+=(1-view.rGrow)*k;
+  view.abAlpha+=(0.85-view.abAlpha)*k2; view.coupleIn+=(1-view.coupleIn)*k2;
+  view.coupleFade+=(0.9-view.coupleFade)*k2;
+  view.sceneDim+=(0-view.sceneDim)*k2; view.dimGrow+=(1-view.dimGrow)*k2;
+  const tgt = physics.shift(view.H, view.A, view.B);
+  view.shift += (tgt-view.shift)*(1-Math.exp(-dt*3.2));
+}
 
-            // Snap values to targets
-            state.current.A = state.target.A;
-            state.current.B = state.target.B;
-            state.current.H = state.target.H;
-            state.current.d = state.target.d;
-            
-            // Set anim states to full
-            state.anim.rod = 1;
-            state.anim.forceA = 1;
-            state.anim.forceB = 1;
-            state.anim.resultantInit = 1;
-            state.anim.couple = 1;
-            state.anim.shiftProgress = 1; // In interactive, we just draw final
-            state.anim.dimension = 1;
-        }
+/* ============================================================
+   5 · CANVAS SETUP / BACKGROUND
+============================================================ */
+const stage=document.getElementById('stage'), cv=document.getElementById('cv'), ctx=cv.getContext('2d');
+let cw=0, ch=0, dpr=1, bg=null;
 
-        function resetCinematic() {
-            state.mode = 'cinematic';
-            state.time = 0;
-            state.current = { A: 0, B: 0, d: 4, H: 0 };
-            state.target = { A: parseInt(DOM.sliderA.value), B: parseInt(DOM.sliderB.value), d: parseFloat(DOM.sliderD.value), H: parseInt(DOM.sliderH.value) };
-            
-            for(let key in state.anim) state.anim[key] = 0;
-            state.particles = [];
-            
-            DOM.controls.classList.add('opacity-0', 'translate-y-10');
-            DOM.mathHUD.style.opacity = 0;
-            hideAhaMoment();
-        }
+function resize(){
+  const r=stage.getBoundingClientRect();
+  cw=Math.max(50, r.width); ch=Math.max(50, r.height);
+  dpr=Math.min(window.devicePixelRatio||1, 2);
+  cv.width=Math.round(cw*dpr); cv.height=Math.round(ch*dpr);
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  buildBG();
+}
+function buildBG(){
+  bg=document.createElement('canvas'); bg.width=cw; bg.height=ch;
+  const b=bg.getContext('2d');
+  b.fillStyle='#0a0c10'; b.fillRect(0,0,cw,ch);
+  let g=b.createRadialGradient(cw*0.5,ch*0.42,0,cw*0.5,ch*0.42,Math.max(cw,ch)*0.55);
+  g.addColorStop(0,'rgba(150,172,205,.075)'); g.addColorStop(1,'rgba(150,172,205,0)');
+  b.fillStyle=g; b.fillRect(0,0,cw,ch);
+  const hz=ch*0.64;
+  b.save(); b.beginPath(); b.rect(0,hz,cw,ch-hz); b.clip();
+  const vp={x:cw*0.5, y:ch*0.30};
+  b.strokeStyle='rgba(165,185,215,.05)'; b.lineWidth=1;
+  for(let x=-cw; x<=cw*2; x+=88){ b.beginPath(); b.moveTo(vp.x,vp.y); b.lineTo(x,ch+60); b.stroke(); }
+  for(let i=1;i<=16;i++){ const t=i/16, y=hz+(ch-hz)*t*t;
+    b.strokeStyle=`rgba(165,185,215,${0.055*(1-t*0.35)})`;
+    b.beginPath(); b.moveTo(0,y); b.lineTo(cw,y); b.stroke(); }
+  b.restore();
+  b.strokeStyle='rgba(165,185,215,.08)';
+  b.beginPath(); b.moveTo(0,hz); b.lineTo(cw,hz); b.stroke();
+  for(let i=0;i<46;i++){ b.fillStyle=`rgba(200,215,235,${0.02+Math.random()*0.035})`;
+    b.beginPath(); b.arc(Math.random()*cw, Math.random()*hz, Math.random()*1.1+0.3, 0, 7); b.fill(); }
+  g=b.createRadialGradient(cw/2,ch/2,Math.min(cw,ch)*0.32,cw/2,ch/2,Math.max(cw,ch)*0.75);
+  g.addColorStop(0,'rgba(0,0,0,0)'); g.addColorStop(1,'rgba(0,0,0,.5)');
+  b.fillStyle=g; b.fillRect(0,0,cw,ch);
+}
+new ResizeObserver(resize).observe(stage);
 
-        /**
-         * RENDER HELPERS
-         */
-        function toScreen(worldX, worldY) {
-            return {
-                x: (canvas.width / 2) + worldX * PIXELS_PER_METER * pixelRatio,
-                y: (canvas.height / 2) + Y_BASE * pixelRatio - worldY * pixelRatio // invert Y for standard cartesian
-            };
-        }
+/* ============================================================
+   6 · DRAW HELPERS
+============================================================ */
+const FD='"Space Grotesk",sans-serif', FM='"IBM Plex Mono",monospace';
+const C_FORCE='#ffb45e', C_R='#9fdcff', C_COUPLE='#ff7d9d';
+const W2Sx = wx => cw/2 + (wx-cam.x)*cam.s;
+const W2Sy = wy => ch/2 + (wy-cam.y)*cam.s;
 
-        function drawGrid() {
-            ctx.strokeStyle = 'rgba(255, 255, 255, 0.03)';
-            ctx.lineWidth = 1 * pixelRatio;
-            
-            const w = canvas.width;
-            const h = canvas.height;
-            const cx = w/2;
-            const cy = h/2 + Y_BASE * pixelRatio;
+function line(a,b2,c,d){ ctx.beginPath(); ctx.moveTo(a,b2); ctx.lineTo(c,d); ctx.stroke(); }
+function rr(c,x,y,w,h,r){ r=Math.min(r,w/2,h/2); c.beginPath(); c.moveTo(x+r,y);
+  c.arcTo(x+w,y,x+w,y+h,r); c.arcTo(x+w,y+h,x,y+h,r); c.arcTo(x,y+h,x,y,r); c.arcTo(x,y,x+w,y,r); c.closePath(); }
+function txt(s,x,y,o={}){
+  const {size=12,font=FD,weight=500,color='#e8ecf1',align='center',alpha=1,track=0,glow=false}=o;
+  if(alpha<=0.01) return;
+  ctx.globalAlpha=alpha; ctx.fillStyle=color; ctx.textAlign=align; ctx.textBaseline='middle';
+  ctx.font=`${weight} ${size}px ${font}`;
+  try{ ctx.letterSpacing=track+'px'; }catch(e){}
+  if(glow){ ctx.shadowColor='rgba(0,0,0,.9)'; ctx.shadowBlur=6; }
+  ctx.fillText(s,x,y);
+  ctx.shadowBlur=0; ctx.globalAlpha=1;
+  try{ ctx.letterSpacing='0px'; }catch(e){}
+}
+function tri(x,y,l,w,color,glow){
+  ctx.save();
+  if(glow){ ctx.shadowColor=color; ctx.shadowBlur=glow; }
+  ctx.fillStyle=color; ctx.beginPath();
+  ctx.moveTo(x,y); ctx.lineTo(x-w/2,y+l); ctx.lineTo(x+w/2,y+l); ctx.closePath(); ctx.fill();
+  ctx.shadowBlur=0; ctx.fillStyle='rgba(255,255,255,.92)'; ctx.beginPath();
+  ctx.moveTo(x,y+2); ctx.lineTo(x-w*0.26,y+l*0.72); ctx.lineTo(x+w*0.26,y+l*0.72); ctx.closePath(); ctx.fill();
+  ctx.restore();
+}
+function triH(x,y,dir,color,glow){
+  ctx.save();
+  if(glow){ ctx.shadowColor=color; ctx.shadowBlur=glow; }
+  ctx.fillStyle=color; ctx.beginPath();
+  ctx.moveTo(x+dir*9,y); ctx.lineTo(x-dir*2,y-4.6); ctx.lineTo(x-dir*2,y+4.6); ctx.closePath(); ctx.fill();
+  ctx.restore();
+}
 
-            ctx.beginPath();
-            // Vertical lines (perspective pseudo effect)
-            for(let i = -10; i <= 10; i++) {
-                let x = cx + i * PIXELS_PER_METER * pixelRatio;
-                ctx.moveTo(x, cy);
-                ctx.lineTo(x, h);
-            }
-            // Horizontal lines
-            for(let i = 0; i <= 10; i++) {
-                let y = cy + Math.pow(i, 1.5) * 10 * pixelRatio;
-                if(y < h) {
-                    ctx.moveTo(0, y);
-                    ctx.lineTo(w, y);
-                }
-            }
-            ctx.stroke();
-        }
+/* ============================================================
+   7 · SCENE ELEMENTS
+============================================================ */
+function coupleGeom(){
+  const rc = clamp(0.55 + 0.09*view.d, 0.6, 1.05);
+  return { rc, cyw: -0.68*rc, cxw: view.xR };
+}
+function coupleAlpha(){
+  let a = view.coupleIn * view.coupleFade * (0.35 + 0.65*clamp(view.H/250,0,1));
+  if(view.H < 0.5) a = 0;
+  return a;
+}
+function coupleSide(){ return view.xR <= 0.2 ? 1 : -1; }
 
-        function drawRod(alpha) {
-            if (alpha <= 0.01) return;
-            ctx.save();
-            ctx.globalAlpha = alpha;
-            
-            const p = state.physics;
-            const left = toScreen(p.x_A - 0.5, 0);
-            const right = toScreen(p.x_B + 0.5, 0);
-            const radius = 8 * pixelRatio;
+function drawShadow(rodL,rodR){
+  const a=view.rodIn; if(a<=0.01) return;
+  const cx=W2Sx((rodL+rodR)/2), y=W2Sy(0)+clamp(0.17*cam.s,8,20)+10;
+  const rx=(rodR-rodL)*cam.s*0.42;
+  ctx.save(); ctx.translate(cx,y); ctx.scale(1,0.16);
+  const g=ctx.createRadialGradient(0,0,0,0,0,Math.max(rx,10));
+  g.addColorStop(0,`rgba(0,0,0,${0.5*a})`); g.addColorStop(1,'rgba(0,0,0,0)');
+  ctx.fillStyle=g; ctx.beginPath(); ctx.arc(0,0,Math.max(rx,10),0,7); ctx.fill(); ctx.restore();
+}
 
-            // Shadow
-            ctx.shadowColor = 'rgba(0,0,0,0.8)';
-            ctx.shadowBlur = 20 * pixelRatio;
-            ctx.shadowOffsetY = 10 * pixelRatio;
+function drawRod(rodL,rodR){
+  if(view.rodIn<=0.01) return;
+  const y0=W2Sy(0), h=clamp(0.34*cam.s,15,40), x1=W2Sx(rodL), x2=W2Sx(rodR), w=x2-x1;
+  ctx.globalAlpha=view.rodIn;
+  const g=ctx.createLinearGradient(0,y0-h/2,0,y0+h/2);
+  g.addColorStop(0,'#4a505a'); g.addColorStop(0.28,'#2b2f36'); g.addColorStop(0.75,'#1a1d22'); g.addColorStop(1,'#121419');
+  ctx.fillStyle=g; rr(ctx,x1,y0-h/2,w,h,h/2); ctx.fill();
+  ctx.strokeStyle='rgba(255,255,255,.22)'; ctx.lineWidth=1;
+  ctx.beginPath(); ctx.moveTo(x1+h/2, y0-h/2+1.5); ctx.lineTo(x2-h/2, y0-h/2+1.5); ctx.stroke();
+  ctx.strokeStyle='rgba(0,0,0,.5)';
+  ctx.beginPath(); ctx.moveTo(x1+h/2, y0+h/2-1); ctx.lineTo(x2-h/2, y0+h/2-1); ctx.stroke();
 
-            // Body
-            const grad = ctx.createLinearGradient(0, left.y - radius, 0, left.y + radius);
-            grad.addColorStop(0, '#64748b'); // slate-500
-            grad.addColorStop(0.2, '#cbd5e1'); // highlight
-            grad.addColorStop(0.5, '#475569'); // mid
-            grad.addColorStop(1, '#0f172a'); // dark shadow
+  const xA=-view.d/2, xB=view.d/2, showPhys=tglPhys.checked && view.rGrow>0.5;
+  if(showPhys && view.shiftP>=0){
+    ctx.fillStyle='rgba(255,180,94,.13)';
+    ctx.fillRect(W2Sx(xA), y0-h/2+2, W2Sx(view.xR)-W2Sx(xA), h-4);
+    ctx.fillRect(W2Sx(view.xR), y0-h/2+2, W2Sx(xB)-W2Sx(view.xR), h-4);
+  }
+  // engraved label
+  if(w>130) txt('RIGID BODY', x1+12, y0, {size:8,track:2.4,align:'left',color:'rgba(226,232,240,.4)'});
+  // anchors
+  const anchors=[[xA,view.growA,C_FORCE],[xB,view.growB,C_FORCE]];
+  for(const [wx,gg,col] of anchors){
+    const ax=W2Sx(wx);
+    ctx.beginPath(); ctx.arc(ax,y0,3.4,0,7); ctx.fillStyle='#101318'; ctx.fill();
+    ctx.strokeStyle=col; ctx.lineWidth=1.2; ctx.globalAlpha=view.rodIn*(0.35+0.65*gg); ctx.stroke();
+    ctx.globalAlpha=view.rodIn;
+  }
+  // tick at original resultant
+  const tr=W2Sx(view.xR);
+  ctx.strokeStyle='rgba(159,220,255,.55)'; ctx.lineWidth=1.2;
+  line(tr,y0-h/2+2,tr,y0+h/2-2);
+  ctx.globalAlpha=1;
 
-            ctx.fillStyle = grad;
-            ctx.beginPath();
-            ctx.roundRect(left.x, left.y - radius, right.x - left.x, radius * 2, radius);
-            ctx.fill();
+  if(showPhys){
+    const ly=W2Sy(0.38);
+    const a=view.xR-xA, b2=xB-view.xR;
+    if(W2Sx(xB)-W2Sx(xA)>60){
+      txt('a',(W2Sx(xA)+W2Sx(view.xR))/2,ly,{size:10,font:FM,color:'#ffd9ae',alpha:.8,glow:1});
+      txt('b',(W2Sx(view.xR)+W2Sx(xB))/2,ly,{size:10,font:FM,color:'#ffd9ae',alpha:.8,glow:1});
+    }
+    set('physEq1', `A·a = B·b = ${(view.A*a).toFixed(1)} N·m`);
+    set('physEq2', `a + b = d = ${(a+b2).toFixed(2)} m`);
+  }
+}
 
-            ctx.restore();
-        }
+function drawForce(wx, hN, grow, strength, hover, label, valStr){
+  if(grow<=0.01 || view.rodIn<=0.01) return;
+  const sx=W2Sx(wx), base=W2Sy(0)-clamp(0.34*cam.s,15,40)/2;
+  const len=hN*FS*cam.s, tip=base-len*grow;
+  const gb=1+hover*0.6;
+  ctx.lineCap='round';
+  ctx.globalAlpha=view.rodIn;
+  ctx.strokeStyle='rgba(8,10,13,.9)'; ctx.lineWidth=8;  line(sx,base,sx,tip+11);
+  ctx.shadowColor=C_FORCE; ctx.shadowBlur=15*gb*strength;
+  ctx.strokeStyle=C_FORCE; ctx.globalAlpha=view.rodIn*strength; ctx.lineWidth=2.6; line(sx,base,sx,tip+10);
+  ctx.shadowBlur=0;
+  ctx.strokeStyle='#ffe2bd'; ctx.globalAlpha=view.rodIn*strength*0.85; ctx.lineWidth=1; line(sx,base,sx,tip+10);
+  ctx.strokeStyle='rgba(255,255,255,.5)'; ctx.lineWidth=1.3;
+  ctx.setLineDash([3,15]); ctx.lineDashOffset=-animT*44; line(sx,base,sx,tip+13); ctx.setLineDash([]);
+  ctx.globalAlpha=view.rodIn*strength;
+  tri(sx,tip,13,10,C_FORCE,16*gb);
+  ctx.globalAlpha=view.rodIn*strength;
+  txt(label,sx,tip-34,{size:15,weight:700,color:'#ffcf96',glow:1});
+  txt(valStr,sx,tip-16,{size:11,font:FM,color:'#f4e3cb',alpha:.9,glow:1});
+  ctx.globalAlpha=1;
+  // stateless rising particles
+  const n=6;
+  ctx.save(); ctx.globalCompositeOperation='lighter';
+  for(let i=0;i<n;i++){
+    const p=(animT*0.22*(0.7+0.3*((i*7)%3)/2) + i/n)%1;
+    const y=lerp(base,tip+12,p), a=Math.sin(Math.PI*p)*0.32*grow*strength;
+    if(a<=0.01) continue;
+    ctx.globalAlpha=a; ctx.fillStyle='#ffd9a8';
+    ctx.beginPath(); ctx.arc(sx+Math.sin(i*17.3+animT*0.6)*3, y, 1.6, 0, 7); ctx.fill();
+  }
+  ctx.restore(); ctx.globalAlpha=1;
+  return {sx,base,tip};
+}
 
-        function drawArrow(xWorld, mag, color, label, alpha, isDashed = false) {
-            if (alpha <= 0.01 || mag <= 0) return;
-            
-            ctx.save();
-            ctx.globalAlpha = alpha;
-            
-            const start = toScreen(xWorld, 0);
-            const len = mag * FORCE_SCALE * pixelRatio;
-            const end = toScreen(xWorld, len / pixelRatio); // World Y is length
+function drawGhost(hPx){
+  const a=clamp(view.shift/0.6,0,1)*0.55*(tl.interactive?1:1);
+  if(a<=0.02 || view.rGrow<=0.05) return;
+  const sx=W2Sx(view.xR), y0=W2Sy(0)-clamp(0.34*cam.s,15,40)/2;
+  ctx.setLineDash([5,6]); ctx.strokeStyle=`rgba(159,220,255,${0.42*a})`; ctx.lineWidth=1;
+  line(sx,y0,sx,y0-hPx); ctx.setLineDash([]);
+  txt('ORIGINAL LINE',sx,y0-hPx-12,{size:8.5,track:1.6,color:'#9fdcff',alpha:.6*a,glow:1});
+}
 
-            const headLen = 15 * pixelRatio;
-            const headWid = 8 * pixelRatio;
+function drawResultant(hPx,hover){
+  if(view.rGrow<=0.01) return;
+  const sx=W2Sx(view.xR2), base=W2Sy(0)-clamp(0.34*cam.s,15,40)/2;
+  const tip=base-hPx*view.rGrow;
+  const gb=(1+0.5*clamp(view.shift/2,0,1)+hover*0.5)*view.rGrow;
+  ctx.lineCap='round';
+  ctx.globalAlpha=view.rGrow;
+  ctx.strokeStyle='rgba(8,10,13,.95)'; ctx.lineWidth=12; line(sx,base,sx,tip+14);
+  ctx.shadowColor=C_R; ctx.shadowBlur=28*gb;
+  ctx.strokeStyle='rgba(159,220,255,.3)'; ctx.lineWidth=8; line(sx,base,sx,tip+12);
+  ctx.strokeStyle=C_R; ctx.lineWidth=3; line(sx,base,sx,tip+12);
+  ctx.shadowBlur=0;
+  ctx.strokeStyle='#ffffff'; ctx.globalAlpha=0.85*view.rGrow; ctx.lineWidth=1.1; line(sx,base,sx,tip+12);
+  ctx.strokeStyle='rgba(255,255,255,.45)'; ctx.lineWidth=1.4;
+  ctx.setLineDash([3,17]); ctx.lineDashOffset=-animT*34; line(sx,base,sx,tip+15); ctx.setLineDash([]);
+  ctx.globalAlpha=view.rGrow;
+  tri(sx,tip,16,12,C_R,24*gb);
+  const Rv=Math.round((view.A+view.B)*view.rGrow);
+  ctx.globalAlpha=view.rGrow;
+  txt('R',sx,tip-38,{size:17,weight:700,color:'#e5f6ff',glow:1});
+  txt(`${Rv} N`,sx,tip-19,{size:12,font:FM,color:'#dff2ff',alpha:.95,glow:1});
+  ctx.globalAlpha=1;
+}
 
-            // Glow
-            ctx.shadowColor = color;
-            ctx.shadowBlur = 15 * pixelRatio;
+function drawCouple(){
+  const a=coupleAlpha(); if(a<=0.015 || view.coupleIn<=0.01) return;
+  const {rc,cyw,cxw}=coupleGeom();
+  const sx=W2Sx(cxw), sy=W2Sy(cyw), r=rc*cam.s;
+  const sweep=Math.PI*2*0.78*view.coupleIn;
+  const a0=-Math.PI/2+0.55, ae=a0-sweep;
+  ctx.save(); ctx.lineCap='round'; ctx.globalAlpha=a;
+  ctx.shadowColor=C_COUPLE; ctx.shadowBlur=18;
+  ctx.strokeStyle=C_COUPLE; ctx.lineWidth=2.4;
+  ctx.setLineDash([12,8]); ctx.lineDashOffset=-animT*(24+view.H*0.09);
+  ctx.beginPath(); ctx.arc(sx,sy,r,a0,ae,true); ctx.stroke();
+  ctx.setLineDash([]); ctx.shadowBlur=0;
+  const px=sx+r*Math.cos(ae+0.09), py=sy+r*Math.sin(ae+0.09);
+  const qx=sx+r*Math.cos(ae),    qy=sy+r*Math.sin(ae);
+  let dx=qx-px, dy=qy-py; const m=Math.hypot(dx,dy)||1; dx/=m; dy/=m;
+  ctx.fillStyle=C_COUPLE; ctx.beginPath();
+  ctx.moveTo(qx+dx*11,qy+dy*11);
+  ctx.lineTo(qx-dy*4.5,qy+dx*4.5); ctx.lineTo(qx+dy*4.5,qy-dx*4.5);
+  ctx.closePath(); ctx.fill();
+  // orbiting particles
+  ctx.globalCompositeOperation='lighter';
+  const w=0.6+view.H/500*1.5;
+  for(let i=0;i<6;i++){
+    const an=animT*w+i*Math.PI/3;
+    ctx.globalAlpha=a*0.55; ctx.fillStyle='#ffb9cb';
+    ctx.beginPath(); ctx.arc(sx+r*1.12*Math.cos(an), sy+r*1.12*Math.sin(an), 1.7, 0, 7); ctx.fill();
+  }
+  ctx.restore();
+  const side=coupleSide(), lx=sx+side*(r*1.12+18), al=side>0?'left':'right';
+  txt('COUPLE MOMENT H',lx,sy-10,{size:9.5,track:2,align:al,color:'#ffb1c4',alpha:a,glow:1});
+  txt(`H = ${Math.round(view.H)} N·m`,lx,sy+9,{size:12,font:FM,align:al,color:'#ffd7e2',alpha:a,glow:1});
+}
 
-            ctx.strokeStyle = color;
-            ctx.fillStyle = color;
-            ctx.lineWidth = 4 * pixelRatio;
+function drawDimension(){
+  const grow = tl.interactive ? 1 : view.dimGrow;
+  if(view.shift<=0.03 || grow<=0.01) return;
+  const y=W2Sy(1.35);
+  const x1=W2Sx(view.xR), x2=W2Sx(view.xR2), xt=x1+(x2-x1)*grow;
+  ctx.setLineDash([3,5]); ctx.strokeStyle='rgba(207,230,245,.22)'; ctx.lineWidth=1;
+  const yTop=W2Sy(0.26);
+  line(x1,yTop,x1,y+9); line(x2,yTop,x2,y+9);
+  ctx.setLineDash([]);
+  ctx.strokeStyle='rgba(159,220,255,.9)'; ctx.lineWidth=1.4;
+  ctx.shadowColor='rgba(159,220,255,.7)'; ctx.shadowBlur=8;
+  line(x1,y,xt,y); ctx.shadowBlur=0;
+  triH(xt,y,1,C_R,10);
+  if(grow>0.97) triH(x1,y,-1,C_R,10);
+  const lbl=`x = ${view.shift.toFixed(2)} m`;
+  if(grow>0.2) txt(lbl,(x1+xt)/2,y-15,{size:12,font:FM,weight:600,color:'#dff2ff',alpha:clamp((grow-0.2)*3,0,1),glow:1});
+}
 
-            if (isDashed) {
-                ctx.setLineDash([10 * pixelRatio, 10 * pixelRatio]);
-                ctx.globalAlpha = alpha * 0.4;
-                ctx.shadowBlur = 0; // Remove glow from dashed
-            }
+/* stateless merge streams (A,B tips → resultant) */
+function drawStreams(xA,xB,hA,hR){
+  if(view.mergeEnv<=0.02) return;
+  const base=W2Sy(0)-clamp(0.34*cam.s,15,40)/2;
+  const targets=[[xA,hA*view.growA],[xB,hB_h(view)]];
+  function hB_h(V){ return V.B; }
+  ctx.save(); ctx.globalCompositeOperation='lighter';
+  for(const [wx,hn] of targets){
+    const p0x=W2Sx(wx), p0y=base-hn*FS*cam.s;
+    const p2x=W2Sx(view.xR), p2y=base-hR*FS*cam.s*0.45;
+    const p1x=(p0x+p2x)/2, p1y=Math.min(p0y,p2y)-0.9*cam.s;
+    for(let i=0;i<5;i++){
+      const t=(animT*0.55+i/5)%1, tt=1-t;
+      const bx=tt*tt*p0x+2*tt*t*p1x+t*t*p2x;
+      const by=tt*tt*p0y+2*tt*t*p1y+t*t*p2y;
+      const a=Math.sin(Math.PI*t)*view.mergeEnv*0.75;
+      ctx.globalAlpha=a; ctx.fillStyle=`rgba(${Math.round(lerp(255,159,t))},${Math.round(lerp(180,220,t))},${Math.round(lerp(94,255,t))},1)`;
+      ctx.beginPath(); ctx.arc(bx,by,2.2,0,7); ctx.fill();
+    }
+  }
+  ctx.restore();
+}
 
-            // Shaft
-            ctx.beginPath();
-            ctx.moveTo(start.x, start.y);
-            ctx.lineTo(end.x, end.y + headLen); // Stop slightly before head tip
-            ctx.stroke();
+/* ============================================================
+   8 · CAMERA
+============================================================ */
+function bounds(){
+  const d=view.d, xA=-d/2, xB=d/2, pad=Math.max(1.1,0.16*d);
+  const rodL=xA-pad, rodR=xB+pad;
+  const hMax=Math.max(view.A*view.growA, view.B*view.growB, (view.A+view.B)*view.rGrow)*FS;
+  const {rc}=coupleGeom(), cA=coupleAlpha();
+  let left=Math.min(rodL, view.xR-1.2, view.xR2-0.6);
+  let right=Math.max(rodR, view.xR2+0.9, view.xR+1.2);
+  if(cA>0.02){
+    left =Math.min(left, view.xR-rc-0.3);
+    if(coupleSide()>0) right=Math.max(right, view.xR+rc+1.9);
+    else               left =Math.min(left,  view.xR-rc-1.9);
+  }
+  let top=Math.min(-hMax-0.95, -0.6);
+  if(cA>0.02) top=Math.min(top, coupleGeom().cyw-rc-0.55);
+  const bottom=1.95;
+  return {left,right,top,bottom};
+}
+function updateCamera(dt){
+  const b=bounds();
+  view.zoomPulse*=Math.exp(-dt*2.1);
+  const ts=clamp(Math.min(cw/(b.right-b.left), ch/(b.bottom-b.top))*0.84, 26, 150)*(1+view.zoomPulse);
+  const tx=(b.left+b.right)/2 + par.x*0.35, ty=(b.top+b.bottom)/2 + par.y*0.25;
+  const k=1-Math.exp(-dt*2.6);
+  cam.s+=(ts-cam.s)*k; cam.x+=(tx-cam.x)*k; cam.y+=(ty-cam.y)*k;
+}
 
-            // Reset dash for head
-            ctx.setLineDash([]);
-            if(isDashed) ctx.globalAlpha = alpha * 0.4;
+/* ============================================================
+   9 · MAIN LOOP
+============================================================ */
+let prev=performance.now(), dtS=0, prevShift=0;
+const streaks=[], pulses=[];
+const $=id=>document.getElementById(id);
+const formulaEl=$('formula'), ahaTx=$('ahaTx'), ctrlWrap=$('ctrlWrap'), statusEl=$('status'),
+      hint=$('hint'), tglPhys=$('tglPhys'), capEl=$('caption');
+const cache={};
+function set(id,s){ if(cache[id]!==s){ cache[id]=s; $(id).textContent=s; } }
+let capTimer=null;
+function setCaption(s){
+  if(capEl.dataset.s===s) return;
+  capEl.dataset.s=s;
+  clearTimeout(capTimer);
+  capEl.style.opacity=0;
+  capTimer=setTimeout(()=>{ if(s){ capEl.textContent=s; capEl.style.opacity=0.9; } },280);
+}
 
-            // Head
-            ctx.beginPath();
-            ctx.moveTo(end.x, end.y);
-            ctx.lineTo(end.x - headWid, end.y + headLen);
-            ctx.lineTo(end.x + headWid, end.y + headLen);
-            ctx.closePath();
-            ctx.fill();
+function frame(now){
+  const dt=Math.min(0.05,(now-prev)/1000); prev=now;
+  const dtA=tl.playing?dt:0;
+  dtS=dt;
+  animT+=dtA;
 
-            // Label
-            if(label && !isDashed) {
-                ctx.shadowBlur = 0;
-                ctx.fillStyle = '#ffffff';
-                ctx.font = `bold ${14 * pixelRatio}px Inter`;
-                ctx.textAlign = 'center';
-                ctx.textBaseline = 'bottom';
-                ctx.fillText(label, end.x, end.y - 10 * pixelRatio);
-                
-                ctx.fillStyle = 'rgba(255,255,255,0.7)';
-                ctx.font = `${12 * pixelRatio}px 'JetBrains Mono'`;
-                ctx.fillText(mag.toFixed(0) + ' N', end.x, end.y + headLen + 20 * pixelRatio);
-            }
+  if(!tl.interactive){
+    if(tl.playing){ tl.t+=dtA; if(tl.t>=TOTAL){ tl.t=TOTAL; setInteractive(); } }
+    view.A=sim.A; view.B=sim.B; view.H=sim.H; view.d=sim.d;
+    runTimeline(tl.t);
+    view.shift = view.shiftP * physics.shift(view.H,view.A,view.B);
+  } else {
+    applyInteractive(dtS);
+  }
 
-            ctx.restore();
-        }
+  view.xR  = physics.xRes(view.A,view.B,view.d);
+  view.xR2 = view.xR + view.shift;
+  updateCamera(dtS);
 
-        function drawCouple(alpha) {
-            if (alpha <= 0.01 || state.current.H === 0) return;
-            
-            ctx.save();
-            ctx.globalAlpha = alpha;
-            
-            const p = state.physics;
-            // Center the couple visually around the initial resultant position
-            const center = toScreen(p.x_R_init, 40); 
-            const radiusX = 60 * pixelRatio;
-            const radiusY = 25 * pixelRatio;
+  // hover springs
+  const kh=1-Math.exp(-dtS*8);
+  view.hA+=(hoverT==='A'?1:0-view.hA)*kh - view.hA*0 + 0; // simple approach below
+  view.hA+=((hoverT==='A'?1:0)-view.hA)*kh;
+  view.hB+=((hoverT==='B'?1:0)-view.hB)*kh;
+  view.hR+=((hoverT==='R'?1:0)-view.hR)*kh;
 
-            state.anim.coupleAngle += 0.02 * (state.current.H > 0 ? 1 : -1);
-            
-            ctx.shadowColor = '#f472b6';
-            ctx.shadowBlur = 20 * pixelRatio;
-            ctx.strokeStyle = '#f472b6';
-            ctx.lineWidth = 3 * pixelRatio;
+  // shift streaks
+  const dSh=view.shift-prevShift; prevShift=view.shift;
+  if((tl.interactive||view.shiftP>0&&view.shiftP<1) && Math.abs(dSh)>0.002 && streaks.length<26 && Math.random()<dtS*22){
+    streaks.push({x:view.xR2, y:-(0.35+Math.random()*2.2), dir:Math.sign(dSh)||1, t:0});
+  }
+  for(let i=streaks.length-1;i>=0;i--){ streaks[i].t+=dtS; if(streaks[i].t>0.5) streaks.splice(i,1); }
+  for(let i=pulses.length-1;i>=0;i--){ pulses[i].t+=dtS; if(pulses[i].t>0.6) pulses.splice(i,1); }
 
-            // Draw elliptical arc
-            ctx.beginPath();
-            ctx.ellipse(center.x, center.y, radiusX, radiusY, 0, 0, Math.PI * 1.5);
-            ctx.stroke();
+  render();
 
-            // Draw arrowhead at end of arc
-            const endAngle = Math.PI * 1.5;
-            const hx = center.x + radiusX * Math.cos(endAngle);
-            const hy = center.y + radiusY * Math.sin(endAngle);
-            
-            ctx.fillStyle = '#f472b6';
-            ctx.beginPath();
-            ctx.moveTo(hx, hy);
-            ctx.lineTo(hx - 12 * pixelRatio, hy - 6 * pixelRatio);
-            ctx.lineTo(hx - 12 * pixelRatio, hy + 6 * pixelRatio);
-            ctx.fill();
+  // ---- HUD / DOM readouts ----
+  set('hudA',`${Math.round(view.A)} N`); set('hudB',`${Math.round(view.B)} N`);
+  set('hudH',`${Math.round(view.H)} N·m`); set('hudD',`${view.d.toFixed(1)} m`);
+  set('hudR',`${Math.round(view.A+view.B)}`);
+  set('hudX',view.shift.toFixed(2));
+  if(interactiveDone){
+    set('stR',`${Math.round(view.A+view.B)} N`);
+    set('stX',`${view.shift.toFixed(2)} m`);
+    set('stEff', view.H<0.5 ? 'NONE · H = 0'
+      : (Math.abs(physics.shift(view.H,view.A,view.B)-view.shift)>0.05 ? 'SHIFTING LINE…' : 'LINE OF ACTION SHIFTED'));
+  }
+  requestAnimationFrame(frame);
+}
 
-            // Label
-            ctx.shadowBlur = 0;
-            ctx.fillStyle = '#f472b6';
-            ctx.font = `bold ${14 * pixelRatio}px Inter`;
-            ctx.textAlign = 'center';
-            ctx.fillText('COUPLE H', center.x, center.y - radiusY - 15 * pixelRatio);
-            
-            ctx.fillStyle = 'rgba(244, 114, 182, 0.8)';
-            ctx.font = `${12 * pixelRatio}px 'JetBrains Mono'`;
-            ctx.fillText(state.current.H.toFixed(0) + ' N·m', center.x, center.y + radiusY + 20 * pixelRatio);
+/* ============================================================
+   10 · RENDER
+============================================================ */
+let hoverT=null;
+function render(){
+  ctx.clearRect(0,0,cw,ch);
+  if(bg) ctx.drawImage(bg, -6+par.x*8, -6+par.y*5, cw+12, ch+12);
 
-            ctx.restore();
-        }
+  const d=view.d, xA=-d/2, xB=d/2, pad=Math.max(1.1,0.16*d);
+  const rodL=xA-pad, rodR=xB+pad;
+  const hRpx=(view.A+view.B)*FS*cam.s;
 
-        function drawDimension(alpha) {
-            if (alpha <= 0.01 || Math.abs(state.physics.x_shift) < 0.01) return;
-            
-            ctx.save();
-            ctx.globalAlpha = alpha;
-            
-            const p = state.physics;
-            // Draw dimension below rod
-            const yLevel = -30; 
-            const start = toScreen(p.x_R_init, yLevel);
-            const end = toScreen(p.x_R_final, yLevel);
-            
-            ctx.strokeStyle = '#ffffff';
-            ctx.lineWidth = 2 * pixelRatio;
-            
-            // Main line
-            ctx.beginPath();
-            ctx.moveTo(start.x, start.y);
-            ctx.lineTo(end.x, end.y);
-            ctx.stroke();
+  drawShadow(rodL,rodR);
+  drawRod(rodL,rodR);
+  drawGhost(hRpx);
 
-            // Ticks
-            const tickSize = 6 * pixelRatio;
-            ctx.beginPath();
-            ctx.moveTo(start.x, start.y - tickSize); ctx.lineTo(start.x, start.y + tickSize);
-            ctx.moveTo(end.x, end.y - tickSize); ctx.lineTo(end.x, end.y + tickSize);
-            ctx.stroke();
+  drawForce(xA, view.A, view.growA, lerp(1,0.55,1-view.abAlpha)*view.rodIn? lerp(1,0.55,1-view.abAlpha):1, view.hA,'A',`${Math.round(view.A*view.growA)} N`);
+  drawForce(xB, view.B, view.growB, lerp(1,0.55,1-view.abAlpha), view.hB,'B',`${Math.round(view.B*view.growB)} N`);
 
-            // Text
-            ctx.fillStyle = '#ffffff';
-            ctx.font = `bold ${16 * pixelRatio}px 'JetBrains Mono'`;
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'top';
-            const midX = (start.x + end.x) / 2;
-            
-            // Background pill for text
-            const text = 'x = ' + Math.abs(p.x_shift).toFixed(2) + 'm';
-            const textWidth = ctx.measureText(text).width;
-            ctx.fillStyle = 'rgba(2, 6, 23, 0.8)';
-            ctx.beginPath();
-            ctx.roundRect(midX - textWidth/2 - 10, start.y + 8*pixelRatio, textWidth + 20, 24*pixelRatio, 4);
-            ctx.fill();
-            
-            ctx.fillStyle = '#fbbf24'; // amber
-            ctx.fillText(text, midX, start.y + 12 * pixelRatio);
+  // rebuild force call cleanly (strength = abAlpha)
+  // (drawForce above already receives abAlpha-derived strength)
 
-            ctx.restore();
-        }
+  if(view.sceneDim>0.005){
+    ctx.fillStyle=`rgba(4,5,8,${view.sceneDim})`; ctx.fillRect(0,0,cw,ch);
+  }
 
-        function updateParticles() {
-            // Add particles along forces
-            if (Math.random() < 0.1 * state.anim.forceA) addParticle(state.physics.x_A, state.current.A, '#38bdf8');
-            if (Math.random() < 0.1 * state.anim.forceB) addParticle(state.physics.x_B, state.current.B, '#38bdf8');
-            if (Math.random() < 0.15 * state.anim.resultantInit && state.physics.R > 0) addParticle(state.physics.x_R_final, state.physics.R, '#fbbf24');
+  drawCouple();
 
-            for (let i = state.particles.length - 1; i >= 0; i--) {
-                let p = state.particles[i];
-                p.y += p.vy;
-                p.life -= 0.02;
-                if (p.life <= 0) state.particles.splice(i, 1);
-            }
-        }
+  // rod occlusion redraw so the couple arc wraps behind the body
+  drawRod(rodL,rodR);
 
-        function addParticle(xWorld, maxMag, color) {
-            state.particles.push({
-                xWorld: xWorld + (Math.random() - 0.5) * 0.2,
-                y: Math.random() * maxMag * FORCE_SCALE,
-                vy: 1 + Math.random() * 2,
-                life: 1.0,
-                color: color
-            });
-        }
+  drawStreams(xA,xB,view.A,view.A+view.B);
+  drawResultant(hRpx,view.hR);
 
-        function drawParticles() {
-            ctx.save();
-            state.particles.forEach(p => {
-                const pos = toScreen(p.xWorld, p.y / pixelRatio);
-                ctx.globalAlpha = p.life * 0.6;
-                ctx.fillStyle = p.color;
-                ctx.beginPath();
-                ctx.arc(pos.x, pos.y, 2 * pixelRatio, 0, Math.PI * 2);
-                ctx.fill();
-            });
-            ctx.restore();
-        }
+  // motion streaks
+  if(streaks.length){
+    ctx.save(); ctx.globalCompositeOperation='lighter'; ctx.lineCap='round';
+    for(const s of streaks){
+      const a=(1-s.t/0.5)*0.3, sx=W2Sx(s.x - s.dir*s.t*1.6), sy=W2Sy(s.y);
+      ctx.globalAlpha=a; ctx.strokeStyle=C_R; ctx.lineWidth=1.4;
+      line(sx,sy,sx+s.dir*26,sy);
+    }
+    ctx.restore();
+  }
 
-        /**
-         * MAIN LOOP
-         */
-        let lastTime = 0;
-        function loop(timestamp) {
-            const dt = (timestamp - lastTime) / 1000 || 0;
-            lastTime = timestamp;
+  drawDimension();
 
-            // Clear Canvas
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            drawGrid();
+  // click pulses
+  if(pulses.length){
+    ctx.save(); ctx.globalCompositeOperation='lighter';
+    for(const p of pulses){
+      const t=p.t/0.6, [sx,sy]=[W2Sx(p.x),W2Sy(p.y)];
+      ctx.globalAlpha=(1-t)*0.35; ctx.strokeStyle=C_FORCE; ctx.lineWidth=1.5;
+      ctx.beginPath(); ctx.arc(sx,sy,4+t*34,0,7); ctx.stroke();
+    }
+    ctx.restore();
+  }
 
-            // State Logic
-            if (state.mode === 'cinematic') {
-                state.time += dt;
-                
-                // Process timeline
-                for (let event of timeline) {
-                    if (state.time >= event.time) {
-                        if (event.duration) {
-                            let t = (state.time - event.time) / event.duration;
-                            if (t <= 1.0) event.action(t);
-                            else event.action(1.0);
-                        } else if (state.time - dt < event.time) {
-                            // Instant action, run once
-                            event.action();
-                        }
-                    }
-                }
-            } else {
-                // Interactive Mode LERPing for smoothness
-                const LERP_SPEED = 10 * dt;
-                state.current.A += (state.target.A - state.current.A) * LERP_SPEED;
-                state.current.B += (state.target.B - state.current.B) * LERP_SPEED;
-                state.current.H += (state.target.H - state.current.H) * LERP_SPEED;
-                state.current.d += (state.target.d - state.current.d) * LERP_SPEED;
-            }
+  // hover hit targets (for cursor)
+  const hs=[['A',W2Sx(xA)],['B',W2Sx(xB)],['R',W2Sx(view.xR2)]];
+  let hv=null;
+  for(const [id,sx] of hs){ if(Math.abs(mouse.x-sx)<16 && mouse.y<W2Sy(0) && mouse.y>W2Sy(0)-(view.A+view.B)*FS*cam.s-40) hv=id; }
+  if(hv!==hoverT){ hoverT=hv; cv.style.cursor=hv?'pointer':'default'; }
 
-            updatePhysics();
-            updateParticles();
+  // ---- AHA dim pass: spotlight the invariant R and the shift ----
+  if(view.ahaDim>0.01){
+    ctx.fillStyle=`rgba(3,4,6,${0.62*view.ahaDim})`; ctx.fillRect(0,0,cw,ch);
+    ctx.globalAlpha=view.ahaDim;
+    drawGhost(hRpx);
+    const sx=W2Sx(view.xR2), base=W2Sy(0)-clamp(0.34*cam.s,15,40)/2, tip=base-hRpx*view.rGrow;
+    ctx.lineCap='round';
+    ctx.strokeStyle='rgba(8,10,13,.95)'; ctx.lineWidth=12; line(sx,base,sx,tip+14);
+    ctx.shadowColor=C_R; ctx.shadowBlur=30;
+    ctx.strokeStyle=C_R; ctx.lineWidth=3; line(sx,base,sx,tip+12);
+    ctx.shadowBlur=0;
+    tri(sx,tip,16,12,C_R,26);
+    drawDimension();
+    ctx.globalAlpha=1;
+  }
+}
 
-            // Render Pipeline
-            drawRod(state.anim.rod);
-            
-            // Original Forces
-            drawArrow(state.physics.x_A, state.current.A, '#38bdf8', 'A', state.anim.forceA);
-            drawArrow(state.physics.x_B, state.current.B, '#38bdf8', 'B', state.anim.forceB);
-            
-            // Ghost Resultant (Initial Position)
-            if (state.mode === 'cinematic' && state.anim.shiftProgress > 0) {
-                drawArrow(state.physics.x_R_init, state.physics.R, '#fbbf24', '', state.anim.resultantInit * (1 - state.anim.shiftProgress * 0.5), true);
-            } else if (state.mode === 'interactive' && Math.abs(state.current.H) > 5) {
-                 drawArrow(state.physics.x_R_init, state.physics.R, '#fbbf24', '', 0.3, true);
-            }
+/* ============================================================
+   11 · INPUT
+============================================================ */
+const mouse={x:-999,y:-999};
+cv.addEventListener('pointermove',e=>{
+  const r=cv.getBoundingClientRect();
+  const nx=(e.clientX-r.left)/r.width*2-1, ny=(e.clientY-r.top)/r.height*2-1;
+  par.x+= (nx-par.x)*0.15; par.y+=(ny-par.y)*0.15;
+  mouse.x=e.clientX-r.left; mouse.y=e.clientY-r.top;
+});
+cv.addEventListener('pointerleave',()=>{ mouse.x=-999; mouse.y=-999; });
+cv.addEventListener('pointerdown',()=>{
+  if(hoverT){
+    const wx = hoverT==='A' ? -view.d/2 : hoverT==='B' ? view.d/2 : view.xR2;
+    if(pulses.length<8) pulses.push({x:wx,t:0});
+  }
+});
 
-            // Actual Resultant
-            drawArrow(state.physics.x_R_final, state.physics.R, '#fbbf24', 'R', state.anim.resultantInit);
-            
-            // Couple and Displacement
-            drawCouple(state.anim.couple);
-            drawDimension(state.anim.dimension);
-            
-            drawParticles();
-            
-            updateHUD();
+function bindSlider(id,vid,key,fmt){
+  const el=$(id), lab=$(vid);
+  const upd=()=>{
+    sim[key]=parseFloat(el.value);
+    lab.textContent=fmt(sim[key]);
+    el.style.setProperty('--p', ((el.value-el.min)/(el.max-el.min)*100)+'%');
+  };
+  el.addEventListener('input',upd); upd();
+}
+bindSlider('sA','vA','A', v=>`${Math.round(v)} N`);
+bindSlider('sB','vB','B', v=>`${Math.round(v)} N`);
+bindSlider('sH','vH','H', v=>`${Math.round(v)} N·m`);
+bindSlider('sD','vD','d', v=>`${v.toFixed(1)} m`);
 
-            requestAnimationFrame(loop);
-        }
+function startSequence(){
+  tl.t=0; tl.playing=true; tl.interactive=false; interactiveDone=false; lastScene='';
+  Object.assign(view,{rodIn:0,growA:0,growB:0,rGrow:0,abAlpha:0,mergeEnv:0,coupleIn:0,
+    coupleFade:1,shiftP:0,dimGrow:0,ahaDim:0,sceneDim:0,shift:0});
+  view.shift=0; prevShift=0;
+  setFormula(0); hideFormula();
+  statusEl.classList.add('hidden'); statusEl.classList.remove('flex');
+  ctrlWrap.classList.add('opacity-40','pointer-events-none');
+  hint.textContent='SEQUENCE RUNNING · PRESS EXPERIMENT TO SKIP';
+  btnPause.classList.remove('active');
+  streaks.length=0;
+  setCaption('THE RIGID BODY');
+}
+ $('btnPlay').addEventListener('click',startSequence);
+ $('btnReset').addEventListener('click',startSequence);
+const btnPause=$('btnPause');
+btnPause.addEventListener('click',()=>{
+  tl.playing=!tl.playing;
+  btnPause.classList.toggle('active',!tl.playing);
+});
+ $('btnExp').addEventListener('click',()=>{
+  if(tl.interactive) return;
+  tl.t=TOTAL; lastScene='';
+  Object.assign(view,{rodIn:1,growA:1,growB:1,rGrow:1,abAlpha:0.85,mergeEnv:0,coupleIn:1,
+    coupleFade:0.9,shiftP:1,dimGrow:1,ahaDim:0,sceneDim:0});
+  setFormula(4);
+  setInteractive();
+});
 
-        function updateHUD() {
-            // Update UI Texts
-            DOM.valA.innerText = state.target.A + ' N';
-            DOM.valB.innerText = state.target.B + ' N';
-            DOM.valD.innerText = state.target.d.toFixed(1) + ' m';
-            DOM.valH.innerText = state.target.H + ' N·m';
+/* ============================================================
+   12 · GO
+============================================================ */
+resize();
+startSequence();
+requestAnimationFrame(frame);
 
-            DOM.hudA.innerText = state.current.A.toFixed(0) + ' N';
-            DOM.hudB.innerText = state.current.B.toFixed(0) + ' N';
-            DOM.hudR.innerText = state.physics.R.toFixed(0) + ' N';
-            DOM.hudH.innerText = state.current.H.toFixed(0) + ' N·m';
-            
-            if (state.physics.R > 0) {
-                DOM.hudX.innerText = Math.abs(state.physics.x_shift).toFixed(2) + ' m ' + (state.physics.x_shift > 0 ? '→' : (state.physics.x_shift < 0 ? '←' : ''));
-            } else {
-                DOM.hudX.innerText = '0.00 m';
-            }
-        }
-
-        /**
-         * EVENT LISTENERS
-         */
-        function bindSlider(element, key, isFloat=false) {
-            element.addEventListener('input', (e) => {
-                if (state.mode === 'cinematic') startInteractiveMode();
-                state.target[key] = isFloat ? parseFloat(e.target.value) : parseInt(e.target.value);
-            });
-        }
-        
-        bindSlider(DOM.sliderA, 'A');
-        bindSlider(DOM.sliderB, 'B');
-        bindSlider(DOM.sliderD, 'd', true);
-        bindSlider(DOM.sliderH, 'H');
-
-        DOM.btnPlay.addEventListener('click', resetCinematic);
-        DOM.btnSkip.addEventListener('click', startInteractiveMode);
-
-        // Start Loop
-        requestAnimationFrame(loop);
-
-    </script>
+})();
+</script>
 </body>
 </html>
