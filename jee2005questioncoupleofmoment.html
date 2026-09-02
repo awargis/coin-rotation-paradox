@@ -1,0 +1,779 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JEE Physics: Parallel Forces & Coplanar Couple</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;700&display=swap');
+
+        :root {
+            --color-bg: #020617; /* slate-950 */
+            --color-force: #38bdf8; /* sky-400 */
+            --color-resultant: #fbbf24; /* amber-400 */
+            --color-couple: #f472b6; /* pink-400 */
+            --color-glass: rgba(255, 255, 255, 0.03);
+            --color-glass-border: rgba(255, 255, 255, 0.1);
+        }
+
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: var(--color-bg);
+            color: #f8fafc;
+            font-family: 'Inter', sans-serif;
+            -webkit-font-smoothing: antialiased;
+            touch-action: none; /* Prevent pinch zoom on touch */
+        }
+
+        .glass-panel {
+            background: var(--color-glass);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid var(--color-glass-border);
+            border-radius: 1rem;
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.5);
+        }
+
+        .math-font {
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        input[type=range] {
+            -webkit-appearance: none;
+            width: 100%;
+            background: transparent;
+            height: 4px;
+            border-radius: 2px;
+            outline: none;
+        }
+
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 16px;
+            width: 16px;
+            border-radius: 50%;
+            background: #ffffff;
+            cursor: pointer;
+            box-shadow: 0 0 10px rgba(255,255,255,0.5);
+            transition: transform 0.1s;
+        }
+        
+        input[type=range]:active::-webkit-slider-thumb {
+            transform: scale(1.2);
+        }
+
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 4px;
+            cursor: pointer;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 2px;
+        }
+
+        .cinematic-text {
+            opacity: 0;
+            transform: translateY(20px);
+            transition: all 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .cinematic-text.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        /* Custom scrollbar for HUD if needed on small screens */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 3px; }
+    </style>
+</head>
+<body class="relative w-screen h-screen flex flex-col items-center justify-center">
+
+    <!-- WebGL/Canvas Layer -->
+    <canvas id="simCanvas" class="absolute inset-0 z-0"></canvas>
+
+    <!-- UI Overlay Layer -->
+    <div class="absolute inset-0 z-10 pointer-events-none flex flex-col justify-between p-4 md:p-6 lg:p-8">
+        
+        <!-- Top Section: Title & HUD -->
+        <div class="flex flex-col md:flex-row justify-between items-start gap-4 w-full max-w-7xl mx-auto">
+            
+            <!-- Header -->
+            <div class="glass-panel p-4 md:p-6 pointer-events-auto flex flex-col max-w-md">
+                <div class="flex items-center gap-3 mb-2">
+                    <div class="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></div>
+                    <span class="text-xs font-bold tracking-widest text-slate-400 uppercase">Interactive Simulation</span>
+                </div>
+                <h1 class="text-xl md:text-2xl font-semibold mb-2 leading-tight">Coplanar Couple & Line of Action</h1>
+                <p class="text-sm text-slate-400">JEE Main 2005 Concept: A couple of moment <span class="text-pink-400 math-font italic">H</span> shifts the resultant of parallel forces without changing its magnitude.</p>
+                
+                <div class="flex gap-3 mt-4">
+                    <button id="btnPlay" class="px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg text-xs font-semibold transition-colors flex items-center gap-2">
+                        <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg> Play Cinematic
+                    </button>
+                    <button id="btnSkip" class="px-4 py-2 border border-white/20 hover:bg-white/10 rounded-lg text-xs font-semibold transition-colors flex items-center gap-2">
+                        Experiment Mode
+                    </button>
+                </div>
+            </div>
+
+            <!-- Math HUD -->
+            <div id="mathHUD" class="glass-panel p-4 md:p-6 pointer-events-auto min-w-[240px] opacity-0 transition-opacity duration-1000">
+                <h2 class="text-xs font-bold tracking-widest text-slate-400 uppercase mb-4 border-b border-white/10 pb-2">Real-Time Data</h2>
+                
+                <div class="space-y-3 math-font text-sm">
+                    <div class="flex justify-between items-center text-sky-300">
+                        <span>Force A</span>
+                        <span id="hudA">40 N</span>
+                    </div>
+                    <div class="flex justify-between items-center text-sky-300">
+                        <span>Force B</span>
+                        <span id="hudB">60 N</span>
+                    </div>
+                    <div class="flex justify-between items-center border-t border-white/10 pt-2 text-amber-300 font-semibold">
+                        <span>Resultant R</span>
+                        <span id="hudR">100 N</span>
+                    </div>
+                    <div class="flex justify-between items-center text-pink-300 mt-4">
+                        <span>Couple H</span>
+                        <span id="hudH">200 N·m</span>
+                    </div>
+                    <div class="flex justify-between items-center border-t border-white/10 pt-2 text-white font-bold bg-white/5 p-2 rounded-md mt-2">
+                        <span>Shift x = H/R</span>
+                        <span id="hudX">2.00 m</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Cinematic Aha Moment Overlay -->
+        <div id="cinematicOverlay" class="absolute inset-0 flex items-center justify-center pointer-events-none z-20">
+            <div class="glass-panel p-8 md:p-12 text-center max-w-2xl transform scale-95 opacity-0 transition-all duration-1000 flex flex-col items-center" id="ahaPanel">
+                <h2 class="text-2xl md:text-4xl font-bold mb-6 text-white tracking-tight" id="ahaTitle">The couple shifts the line of action.</h2>
+                <div class="math-font text-xl md:text-3xl space-y-4 text-slate-300" id="ahaMath">
+                    <div class="opacity-0 transition-opacity duration-1000 delay-500" id="ahaLine1">Resultant <span class="text-amber-400 font-bold">R = A + B</span></div>
+                    <div class="opacity-0 transition-opacity duration-1000 delay-1500" id="ahaLine2">Moment Balance: <span class="text-amber-400 font-bold">R</span> × <span class="text-white font-bold">x</span> = <span class="text-pink-400 font-bold">H</span></div>
+                    <div class="opacity-0 transition-opacity duration-1000 delay-2500 text-white font-bold text-3xl md:text-5xl mt-6 p-4 bg-white/5 rounded-xl border border-white/10" id="ahaLine3">x = H / (A+B)</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Bottom Section: Controls -->
+        <div id="controlsContainer" class="w-full max-w-4xl mx-auto glass-panel p-4 md:p-6 pointer-events-auto opacity-0 transition-opacity duration-1000 translate-y-10 transition-transform">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                
+                <!-- Slider A -->
+                <div class="flex flex-col">
+                    <div class="flex justify-between items-end mb-2">
+                        <label class="text-xs font-bold text-sky-400 uppercase tracking-wider">Force A</label>
+                        <span class="math-font text-sm font-semibold" id="valA">40 N</span>
+                    </div>
+                    <input type="range" id="sliderA" min="10" max="100" value="40" step="1">
+                </div>
+
+                <!-- Slider B -->
+                <div class="flex flex-col">
+                    <div class="flex justify-between items-end mb-2">
+                        <label class="text-xs font-bold text-sky-400 uppercase tracking-wider">Force B</label>
+                        <span class="math-font text-sm font-semibold" id="valB">60 N</span>
+                    </div>
+                    <input type="range" id="sliderB" min="10" max="100" value="60" step="1">
+                </div>
+
+                <!-- Slider Distance -->
+                <div class="flex flex-col">
+                    <div class="flex justify-between items-end mb-2">
+                        <label class="text-xs font-bold text-slate-400 uppercase tracking-wider">Distance d</label>
+                        <span class="math-font text-sm font-semibold" id="valD">4.0 m</span>
+                    </div>
+                    <input type="range" id="sliderD" min="1" max="10" value="4" step="0.1">
+                </div>
+
+                <!-- Slider H -->
+                <div class="flex flex-col">
+                    <div class="flex justify-between items-end mb-2">
+                        <label class="text-xs font-bold text-pink-400 uppercase tracking-wider">Couple H</label>
+                        <span class="math-font text-sm font-semibold" id="valH">200 N·m</span>
+                    </div>
+                    <input type="range" id="sliderH" min="0" max="500" value="200" step="5">
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <script>
+        /**
+         * PHYSICS SIMULATION ENGINE & RENDERER
+         */
+        const canvas = document.getElementById('simCanvas');
+        const ctx = canvas.getContext('2d');
+        let pixelRatio = window.devicePixelRatio || 1;
+
+        // UI Elements
+        const DOM = {
+            sliderA: document.getElementById('sliderA'),
+            sliderB: document.getElementById('sliderB'),
+            sliderD: document.getElementById('sliderD'),
+            sliderH: document.getElementById('sliderH'),
+            valA: document.getElementById('valA'),
+            valB: document.getElementById('valB'),
+            valD: document.getElementById('valD'),
+            valH: document.getElementById('valH'),
+            hudA: document.getElementById('hudA'),
+            hudB: document.getElementById('hudB'),
+            hudR: document.getElementById('hudR'),
+            hudH: document.getElementById('hudH'),
+            hudX: document.getElementById('hudX'),
+            mathHUD: document.getElementById('mathHUD'),
+            controls: document.getElementById('controlsContainer'),
+            btnPlay: document.getElementById('btnPlay'),
+            btnSkip: document.getElementById('btnSkip'),
+            ahaPanel: document.getElementById('ahaPanel'),
+            ahaLine1: document.getElementById('ahaLine1'),
+            ahaLine2: document.getElementById('ahaLine2'),
+            ahaLine3: document.getElementById('ahaLine3')
+        };
+
+        // State Machine & Physics Data
+        const state = {
+            mode: 'cinematic', // 'cinematic' | 'interactive'
+            time: 0,
+            
+            // Target physics values (from user input or sequence)
+            target: { A: 40, B: 60, d: 4, H: 200 },
+            
+            // Current visual physics values (interpolated)
+            current: { A: 0, B: 0, d: 4, H: 0 },
+            
+            // Derived physics values (calculated every frame)
+            physics: {
+                R: 0,
+                x_A: 0,      // Position of A
+                x_B: 0,      // Position of B
+                x_R_init: 0, // Initial CM of forces
+                x_shift: 0,  // Shift due to couple
+                x_R_final: 0 // Final shifted position
+            },
+
+            // Animation Opacities & Visual states
+            anim: {
+                rod: 0,
+                forceA: 0,
+                forceB: 0,
+                resultantInit: 0,
+                couple: 0,
+                shiftProgress: 0,
+                dimension: 0,
+                coupleAngle: 0
+            },
+            
+            particles: []
+        };
+
+        // Constants
+        const PIXELS_PER_METER = 60;
+        const FORCE_SCALE = 3; // pixels per Newton
+        const Y_BASE = 50; // pixels down from center where rod is
+
+        // Resize Handler
+        function resize() {
+            canvas.width = window.innerWidth * pixelRatio;
+            canvas.height = window.innerHeight * pixelRatio;
+            canvas.style.width = window.innerWidth + 'px';
+            canvas.style.height = window.innerHeight + 'px';
+            // Reset particles on resize to prevent weird boundaries
+            state.particles = [];
+        }
+        window.addEventListener('resize', resize);
+        resize();
+
+        // Easing Functions
+        const easeOutExpo = x => x === 1 ? 1 : 1 - Math.pow(2, -10 * x);
+        const easeInOutCubic = x => x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2;
+        const lerp = (start, end, amt) => (1 - amt) * start + amt * end;
+
+        /**
+         * PHYSICS CALCULATIONS
+         */
+        function updatePhysics() {
+            const c = state.current;
+            const p = state.physics;
+
+            // Forces
+            p.R = c.A + c.B;
+            
+            // Positions (Centered around 0)
+            p.x_A = -c.d / 2;
+            p.x_B =  c.d / 2;
+            
+            // Initial Resultant Position (Center of parallel forces)
+            if (p.R > 0) {
+                p.x_R_init = (c.A * p.x_A + c.B * p.x_B) / p.R;
+            } else {
+                p.x_R_init = 0;
+            }
+
+            // Displacement due to Couple
+            if (p.R > 0) {
+                p.x_shift = c.H / p.R; 
+            } else {
+                p.x_shift = 0;
+            }
+
+            // In interactive mode, shift is immediate. In cinematic, it interpolates.
+            let actualShift = state.mode === 'interactive' ? p.x_shift : p.x_shift * state.anim.shiftProgress;
+            
+            p.x_R_final = p.x_R_init + actualShift;
+        }
+
+        /**
+         * CINEMATIC SEQUENCE TIMELINE
+         */
+        const timeline = [
+            { time: 0.0, action: () => { } },
+            { time: 1.0, duration: 1.5, action: (t) => { state.anim.rod = easeOutExpo(t); } },
+            { time: 2.5, duration: 1.0, action: (t) => { state.current.A = lerp(0, state.target.A, easeOutExpo(t)); state.anim.forceA = t; } },
+            { time: 4.0, duration: 1.0, action: (t) => { state.current.B = lerp(0, state.target.B, easeOutExpo(t)); state.anim.forceB = t; } },
+            { time: 5.5, duration: 1.0, action: (t) => { state.anim.resultantInit = easeOutExpo(t); } },
+            { time: 7.0, duration: 1.0, action: (t) => { state.current.H = lerp(0, state.target.H, easeOutExpo(t)); state.anim.couple = t; } },
+            { time: 9.0, duration: 2.0, action: (t) => { state.anim.shiftProgress = easeInOutCubic(t); } },
+            { time: 11.5, duration: 1.0, action: (t) => { state.anim.dimension = easeOutExpo(t); DOM.mathHUD.style.opacity = t; } },
+            { time: 13.0, action: () => { showAhaMoment(); } },
+            { time: 20.0, action: () => { hideAhaMoment(); startInteractiveMode(); } }
+        ];
+
+        function showAhaMoment() {
+            DOM.ahaPanel.classList.remove('opacity-0', 'scale-95');
+            DOM.ahaPanel.classList.add('opacity-100', 'scale-100');
+            setTimeout(() => DOM.ahaLine1.classList.remove('opacity-0'), 500);
+            setTimeout(() => DOM.ahaLine2.classList.remove('opacity-0'), 1500);
+            setTimeout(() => DOM.ahaLine3.classList.remove('opacity-0'), 2500);
+        }
+
+        function hideAhaMoment() {
+            DOM.ahaPanel.classList.remove('opacity-100', 'scale-100');
+            DOM.ahaPanel.classList.add('opacity-0', 'scale-95');
+            DOM.ahaLine1.classList.add('opacity-0');
+            DOM.ahaLine2.classList.add('opacity-0');
+            DOM.ahaLine3.classList.add('opacity-0');
+        }
+
+        function startInteractiveMode() {
+            if (state.mode === 'interactive') return;
+            state.mode = 'interactive';
+            hideAhaMoment();
+            
+            // Show Controls
+            DOM.controls.classList.remove('opacity-0', 'translate-y-10');
+            DOM.mathHUD.style.opacity = 1;
+
+            // Snap values to targets
+            state.current.A = state.target.A;
+            state.current.B = state.target.B;
+            state.current.H = state.target.H;
+            state.current.d = state.target.d;
+            
+            // Set anim states to full
+            state.anim.rod = 1;
+            state.anim.forceA = 1;
+            state.anim.forceB = 1;
+            state.anim.resultantInit = 1;
+            state.anim.couple = 1;
+            state.anim.shiftProgress = 1; // In interactive, we just draw final
+            state.anim.dimension = 1;
+        }
+
+        function resetCinematic() {
+            state.mode = 'cinematic';
+            state.time = 0;
+            state.current = { A: 0, B: 0, d: 4, H: 0 };
+            state.target = { A: parseInt(DOM.sliderA.value), B: parseInt(DOM.sliderB.value), d: parseFloat(DOM.sliderD.value), H: parseInt(DOM.sliderH.value) };
+            
+            for(let key in state.anim) state.anim[key] = 0;
+            state.particles = [];
+            
+            DOM.controls.classList.add('opacity-0', 'translate-y-10');
+            DOM.mathHUD.style.opacity = 0;
+            hideAhaMoment();
+        }
+
+        /**
+         * RENDER HELPERS
+         */
+        function toScreen(worldX, worldY) {
+            return {
+                x: (canvas.width / 2) + worldX * PIXELS_PER_METER * pixelRatio,
+                y: (canvas.height / 2) + Y_BASE * pixelRatio - worldY * pixelRatio // invert Y for standard cartesian
+            };
+        }
+
+        function drawGrid() {
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.03)';
+            ctx.lineWidth = 1 * pixelRatio;
+            
+            const w = canvas.width;
+            const h = canvas.height;
+            const cx = w/2;
+            const cy = h/2 + Y_BASE * pixelRatio;
+
+            ctx.beginPath();
+            // Vertical lines (perspective pseudo effect)
+            for(let i = -10; i <= 10; i++) {
+                let x = cx + i * PIXELS_PER_METER * pixelRatio;
+                ctx.moveTo(x, cy);
+                ctx.lineTo(x, h);
+            }
+            // Horizontal lines
+            for(let i = 0; i <= 10; i++) {
+                let y = cy + Math.pow(i, 1.5) * 10 * pixelRatio;
+                if(y < h) {
+                    ctx.moveTo(0, y);
+                    ctx.lineTo(w, y);
+                }
+            }
+            ctx.stroke();
+        }
+
+        function drawRod(alpha) {
+            if (alpha <= 0.01) return;
+            ctx.save();
+            ctx.globalAlpha = alpha;
+            
+            const p = state.physics;
+            const left = toScreen(p.x_A - 0.5, 0);
+            const right = toScreen(p.x_B + 0.5, 0);
+            const radius = 8 * pixelRatio;
+
+            // Shadow
+            ctx.shadowColor = 'rgba(0,0,0,0.8)';
+            ctx.shadowBlur = 20 * pixelRatio;
+            ctx.shadowOffsetY = 10 * pixelRatio;
+
+            // Body
+            const grad = ctx.createLinearGradient(0, left.y - radius, 0, left.y + radius);
+            grad.addColorStop(0, '#64748b'); // slate-500
+            grad.addColorStop(0.2, '#cbd5e1'); // highlight
+            grad.addColorStop(0.5, '#475569'); // mid
+            grad.addColorStop(1, '#0f172a'); // dark shadow
+
+            ctx.fillStyle = grad;
+            ctx.beginPath();
+            ctx.roundRect(left.x, left.y - radius, right.x - left.x, radius * 2, radius);
+            ctx.fill();
+
+            ctx.restore();
+        }
+
+        function drawArrow(xWorld, mag, color, label, alpha, isDashed = false) {
+            if (alpha <= 0.01 || mag <= 0) return;
+            
+            ctx.save();
+            ctx.globalAlpha = alpha;
+            
+            const start = toScreen(xWorld, 0);
+            const len = mag * FORCE_SCALE * pixelRatio;
+            const end = toScreen(xWorld, len / pixelRatio); // World Y is length
+
+            const headLen = 15 * pixelRatio;
+            const headWid = 8 * pixelRatio;
+
+            // Glow
+            ctx.shadowColor = color;
+            ctx.shadowBlur = 15 * pixelRatio;
+
+            ctx.strokeStyle = color;
+            ctx.fillStyle = color;
+            ctx.lineWidth = 4 * pixelRatio;
+
+            if (isDashed) {
+                ctx.setLineDash([10 * pixelRatio, 10 * pixelRatio]);
+                ctx.globalAlpha = alpha * 0.4;
+                ctx.shadowBlur = 0; // Remove glow from dashed
+            }
+
+            // Shaft
+            ctx.beginPath();
+            ctx.moveTo(start.x, start.y);
+            ctx.lineTo(end.x, end.y + headLen); // Stop slightly before head tip
+            ctx.stroke();
+
+            // Reset dash for head
+            ctx.setLineDash([]);
+            if(isDashed) ctx.globalAlpha = alpha * 0.4;
+
+            // Head
+            ctx.beginPath();
+            ctx.moveTo(end.x, end.y);
+            ctx.lineTo(end.x - headWid, end.y + headLen);
+            ctx.lineTo(end.x + headWid, end.y + headLen);
+            ctx.closePath();
+            ctx.fill();
+
+            // Label
+            if(label && !isDashed) {
+                ctx.shadowBlur = 0;
+                ctx.fillStyle = '#ffffff';
+                ctx.font = `bold ${14 * pixelRatio}px Inter`;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'bottom';
+                ctx.fillText(label, end.x, end.y - 10 * pixelRatio);
+                
+                ctx.fillStyle = 'rgba(255,255,255,0.7)';
+                ctx.font = `${12 * pixelRatio}px 'JetBrains Mono'`;
+                ctx.fillText(mag.toFixed(0) + ' N', end.x, end.y + headLen + 20 * pixelRatio);
+            }
+
+            ctx.restore();
+        }
+
+        function drawCouple(alpha) {
+            if (alpha <= 0.01 || state.current.H === 0) return;
+            
+            ctx.save();
+            ctx.globalAlpha = alpha;
+            
+            const p = state.physics;
+            // Center the couple visually around the initial resultant position
+            const center = toScreen(p.x_R_init, 40); 
+            const radiusX = 60 * pixelRatio;
+            const radiusY = 25 * pixelRatio;
+
+            state.anim.coupleAngle += 0.02 * (state.current.H > 0 ? 1 : -1);
+            
+            ctx.shadowColor = '#f472b6';
+            ctx.shadowBlur = 20 * pixelRatio;
+            ctx.strokeStyle = '#f472b6';
+            ctx.lineWidth = 3 * pixelRatio;
+
+            // Draw elliptical arc
+            ctx.beginPath();
+            ctx.ellipse(center.x, center.y, radiusX, radiusY, 0, 0, Math.PI * 1.5);
+            ctx.stroke();
+
+            // Draw arrowhead at end of arc
+            const endAngle = Math.PI * 1.5;
+            const hx = center.x + radiusX * Math.cos(endAngle);
+            const hy = center.y + radiusY * Math.sin(endAngle);
+            
+            ctx.fillStyle = '#f472b6';
+            ctx.beginPath();
+            ctx.moveTo(hx, hy);
+            ctx.lineTo(hx - 12 * pixelRatio, hy - 6 * pixelRatio);
+            ctx.lineTo(hx - 12 * pixelRatio, hy + 6 * pixelRatio);
+            ctx.fill();
+
+            // Label
+            ctx.shadowBlur = 0;
+            ctx.fillStyle = '#f472b6';
+            ctx.font = `bold ${14 * pixelRatio}px Inter`;
+            ctx.textAlign = 'center';
+            ctx.fillText('COUPLE H', center.x, center.y - radiusY - 15 * pixelRatio);
+            
+            ctx.fillStyle = 'rgba(244, 114, 182, 0.8)';
+            ctx.font = `${12 * pixelRatio}px 'JetBrains Mono'`;
+            ctx.fillText(state.current.H.toFixed(0) + ' N·m', center.x, center.y + radiusY + 20 * pixelRatio);
+
+            ctx.restore();
+        }
+
+        function drawDimension(alpha) {
+            if (alpha <= 0.01 || Math.abs(state.physics.x_shift) < 0.01) return;
+            
+            ctx.save();
+            ctx.globalAlpha = alpha;
+            
+            const p = state.physics;
+            // Draw dimension below rod
+            const yLevel = -30; 
+            const start = toScreen(p.x_R_init, yLevel);
+            const end = toScreen(p.x_R_final, yLevel);
+            
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 2 * pixelRatio;
+            
+            // Main line
+            ctx.beginPath();
+            ctx.moveTo(start.x, start.y);
+            ctx.lineTo(end.x, end.y);
+            ctx.stroke();
+
+            // Ticks
+            const tickSize = 6 * pixelRatio;
+            ctx.beginPath();
+            ctx.moveTo(start.x, start.y - tickSize); ctx.lineTo(start.x, start.y + tickSize);
+            ctx.moveTo(end.x, end.y - tickSize); ctx.lineTo(end.x, end.y + tickSize);
+            ctx.stroke();
+
+            // Text
+            ctx.fillStyle = '#ffffff';
+            ctx.font = `bold ${16 * pixelRatio}px 'JetBrains Mono'`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'top';
+            const midX = (start.x + end.x) / 2;
+            
+            // Background pill for text
+            const text = 'x = ' + Math.abs(p.x_shift).toFixed(2) + 'm';
+            const textWidth = ctx.measureText(text).width;
+            ctx.fillStyle = 'rgba(2, 6, 23, 0.8)';
+            ctx.beginPath();
+            ctx.roundRect(midX - textWidth/2 - 10, start.y + 8*pixelRatio, textWidth + 20, 24*pixelRatio, 4);
+            ctx.fill();
+            
+            ctx.fillStyle = '#fbbf24'; // amber
+            ctx.fillText(text, midX, start.y + 12 * pixelRatio);
+
+            ctx.restore();
+        }
+
+        function updateParticles() {
+            // Add particles along forces
+            if (Math.random() < 0.1 * state.anim.forceA) addParticle(state.physics.x_A, state.current.A, '#38bdf8');
+            if (Math.random() < 0.1 * state.anim.forceB) addParticle(state.physics.x_B, state.current.B, '#38bdf8');
+            if (Math.random() < 0.15 * state.anim.resultantInit && state.physics.R > 0) addParticle(state.physics.x_R_final, state.physics.R, '#fbbf24');
+
+            for (let i = state.particles.length - 1; i >= 0; i--) {
+                let p = state.particles[i];
+                p.y += p.vy;
+                p.life -= 0.02;
+                if (p.life <= 0) state.particles.splice(i, 1);
+            }
+        }
+
+        function addParticle(xWorld, maxMag, color) {
+            state.particles.push({
+                xWorld: xWorld + (Math.random() - 0.5) * 0.2,
+                y: Math.random() * maxMag * FORCE_SCALE,
+                vy: 1 + Math.random() * 2,
+                life: 1.0,
+                color: color
+            });
+        }
+
+        function drawParticles() {
+            ctx.save();
+            state.particles.forEach(p => {
+                const pos = toScreen(p.xWorld, p.y / pixelRatio);
+                ctx.globalAlpha = p.life * 0.6;
+                ctx.fillStyle = p.color;
+                ctx.beginPath();
+                ctx.arc(pos.x, pos.y, 2 * pixelRatio, 0, Math.PI * 2);
+                ctx.fill();
+            });
+            ctx.restore();
+        }
+
+        /**
+         * MAIN LOOP
+         */
+        let lastTime = 0;
+        function loop(timestamp) {
+            const dt = (timestamp - lastTime) / 1000 || 0;
+            lastTime = timestamp;
+
+            // Clear Canvas
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            drawGrid();
+
+            // State Logic
+            if (state.mode === 'cinematic') {
+                state.time += dt;
+                
+                // Process timeline
+                for (let event of timeline) {
+                    if (state.time >= event.time) {
+                        if (event.duration) {
+                            let t = (state.time - event.time) / event.duration;
+                            if (t <= 1.0) event.action(t);
+                            else event.action(1.0);
+                        } else if (state.time - dt < event.time) {
+                            // Instant action, run once
+                            event.action();
+                        }
+                    }
+                }
+            } else {
+                // Interactive Mode LERPing for smoothness
+                const LERP_SPEED = 10 * dt;
+                state.current.A += (state.target.A - state.current.A) * LERP_SPEED;
+                state.current.B += (state.target.B - state.current.B) * LERP_SPEED;
+                state.current.H += (state.target.H - state.current.H) * LERP_SPEED;
+                state.current.d += (state.target.d - state.current.d) * LERP_SPEED;
+            }
+
+            updatePhysics();
+            updateParticles();
+
+            // Render Pipeline
+            drawRod(state.anim.rod);
+            
+            // Original Forces
+            drawArrow(state.physics.x_A, state.current.A, '#38bdf8', 'A', state.anim.forceA);
+            drawArrow(state.physics.x_B, state.current.B, '#38bdf8', 'B', state.anim.forceB);
+            
+            // Ghost Resultant (Initial Position)
+            if (state.mode === 'cinematic' && state.anim.shiftProgress > 0) {
+                drawArrow(state.physics.x_R_init, state.physics.R, '#fbbf24', '', state.anim.resultantInit * (1 - state.anim.shiftProgress * 0.5), true);
+            } else if (state.mode === 'interactive' && Math.abs(state.current.H) > 5) {
+                 drawArrow(state.physics.x_R_init, state.physics.R, '#fbbf24', '', 0.3, true);
+            }
+
+            // Actual Resultant
+            drawArrow(state.physics.x_R_final, state.physics.R, '#fbbf24', 'R', state.anim.resultantInit);
+            
+            // Couple and Displacement
+            drawCouple(state.anim.couple);
+            drawDimension(state.anim.dimension);
+            
+            drawParticles();
+            
+            updateHUD();
+
+            requestAnimationFrame(loop);
+        }
+
+        function updateHUD() {
+            // Update UI Texts
+            DOM.valA.innerText = state.target.A + ' N';
+            DOM.valB.innerText = state.target.B + ' N';
+            DOM.valD.innerText = state.target.d.toFixed(1) + ' m';
+            DOM.valH.innerText = state.target.H + ' N·m';
+
+            DOM.hudA.innerText = state.current.A.toFixed(0) + ' N';
+            DOM.hudB.innerText = state.current.B.toFixed(0) + ' N';
+            DOM.hudR.innerText = state.physics.R.toFixed(0) + ' N';
+            DOM.hudH.innerText = state.current.H.toFixed(0) + ' N·m';
+            
+            if (state.physics.R > 0) {
+                DOM.hudX.innerText = Math.abs(state.physics.x_shift).toFixed(2) + ' m ' + (state.physics.x_shift > 0 ? '→' : (state.physics.x_shift < 0 ? '←' : ''));
+            } else {
+                DOM.hudX.innerText = '0.00 m';
+            }
+        }
+
+        /**
+         * EVENT LISTENERS
+         */
+        function bindSlider(element, key, isFloat=false) {
+            element.addEventListener('input', (e) => {
+                if (state.mode === 'cinematic') startInteractiveMode();
+                state.target[key] = isFloat ? parseFloat(e.target.value) : parseInt(e.target.value);
+            });
+        }
+        
+        bindSlider(DOM.sliderA, 'A');
+        bindSlider(DOM.sliderB, 'B');
+        bindSlider(DOM.sliderD, 'd', true);
+        bindSlider(DOM.sliderH, 'H');
+
+        DOM.btnPlay.addEventListener('click', resetCinematic);
+        DOM.btnSkip.addEventListener('click', startInteractiveMode);
+
+        // Start Loop
+        requestAnimationFrame(loop);
+
+    </script>
+</body>
+</html>
