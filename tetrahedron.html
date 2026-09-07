@@ -1,0 +1,1022 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Regular Tetrahedron – Centroid Medians</title>
+    <style>
+        /* ── Reset & Base ── */
+        *,
+        *::before,
+        *::after {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: #0b0d15;
+            overflow: hidden;
+            height: 100vh;
+            color: #ffffff;
+            user-select: none;
+        }
+
+        #canvas-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: 0;
+        }
+
+        .glass {
+            background: rgba(255, 255, 255, 0.04);
+            backdrop-filter: blur(18px) saturate(1.2);
+            -webkit-backdrop-filter: blur(18px) saturate(1.2);
+            border: 1px solid rgba(255, 255, 255, 0.07);
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+        }
+
+        #top-bar {
+            position: fixed;
+            top: 24px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 10;
+            padding: 14px 32px;
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            white-space: nowrap;
+            background: rgba(10, 12, 22, 0.55);
+            backdrop-filter: blur(22px) saturate(1.3);
+            -webkit-backdrop-filter: blur(22px) saturate(1.3);
+            border: 1px solid rgba(255, 215, 100, 0.12);
+            border-radius: 60px;
+            box-shadow: 0 12px 48px rgba(0, 0, 0, 0.7), inset 0 1px 0 rgba(255, 215, 100, 0.08);
+        }
+        #top-bar h1 {
+            font-size: 18px;
+            font-weight: 600;
+            letter-spacing: 0.02em;
+            background: linear-gradient(135deg, #f7e05e, #f5a623);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        #top-bar .badge {
+            font-size: 11px;
+            font-weight: 500;
+            color: rgba(255, 255, 255, 0.5);
+            background: rgba(255, 255, 255, 0.06);
+            padding: 4px 14px;
+            border-radius: 30px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            letter-spacing: 0.3px;
+        }
+        #top-bar .badge span {
+            color: #f5c542;
+            -webkit-text-fill-color: #f5c542;
+        }
+
+        #controls {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 10;
+            padding: 14px 28px;
+            display: flex;
+            align-items: center;
+            gap: 18px;
+            flex-wrap: wrap;
+            justify-content: center;
+            background: rgba(10, 12, 22, 0.5);
+            backdrop-filter: blur(22px) saturate(1.3);
+            -webkit-backdrop-filter: blur(22px) saturate(1.3);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            border-radius: 60px;
+            box-shadow: 0 12px 48px rgba(0, 0, 0, 0.6);
+        }
+        #controls button {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            color: rgba(255, 255, 255, 0.8);
+            padding: 8px 18px;
+            border-radius: 30px;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.25s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            letter-spacing: 0.3px;
+            backdrop-filter: blur(4px);
+        }
+        #controls button:hover {
+            background: rgba(255, 215, 100, 0.12);
+            border-color: rgba(255, 215, 100, 0.3);
+            color: #fff;
+            transform: scale(1.02);
+        }
+        #controls button.active {
+            background: rgba(255, 215, 100, 0.15);
+            border-color: rgba(255, 215, 100, 0.35);
+            color: #f5c542;
+            box-shadow: 0 0 20px rgba(255, 215, 100, 0.06);
+        }
+        #controls button .icon {
+            font-size: 16px;
+            line-height: 1;
+        }
+        #controls .divider {
+            width: 1px;
+            height: 28px;
+            background: rgba(255, 255, 255, 0.08);
+        }
+
+        #info-panel {
+            position: fixed;
+            right: 28px;
+            top: 50%;
+            transform: translateY(-50%);
+            z-index: 10;
+            width: 260px;
+            padding: 24px 22px;
+            background: rgba(10, 12, 22, 0.5);
+            backdrop-filter: blur(24px) saturate(1.4);
+            -webkit-backdrop-filter: blur(24px) saturate(1.4);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            border-radius: 24px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+            transition: opacity 0.4s ease, transform 0.4s ease;
+        }
+        #info-panel.hidden {
+            opacity: 0;
+            transform: translateY(-50%) translateX(30px);
+            pointer-events: none;
+        }
+        #info-panel h3 {
+            font-size: 13px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            color: rgba(255, 255, 255, 0.3);
+            margin-bottom: 14px;
+        }
+        #info-panel .row {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+            font-size: 14px;
+        }
+        #info-panel .row:last-child {
+            border-bottom: none;
+        }
+        #info-panel .label {
+            color: rgba(255, 255, 255, 0.5);
+            font-weight: 400;
+        }
+        #info-panel .value {
+            color: #fff;
+            font-weight: 500;
+            font-family: 'JetBrains Mono', 'SF Mono', monospace;
+        }
+        #info-panel .value.gold {
+            color: #f5c542;
+        }
+        #info-panel .value.cyan {
+            color: #6cd4ff;
+        }
+        #info-panel .highlight-row {
+            background: rgba(255, 215, 100, 0.06);
+            border-radius: 10px;
+            padding: 10px 12px;
+            margin: 6px 0 4px 0;
+            border-left: 2px solid #f5c542;
+        }
+        #info-panel .highlight-row .label {
+            color: rgba(255, 255, 255, 0.6);
+        }
+        #info-panel .highlight-row .value {
+            color: #f5c542;
+            font-weight: 600;
+        }
+        #info-panel .color-dot {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            margin-right: 6px;
+            vertical-align: middle;
+        }
+        #info-panel .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 12px;
+            color: rgba(255, 255, 255, 0.6);
+            padding: 2px 0;
+        }
+        #info-panel .legend-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2px 8px;
+            margin-top: 4px;
+        }
+
+        .toggle-wrap {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 13px;
+            color: rgba(255, 255, 255, 0.6);
+        }
+        .toggle-wrap input[type="checkbox"] {
+            appearance: none;
+            width: 40px;
+            height: 22px;
+            background: rgba(255, 255, 255, 0.08);
+            border-radius: 30px;
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            cursor: pointer;
+            position: relative;
+            transition: background 0.3s ease, border-color 0.3s ease;
+            flex-shrink: 0;
+        }
+        .toggle-wrap input[type="checkbox"]::after {
+            content: '';
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            width: 16px;
+            height: 16px;
+            background: rgba(255, 255, 255, 0.4);
+            border-radius: 50%;
+            transition: all 0.3s ease;
+        }
+        .toggle-wrap input[type="checkbox"]:checked {
+            background: rgba(255, 215, 100, 0.25);
+            border-color: rgba(255, 215, 100, 0.3);
+        }
+        .toggle-wrap input[type="checkbox"]:checked::after {
+            left: 20px;
+            background: #f5c542;
+            box-shadow: 0 0 16px rgba(255, 215, 100, 0.3);
+        }
+
+        @media (max-width: 900px) {
+            #info-panel {
+                right: 16px;
+                width: 210px;
+                padding: 18px 16px;
+                top: auto;
+                bottom: 100px;
+                transform: none;
+                border-radius: 18px;
+            }
+            #info-panel.hidden {
+                transform: translateY(20px);
+                opacity: 0;
+            }
+            #top-bar {
+                padding: 10px 20px;
+                top: 16px;
+                gap: 12px;
+            }
+            #top-bar h1 {
+                font-size: 15px;
+            }
+            #controls {
+                padding: 10px 16px;
+                gap: 10px;
+                bottom: 20px;
+                border-radius: 30px;
+                width: calc(100% - 32px);
+            }
+            #controls button {
+                font-size: 11px;
+                padding: 6px 12px;
+            }
+            #controls .divider {
+                height: 20px;
+            }
+            #top-bar .badge {
+                font-size: 10px;
+                padding: 2px 10px;
+            }
+            #info-panel .legend-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+        @media (max-width: 600px) {
+            #info-panel {
+                right: 10px;
+                width: 180px;
+                padding: 14px 12px;
+                bottom: 90px;
+            }
+            #info-panel .row {
+                font-size: 12px;
+                padding: 5px 0;
+            }
+            #info-panel h3 {
+                font-size: 11px;
+            }
+            #controls button .label-text {
+                display: none;
+            }
+            #controls button {
+                padding: 6px 12px;
+            }
+            #top-bar {
+                padding: 8px 16px;
+                top: 12px;
+                gap: 8px;
+            }
+            #top-bar h1 {
+                font-size: 13px;
+            }
+            #top-bar .badge {
+                font-size: 9px;
+                padding: 2px 8px;
+            }
+        }
+
+        #loading {
+            position: fixed;
+            inset: 0;
+            z-index: 999;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: #0b0d15;
+            color: rgba(255, 255, 255, 0.3);
+            font-size: 14px;
+            letter-spacing: 0.5px;
+            transition: opacity 0.8s ease;
+        }
+        #loading.hide {
+            opacity: 0;
+            pointer-events: none;
+        }
+        #loading .spinner {
+            width: 40px;
+            height: 40px;
+            border: 2px solid rgba(255, 215, 100, 0.08);
+            border-top-color: #f5c542;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 18px;
+        }
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="loading">
+        <div class="spinner"></div>
+        <span>Loading Tetrahedron …</span>
+    </div>
+
+    <div id="canvas-container"></div>
+
+    <div id="top-bar">
+        <h1>⬡ Regular Tetrahedron</h1>
+        <span class="badge">JEE <span>Advanced</span></span>
+        <span class="badge" style="background:rgba(255,215,100,0.06);border-color:rgba(255,215,100,0.1);">
+            Centroid Medians
+        </span>
+    </div>
+
+    <div id="info-panel">
+        <h3>⚡ Centroid Medians</h3>
+        <div class="highlight-row">
+            <div class="row" style="border:none;padding:0;">
+                <span class="label">Centroid G</span>
+                <span class="value gold">(0, 0, 0)</span>
+            </div>
+        </div>
+        <div class="row" style="margin-top:6px;">
+            <span class="label">Median ratio</span>
+            <span class="value gold">Vertex : G = 3 : 1</span>
+        </div>
+        <div style="margin-top:10px;padding-top:10px;border-top:1px solid rgba(255,255,255,0.05);">
+            <div style="font-size:12px;color:rgba(255,255,255,0.3);margin-bottom:6px;">Vertex → Opposite Face Centroid</div>
+            <div class="legend-grid">
+                <div class="legend-item"><span class="color-dot" style="background:#ff6b6b;"></span> O → G<sub>ABC</sub></div>
+                <div class="legend-item"><span class="color-dot" style="background:#4ecdc4;"></span> A → G<sub>OBC</sub></div>
+                <div class="legend-item"><span class="color-dot" style="background:#ffd93d;"></span> B → G<sub>OAC</sub></div>
+                <div class="legend-item"><span class="color-dot" style="background:#a29bfe;"></span> C → G<sub>OAB</sub></div>
+            </div>
+        </div>
+        <div class="row" style="margin-top:8px;padding-top:8px;border-top:1px solid rgba(255,255,255,0.05);">
+            <span class="label" style="font-size:12px;color:rgba(255,255,255,0.25);">
+                🖱 Drag to rotate · Scroll to zoom
+            </span>
+        </div>
+    </div>
+
+    <div id="controls">
+        <button id="btn-rotate" class="active">
+            <span class="icon">⟳</span>
+            <span class="label-text">Auto-Rotate</span>
+        </button>
+        <div class="divider"></div>
+        <button id="btn-medians" class="active">
+            <span class="icon">〰</span>
+            <span class="label-text">Medians</span>
+        </button>
+        <button id="btn-centroid" class="active">
+            <span class="icon">✦</span>
+            <span class="label-text">Centroid</span>
+        </button>
+        <button id="btn-labels" class="active">
+            <span class="icon">Aa</span>
+            <span class="label-text">Labels</span>
+        </button>
+        <div class="divider"></div>
+        <button id="btn-reset">
+            <span class="icon">⌖</span>
+            <span class="label-text">Reset View</span>
+        </button>
+        <div class="divider"></div>
+        <div class="toggle-wrap">
+            <span style="font-size:12px;color:rgba(255,255,255,0.3);">Info</span>
+            <input type="checkbox" id="toggle-info" checked />
+        </div>
+    </div>
+
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://cdn.jsdelivr.net/npm/three@0.163.0/build/three.module.js",
+                "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.163.0/examples/jsm/"
+            }
+        }
+    </script>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+        import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
+
+        // ─── DOM refs ───────────────────────────────────────────────
+        const container = document.getElementById('canvas-container');
+        const loading = document.getElementById('loading');
+        const btnRotate = document.getElementById('btn-rotate');
+        const btnMedians = document.getElementById('btn-medians');
+        const btnCentroid = document.getElementById('btn-centroid');
+        const btnLabels = document.getElementById('btn-labels');
+        const btnReset = document.getElementById('btn-reset');
+        const toggleInfo = document.getElementById('toggle-info');
+        const infoPanel = document.getElementById('info-panel');
+
+        // ─── Scene ──────────────────────────────────────────────────
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x0b0d15);
+
+        // ─── Camera ──────────────────────────────────────────────────
+        const camera = new THREE.PerspectiveCamera(42, window.innerWidth / window.innerHeight, 0.1, 100);
+        camera.position.set(10, 7, 12);
+        camera.lookAt(0, 0, 0);
+
+        // ─── Renderers ──────────────────────────────────────────────
+        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        renderer.toneMapping = THREE.ACESFilmicToneMapping;
+        renderer.toneMappingExposure = 1.2;
+        container.appendChild(renderer.domElement);
+
+        const labelRenderer = new CSS2DRenderer();
+        labelRenderer.setSize(window.innerWidth, window.innerHeight);
+        labelRenderer.domElement.style.position = 'absolute';
+        labelRenderer.domElement.style.top = '0';
+        labelRenderer.domElement.style.left = '0';
+        labelRenderer.domElement.style.pointerEvents = 'none';
+        labelRenderer.domElement.style.zIndex = '1';
+        container.appendChild(labelRenderer.domElement);
+
+        // ─── Controls ──────────────────────────────────────────────
+        const controls = new OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.08;
+        controls.autoRotate = true;
+        controls.autoRotateSpeed = 1.4;
+        controls.minDistance = 5;
+        controls.maxDistance = 30;
+        controls.target.set(0, 0, 0);
+        controls.update();
+
+        // ─── Lights ──────────────────────────────────────────────────
+        const ambientLight = new THREE.AmbientLight(0x404060, 0.6);
+        scene.add(ambientLight);
+
+        const mainLight = new THREE.DirectionalLight(0xffeedd, 2.2);
+        mainLight.position.set(8, 15, 10);
+        mainLight.castShadow = true;
+        scene.add(mainLight);
+
+        const fillLight = new THREE.DirectionalLight(0x4488ff, 0.8);
+        fillLight.position.set(-8, 4, -6);
+        scene.add(fillLight);
+
+        const rimLight = new THREE.DirectionalLight(0xffd700, 0.4);
+        rimLight.position.set(0, -6, 8);
+        scene.add(rimLight);
+
+        const pointLight = new THREE.PointLight(0xf5c542, 0.4, 20);
+        pointLight.position.set(0, 5, 0);
+        scene.add(pointLight);
+
+        const hemi = new THREE.HemisphereLight(0x4466aa, 0x221122, 0.6);
+        scene.add(hemi);
+
+        // ─── Background Stars ──────────────────────────────────────
+        const starsGeo = new THREE.BufferGeometry();
+        const starCount = 1800;
+        const starPos = new Float32Array(starCount * 3);
+        for (let i = 0; i < starCount * 3; i++) {
+            starPos[i] = (Math.random() - 0.5) * 120;
+        }
+        starsGeo.setAttribute('position', new THREE.BufferAttribute(starPos, 3));
+        const starMat = new THREE.PointsMaterial({
+            color: 0x8899cc,
+            size: 0.12,
+            transparent: true,
+            opacity: 0.5,
+            blending: THREE.AdditiveBlending,
+            sizeAttenuation: true,
+        });
+        const stars = new THREE.Points(starsGeo, starMat);
+        scene.add(stars);
+
+        // ─── Tetrahedron Data ──────────────────────────────────────
+        const s = 2.2;
+        const v = {
+            O: new THREE.Vector3(s, s, s),
+            A: new THREE.Vector3(s, -s, -s),
+            B: new THREE.Vector3(-s, s, -s),
+            C: new THREE.Vector3(-s, -s, s),
+        };
+        const verts = [v.O, v.A, v.B, v.C];
+        const names = ['O', 'A', 'B', 'C'];
+        const centroid = new THREE.Vector3(0, 0, 0);
+
+        const edgePairs = [
+            ['O', 'A'],
+            ['O', 'B'],
+            ['O', 'C'],
+            ['A', 'B'],
+            ['A', 'C'],
+            ['B', 'C']
+        ];
+        const faceTriples = [
+            ['O', 'B', 'C'],
+            ['A', 'C', 'B'],
+            ['O', 'C', 'A'],
+            ['O', 'A', 'B']
+        ];
+
+        // ─── Build Tetrahedron ──────────────────────────────────────
+
+        // Edges
+        const edgeMat = new THREE.LineBasicMaterial({ color: 0x8899cc, transparent: true, opacity: 0.6 });
+        const edgeGroup = new THREE.Group();
+        edgePairs.forEach(([n1, n2]) => {
+            const p1 = v[n1];
+            const p2 = v[n2];
+            const geo = new THREE.BufferGeometry().setFromPoints([p1, p2]);
+            const line = new THREE.Line(geo, edgeMat);
+            edgeGroup.add(line);
+        });
+        scene.add(edgeGroup);
+
+        const glowMat = new THREE.LineBasicMaterial({ color: 0xaaccff, transparent: true, opacity: 0.12 });
+        edgePairs.forEach(([n1, n2]) => {
+            const p1 = v[n1];
+            const p2 = v[n2];
+            const geo = new THREE.BufferGeometry().setFromPoints([p1, p2]);
+            const line = new THREE.Line(geo, glowMat);
+            line.scale.set(1.01, 1.01, 1.01);
+            edgeGroup.add(line);
+        });
+
+        // Faces
+        const faceMat = new THREE.MeshPhysicalMaterial({
+            color: 0x4477aa,
+            transparent: true,
+            opacity: 0.10,
+            roughness: 0.3,
+            metalness: 0.1,
+            side: THREE.DoubleSide,
+            depthWrite: false,
+            envMapIntensity: 0.4,
+        });
+        const faceGroup = new THREE.Group();
+        faceTriples.forEach(([n1, n2, n3]) => {
+            const p1 = v[n1];
+            const p2 = v[n2];
+            const p3 = v[n3];
+            const geo = new THREE.BufferGeometry().setFromPoints([p1, p2, p3]);
+            const idx = new Uint16Array([0, 1, 2]);
+            geo.setIndex(new THREE.BufferAttribute(idx, 1));
+            geo.computeVertexNormals();
+            const mesh = new THREE.Mesh(geo, faceMat);
+            mesh.castShadow = true;
+            mesh.receiveShadow = true;
+            faceGroup.add(mesh);
+        });
+        scene.add(faceGroup);
+
+        // Face edges
+        const faceEdgeMat = new THREE.LineBasicMaterial({ color: 0x6699dd, transparent: true, opacity: 0.06 });
+        faceTriples.forEach(([n1, n2, n3]) => {
+            const p1 = v[n1];
+            const p2 = v[n2];
+            const p3 = v[n3];
+            const pts = [p1, p2, p3, p1];
+            const geo = new THREE.BufferGeometry().setFromPoints(pts);
+            const line = new THREE.Line(geo, faceEdgeMat);
+            faceGroup.add(line);
+        });
+
+        // Vertices
+        const vertMat = new THREE.MeshPhysicalMaterial({
+            color: 0x88bbff,
+            emissive: 0x4488dd,
+            emissiveIntensity: 0.15,
+            roughness: 0.2,
+            metalness: 0.6,
+            envMapIntensity: 0.8,
+        });
+        const vertGroup = new THREE.Group();
+        verts.forEach(p => {
+            const sphere = new THREE.Mesh(new THREE.SphereGeometry(0.25, 24, 24), vertMat);
+            sphere.position.copy(p);
+            sphere.castShadow = true;
+            vertGroup.add(sphere);
+        });
+        scene.add(vertGroup);
+
+        // ─── Labels ──────────────────────────────────────────────────
+        const labelGroup = new THREE.Group();
+        const labelStyle = `
+          color: #fff;
+          font-size: 16px;
+          font-weight: 600;
+          font-family: 'Segoe UI', system-ui, sans-serif;
+          text-shadow: 0 0 20px rgba(0,0,0,0.9), 0 0 8px rgba(0,0,0,0.8);
+          background: rgba(0,0,0,0.35);
+          backdrop-filter: blur(6px);
+          padding: 2px 12px;
+          border-radius: 20px;
+          border: 1px solid rgba(255,255,255,0.06);
+          letter-spacing: 0.3px;
+          pointer-events: none;
+        `;
+        const labelOffsets = {
+            O: new THREE.Vector3(0.55, 0.55, 0.55),
+            A: new THREE.Vector3(0.55, -0.55, -0.55),
+            B: new THREE.Vector3(-0.55, 0.55, -0.55),
+            C: new THREE.Vector3(-0.55, -0.55, 0.55),
+        };
+        names.forEach(name => {
+            const pos = v[name].clone().add(labelOffsets[name]);
+            const div = document.createElement('div');
+            div.textContent = name;
+            div.style.cssText = labelStyle;
+            const label = new CSS2DObject(div);
+            label.position.copy(pos);
+            labelGroup.add(label);
+        });
+        scene.add(labelGroup);
+
+        // ─── Centroid ──────────────────────────────────────────────
+        const centroidGroup = new THREE.Group();
+
+        const coreMat = new THREE.MeshPhysicalMaterial({
+            color: 0xf5c542,
+            emissive: 0xf5c542,
+            emissiveIntensity: 0.8,
+            roughness: 0.1,
+            metalness: 0.1,
+            transparent: true,
+            opacity: 0.95,
+        });
+        const core = new THREE.Mesh(new THREE.SphereGeometry(0.38, 32, 32), coreMat);
+        core.position.copy(centroid);
+        centroidGroup.add(core);
+
+        const glowMat2 = new THREE.MeshBasicMaterial({
+            color: 0xf5c542,
+            transparent: true,
+            opacity: 0.12,
+            blending: THREE.AdditiveBlending,
+        });
+        const glowSphere = new THREE.Mesh(new THREE.SphereGeometry(0.85, 32, 32), glowMat2);
+        glowSphere.position.copy(centroid);
+        centroidGroup.add(glowSphere);
+
+        const ringGeo = new THREE.TorusGeometry(0.65, 0.025, 16, 48);
+        const ringMat = new THREE.MeshPhysicalMaterial({
+            color: 0xf5c542,
+            emissive: 0xf5c542,
+            emissiveIntensity: 0.3,
+            transparent: true,
+            opacity: 0.3,
+            roughness: 0.2,
+            metalness: 0.8,
+        });
+        const ring = new THREE.Mesh(ringGeo, ringMat);
+        ring.position.copy(centroid);
+        centroidGroup.add(ring);
+
+        const gDiv = document.createElement('div');
+        gDiv.textContent = 'G';
+        gDiv.style.cssText = `
+          color: #f5c542;
+          font-size: 17px;
+          font-weight: 700;
+          font-family: 'Segoe UI', system-ui, sans-serif;
+          text-shadow: 0 0 30px rgba(245,197,66,0.6), 0 0 60px rgba(245,197,66,0.2);
+          pointer-events: none;
+          letter-spacing: 0.5px;
+          background: rgba(0,0,0,0.3);
+          backdrop-filter: blur(4px);
+          padding: 0 10px;
+          border-radius: 14px;
+          border: 1px solid rgba(245,197,66,0.15);
+        `;
+        const gLabel = new CSS2DObject(gDiv);
+        gLabel.position.set(0, 0.85, 0);
+        centroidGroup.add(gLabel);
+        scene.add(centroidGroup);
+
+        // ─── Face Centroids & Medians ──────────────────────────────
+        const mediansGroup = new THREE.Group();
+
+        // Compute face centroids
+        const faceCentroids = {
+            ABC: new THREE.Vector3().add(v.A).add(v.B).add(v.C).divideScalar(3),
+            OBC: new THREE.Vector3().add(v.O).add(v.B).add(v.C).divideScalar(3),
+            OAC: new THREE.Vector3().add(v.O).add(v.A).add(v.C).divideScalar(3),
+            OAB: new THREE.Vector3().add(v.O).add(v.A).add(v.B).divideScalar(3),
+        };
+
+        // Map vertex to opposite face centroid
+        const vertexToFace = {
+            O: { face: 'ABC', centroid: faceCentroids.ABC, color: 0xff6b6b, label: 'G_ABC' },
+            A: { face: 'OBC', centroid: faceCentroids.OBC, color: 0x4ecdc4, label: 'G_OBC' },
+            B: { face: 'OAC', centroid: faceCentroids.OAC, color: 0xffd93d, label: 'G_OAC' },
+            C: { face: 'OAB', centroid: faceCentroids.OAB, color: 0xa29bfe, label: 'G_OAB' },
+        };
+
+        // For each vertex, draw line to opposite face centroid
+        const medianLines = [];
+        const faceCentroidMeshes = [];
+        const faceCentroidLabels = [];
+
+        Object.entries(vertexToFace).forEach(([vertexName, data]) => {
+            const start = v[vertexName];
+            const end = data.centroid;
+            const color = data.color;
+
+            // Main line (solid, with glow)
+            const lineMat = new THREE.LineBasicMaterial({
+                color: color,
+                transparent: true,
+                opacity: 0.5,
+                linewidth: 1,
+            });
+            const pts = [start, end];
+            const geo = new THREE.BufferGeometry().setFromPoints(pts);
+            const line = new THREE.Line(geo, lineMat);
+            mediansGroup.add(line);
+
+            // Glow line (wider, more transparent)
+            const glowLineMat = new THREE.LineBasicMaterial({
+                color: color,
+                transparent: true,
+                opacity: 0.12,
+            });
+            const glowLine = new THREE.Line(geo.clone(), glowLineMat);
+            glowLine.scale.set(1.02, 1.02, 1.02);
+            mediansGroup.add(glowLine);
+
+            // Dashed line from centroid to face centroid (extension)
+            const dashMat = new THREE.LineDashedMaterial({
+                color: color,
+                transparent: true,
+                opacity: 0.15,
+                dashSize: 0.08,
+                gapSize: 0.08,
+            });
+            const dashPts = [centroid, end];
+            const dashGeo = new THREE.BufferGeometry().setFromPoints(dashPts);
+            const dashLine = new THREE.Line(dashGeo, dashMat);
+            dashLine.computeLineDistances();
+            mediansGroup.add(dashLine);
+
+            // Small dot at face centroid
+            const dotMat = new THREE.MeshBasicMaterial({
+                color: color,
+                transparent: true,
+                opacity: 0.7,
+            });
+            const dot = new THREE.Mesh(new THREE.SphereGeometry(0.12, 12, 12), dotMat);
+            dot.position.copy(end);
+            mediansGroup.add(dot);
+            faceCentroidMeshes.push(dot);
+
+            // Label at face centroid
+            const labelDiv = document.createElement('div');
+            labelDiv.textContent = data.label;
+            labelDiv.style.cssText = `
+            color: #${color.toString(16).padStart(6,'0')};
+            font-size: 11px;
+            font-weight: 600;
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            text-shadow: 0 0 20px rgba(0,0,0,0.9);
+            pointer-events: none;
+            background: rgba(0,0,0,0.3);
+            backdrop-filter: blur(4px);
+            padding: 0 6px;
+            border-radius: 8px;
+            border: 1px solid rgba(255,255,255,0.04);
+          `;
+            const label = new CSS2DObject(labelDiv);
+            const offset = new THREE.Vector3(0.3, 0.3, 0);
+            // Offset away from centroid
+            const dir = end.clone().sub(centroid).normalize();
+            label.position.copy(end.clone().add(dir.multiplyScalar(0.35)));
+            mediansGroup.add(label);
+            faceCentroidLabels.push(label);
+
+            // Store for later
+            medianLines.push({ start, end, color, line, dashLine });
+        });
+
+        // Also add small "3:1" ratio markers along each median
+        Object.entries(vertexToFace).forEach(([vertexName, data]) => {
+            const start = v[vertexName];
+            const end = data.centroid;
+            const color = data.color;
+            // 3/4 of the way from vertex to face centroid = centroid G
+            // Show a small marker at 1/4 from face centroid (i.e., 3/4 from vertex)
+            const markerPos = new THREE.Vector3().copy(start).lerp(end, 0.75);
+            const ratioDiv = document.createElement('div');
+            ratioDiv.textContent = '3:1';
+            ratioDiv.style.cssText = `
+            color: rgba(255,255,255,0.2);
+            font-size: 9px;
+            font-weight: 500;
+            font-family: 'JetBrains Mono', monospace;
+            pointer-events: none;
+            background: rgba(0,0,0,0.2);
+            padding: 0 4px;
+            border-radius: 4px;
+          `;
+            const ratioLabel = new CSS2DObject(ratioDiv);
+            const dir = end.clone().sub(start).normalize();
+            ratioLabel.position.copy(markerPos.clone().add(dir.clone().multiplyScalar(0.3)));
+            mediansGroup.add(ratioLabel);
+        });
+
+        scene.add(mediansGroup);
+
+        // ─── Floor Grid ──────────────────────────────────────────────
+        const gridHelper = new THREE.GridHelper(16, 24, 0x445577, 0x223355);
+        gridHelper.position.y = -5.5;
+        gridHelper.material.transparent = true;
+        gridHelper.material.opacity = 0.10;
+        scene.add(gridHelper);
+
+        // ─── Resize ──────────────────────────────────────────────────
+        function onResize() {
+            const w = window.innerWidth;
+            const h = window.innerHeight;
+            camera.aspect = w / h;
+            camera.updateProjectionMatrix();
+            renderer.setSize(w, h);
+            labelRenderer.setSize(w, h);
+        }
+        window.addEventListener('resize', onResize);
+
+        // ─── UI Controls ────────────────────────────────────────────
+
+        let autoRotate = true;
+        btnRotate.addEventListener('click', () => {
+            autoRotate = !autoRotate;
+            controls.autoRotate = autoRotate;
+            btnRotate.classList.toggle('active');
+        });
+
+        let showMedians = true;
+        btnMedians.addEventListener('click', () => {
+            showMedians = !showMedians;
+            mediansGroup.visible = showMedians;
+            btnMedians.classList.toggle('active');
+        });
+
+        let showCentroid = true;
+        btnCentroid.addEventListener('click', () => {
+            showCentroid = !showCentroid;
+            centroidGroup.visible = showCentroid;
+            btnCentroid.classList.toggle('active');
+        });
+
+        let showLabels = true;
+        btnLabels.addEventListener('click', () => {
+            showLabels = !showLabels;
+            labelGroup.visible = showLabels;
+            btnLabels.classList.toggle('active');
+        });
+
+        btnReset.addEventListener('click', () => {
+            camera.position.set(10, 7, 12);
+            controls.target.set(0, 0, 0);
+            controls.update();
+        });
+
+        toggleInfo.addEventListener('change', () => {
+            infoPanel.classList.toggle('hidden', !toggleInfo.checked);
+        });
+
+        // ─── Animation Loop ──────────────────────────────────────────
+        let clock = new THREE.Clock();
+
+        function animate() {
+            const delta = clock.getDelta();
+            const elapsed = performance.now() * 0.0005;
+
+            // Centroid pulse
+            if (showCentroid) {
+                const pulse = 1 + 0.04 * Math.sin(elapsed * 1.2);
+                core.scale.set(pulse, pulse, pulse);
+                glowSphere.scale.set(1 + 0.08 * Math.sin(elapsed * 0.8), 1 + 0.08 * Math.sin(elapsed * 0.8), 1 + 0.08 * Math
+                    .sin(elapsed * 0.8));
+                ring.rotation.x = elapsed * 0.3;
+                ring.rotation.z = elapsed * 0.2;
+                const ringScale = 1 + 0.06 * Math.sin(elapsed * 0.6);
+                ring.scale.set(ringScale, ringScale, ringScale);
+            }
+
+            // Medians subtle pulse on the dots
+            if (showMedians) {
+                faceCentroidMeshes.forEach((dot, i) => {
+                    const pulse = 0.8 + 0.2 * Math.sin(elapsed * 0.7 + i * 1.2);
+                    dot.scale.set(pulse, pulse, pulse);
+                });
+            }
+
+            stars.rotation.y += 0.00008;
+
+            controls.update();
+
+            renderer.render(scene, camera);
+            labelRenderer.render(scene, camera);
+            requestAnimationFrame(animate);
+        }
+
+        // ─── Start ──────────────────────────────────────────────────
+        setTimeout(() => {
+            loading.classList.add('hide');
+        }, 500);
+
+        animate();
+
+        // ─── Keyboard shortcuts ────────────────────────────────────
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'r' || e.key === 'R') { btnRotate.click();
+                e.preventDefault(); }
+            if (e.key === 'm' || e.key === 'M') { btnMedians.click();
+                e.preventDefault(); }
+            if (e.key === 'c' || e.key === 'C') { btnCentroid.click();
+                e.preventDefault(); }
+            if (e.key === 'l' || e.key === 'L') { btnLabels.click();
+                e.preventDefault(); }
+            if (e.key === ' ') { btnReset.click();
+                e.preventDefault(); }
+        });
+
+        console.log('🔥 Regular Tetrahedron with Centroid Medians');
+        console.log('📍 Centroid G = (0, 0, 0)');
+        console.log('📐 Each median divided in ratio 3:1 (Vertex : G)');
+        console.log('⌨️  r: rotate  m: medians  c: centroid  l: labels  space: reset');
+    </script>
+</body>
+</html>
