@@ -1,0 +1,2202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+    <title>Sphere Lab — Equation of a Sphere in 3D</title>
+
+    <!-- Import Map for Three.js and GSAP -->
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://cdn.jsdelivr.net/npm/three@0.163.0/build/three.module.js",
+                "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.163.0/examples/jsm/"
+            }
+        }
+    </script>
+
+    <style>
+        /* ── Reset & Base ── */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        html,
+        body {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background: #0a0c0f;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            color: #e8edf4;
+            user-select: none;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+
+        /* ── Three.js Canvas ── */
+        #canvas-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+        }
+
+        /* ── Glassmorphism Panel Base ── */
+        .glass {
+            background: rgba(18, 24, 34, 0.72);
+            backdrop-filter: blur(18px) saturate(1.2);
+            -webkit-backdrop-filter: blur(18px) saturate(1.2);
+            border: 1px solid rgba(255, 255, 255, 0.07);
+            border-radius: 14px;
+            box-shadow: 0 12px 48px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+            transition: opacity 0.4s ease, transform 0.4s ease;
+        }
+
+        /* ── Title ── */
+        #brand {
+            position: fixed;
+            top: 22px;
+            left: 26px;
+            z-index: 20;
+            pointer-events: none;
+        }
+        #brand h1 {
+            font-weight: 500;
+            font-size: 18px;
+            letter-spacing: 0.03em;
+            color: #d6e2f0;
+            text-shadow: 0 2px 12px rgba(0, 0, 0, 0.5);
+        }
+        #brand h1 span {
+            font-weight: 300;
+            color: rgba(255, 255, 255, 0.3);
+        }
+        #brand .sub {
+            font-size: 11px;
+            font-weight: 400;
+            letter-spacing: 0.08em;
+            color: rgba(255, 255, 255, 0.25);
+            margin-top: 2px;
+        }
+
+        /* ── Equation Panel ── */
+        #equation-panel {
+            position: fixed;
+            top: 22px;
+            right: 26px;
+            z-index: 20;
+            padding: 18px 26px 18px 26px;
+            min-width: 200px;
+            max-width: 380px;
+            pointer-events: none;
+            text-align: right;
+            transition: opacity 0.6s ease, transform 0.6s ease;
+        }
+        #equation-panel .eq-label {
+            font-size: 10px;
+            font-weight: 500;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            color: rgba(255, 255, 255, 0.25);
+            margin-bottom: 6px;
+        }
+        #equation-panel .eq-main {
+            font-size: 22px;
+            font-weight: 400;
+            color: #eef4fc;
+            line-height: 1.5;
+            font-family: 'Times New Roman', 'CMU Serif', 'STIX', serif;
+            font-style: italic;
+            text-shadow: 0 0 40px rgba(70, 140, 255, 0.06);
+        }
+        #equation-panel .eq-main .hl {
+            color: #7ab7ff;
+        }
+        #equation-panel .eq-main .hl-gold {
+            color: #f0c87a;
+        }
+        #equation-panel .eq-sub {
+            font-size: 13px;
+            font-weight: 300;
+            color: rgba(255, 255, 255, 0.35);
+            margin-top: 4px;
+            letter-spacing: 0.02em;
+        }
+
+        /* ── Data Panel ── */
+        #data-panel {
+            position: fixed;
+            bottom: 110px;
+            left: 26px;
+            z-index: 18;
+            padding: 14px 20px 14px 20px;
+            min-width: 160px;
+            pointer-events: none;
+            font-size: 12px;
+            line-height: 1.7;
+            color: rgba(255, 255, 255, 0.6);
+        }
+        #data-panel .data-row {
+            display: flex;
+            justify-content: space-between;
+            gap: 24px;
+        }
+        #data-panel .data-row .label {
+            color: rgba(255, 255, 255, 0.25);
+            font-weight: 400;
+        }
+        #data-panel .data-row .value {
+            color: #d6e2f0;
+            font-family: 'JetBrains Mono', 'Menlo', monospace;
+            font-size: 12px;
+            letter-spacing: 0.02em;
+        }
+        #data-panel .data-row .value.highlight {
+            color: #7ab7ff;
+        }
+        #data-panel .sep {
+            border-top: 1px solid rgba(255, 255, 255, 0.05);
+            margin: 6px 0 6px 0;
+        }
+
+        /* ── Controls ── */
+        #controls {
+            position: fixed;
+            bottom: 26px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 20;
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 12px 18px;
+            max-width: 94vw;
+            pointer-events: auto;
+        }
+        #controls .ctrl-group {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            flex-wrap: wrap;
+        }
+        #controls .ctrl-divider {
+            width: 1px;
+            height: 28px;
+            background: rgba(255, 255, 255, 0.08);
+            margin: 0 4px;
+        }
+
+        .btn {
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 8px;
+            padding: 6px 14px;
+            font-size: 11px;
+            font-weight: 450;
+            letter-spacing: 0.03em;
+            color: rgba(255, 255, 255, 0.7);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            pointer-events: auto;
+            white-space: nowrap;
+            font-family: inherit;
+            background: rgba(18, 24, 34, 0.5);
+            backdrop-filter: blur(6px);
+            -webkit-backdrop-filter: blur(6px);
+        }
+        .btn:hover {
+            background: rgba(255, 255, 255, 0.09);
+            border-color: rgba(255, 255, 255, 0.16);
+            color: #fff;
+            transform: translateY(-1px);
+        }
+        .btn:active {
+            transform: translateY(0px);
+            background: rgba(255, 255, 255, 0.05);
+        }
+        .btn.primary {
+            background: rgba(70, 140, 255, 0.15);
+            border-color: rgba(70, 140, 255, 0.25);
+            color: #7ab7ff;
+        }
+        .btn.primary:hover {
+            background: rgba(70, 140, 255, 0.22);
+            border-color: rgba(70, 140, 255, 0.35);
+            color: #a0ccff;
+        }
+        .btn.active {
+            background: rgba(70, 140, 255, 0.20);
+            border-color: rgba(70, 140, 255, 0.35);
+            color: #a0ccff;
+            box-shadow: 0 0 24px rgba(70, 140, 255, 0.06);
+        }
+        .btn.gold {
+            background: rgba(240, 200, 122, 0.10);
+            border-color: rgba(240, 200, 122, 0.18);
+            color: #f0c87a;
+        }
+        .btn.gold:hover {
+            background: rgba(240, 200, 122, 0.18);
+            border-color: rgba(240, 200, 122, 0.28);
+            color: #f5d89a;
+        }
+        .btn.small {
+            padding: 4px 10px;
+            font-size: 10px;
+        }
+
+        .slider-wrap {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 0 4px;
+        }
+        .slider-wrap label {
+            font-size: 10px;
+            font-weight: 400;
+            color: rgba(255, 255, 255, 0.35);
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+        }
+        .slider-wrap input[type="range"] {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 72px;
+            height: 3px;
+            border-radius: 3px;
+            background: rgba(255, 255, 255, 0.10);
+            outline: none;
+            transition: background 0.2s;
+        }
+        .slider-wrap input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            background: rgba(70, 140, 255, 0.6);
+            border: 2px solid rgba(255, 255, 255, 0.12);
+            cursor: pointer;
+            transition: background 0.2s, transform 0.15s;
+        }
+        .slider-wrap input[type="range"]::-webkit-slider-thumb:hover {
+            background: rgba(70, 140, 255, 0.85);
+            transform: scale(1.1);
+        }
+        .slider-wrap input[type="range"]::-moz-range-thumb {
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            background: rgba(70, 140, 255, 0.6);
+            border: 2px solid rgba(255, 255, 255, 0.12);
+            cursor: pointer;
+        }
+        .slider-wrap .slider-val {
+            font-size: 11px;
+            font-weight: 400;
+            color: rgba(255, 255, 255, 0.5);
+            min-width: 22px;
+            text-align: center;
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        /* ── Teaching Mode Overlay ── */
+        #teach-overlay {
+            position: fixed;
+            bottom: 100px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 16;
+            padding: 16px 28px;
+            max-width: 560px;
+            width: 90%;
+            text-align: center;
+            pointer-events: none;
+            transition: opacity 0.5s ease, transform 0.5s ease;
+            background: rgba(10, 12, 15, 0.75);
+            backdrop-filter: blur(20px) saturate(1.1);
+            -webkit-backdrop-filter: blur(20px) saturate(1.1);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 16px;
+        }
+        #teach-overlay.hidden {
+            opacity: 0;
+            transform: translateX(-50%) translateY(18px);
+            pointer-events: none;
+        }
+        #teach-overlay .step-num {
+            font-size: 10px;
+            font-weight: 500;
+            letter-spacing: 0.15em;
+            text-transform: uppercase;
+            color: rgba(255, 255, 255, 0.15);
+            margin-bottom: 4px;
+        }
+        #teach-overlay .step-title {
+            font-size: 18px;
+            font-weight: 450;
+            color: #eef4fc;
+            margin-bottom: 4px;
+        }
+        #teach-overlay .step-desc {
+            font-size: 13px;
+            font-weight: 300;
+            color: rgba(255, 255, 255, 0.5);
+            line-height: 1.5;
+        }
+        #teach-overlay .step-desc .math {
+            font-family: 'Times New Roman', serif;
+            font-style: italic;
+            color: #7ab7ff;
+        }
+        #teach-nav {
+            margin-top: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            pointer-events: auto;
+        }
+        #teach-nav .btn {
+            font-size: 10px;
+            padding: 4px 14px;
+        }
+        #teach-nav .step-dots {
+            display: flex;
+            gap: 5px;
+            margin: 0 8px;
+        }
+        #teach-nav .step-dots .dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.10);
+            transition: background 0.3s;
+        }
+        #teach-nav .step-dots .dot.active {
+            background: rgba(70, 140, 255, 0.5);
+        }
+
+        /* ── Intro Overlay ── */
+        #intro-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 100;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: rgba(6, 8, 12, 0.85);
+            backdrop-filter: blur(32px) saturate(1.4);
+            -webkit-backdrop-filter: blur(32px) saturate(1.4);
+            transition: opacity 1.2s ease;
+        }
+        #intro-overlay.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+        #intro-overlay .title-block {
+            text-align: center;
+            margin-bottom: 32px;
+        }
+        #intro-overlay .title-block h1 {
+            font-size: 42px;
+            font-weight: 300;
+            letter-spacing: 0.04em;
+            color: #eef4fc;
+            margin-bottom: 6px;
+        }
+        #intro-overlay .title-block h1 em {
+            font-style: normal;
+            font-weight: 500;
+            color: #7ab7ff;
+        }
+        #intro-overlay .title-block .sub {
+            font-size: 16px;
+            font-weight: 300;
+            color: rgba(255, 255, 255, 0.25);
+            letter-spacing: 0.06em;
+        }
+        #intro-overlay .btn-group {
+            display: flex;
+            gap: 14px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        #intro-overlay .btn {
+            font-size: 14px;
+            padding: 12px 32px;
+            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.04);
+            border-color: rgba(255, 255, 255, 0.08);
+        }
+        #intro-overlay .btn.primary {
+            background: rgba(70, 140, 255, 0.18);
+            border-color: rgba(70, 140, 255, 0.30);
+            color: #7ab7ff;
+            font-weight: 450;
+        }
+        #intro-overlay .btn.primary:hover {
+            background: rgba(70, 140, 255, 0.28);
+            border-color: rgba(70, 140, 255, 0.45);
+        }
+        #intro-overlay .btn.secondary {
+            background: rgba(255, 255, 255, 0.03);
+            border-color: rgba(255, 255, 255, 0.06);
+            color: rgba(255, 255, 255, 0.4);
+        }
+        #intro-overlay .btn.secondary:hover {
+            background: rgba(255, 255, 255, 0.07);
+            color: rgba(255, 255, 255, 0.7);
+        }
+
+        /* ── Responsive ── */
+        @media (max-width: 820px) {
+            #brand {
+                top: 14px;
+                left: 16px;
+            }
+            #brand h1 {
+                font-size: 15px;
+            }
+            #brand .sub {
+                font-size: 9px;
+            }
+            #equation-panel {
+                top: 14px;
+                right: 16px;
+                padding: 12px 16px;
+                min-width: unset;
+                max-width: 240px;
+            }
+            #equation-panel .eq-main {
+                font-size: 17px;
+            }
+            #data-panel {
+                display: none;
+            }
+            #controls {
+                bottom: 14px;
+                padding: 10px 12px;
+                gap: 5px;
+                max-width: 98vw;
+                flex-wrap: wrap;
+            }
+            #controls .ctrl-divider {
+                display: none;
+            }
+            .btn {
+                font-size: 10px;
+                padding: 4px 10px;
+            }
+            .slider-wrap input[type="range"] {
+                width: 48px;
+            }
+            #teach-overlay {
+                bottom: 78px;
+                padding: 12px 16px;
+                max-width: 92%;
+            }
+            #teach-overlay .step-title {
+                font-size: 15px;
+            }
+            #teach-overlay .step-desc {
+                font-size: 12px;
+            }
+            #intro-overlay .title-block h1 {
+                font-size: 28px;
+            }
+            #intro-overlay .btn {
+                font-size: 12px;
+                padding: 10px 22px;
+            }
+        }
+        @media (max-width: 480px) {
+            #equation-panel .eq-main {
+                font-size: 14px;
+            }
+            #equation-panel {
+                padding: 8px 12px;
+                max-width: 170px;
+            }
+            #equation-panel .eq-label {
+                font-size: 8px;
+            }
+            .btn {
+                font-size: 9px;
+                padding: 3px 8px;
+            }
+            .slider-wrap label {
+                font-size: 8px;
+            }
+            .slider-wrap input[type="range"] {
+                width: 36px;
+            }
+            #teach-overlay .step-title {
+                font-size: 13px;
+            }
+            #teach-overlay .step-desc {
+                font-size: 11px;
+            }
+        }
+
+        /* ── Scrollbar ── */
+        ::-webkit-scrollbar {
+            width: 0;
+            height: 0;
+        }
+
+        /* ── Reduced Motion ── */
+        @media (prefers-reduced-motion: reduce) {
+            *,
+            *::before,
+            *::after {
+                animation-duration: 0.01ms !important;
+                transition-duration: 0.01ms !important;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- ─── INTRO OVERLAY ─── -->
+    <div id="intro-overlay">
+        <div class="title-block">
+            <h1>Sphere <em>Lab</em></h1>
+            <div class="sub">Equation of a Sphere in 3D &bull; JEE Mathematics</div>
+        </div>
+        <div class="btn-group">
+            <button class="btn primary" id="btn-start">⟡ Start Exploration</button>
+            <button class="btn secondary" id="btn-skip">Skip Intro</button>
+        </div>
+    </div>
+
+    <!-- ─── 3D CONTAINER ─── -->
+    <div id="canvas-container"></div>
+
+    <!-- ─── BRAND ─── -->
+    <div id="brand">
+        <h1>Sphere <span>Lab</span></h1>
+        <div class="sub">3D · Locus · Vector · Cartesian</div>
+    </div>
+
+    <!-- ─── EQUATION PANEL ─── -->
+    <div id="equation-panel" class="glass">
+        <div class="eq-label" id="eq-label">Definition</div>
+        <div class="eq-main" id="eq-main">CP = a</div>
+        <div class="eq-sub" id="eq-sub">constant distance</div>
+    </div>
+
+    <!-- ─── DATA PANEL ─── -->
+    <div id="data-panel" class="glass">
+        <div class="data-row"><span class="label">C</span><span class="value" id="data-c">(2.00, 1.00, 2.00)</span></div>
+        <div class="data-row"><span class="label">P</span><span class="value highlight" id="data-p">(—, —, —)</span></div>
+        <div class="data-row"><span class="label">a</span><span class="value" id="data-a">3.00</span></div>
+        <div class="sep"></div>
+        <div class="data-row"><span class="label">CP</span><span class="value highlight" id="data-cp">3.00</span></div>
+        <div class="data-row"><span class="label">|r − c|</span><span class="value" id="data-rminusc">3.00</span></div>
+    </div>
+
+    <!-- ─── TEACH OVERLAY ─── -->
+    <div id="teach-overlay" class="hidden">
+        <div class="step-num" id="teach-step-num">01 / 08</div>
+        <div class="step-title" id="teach-step-title">Definition</div>
+        <div class="step-desc" id="teach-step-desc">A point moving in space at a <strong>constant distance</strong> from a fixed point traces a <strong>sphere</strong>.</div>
+        <div id="teach-nav">
+            <button class="btn" id="teach-prev">← Prev</button>
+            <div class="step-dots" id="teach-dots"></div>
+            <button class="btn" id="teach-next">Next →</button>
+        </div>
+    </div>
+
+    <!-- ─── CONTROLS ─── -->
+    <div id="controls" class="glass">
+        <div class="ctrl-group">
+            <button class="btn primary" id="btn-teach">Teach</button>
+            <button class="btn" id="btn-locus">Locus</button>
+            <button class="btn" id="btn-vectors">Vectors</button>
+            <button class="btn" id="btn-components">Components</button>
+        </div>
+        <div class="ctrl-divider"></div>
+        <div class="ctrl-group">
+            <button class="btn" id="btn-move-p">Move P</button>
+            <button class="btn" id="btn-move-c">Move C</button>
+        </div>
+        <div class="ctrl-divider"></div>
+        <div class="ctrl-group slider-wrap">
+            <label>a</label>
+            <input type="range" id="slider-radius" min="1" max="6" step="0.05" value="3" />
+            <span class="slider-val" id="slider-radius-val">3.00</span>
+        </div>
+        <div class="ctrl-divider"></div>
+        <div class="ctrl-group">
+            <button class="btn small" id="btn-origin">C→O</button>
+            <button class="btn small" id="btn-reset">Reset</button>
+        </div>
+    </div>
+
+    <!-- ─── MAIN SCRIPT ─── -->
+    <script type="module">
+        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        // IMPORTS
+        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+        import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
+
+        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        // STATE
+        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        const STATE = {
+            C: new THREE.Vector3(2, 1, 2),
+            a: 3.0,
+            theta: 0.7, // spherical coords for P
+            phi: 1.2,
+            // derived
+            P: new THREE.Vector3(),
+            CP: new THREE.Vector3(),
+            // modes
+            teaching: false,
+            teachingStep: 0, // 0..7
+            showLocus: false,
+            showVectors: false,
+            showComponents: false,
+            movePMode: false,
+            moveCMode: false,
+            locusPoints: [],
+            locusMax: 360,
+            locusIndex: 0,
+            animating: true,
+            introComplete: false,
+            breakCondition: false,
+            originMode: false,
+            // validation
+            valid: true,
+        };
+
+        // Teaching steps
+        const TEACH_STEPS = [{
+            num: '01 / 08',
+            title: 'Definition',
+            desc: 'A point moving in space at a <strong>constant distance</strong> from a fixed point <strong>C</strong> traces a <strong>sphere</strong>.',
+            eq: 'CP = a',
+            eqLabel: 'Definition',
+            eqSub: 'constant distance'
+        }, {
+            num: '02 / 08',
+            title: 'Constant Distance',
+            desc: 'As <strong>P</strong> moves, the distance <span class="math">CP</span> remains <strong>unchanged</strong> — always equal to <span class="math">a</span>.',
+            eq: 'CP₁ = CP₂ = CP₃ = a',
+            eqLabel: 'Constant Distance',
+            eqSub: 'radius is fixed'
+        }, {
+            num: '03 / 08',
+            title: 'Locus',
+            desc: 'The <strong>collection</strong> of all possible positions of <strong>P</strong> forms the <strong>locus</strong> — a sphere.',
+            eq: 'Locus of P = Sphere',
+            eqLabel: 'Locus',
+            eqSub: 'all points at distance a from C'
+        }, {
+            num: '04 / 08',
+            title: 'Position Vectors',
+            desc: 'From the origin <strong>O</strong>, we define <span class="math">r = OP</span> and <span class="math">c = OC</span>.',
+            eq: 'r = OP , c = OC',
+            eqLabel: 'Position Vectors',
+            eqSub: 'vectors from origin'
+        }, {
+            num: '05 / 08',
+            title: 'Vector Difference',
+            desc: 'The vector from <strong>C</strong> to <strong>P</strong> is <span class="math">CP = OP − OC = r − c</span>.',
+            eq: 'CP = r − c',
+            eqLabel: 'Vector Difference',
+            eqSub: 'CP = OP − OC'
+        }, {
+            num: '06 / 08',
+            title: 'Vector Equation',
+            desc: 'Since <span class="math">CP = a</span>, we get the <strong>vector equation</strong> of the sphere.',
+            eq: '|r − c| = a',
+            eqLabel: 'Vector Equation',
+            eqSub: 'magnitude form'
+        }, {
+            num: '07 / 08',
+            title: 'Cartesian Equation',
+            desc: 'With <span class="math">C = (h,k,l)</span> and <span class="math">P = (x,y,z)</span>, we expand to the <strong>Cartesian equation</strong>.',
+            eq: '(x−h)² + (y−k)² + (z−l)² = a²',
+            eqLabel: 'Cartesian Equation',
+            eqSub: 'standard form'
+        }, {
+            num: '08 / 08',
+            title: 'Explore',
+            desc: 'You now have the full picture. Move <strong>P</strong>, change the <strong>radius</strong>, shift <strong>C</strong> — observe the equation update live.',
+            eq: 'Equation of a Sphere',
+            eqLabel: 'Explore',
+            eqSub: 'interactive laboratory'
+        }];
+
+        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        // THREE.JS SETUP
+        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        const container = document.getElementById('canvas-container');
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x0a0c0f);
+
+        const camera = new THREE.PerspectiveCamera(38, window.innerWidth / window.innerHeight, 0.1, 80);
+        camera.position.set(9, 5.5, 11);
+        camera.lookAt(2, 1, 2);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        renderer.shadowMap.enabled = false;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        renderer.toneMapping = THREE.ACESFilmicToneMapping;
+        renderer.toneMappingExposure = 1.2;
+        container.appendChild(renderer.domElement);
+
+        const labelRenderer = new CSS2DRenderer();
+        labelRenderer.setSize(window.innerWidth, window.innerHeight);
+        labelRenderer.domElement.style.position = 'absolute';
+        labelRenderer.domElement.style.top = '0';
+        labelRenderer.domElement.style.left = '0';
+        labelRenderer.domElement.style.pointerEvents = 'none';
+        labelRenderer.domElement.style.zIndex = '2';
+        container.appendChild(labelRenderer.domElement);
+
+        const controls = new OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.08;
+        controls.minDistance = 4;
+        controls.maxDistance = 30;
+        controls.target.copy(STATE.C);
+        controls.update();
+
+        // ─── Lights ───
+        const ambient = new THREE.AmbientLight(0x446688, 0.5);
+        scene.add(ambient);
+
+        const hemi = new THREE.HemisphereLight(0x6688cc, 0x223344, 0.7);
+        scene.add(hemi);
+
+        const key = new THREE.DirectionalLight(0xffeedd, 1.8);
+        key.position.set(6, 12, 8);
+        scene.add(key);
+
+        const rim = new THREE.DirectionalLight(0x4488ff, 1.2);
+        rim.position.set(-6, 4, -10);
+        scene.add(rim);
+
+        const fill = new THREE.DirectionalLight(0x88bbff, 0.6);
+        fill.position.set(-4, -2, 8);
+        scene.add(fill);
+
+        // ─── Background particles (subtle) ───
+        const particleGeo = new THREE.BufferGeometry();
+        const pCount = 400;
+        const pos = new Float32Array(pCount * 3);
+        for (let i = 0; i < pCount * 3; i++) {
+            pos[i] = (Math.random() - 0.5) * 50;
+        }
+        particleGeo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+        const particleMat = new THREE.PointsMaterial({
+            color: 0x8899bb,
+            size: 0.04,
+            transparent: true,
+            opacity: 0.3,
+            blending: THREE.AdditiveBlending,
+            depthWrite: false,
+        });
+        const particles = new THREE.Points(particleGeo, particleMat);
+        scene.add(particles);
+
+        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        // COORDINATE SYSTEM
+        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        const AXIS_LENGTH = 7.5;
+        const axisGroup = new THREE.Group();
+        scene.add(axisGroup);
+
+        function makeArrow(dir, color, label, offset) {
+            const len = AXIS_LENGTH;
+            const arrow = new THREE.ArrowHelper(dir, new THREE.Vector3(0, 0, 0), len, color, 0.35, 0.18);
+            axisGroup.add(arrow);
+
+            // label
+            const div = document.createElement('div');
+            div.textContent = label;
+            div.style.color = 'rgba(255,255,255,0.35)';
+            div.style.fontSize = '13px';
+            div.style.fontWeight = '400';
+            div.style.fontFamily = 'Inter, sans-serif';
+            div.style.letterSpacing = '0.04em';
+            div.style.textShadow = '0 0 20px rgba(0,0,0,0.6)';
+            const lbl = new CSS2DObject(div);
+            const pos = dir.clone().multiplyScalar(len + 0.55);
+            if (offset) pos.add(offset);
+            lbl.position.copy(pos);
+            axisGroup.add(lbl);
+            return arrow;
+        }
+
+        makeArrow(new THREE.Vector3(1, 0, 0), 0xff4444, 'x', new THREE.Vector3(0, -0.2, 0));
+        makeArrow(new THREE.Vector3(0, 1, 0), 0x44ff44, 'y', new THREE.Vector3(0, 0, 0));
+        makeArrow(new THREE.Vector3(0, 0, 1), 0x4488ff, 'z', new THREE.Vector3(0, -0.2, 0));
+
+        // Origin label
+        const oDiv = document.createElement('div');
+        oDiv.textContent = 'O';
+        oDiv.style.color = 'rgba(255,255,255,0.4)';
+        oDiv.style.fontSize = '14px';
+        oDiv.style.fontWeight = '400';
+        oDiv.style.textShadow = '0 0 20px rgba(0,0,0,0.8)';
+        const oLbl = new CSS2DObject(oDiv);
+        oLbl.position.set(-0.25, -0.35, 0);
+        axisGroup.add(oLbl);
+
+        // Grid (faint)
+        const gridHelper = new THREE.GridHelper(14, 20, 0x334466, 0x223344);
+        gridHelper.position.y = -0.01;
+        gridHelper.material.transparent = true;
+        gridHelper.material.opacity = 0.2;
+        scene.add(gridHelper);
+
+        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        // SPHERE
+        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        const sphereGroup = new THREE.Group();
+        scene.add(sphereGroup);
+
+        let sphereMesh, sphereWire, sphereLatLong;
+
+        function buildSphere() {
+            // Remove old
+            while (sphereGroup.children.length) {
+                const c = sphereGroup.children[0];
+                if (c.geometry) c.geometry.dispose();
+                if (c.material) c.material.dispose();
+                sphereGroup.remove(c);
+            }
+
+            const geo = new THREE.SphereGeometry(STATE.a, 64, 48);
+            const mat = new THREE.MeshPhysicalMaterial({
+                color: 0x4488cc,
+                transparent: true,
+                opacity: 0.22,
+                roughness: 0.12,
+                metalness: 0.0,
+                clearcoat: 0.4,
+                clearcoatRoughness: 0.25,
+                side: THREE.DoubleSide,
+                envMapIntensity: 0.6,
+                depthWrite: false,
+            });
+            sphereMesh = new THREE.Mesh(geo, mat);
+            sphereMesh.position.copy(STATE.C);
+            sphereGroup.add(sphereMesh);
+
+            // Wireframe (fine)
+            const wireGeo = new THREE.SphereGeometry(STATE.a * 1.001, 32, 24);
+            const wireMat = new THREE.MeshBasicMaterial({
+                color: 0x6699dd,
+                wireframe: true,
+                transparent: true,
+                opacity: 0.06,
+            });
+            sphereWire = new THREE.Mesh(wireGeo, wireMat);
+            sphereWire.position.copy(STATE.C);
+            sphereGroup.add(sphereWire);
+
+            // Latitude / Longitude lines (elegant)
+            const linesMat = new THREE.LineBasicMaterial({
+                color: 0x4488cc,
+                transparent: true,
+                opacity: 0.12,
+            });
+            const latLongGroup = new THREE.Group();
+            const r = STATE.a;
+            const segments = 48;
+            // Latitudes
+            for (let lat = -80; lat <= 80; lat += 20) {
+                const phi = (lat / 180) * Math.PI;
+                const pts = [];
+                for (let i = 0; i <= segments; i++) {
+                    const theta = (i / segments) * 2 * Math.PI;
+                    const x = r * Math.cos(theta) * Math.cos(phi);
+                    const y = r * Math.sin(phi);
+                    const z = r * Math.sin(theta) * Math.cos(phi);
+                    pts.push(new THREE.Vector3(x, y, z));
+                }
+                const g = new THREE.BufferGeometry().setFromPoints(pts);
+                const line = new THREE.Line(g, linesMat);
+                latLongGroup.add(line);
+            }
+            // Longitudes
+            for (let lon = 0; lon < 360; lon += 30) {
+                const theta = (lon / 180) * Math.PI;
+                const pts = [];
+                for (let i = 0; i <= segments; i++) {
+                    const phi = (i / segments) * Math.PI - Math.PI / 2;
+                    const x = r * Math.cos(theta) * Math.cos(phi);
+                    const y = r * Math.sin(phi);
+                    const z = r * Math.sin(theta) * Math.cos(phi);
+                    pts.push(new THREE.Vector3(x, y, z));
+                }
+                const g = new THREE.BufferGeometry().setFromPoints(pts);
+                const line = new THREE.Line(g, linesMat);
+                latLongGroup.add(line);
+            }
+            latLongGroup.position.copy(STATE.C);
+            sphereGroup.add(latLongGroup);
+            sphereLatLong = latLongGroup;
+
+            // Update sphere position
+            updateSpherePosition();
+        }
+
+        function updateSpherePosition() {
+            if (sphereMesh) sphereMesh.position.copy(STATE.C);
+            if (sphereWire) sphereWire.position.copy(STATE.C);
+            if (sphereLatLong) sphereLatLong.position.copy(STATE.C);
+        }
+
+        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        // POINT C (Centre)
+        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        const centreGroup = new THREE.Group();
+        scene.add(centreGroup);
+
+        let centreMesh, centreGlow, centreLabel;
+
+        function buildCentre() {
+            while (centreGroup.children.length) {
+                const c = centreGroup.children[0];
+                if (c.geometry) c.geometry.dispose();
+                if (c.material) c.material.dispose();
+                centreGroup.remove(c);
+            }
+
+            // Core
+            const geo = new THREE.SphereGeometry(0.18, 16, 16);
+            const mat = new THREE.MeshBasicMaterial({ color: 0xff8844 });
+            centreMesh = new THREE.Mesh(geo, mat);
+            centreGroup.add(centreMesh);
+
+            // Glow
+            const glowGeo = new THREE.SphereGeometry(0.35, 16, 16);
+            const glowMat = new THREE.MeshBasicMaterial({
+                color: 0xff8844,
+                transparent: true,
+                opacity: 0.15,
+                depthWrite: false,
+            });
+            centreGlow = new THREE.Mesh(glowGeo, glowMat);
+            centreGroup.add(centreGlow);
+
+            // Label
+            const div = document.createElement('div');
+            div.textContent = 'C';
+            div.style.color = '#ff8844';
+            div.style.fontSize = '16px';
+            div.style.fontWeight = '500';
+            div.style.textShadow = '0 0 30px rgba(255,136,68,0.3), 0 0 60px rgba(0,0,0,0.8)';
+            div.style.fontFamily = 'Inter, sans-serif';
+            centreLabel = new CSS2DObject(div);
+            centreGroup.add(centreLabel);
+
+            updateCentre();
+        }
+
+        function updateCentre() {
+            if (centreMesh) centreMesh.position.copy(STATE.C);
+            if (centreGlow) centreGlow.position.copy(STATE.C);
+            if (centreLabel) {
+                centreLabel.position.copy(STATE.C);
+                centreLabel.position.y += 0.45;
+            }
+        }
+
+        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        // POINT P (Moving)
+        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        const pointGroup = new THREE.Group();
+        scene.add(pointGroup);
+
+        let pointMesh, pointGlow, pointLabel;
+
+        function buildPoint() {
+            while (pointGroup.children.length) {
+                const c = pointGroup.children[0];
+                if (c.geometry) c.geometry.dispose();
+                if (c.material) c.material.dispose();
+                pointGroup.remove(c);
+            }
+
+            const geo = new THREE.SphereGeometry(0.16, 16, 16);
+            const mat = new THREE.MeshBasicMaterial({ color: 0x66ccff });
+            pointMesh = new THREE.Mesh(geo, mat);
+            pointGroup.add(pointMesh);
+
+            const glowGeo = new THREE.SphereGeometry(0.32, 16, 16);
+            const glowMat = new THREE.MeshBasicMaterial({
+                color: 0x66ccff,
+                transparent: true,
+                opacity: 0.12,
+                depthWrite: false,
+            });
+            pointGlow = new THREE.Mesh(glowGeo, glowMat);
+            pointGroup.add(pointGlow);
+
+            const div = document.createElement('div');
+            div.textContent = 'P';
+            div.style.color = '#66ccff';
+            div.style.fontSize = '16px';
+            div.style.fontWeight = '500';
+            div.style.textShadow = '0 0 30px rgba(102,204,255,0.3), 0 0 60px rgba(0,0,0,0.8)';
+            div.style.fontFamily = 'Inter, sans-serif';
+            pointLabel = new CSS2DObject(div);
+            pointGroup.add(pointLabel);
+
+            updatePoint();
+        }
+
+        function computeP() {
+            const dir = new THREE.Vector3(
+                Math.sin(STATE.theta) * Math.cos(STATE.phi),
+                Math.cos(STATE.theta),
+                Math.sin(STATE.theta) * Math.sin(STATE.phi)
+            );
+            if (dir.length() < 0.0001) dir.set(0, 1, 0);
+            dir.normalize();
+            STATE.P.copy(STATE.C).addScaledVector(dir, STATE.a);
+            STATE.CP.copy(STATE.P).sub(STATE.C);
+        }
+
+        function updatePoint() {
+            if (pointMesh) pointMesh.position.copy(STATE.P);
+            if (pointGlow) pointGlow.position.copy(STATE.P);
+            if (pointLabel) {
+                pointLabel.position.copy(STATE.P);
+                pointLabel.position.y += 0.4;
+            }
+        }
+
+        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        // VECTORS: CP, OP, OC
+        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        const vectorsGroup = new THREE.Group();
+        scene.add(vectorsGroup);
+
+        let cpArrow, opArrow, ocArrow;
+        let cpLabel, opLabel, ocLabel;
+
+        function buildVectors() {
+            // CP arrow (C → P)
+            cpArrow = new THREE.ArrowHelper(
+                new THREE.Vector3(1, 0, 0),
+                STATE.C,
+                STATE.a,
+                0xff8844,
+                0.3,
+                0.14
+            );
+            vectorsGroup.add(cpArrow);
+
+            const cpDiv = document.createElement('div');
+            cpDiv.textContent = 'CP = a';
+            cpDiv.style.color = '#ff8844';
+            cpDiv.style.fontSize = '12px';
+            cpDiv.style.fontWeight = '400';
+            cpDiv.style.textShadow = '0 0 20px rgba(0,0,0,0.9)';
+            cpDiv.style.fontFamily = 'Inter, sans-serif';
+            cpLabel = new CSS2DObject(cpDiv);
+            vectorsGroup.add(cpLabel);
+
+            // OP arrow (O → P)
+            opArrow = new THREE.ArrowHelper(
+                new THREE.Vector3(1, 0, 0),
+                new THREE.Vector3(0, 0, 0),
+                1,
+                0x66ccff,
+                0.28,
+                0.13
+            );
+            opArrow.visible = false;
+            vectorsGroup.add(opArrow);
+
+            const opDiv = document.createElement('div');
+            opDiv.textContent = 'r = OP';
+            opDiv.style.color = '#66ccff';
+            opDiv.style.fontSize = '12px';
+            opDiv.style.fontWeight = '400';
+            opDiv.style.textShadow = '0 0 20px rgba(0,0,0,0.9)';
+            opDiv.style.fontFamily = 'Inter, sans-serif';
+            opLabel = new CSS2DObject(opDiv);
+            opLabel.visible = false;
+            vectorsGroup.add(opLabel);
+
+            // OC arrow (O → C)
+            ocArrow = new THREE.ArrowHelper(
+                new THREE.Vector3(1, 0, 0),
+                new THREE.Vector3(0, 0, 0),
+                1,
+                0x88dd88,
+                0.28,
+                0.13
+            );
+            ocArrow.visible = false;
+            vectorsGroup.add(ocArrow);
+
+            const ocDiv = document.createElement('div');
+            ocDiv.textContent = 'c = OC';
+            ocDiv.style.color = '#88dd88';
+            ocDiv.style.fontSize = '12px';
+            ocDiv.style.fontWeight = '400';
+            ocDiv.style.textShadow = '0 0 20px rgba(0,0,0,0.9)';
+            ocDiv.style.fontFamily = 'Inter, sans-serif';
+            ocLabel = new CSS2DObject(ocDiv);
+            ocLabel.visible = false;
+            vectorsGroup.add(ocLabel);
+
+            updateVectors();
+        }
+
+        function updateVectors() {
+            if (!cpArrow) return;
+
+            // CP
+            const cpDir = STATE.CP.clone().normalize();
+            const cpLen = STATE.CP.length();
+            cpArrow.position.copy(STATE.C);
+            cpArrow.setDirection(cpDir);
+            cpArrow.setLength(cpLen, 0.3, 0.14);
+
+            if (cpLabel) {
+                const mid = STATE.C.clone().add(STATE.P).multiplyScalar(0.5);
+                cpLabel.position.copy(mid);
+                cpLabel.position.x += 0.3;
+                cpLabel.position.y += 0.3;
+            }
+
+            // OP
+            if (opArrow) {
+                const opDir = STATE.P.clone().normalize();
+                const opLen = STATE.P.length();
+                opArrow.position.set(0, 0, 0);
+                if (opLen > 0.01) {
+                    opArrow.setDirection(opDir);
+                    opArrow.setLength(opLen, 0.28, 0.13);
+                }
+                if (opLabel) {
+                    const mid = STATE.P.clone().multiplyScalar(0.5);
+                    opLabel.position.copy(mid);
+                    opLabel.position.x += 0.25;
+                    opLabel.position.y += 0.25;
+                }
+            }
+
+            // OC
+            if (ocArrow) {
+                const ocDir = STATE.C.clone().normalize();
+                const ocLen = STATE.C.length();
+                ocArrow.position.set(0, 0, 0);
+                if (ocLen > 0.01) {
+                    ocArrow.setDirection(ocDir);
+                    ocArrow.setLength(ocLen, 0.28, 0.13);
+                }
+                if (ocLabel) {
+                    const mid = STATE.C.clone().multiplyScalar(0.5);
+                    ocLabel.position.copy(mid);
+                    ocLabel.position.x += 0.25;
+                    ocLabel.position.y += 0.25;
+                }
+            }
+        }
+
+        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        // COMPONENTS (Δx, Δy, Δz)
+        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        const componentsGroup = new THREE.Group();
+        scene.add(componentsGroup);
+        let compLines = [];
+        let compLabels = [];
+
+        function buildComponents() {
+            componentsGroup.visible = false;
+            // Will be updated in updateComponents
+        }
+
+        function updateComponents() {
+            // Clear old
+            while (componentsGroup.children.length) {
+                const c = componentsGroup.children[0];
+                if (c.geometry) c.geometry.dispose();
+                if (c.material) c.material.dispose();
+                componentsGroup.remove(c);
+            }
+            compLines = [];
+            compLabels = [];
+
+            if (!STATE.showComponents) {
+                componentsGroup.visible = false;
+                return;
+            }
+            componentsGroup.visible = true;
+
+            const dx = STATE.P.x - STATE.C.x;
+            const dy = STATE.P.y - STATE.C.y;
+            const dz = STATE.P.z - STATE.C.z;
+
+            const color = 0x66ccff;
+            const mat = new THREE.LineBasicMaterial({ color, transparent: true, opacity: 0.35 });
+
+            // Δx: from C to (P.x, C.y, C.z)
+            const p1 = new THREE.Vector3(STATE.C.x, STATE.C.y, STATE.C.z);
+            const p1b = new THREE.Vector3(STATE.P.x, STATE.C.y, STATE.C.z);
+            const pts1 = [p1, p1b];
+            const g1 = new THREE.BufferGeometry().setFromPoints(pts1);
+            const l1 = new THREE.Line(g1, mat);
+            componentsGroup.add(l1);
+
+            // Δy: from (P.x, C.y, C.z) to (P.x, P.y, C.z)
+            const p2 = new THREE.Vector3(STATE.P.x, STATE.C.y, STATE.C.z);
+            const p2b = new THREE.Vector3(STATE.P.x, STATE.P.y, STATE.C.z);
+            const pts2 = [p2, p2b];
+            const g2 = new THREE.BufferGeometry().setFromPoints(pts2);
+            const l2 = new THREE.Line(g2, mat);
+            componentsGroup.add(l2);
+
+            // Δz: from (P.x, P.y, C.z) to P
+            const p3 = new THREE.Vector3(STATE.P.x, STATE.P.y, STATE.C.z);
+            const p3b = STATE.P.clone();
+            const pts3 = [p3, p3b];
+            const g3 = new THREE.BufferGeometry().setFromPoints(pts3);
+            const l3 = new THREE.Line(g3, mat);
+            componentsGroup.add(l3);
+
+            // Dashed corner helpers
+            const dashMat = new THREE.LineDashedMaterial({
+                color: 0x4488cc,
+                transparent: true,
+                opacity: 0.15,
+                dashSize: 0.08,
+                gapSize: 0.08,
+            });
+            const corners = [
+                [STATE.C, new THREE.Vector3(STATE.P.x, STATE.C.y, STATE.C.z)],
+                [new THREE.Vector3(STATE.P.x, STATE.C.y, STATE.C.z), new THREE.Vector3(STATE.P.x, STATE.P.y, STATE.C.z)],
+                [new THREE.Vector3(STATE.P.x, STATE.P.y, STATE.C.z), STATE.P],
+            ];
+            for (const [a, b] of corners) {
+                const pts = [a.clone(), b.clone()];
+                const g = new THREE.BufferGeometry().setFromPoints(pts);
+                const l = new THREE.Line(g, dashMat);
+                l.computeLineDistances();
+                componentsGroup.add(l);
+            }
+
+            // Labels for components
+            const labels = [
+                { text: 'Δx', pos: new THREE.Vector3((STATE.C.x + STATE.P.x) / 2, STATE.C.y - 0.3, STATE.C.z) },
+                { text: 'Δy', pos: new THREE.Vector3(STATE.P.x + 0.3, (STATE.C.y + STATE.P.y) / 2, STATE.C.z) },
+                { text: 'Δz', pos: new THREE.Vector3(STATE.P.x, STATE.P.y, (STATE.C.z + STATE.P.z) / 2 + 0.3) },
+            ];
+            for (const { text, pos } of labels) {
+                const div = document.createElement('div');
+                div.textContent = text;
+                div.style.color = 'rgba(102,204,255,0.4)';
+                div.style.fontSize = '11px';
+                div.style.fontWeight = '400';
+                div.style.fontFamily = 'Inter, sans-serif';
+                div.style.textShadow = '0 0 20px rgba(0,0,0,0.9)';
+                const lbl = new CSS2DObject(div);
+                lbl.position.copy(pos);
+                componentsGroup.add(lbl);
+                compLabels.push(lbl);
+            }
+        }
+
+        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        // LOCUS TRAIL
+        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        const locusGroup = new THREE.Group();
+        scene.add(locusGroup);
+        let locusPointsObj = null;
+        let locusPositions = [];
+        const MAX_LOCUS = 480;
+
+        function buildLocus() {
+            locusGroup.visible = false;
+            locusPositions = [];
+        }
+
+        function updateLocus() {
+            if (!STATE.showLocus) {
+                locusGroup.visible = false;
+                return;
+            }
+            locusGroup.visible = true;
+
+            // Add current P to trail
+            if (locusPositions.length < MAX_LOCUS) {
+                locusPositions.push(STATE.P.clone());
+            } else {
+                locusPositions.shift();
+                locusPositions.push(STATE.P.clone());
+            }
+
+            // Build points
+            if (locusPositions.length < 2) {
+                if (locusPointsObj) {
+                    locusGroup.remove(locusPointsObj);
+                    locusPointsObj.geometry.dispose();
+                    locusPointsObj.material.dispose();
+                    locusPointsObj = null;
+                }
+                return;
+            }
+
+            const pts = new Float32Array(locusPositions.length * 3);
+            for (let i = 0; i < locusPositions.length; i++) {
+                pts[i * 3] = locusPositions[i].x;
+                pts[i * 3 + 1] = locusPositions[i].y;
+                pts[i * 3 + 2] = locusPositions[i].z;
+            }
+            const geo = new THREE.BufferGeometry();
+            geo.setAttribute('position', new THREE.BufferAttribute(pts, 3));
+
+            const mat = new THREE.PointsMaterial({
+                color: 0x66ccff,
+                size: 0.06,
+                transparent: true,
+                opacity: Math.min(1, locusPositions.length / 60),
+                blending: THREE.AdditiveBlending,
+                depthWrite: false,
+            });
+
+            if (locusPointsObj) {
+                locusGroup.remove(locusPointsObj);
+                locusPointsObj.geometry.dispose();
+                locusPointsObj.material.dispose();
+            }
+            locusPointsObj = new THREE.Points(geo, mat);
+            locusGroup.add(locusPointsObj);
+        }
+
+        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        // BREAK CONDITION MODE
+        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        let breakOffset = new THREE.Vector3(0, 0, 0);
+
+        function updateBreakMode() {
+            if (STATE.breakCondition) {
+                // P is offset from sphere surface
+                const dir = STATE.CP.clone().normalize();
+                const offset = dir.clone().multiplyScalar(1.2);
+                STATE.P.copy(STATE.C).addScaledVector(dir, STATE.a).add(offset);
+                STATE.CP.copy(STATE.P).sub(STATE.C);
+                // Make sphere more transparent
+                if (sphereMesh) {
+                    sphereMesh.material.opacity = 0.08;
+                }
+                // Show that CP != a
+                document.getElementById('data-cp').textContent = STATE.CP.length().toFixed(2);
+                document.getElementById('data-cp').style.color = '#ff6644';
+            } else {
+                // Restore
+                computeP();
+                if (sphereMesh) {
+                    sphereMesh.material.opacity = 0.22;
+                }
+                document.getElementById('data-cp').style.color = '#7ab7ff';
+                updatePoint();
+                updateVectors();
+            }
+            updateEquationPanel();
+            updateDataPanel();
+        }
+
+        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        // EQUATION PANEL
+        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        function updateEquationPanel() {
+            const label = document.getElementById('eq-label');
+            const main = document.getElementById('eq-main');
+            const sub = document.getElementById('eq-sub');
+
+            if (STATE.breakCondition) {
+                label.textContent = 'Condition Broken';
+                main.innerHTML = 'CP ≠ a';
+                sub.textContent = 'P is not on the locus';
+                return;
+            }
+
+            if (STATE.teaching && STATE.teachingStep >= 0 && STATE.teachingStep < TEACH_STEPS.length) {
+                const step = TEACH_STEPS[STATE.teachingStep];
+                label.textContent = step.eqLabel;
+                main.innerHTML = step.eq;
+                sub.textContent = step.eqSub;
+                return;
+            }
+
+            // Default: show current equation
+            const h = STATE.C.x,
+                k = STATE.C.y,
+                l = STATE.C.z;
+            const a = STATE.a;
+            const hStr = h.toFixed(2),
+                kStr = k.toFixed(2),
+                lStr = l.toFixed(2);
+            const aStr = a.toFixed(2);
+
+            if (STATE.originMode && Math.abs(h) < 0.01 && Math.abs(k) < 0.01 && Math.abs(l) < 0.01) {
+                main.innerHTML = `x² + y² + z² = <span class="hl">${aStr}²</span>`;
+                label.textContent = 'Cartesian (Centered at O)';
+                sub.textContent = 'sphere centered at origin';
+            } else {
+                main.innerHTML =
+                    `(x − <span class="hl">${hStr}</span>)² + (y − <span class="hl">${kStr}</span>)² + (z − <span class="hl">${lStr}</span>)² = <span class="hl">${aStr}²</span>`;
+                label.textContent = 'Cartesian Equation';
+                sub.textContent = `C = (${hStr}, ${kStr}, ${lStr}) · a = ${aStr}`;
+            }
+        }
+
+        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        // DATA PANEL
+        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        function updateDataPanel() {
+            const c = STATE.C;
+            const p = STATE.P;
+            const a = STATE.a;
+            const cp = STATE.CP.length();
+
+            document.getElementById('data-c').textContent =
+                `(${c.x.toFixed(2)}, ${c.y.toFixed(2)}, ${c.z.toFixed(2)})`;
+            document.getElementById('data-p').textContent =
+                `(${p.x.toFixed(2)}, ${p.y.toFixed(2)}, ${p.z.toFixed(2)})`;
+            document.getElementById('data-a').textContent = a.toFixed(2);
+            document.getElementById('data-cp').textContent = cp.toFixed(4);
+            document.getElementById('data-rminusc').textContent = cp.toFixed(4);
+
+            if (STATE.breakCondition) {
+                document.getElementById('data-cp').style.color = '#ff6644';
+            } else {
+                document.getElementById('data-cp').style.color = '#7ab7ff';
+            }
+        }
+
+        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        // FULL UPDATE
+        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        function fullUpdate() {
+            if (!STATE.breakCondition) {
+                computeP();
+            }
+            updatePoint();
+            updateCentre();
+            updateSpherePosition();
+            updateVectors();
+            updateComponents();
+            updateLocus();
+            updateEquationPanel();
+            updateDataPanel();
+            controls.target.copy(STATE.C);
+        }
+
+        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        // TEACHING MODE
+        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        const teachOverlay = document.getElementById('teach-overlay');
+        const teachStepNum = document.getElementById('teach-step-num');
+        const teachStepTitle = document.getElementById('teach-step-title');
+        const teachStepDesc = document.getElementById('teach-step-desc');
+        const teachDots = document.getElementById('teach-dots');
+
+        function buildTeachDots() {
+            teachDots.innerHTML = '';
+            for (let i = 0; i < TEACH_STEPS.length; i++) {
+                const dot = document.createElement('span');
+                dot.className = 'dot' + (i === STATE.teachingStep ? ' active' : '');
+                dot.dataset.index = i;
+                teachDots.appendChild(dot);
+            }
+        }
+
+        function updateTeachStep() {
+            const step = TEACH_STEPS[STATE.teachingStep];
+            teachStepNum.textContent = step.num;
+            teachStepTitle.textContent = step.title;
+            teachStepDesc.innerHTML = step.desc;
+            document.getElementById('eq-label').textContent = step.eqLabel;
+            document.getElementById('eq-main').innerHTML = step.eq;
+            document.getElementById('eq-sub').textContent = step.eqSub;
+
+            // Update dots
+            const dots = teachDots.querySelectorAll('.dot');
+            dots.forEach((d, i) => {
+                d.className = 'dot' + (i === STATE.teachingStep ? ' active' : '');
+            });
+
+            // Show/hide vectors based on step
+            const showVec = STATE.teachingStep >= 3 && STATE.teachingStep <= 6;
+            STATE.showVectors = showVec;
+            if (STATE.teachingStep >= 6) {
+                STATE.showComponents = true;
+            } else {
+                STATE.showComponents = false;
+            }
+            if (STATE.teachingStep === 2) {
+                STATE.showLocus = true;
+            } else {
+                STATE.showLocus = false;
+            }
+            // Step 7: show components
+            if (STATE.teachingStep === 7) {
+                STATE.showComponents = true;
+                STATE.showVectors = true;
+            }
+            if (STATE.teachingStep === 8) {
+                STATE.showComponents = true;
+                STATE.showVectors = true;
+                STATE.showLocus = false;
+            }
+
+            // Reset break condition
+            STATE.breakCondition = false;
+
+            // Update visibility
+            updateVectorsVisibility();
+            componentsGroup.visible = STATE.showComponents && !STATE.breakCondition;
+            if (STATE.showComponents) updateComponents();
+
+            fullUpdate();
+        }
+
+        function updateVectorsVisibility() {
+            if (opArrow) {
+                opArrow.visible = STATE.showVectors && !STATE.breakCondition;
+                if (opLabel) opLabel.visible = STATE.showVectors && !STATE.breakCondition;
+            }
+            if (ocArrow) {
+                ocArrow.visible = STATE.showVectors && !STATE.breakCondition;
+                if (ocLabel) ocLabel.visible = STATE.showVectors && !STATE.breakCondition;
+            }
+            // CP is always visible
+            if (cpArrow) cpArrow.visible = true;
+            if (cpLabel) cpLabel.visible = true;
+        }
+
+        function enterTeachMode() {
+            STATE.teaching = true;
+            STATE.teachingStep = 0;
+            teachOverlay.classList.remove('hidden');
+            buildTeachDots();
+            updateTeachStep();
+            document.getElementById('btn-teach').classList.add('active');
+            // Hide locus if on
+            STATE.showLocus = false;
+            locusGroup.visible = false;
+            fullUpdate();
+        }
+
+        function exitTeachMode() {
+            STATE.teaching = false;
+            teachOverlay.classList.add('hidden');
+            document.getElementById('btn-teach').classList.remove('active');
+            STATE.showVectors = false;
+            STATE.showComponents = false;
+            STATE.showLocus = false;
+            updateVectorsVisibility();
+            componentsGroup.visible = false;
+            fullUpdate();
+        }
+
+        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        // INTRO SEQUENCE (cinematic)
+        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        let introRunning = false;
+
+        function runIntro() {
+            if (introRunning) return;
+            introRunning = true;
+            const overlay = document.getElementById('intro-overlay');
+            overlay.classList.add('hidden');
+
+            // Start with a clean state
+            STATE.C.set(2, 1, 2);
+            STATE.a = 3;
+            STATE.theta = 0.7;
+            STATE.phi = 1.2;
+            STATE.showVectors = false;
+            STATE.showComponents = false;
+            STATE.showLocus = false;
+            STATE.breakCondition = false;
+            STATE.originMode = false;
+            STATE.teaching = false;
+            teachOverlay.classList.add('hidden');
+            document.getElementById('btn-teach').classList.remove('active');
+
+            computeP();
+            fullUpdate();
+            updateVectorsVisibility();
+            componentsGroup.visible = false;
+            locusGroup.visible = false;
+
+            // Cinematic camera animation
+            const startPos = new THREE.Vector3(14, 8, 16);
+            const endPos = new THREE.Vector3(9, 5.5, 11);
+            const startTarget = new THREE.Vector3(0, 0, 0);
+            const endTarget = STATE.C.clone();
+
+            camera.position.copy(startPos);
+            controls.target.copy(startTarget);
+            controls.update();
+
+            let t = 0;
+            const duration = 2.8;
+            const startTime = performance.now();
+
+            function animateIntro() {
+                const elapsed = (performance.now() - startTime) / 1000;
+                t = Math.min(elapsed / duration, 1);
+                // easeInOut
+                const e = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+
+                camera.position.lerpVectors(startPos, endPos, e);
+                controls.target.lerpVectors(startTarget, endTarget, e);
+                controls.update();
+
+                // Fade in sphere opacity
+                if (sphereMesh) {
+                    sphereMesh.material.opacity = 0.08 + 0.14 * e;
+                }
+
+                if (t < 1) {
+                    requestAnimationFrame(animateIntro);
+                } else {
+                    introRunning = false;
+                    STATE.introComplete = true;
+                    // Ensure final state
+                    camera.position.copy(endPos);
+                    controls.target.copy(endTarget);
+                    controls.update();
+                    if (sphereMesh) sphereMesh.material.opacity = 0.22;
+                    // Show teaching mode by default
+                    enterTeachMode();
+                }
+            }
+            animateIntro();
+        }
+
+        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        // INTERACTIVE CONTROLS: MOVE P (drag on sphere)
+        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        const raycaster = new THREE.Raycaster();
+        const pointer = new THREE.Vector2();
+        let isDraggingP = false;
+
+        function getSphereIntersect(event) {
+            const rect = renderer.domElement.getBoundingClientRect();
+            pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+            pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+            raycaster.setFromCamera(pointer, camera);
+
+            // Intersect with the sphere mesh
+            if (!sphereMesh) return null;
+            const intersects = raycaster.intersectObject(sphereMesh);
+            if (intersects.length > 0) {
+                return intersects[0].point;
+            }
+            return null;
+        }
+
+        function onPointerDown(event) {
+            if (!STATE.movePMode || STATE.breakCondition || STATE.teaching) return;
+            const pt = getSphereIntersect(event);
+            if (pt) {
+                isDraggingP = true;
+                // Move P to the intersection point on sphere surface
+                const dir = pt.clone().sub(STATE.C);
+                const len = dir.length();
+                if (len > 0.001) {
+                    dir.normalize();
+                    STATE.P.copy(STATE.C).addScaledVector(dir, STATE.a);
+                    STATE.CP.copy(STATE.P).sub(STATE.C);
+                    // Update spherical coords
+                    const local = STATE.P.clone().sub(STATE.C);
+                    STATE.theta = Math.acos(Math.max(-1, Math.min(1, local.y / STATE.a)));
+                    STATE.phi = Math.atan2(local.z, local.x);
+                    fullUpdate();
+                }
+            }
+        }
+
+        function onPointerMove(event) {
+            if (!isDraggingP || !STATE.movePMode || STATE.breakCondition || STATE.teaching) return;
+            const pt = getSphereIntersect(event);
+            if (pt) {
+                const dir = pt.clone().sub(STATE.C);
+                const len = dir.length();
+                if (len > 0.001) {
+                    dir.normalize();
+                    STATE.P.copy(STATE.C).addScaledVector(dir, STATE.a);
+                    STATE.CP.copy(STATE.P).sub(STATE.C);
+                    const local = STATE.P.clone().sub(STATE.C);
+                    STATE.theta = Math.acos(Math.max(-1, Math.min(1, local.y / STATE.a)));
+                    STATE.phi = Math.atan2(local.z, local.x);
+                    fullUpdate();
+                }
+            }
+        }
+
+        function onPointerUp() {
+            isDraggingP = false;
+        }
+
+        // ─── MOVE C (drag) ───
+        let isDraggingC = false;
+        const cDragPlane = new THREE.Plane();
+
+        function onCDown(event) {
+            if (!STATE.moveCMode || STATE.teaching) return;
+            const pt = getSphereIntersect(event);
+            if (pt) {
+                isDraggingC = true;
+                // Use the point on sphere to determine drag plane
+                const dir = pt.clone().sub(STATE.C);
+                if (dir.length() > 0.001) {
+                    cDragPlane.setFromNormalAndCoplanarPoint(
+                        camera.getWorldDirection(new THREE.Vector3()),
+                        STATE.C
+                    );
+                }
+            }
+        }
+
+        function onCMove(event) {
+            if (!isDraggingC || !STATE.moveCMode || STATE.teaching) return;
+            const rect = renderer.domElement.getBoundingClientRect();
+            pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+            pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+            raycaster.setFromCamera(pointer, camera);
+            const intersect = new THREE.Vector3();
+            const ray = raycaster.ray;
+            const plane = cDragPlane;
+            const target = new THREE.Vector3();
+            if (ray.intersectPlane(plane, target)) {
+                // Constrain to reasonable bounds
+                target.x = Math.max(-6, Math.min(6, target.x));
+                target.y = Math.max(-4, Math.min(6, target.y));
+                target.z = Math.max(-6, Math.min(6, target.z));
+                STATE.C.copy(target);
+                computeP();
+                fullUpdate();
+                controls.target.copy(STATE.C);
+            }
+        }
+
+        function onCUp() {
+            isDraggingC = false;
+        }
+
+        // ─── Register events ───
+        const canvas = renderer.domElement;
+
+        canvas.addEventListener('pointerdown', (e) => {
+            if (e.button === 0) {
+                onPointerDown(e);
+                onCDown(e);
+            }
+        });
+        canvas.addEventListener('pointermove', (e) => {
+            onPointerMove(e);
+            onCMove(e);
+        });
+        canvas.addEventListener('pointerup', (e) => {
+            onPointerUp();
+            onCUp();
+        });
+        canvas.addEventListener('pointerleave', () => {
+            onPointerUp();
+            onCUp();
+        });
+
+        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        // UI BINDING
+        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        // Start / Skip
+        document.getElementById('btn-start').addEventListener('click', runIntro);
+        document.getElementById('btn-skip').addEventListener('click', () => {
+            document.getElementById('intro-overlay').classList.add('hidden');
+            STATE.introComplete = true;
+            computeP();
+            fullUpdate();
+            enterTeachMode();
+        });
+
+        // Teach
+        document.getElementById('btn-teach').addEventListener('click', () => {
+            if (STATE.teaching) {
+                exitTeachMode();
+            } else {
+                enterTeachMode();
+            }
+        });
+
+        // Teach nav
+        document.getElementById('teach-prev').addEventListener('click', () => {
+            if (STATE.teaching && STATE.teachingStep > 0) {
+                STATE.teachingStep--;
+                updateTeachStep();
+            }
+        });
+        document.getElementById('teach-next').addEventListener('click', () => {
+            if (STATE.teaching && STATE.teachingStep < TEACH_STEPS.length - 1) {
+                STATE.teachingStep++;
+                updateTeachStep();
+            } else if (STATE.teaching && STATE.teachingStep === TEACH_STEPS.length - 1) {
+                exitTeachMode();
+            }
+        });
+
+        // Locus
+        document.getElementById('btn-locus').addEventListener('click', () => {
+            STATE.showLocus = !STATE.showLocus;
+            if (STATE.showLocus) {
+                locusPositions = [];
+                document.getElementById('btn-locus').classList.add('active');
+                // If teaching, exit teach mode
+                if (STATE.teaching) exitTeachMode();
+            } else {
+                document.getElementById('btn-locus').classList.remove('active');
+                locusGroup.visible = false;
+            }
+            fullUpdate();
+        });
+
+        // Vectors
+        document.getElementById('btn-vectors').addEventListener('click', () => {
+            STATE.showVectors = !STATE.showVectors;
+            document.getElementById('btn-vectors').classList.toggle('active');
+            if (STATE.teaching) exitTeachMode();
+            updateVectorsVisibility();
+            fullUpdate();
+        });
+
+        // Components
+        document.getElementById('btn-components').addEventListener('click', () => {
+            STATE.showComponents = !STATE.showComponents;
+            document.getElementById('btn-components').classList.toggle('active');
+            if (STATE.teaching) exitTeachMode();
+            componentsGroup.visible = STATE.showComponents && !STATE.breakCondition;
+            if (STATE.showComponents) updateComponents();
+            fullUpdate();
+        });
+
+        // Move P
+        document.getElementById('btn-move-p').addEventListener('click', () => {
+            STATE.movePMode = !STATE.movePMode;
+            document.getElementById('btn-move-p').classList.toggle('active');
+            if (STATE.movePMode) {
+                STATE.moveCMode = false;
+                document.getElementById('btn-move-c').classList.remove('active');
+                if (STATE.teaching) exitTeachMode();
+                if (STATE.breakCondition) {
+                    STATE.breakCondition = false;
+                    computeP();
+                    fullUpdate();
+                }
+            }
+        });
+
+        // Move C
+        document.getElementById('btn-move-c').addEventListener('click', () => {
+            STATE.moveCMode = !STATE.moveCMode;
+            document.getElementById('btn-move-c').classList.toggle('active');
+            if (STATE.moveCMode) {
+                STATE.movePMode = false;
+                document.getElementById('btn-move-p').classList.remove('active');
+                if (STATE.teaching) exitTeachMode();
+            }
+        });
+
+        // Radius slider
+        const radiusSlider = document.getElementById('slider-radius');
+        const radiusVal = document.getElementById('slider-radius-val');
+        radiusSlider.addEventListener('input', () => {
+            STATE.a = parseFloat(radiusSlider.value);
+            radiusVal.textContent = STATE.a.toFixed(2);
+            if (STATE.breakCondition) {
+                STATE.breakCondition = false;
+                computeP();
+            }
+            // Rebuild sphere with new radius
+            buildSphere();
+            computeP();
+            fullUpdate();
+            if (STATE.teaching) updateTeachStep();
+            document.getElementById('data-a').textContent = STATE.a.toFixed(2);
+        });
+
+        // Centre at Origin
+        document.getElementById('btn-origin').addEventListener('click', () => {
+            STATE.C.set(0, 0, 0);
+            STATE.originMode = true;
+            computeP();
+            fullUpdate();
+            controls.target.copy(STATE.C);
+            if (STATE.teaching) exitTeachMode();
+        });
+
+        // Reset
+        document.getElementById('btn-reset').addEventListener('click', () => {
+            STATE.C.set(2, 1, 2);
+            STATE.a = 3;
+            STATE.theta = 0.7;
+            STATE.phi = 1.2;
+            STATE.originMode = false;
+            STATE.breakCondition = false;
+            STATE.movePMode = false;
+            STATE.moveCMode = false;
+            STATE.showLocus = false;
+            STATE.showVectors = false;
+            STATE.showComponents = false;
+            STATE.teaching = false;
+            document.getElementById('btn-move-p').classList.remove('active');
+            document.getElementById('btn-move-c').classList.remove('active');
+            document.getElementById('btn-locus').classList.remove('active');
+            document.getElementById('btn-vectors').classList.remove('active');
+            document.getElementById('btn-components').classList.remove('active');
+            document.getElementById('btn-teach').classList.remove('active');
+            teachOverlay.classList.add('hidden');
+            radiusSlider.value = '3';
+            radiusVal.textContent = '3.00';
+            locusPositions = [];
+            locusGroup.visible = false;
+            componentsGroup.visible = false;
+            updateVectorsVisibility();
+
+            computeP();
+            buildSphere();
+            fullUpdate();
+            controls.target.copy(STATE.C);
+            camera.position.set(9, 5.5, 11);
+            controls.update();
+
+            // Re-enter teach mode
+            enterTeachMode();
+        });
+
+        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        // KEYBOARD SHORTCUTS
+        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 't' || e.key === 'T') {
+                document.getElementById('btn-teach').click();
+            }
+            if (e.key === 'l' || e.key === 'L') {
+                document.getElementById('btn-locus').click();
+            }
+            if (e.key === 'v' || e.key === 'V') {
+                document.getElementById('btn-vectors').click();
+            }
+            if (e.key === 'r' || e.key === 'R') {
+                document.getElementById('btn-reset').click();
+            }
+            if (e.key === 'ArrowRight' && STATE.teaching) {
+                document.getElementById('teach-next').click();
+            }
+            if (e.key === 'ArrowLeft' && STATE.teaching) {
+                document.getElementById('teach-prev').click();
+            }
+        });
+
+        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        // VALIDATION (mathematical audit)
+        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        function validateGeometry() {
+            const cp = STATE.CP.length();
+            const diff = Math.abs(cp - STATE.a);
+            const valid = diff < 0.001;
+            if (!valid && !STATE.breakCondition) {
+                console.warn('[Validation] CP != a:', cp, STATE.a, diff);
+            }
+            // Check vector identity: CP = P - C
+            const check = STATE.P.clone().sub(STATE.C);
+            const err = check.distanceTo(STATE.CP);
+            if (err > 0.001) {
+                console.warn('[Validation] CP != P-C:', err);
+            }
+            return valid && err < 0.001;
+        }
+
+        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        // RESIZE
+        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        function onResize() {
+            const w = window.innerWidth;
+            const h = window.innerHeight;
+            camera.aspect = w / h;
+            camera.updateProjectionMatrix();
+            renderer.setSize(w, h);
+            labelRenderer.setSize(w, h);
+        }
+        window.addEventListener('resize', onResize);
+
+        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        // ANIMATION LOOP
+        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        function animate() {
+            requestAnimationFrame(animate);
+
+            // Auto-rotate P if in locus mode
+            if (STATE.showLocus && !STATE.teaching && !STATE.breakCondition) {
+                STATE.phi += 0.006;
+                computeP();
+                updatePoint();
+                updateVectors();
+                updateComponents();
+                updateLocus();
+                updateDataPanel();
+                updateEquationPanel();
+            }
+
+            // Animate particles
+            particles.rotation.y += 0.0001;
+            particles.rotation.x += 0.00003;
+
+            controls.update();
+
+            // Validation
+            if (!STATE.breakCondition && STATE.introComplete) {
+                validateGeometry();
+            }
+
+            renderer.render(scene, camera);
+            labelRenderer.render(scene, camera);
+        }
+
+        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        // INIT
+        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        function init() {
+            buildSphere();
+            buildCentre();
+            buildPoint();
+            buildVectors();
+            buildComponents();
+            buildLocus();
+
+            computeP();
+            fullUpdate();
+            updateVectorsVisibility();
+            componentsGroup.visible = false;
+
+            // Show intro
+            document.getElementById('intro-overlay').classList.remove('hidden');
+
+            animate();
+        }
+
+        init();
+
+        // Expose for debugging
+        console.log('Sphere Lab initialized. Controls: Teach(t), Locus(l), Vectors(v), Reset(r)');
+
+        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        // EXTRA: "Why a Sphere?" and "Break Condition" buttons
+        // We'll add them as additional controls via the existing UI
+        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+        // Add "Why a Sphere?" button to controls
+        const whyBtn = document.createElement('button');
+        whyBtn.className = 'btn gold small';
+        whyBtn.textContent = 'Why Sphere?';
+        whyBtn.style.marginLeft = '2px';
+        document.getElementById('controls').appendChild(whyBtn);
+
+        whyBtn.addEventListener('click', () => {
+            if (STATE.teaching) exitTeachMode();
+            // Show locus and animate P around sphere
+            STATE.showLocus = true;
+            locusPositions = [];
+            document.getElementById('btn-locus').classList.add('active');
+            // Reset break condition
+            STATE.breakCondition = false;
+            computeP();
+            fullUpdate();
+            // Animate P around sphere for a moment
+            let count = 0;
+            const interval = setInterval(() => {
+                if (count > 120 || !STATE.showLocus) {
+                    clearInterval(interval);
+                    return;
+                }
+                STATE.phi += 0.05;
+                computeP();
+                updatePoint();
+                updateVectors();
+                updateLocus();
+                updateDataPanel();
+                count++;
+            }, 20);
+            // Show a brief message
+            document.getElementById('eq-label').textContent = 'Why a Sphere?';
+            document.getElementById('eq-main').innerHTML = 'All points P with <span class="hl">CP = a</span>';
+            document.getElementById('eq-sub').textContent = 'form a spherical surface';
+            setTimeout(() => {
+                if (!STATE.teaching) updateEquationPanel();
+            }, 3000);
+        });
+
+        // Add "Break Condition" button
+        const breakBtn = document.createElement('button');
+        breakBtn.className = 'btn small';
+        breakBtn.textContent = 'Break';
+        breakBtn.style.marginLeft = '2px';
+        breakBtn.style.borderColor = 'rgba(255,100,80,0.2)';
+        breakBtn.style.color = 'rgba(255,100,80,0.6)';
+        document.getElementById('controls').appendChild(breakBtn);
+
+        breakBtn.addEventListener('click', () => {
+            STATE.breakCondition = !STATE.breakCondition;
+            breakBtn.classList.toggle('active');
+            if (STATE.breakCondition) {
+                breakBtn.style.borderColor = 'rgba(255,100,80,0.5)';
+                breakBtn.style.color = '#ff6644';
+                breakBtn.textContent = 'Restore';
+                if (STATE.teaching) exitTeachMode();
+                STATE.movePMode = false;
+                document.getElementById('btn-move-p').classList.remove('active');
+                // Offset P from sphere
+                const dir = STATE.CP.clone().normalize();
+                if (dir.length() < 0.01) dir.set(1, 0, 0);
+                STATE.P.copy(STATE.C).addScaledVector(dir, STATE.a + 1.2);
+                STATE.CP.copy(STATE.P).sub(STATE.C);
+                if (sphereMesh) sphereMesh.material.opacity = 0.08;
+                fullUpdate();
+                document.getElementById('eq-label').textContent = 'Condition Broken';
+                document.getElementById('eq-main').innerHTML = 'CP ≠ a';
+                document.getElementById('eq-sub').textContent = 'P is not on the locus';
+                document.getElementById('data-cp').style.color = '#ff6644';
+            } else {
+                breakBtn.style.borderColor = 'rgba(255,100,80,0.2)';
+                breakBtn.style.color = 'rgba(255,100,80,0.6)';
+                breakBtn.textContent = 'Break';
+                STATE.breakCondition = false;
+                if (sphereMesh) sphereMesh.material.opacity = 0.22;
+                computeP();
+                fullUpdate();
+                document.getElementById('data-cp').style.color = '#7ab7ff';
+                updateEquationPanel();
+            }
+        });
+
+        console.log('✅ Sphere Lab fully loaded.');
+    </script>
+</body>
+</html>
