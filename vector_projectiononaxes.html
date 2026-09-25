@@ -1,0 +1,825 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>3D Vector &amp; Axis Projections</title>
+<style>
+  :root {
+    --bg-color: #080a10;
+    --card-bg: rgba(14, 19, 31, 0.78);
+    --card-border: rgba(255, 255, 255, 0.08);
+    --text-main: #f0f4fc;
+    --text-dim: #7f8ea3;
+    --color-v: #ffd166;
+    --color-x: #ff4757;
+    --color-y: #2ed573;
+    --color-z: #1e90ff;
+    --accent: #6c5ce7;
+    --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    --font-mono: "SF Mono", "Fira Code", "Roboto Mono", monospace;
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    overflow: hidden;
+  }
+
+  body {
+    background:
+      radial-gradient(1200px 800px at 50% 35%, #131a29 0%, #0a0d16 45%, var(--bg-color) 100%);
+    color: var(--text-main);
+    font-family: var(--font);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  #scene {
+    position: fixed;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    display: block;
+    touch-action: none;
+    cursor: grab;
+  }
+  #scene.dragging { cursor: grabbing; }
+
+  .panel {
+    position: fixed;
+    z-index: 10;
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: 14px;
+    backdrop-filter: blur(16px) saturate(140%);
+    -webkit-backdrop-filter: blur(16px) saturate(140%);
+    box-shadow: 0 14px 44px rgba(0, 0, 0, 0.5);
+  }
+
+  .title-panel {
+    top: 18px;
+    left: 18px;
+    padding: 14px 18px;
+    max-width: 320px;
+  }
+  .title-panel h1 {
+    margin: 0;
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: 0.2px;
+    background: linear-gradient(90deg, var(--color-v), #ff9f43 45%, var(--accent));
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    color: transparent;
+  }
+  .title-panel p {
+    margin: 6px 0 0;
+    font-size: 11.5px;
+    line-height: 1.5;
+    color: var(--text-dim);
+  }
+
+  .readout {
+    top: 18px;
+    right: 18px;
+    padding: 12px 14px;
+    font-family: var(--font-mono);
+    font-size: 12.5px;
+    min-width: 158px;
+  }
+  .readout .row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 3px 0;
+    color: var(--text-dim);
+  }
+  .readout .row b {
+    margin-left: auto;
+    color: var(--text-main);
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+  }
+  .readout .row.total {
+    margin-top: 6px;
+    padding-top: 8px;
+    border-top: 1px solid var(--card-border);
+  }
+  .readout .row.total b { color: var(--color-v); }
+
+  .swatch {
+    width: 9px;
+    height: 9px;
+    border-radius: 3px;
+    flex: 0 0 auto;
+    box-shadow: 0 0 8px currentColor;
+  }
+  .swatch.x { background: var(--color-x); color: var(--color-x); }
+  .swatch.y { background: var(--color-y); color: var(--color-y); }
+  .swatch.z { background: var(--color-z); color: var(--color-z); }
+  .swatch.v { background: var(--color-v); color: var(--color-v); }
+
+  .controls {
+    left: 50%;
+    bottom: 18px;
+    transform: translateX(-50%);
+    width: min(620px, calc(100vw - 32px));
+    padding: 14px 18px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .sliders {
+    display: flex;
+    flex-direction: column;
+    gap: 9px;
+  }
+
+  .slider-row {
+    display: grid;
+    grid-template-columns: 26px 1fr 52px;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .tag {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    font-weight: 700;
+    text-align: center;
+    border-radius: 6px;
+    padding: 2px 0;
+    line-height: 1.35;
+  }
+  .tag.x { color: var(--color-x); background: rgba(255, 71, 87, 0.12); }
+  .tag.y { color: var(--color-y); background: rgba(46, 213, 115, 0.12); }
+  .tag.z { color: var(--color-z); background: rgba(30, 144, 255, 0.12); }
+
+  .val {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--text-dim);
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+
+  input[type="range"] {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100%;
+    height: 4px;
+    border-radius: 4px;
+    background: rgba(255, 255, 255, 0.12);
+    outline: none;
+    cursor: pointer;
+    transition: background 0.2s;
+  }
+  input[type="range"]:hover { background: rgba(255, 255, 255, 0.2); }
+
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: #fff;
+    border: 2px solid var(--accent);
+    box-shadow: 0 0 10px rgba(108, 92, 231, 0.9);
+    transition: transform 0.15s;
+  }
+  input[type="range"]::-webkit-slider-thumb:hover { transform: scale(1.15); }
+
+  input[type="range"]::-moz-range-thumb {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: #fff;
+    border: 2px solid var(--accent);
+    box-shadow: 0 0 10px rgba(108, 92, 231, 0.9);
+    cursor: pointer;
+  }
+  input[type="range"]::-moz-range-track {
+    height: 4px;
+    border-radius: 4px;
+    background: rgba(255, 255, 255, 0.12);
+  }
+
+  #sx { accent-color: var(--color-x); }
+  #sy { accent-color: var(--color-y); }
+  #sz { accent-color: var(--color-z); }
+
+  .buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: center;
+  }
+
+  .btn {
+    font-family: var(--font);
+    font-size: 11.5px;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+    color: var(--text-dim);
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--card-border);
+    border-radius: 9px;
+    padding: 7px 13px;
+    cursor: pointer;
+    transition: all 0.18s ease;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .btn:hover {
+    color: var(--text-main);
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.2);
+  }
+  .btn:active { transform: translateY(1px); }
+  .btn.active {
+    color: #fff;
+    background: rgba(108, 92, 231, 0.28);
+    border-color: rgba(108, 92, 231, 0.75);
+    box-shadow: 0 0 16px rgba(108, 92, 231, 0.35);
+  }
+
+  @media (max-width: 640px) {
+    .title-panel { max-width: 190px; padding: 11px 13px; }
+    .title-panel h1 { font-size: 12.5px; }
+    .title-panel p { display: none; }
+    .readout { padding: 9px 11px; font-size: 11px; min-width: 128px; }
+    .controls { padding: 12px 13px 13px; gap: 10px; bottom: 12px; }
+    .slider-row { grid-template-columns: 22px 1fr 44px; gap: 9px; }
+    .btn { font-size: 10.5px; padding: 6px 10px; }
+  }
+</style>
+</head>
+<body>
+
+<canvas id="scene"></canvas>
+
+<div class="panel title-panel">
+  <h1>3D Vector &amp; Axis Projections</h1>
+  <p>Right-handed &middot; Z up &middot; Drag to orbit &middot; scroll to zoom</p>
+</div>
+
+<div class="panel readout">
+  <div class="row"><span class="swatch x"></span>v<sub>x</sub><b id="outX">1.80</b></div>
+  <div class="row"><span class="swatch y"></span>v<sub>y</sub><b id="outY">1.60</b></div>
+  <div class="row"><span class="swatch z"></span>v<sub>z</sub><b id="outZ">1.60</b></div>
+  <div class="row total"><span class="swatch v"></span>|v|<b id="outM">2.90</b></div>
+</div>
+
+<div class="panel controls">
+  <div class="sliders">
+    <div class="slider-row">
+      <span class="tag x">X</span>
+      <input id="sx" type="range" min="-2" max="2" step="0.01" value="1.8" aria-label="Vector X component">
+      <span class="val" id="valX">1.80</span>
+    </div>
+    <div class="slider-row">
+      <span class="tag y">Y</span>
+      <input id="sy" type="range" min="-2" max="2" step="0.01" value="1.6" aria-label="Vector Y component">
+      <span class="val" id="valY">1.60</span>
+    </div>
+    <div class="slider-row">
+      <span class="tag z">Z</span>
+      <input id="sz" type="range" min="-2" max="2" step="0.01" value="1.6" aria-label="Vector Z component">
+      <span class="val" id="valZ">1.60</span>
+    </div>
+  </div>
+  <div class="buttons">
+    <button class="btn active" id="btnPlay">Pause</button>
+    <button class="btn active" id="btnRotate">Auto-rotate</button>
+    <button class="btn active" id="btnBox">Projection Box</button>
+    <button class="btn active" id="btnGrid">Grid</button>
+    <button class="btn" id="btnReset">Reset</button>
+  </div>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  /* ================================================================== *
+   *  COORDINATE SYSTEM  (Z-up)
+   * ------------------------------------------------------------------
+   *  The user's desired visual arrangement is:
+   *     X axis -> goes UP-RIGHT on screen   (world +Y)
+   *     Y axis -> goes DOWN-RIGHT on screen (world +X)
+   *     Z axis -> goes UP                   (world +Z)
+   *
+   *  So the axis directions in world space are:
+   *     X_dir = [0, 1, 0]
+   *     Y_dir = [1, 0, 0]
+   *     Z_dir = [0, 0, 1]
+   *
+   *  A vector with components (vx, vy, vz) expressed in this basis
+   *  maps to world coordinates:
+   *     world = vx * X_dir + vy * Y_dir + vz * Z_dir
+   *           = [ vy, vx, vz ]
+   * ================================================================== */
+
+  const canvas = document.getElementById("scene");
+  const ctx = canvas.getContext("2d");
+
+  const COL = {
+    v:   "#ffd166",
+    x:   "#ff4757",
+    y:   "#2ed573",
+    z:   "#1e90ff",
+    dim: "#7f8ea3",
+    box: "rgba(255,255,255,0.30)"
+  };
+
+  const L      = 3.2;   // axis half-length (world units)
+  const CAM_Z  = 8;     // camera distance
+  const SANS   = '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif';
+
+  const DEFAULT_STATE = {
+    vx: 1.8, vy: 1.6, vz: 1.6,
+    yaw: -0.70,        // azimuth around Z
+    pitch: 0.42,       // elevation (positive = camera above XY plane)
+    zoom: 1,
+    playing: true,
+    autoRotate: true,
+    showBox: true,
+    showGrid: true
+  };
+
+  const state = Object.assign({}, DEFAULT_STATE);
+
+  let W = 0, H = 0, cx = 0, cy = 0;
+  let baseScale = 90, scale = 90;
+
+  /* ------------------------------------------------------------------ *
+   *  RESIZE / DPR
+   * ------------------------------------------------------------------ */
+  function resize() {
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const w = canvas.clientWidth || window.innerWidth;
+    const h = canvas.clientHeight || window.innerHeight;
+
+    W = w;
+    H = h;
+
+    canvas.width  = Math.max(1, Math.round(w * dpr));
+    canvas.height = Math.max(1, Math.round(h * dpr));
+
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+    cx = w / 2;
+    cy = h / 2;
+
+    baseScale = Math.min(w, h) * 0.115;
+    scale = baseScale * state.zoom;
+  }
+
+  window.addEventListener("resize", resize);
+  window.addEventListener("orientationchange", () => setTimeout(resize, 120));
+
+  /* ------------------------------------------------------------------ *
+   *  3D MATH
+   * ------------------------------------------------------------------ */
+  function toView(p) {
+    const cyw = Math.cos(state.yaw),  syw = Math.sin(state.yaw);
+    const cp  = Math.cos(state.pitch), sp = Math.sin(state.pitch);
+
+    const x = p[0], y = p[1], z = p[2];
+
+    return [
+      -x * syw + y * cyw,                               // screen X
+      -x * sp * cyw - y * sp * syw + z * cp,            // screen Y
+      -x * cp * cyw - y * cp * syw - z * sp             // depth
+    ];
+  }
+
+  function project(p) {
+    const v = toView(p);
+    const depth = CAM_Z + v[2];
+    const s = (CAM_Z * scale) / (depth > 0.15 ? depth : 0.15);
+    return { x: cx + v[0] * s, y: cy - v[1] * s, z: v[2], s: s };
+  }
+
+  /* ------------------------------------------------------------------ *
+   *  DRAW PRIMITIVES
+   * ------------------------------------------------------------------ */
+  function line(a, b, color, width, dash, alpha) {
+    const A = project(a), B = project(b);
+    ctx.save();
+    ctx.globalAlpha = (alpha === undefined) ? 1 : alpha;
+    ctx.strokeStyle = color;
+    ctx.lineWidth = width || 1.5;
+    ctx.lineCap = "round";
+    ctx.setLineDash(dash || []);
+    ctx.beginPath();
+    ctx.moveTo(A.x, A.y);
+    ctx.lineTo(B.x, B.y);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  function glowLine(a, b, color, width, blur) {
+    const A = project(a), B = project(b);
+    ctx.save();
+    ctx.strokeStyle = color;
+    ctx.lineWidth = width;
+    ctx.lineCap = "round";
+    ctx.shadowColor = color;
+    ctx.shadowBlur = blur || 0;
+    ctx.beginPath();
+    ctx.moveTo(A.x, A.y);
+    ctx.lineTo(B.x, B.y);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  function arrowHead(a, b, color, size) {
+    const A = project(a), B = project(b);
+    const ang = Math.atan2(B.y - A.y, B.x - A.x);
+    const s = size || 12;
+
+    ctx.save();
+    ctx.fillStyle = color;
+    ctx.shadowColor = color;
+    ctx.shadowBlur = 8;
+    ctx.translate(B.x, B.y);
+    ctx.rotate(ang);
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.lineTo(-s, s * 0.42);
+    ctx.lineTo(-s * 0.68, 0);
+    ctx.lineTo(-s, -s * 0.42);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+  }
+
+  function dot(p, color, r, blur) {
+    const P = project(p);
+    ctx.save();
+    ctx.fillStyle = color;
+    ctx.shadowColor = color;
+    ctx.shadowBlur = blur === undefined ? 10 : blur;
+    ctx.beginPath();
+    ctx.arc(P.x, P.y, r, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  function text(str, p, color, dx, dy, font, align, baseline, blur) {
+    const P = project(p);
+    ctx.save();
+    ctx.fillStyle = color;
+    ctx.font = font;
+    ctx.textAlign = align || "center";
+    ctx.textBaseline = baseline || "middle";
+    if (blur) { ctx.shadowColor = color; ctx.shadowBlur = blur; }
+    ctx.fillText(str, P.x + (dx || 0), P.y + (dy || 0));
+    ctx.restore();
+  }
+
+  /* ------------------------------------------------------------------ *
+   *  AXIS DEFINITIONS (world space directions)
+   * ------------------------------------------------------------------ */
+  const AXES = [
+    { d: [0, 1, 0], c: COL.x, n: "X" },   // X -> world +Y (up-right on screen)
+    { d: [1, 0, 0], c: COL.y, n: "Y" },   // Y -> world +X (down-right on screen)
+    { d: [0, 0, 1], c: COL.z, n: "Z" }    // Z -> world +Z (UP)
+  ];
+
+  /* ------------------------------------------------------------------ *
+   *  SCENE PARTS
+   * ------------------------------------------------------------------ */
+
+  /* Grid is on the plane that contains both X_dir and Y_dir,
+   * i.e. the world z = 0 plane. Same visual as before. */
+  function drawGrid() {
+    const step = 0.5;
+    const n = Math.floor(L / step);
+
+    ctx.save();
+    ctx.strokeStyle = COL.dim;
+    ctx.globalAlpha = 0.11;
+    ctx.lineWidth = 1;
+
+    for (let i = -n; i <= n; i++) {
+      const t = i * step;
+      let A, B;
+
+      // line parallel to world X (which is our Y axis direction)
+      A = project([-L, t, 0]); B = project([L, t, 0]);
+      ctx.beginPath(); ctx.moveTo(A.x, A.y); ctx.lineTo(B.x, B.y); ctx.stroke();
+
+      // line parallel to world Y (which is our X axis direction)
+      A = project([t, -L, 0]); B = project([t, L, 0]);
+      ctx.beginPath(); ctx.moveTo(A.x, A.y); ctx.lineTo(B.x, B.y); ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  function drawAxes() {
+    for (let i = 0; i < AXES.length; i++) {
+      const ax = AXES[i];
+      const pos = [ax.d[0] * L, ax.d[1] * L, ax.d[2] * L];
+      const neg = [-pos[0], -pos[1], -pos[2]];
+
+      line([0, 0, 0], neg, COL.dim, 1.4, [5, 6], 0.32);
+      line([0, 0, 0], pos, ax.c, 2, [], 0.8);
+      arrowHead([0, 0, 0], pos, ax.c, 12);
+    }
+  }
+
+  /* Projections of the vector onto each axis.
+   * The vector has components (vx, vy, vz) expressed in the
+   * (X_dir, Y_dir, Z_dir) basis. So:
+   *   - its projection onto the X axis is vx * X_dir = [0, vx, 0]
+   *   - its projection onto the Y axis is vy * Y_dir = [vy, 0, 0]
+   *   - its projection onto the Z axis is vz * Z_dir = [0, 0, vz]
+   */
+  function drawProjections() {
+    const pts = [
+      { pt: [0, state.vx, 0], c: COL.x },
+      { pt: [state.vy, 0, 0], c: COL.y },
+      { pt: [0, 0, state.vz], c: COL.z }
+    ];
+
+    for (let i = 0; i < pts.length; i++) {
+      const pt = pts[i].pt;
+      const mag = Math.abs(pt[0]) + Math.abs(pt[1]) + Math.abs(pt[2]);
+      if (mag < 0.01) continue;
+
+      glowLine([0, 0, 0], pt, pts[i].c, 6, 14);
+      dot(pt, pts[i].c, 4.5, 12);
+    }
+  }
+
+  /* Bounding box from origin to the vector tip.
+   * Vector tip in world coords: [vy, vx, vz]
+   * Feet on the axes (world coords):
+   *   Px  (foot on X axis) = [0, vx, 0]
+   *   Py  (foot on Y axis) = [vy, 0, 0]
+   *   Pz  (foot on Z axis) = [0, 0, vz]
+   * Plane corners:
+   *   Pxy (X-Y plane, world z=0)     = [vy, vx, 0]
+   *   Pxz (X-Z plane, world y=0)     = [0, vx, vz]
+   *   Pyz (Y-Z plane, world x=0)     = [vy, 0, vz]
+   */
+  function drawBox() {
+    const vx = state.vx, vy = state.vy, vz = state.vz;
+
+    const P   = [vy, vx, vz];      // tip
+    const Px  = [0,  vx, 0 ];      // foot on X axis
+    const Py  = [vy, 0,  0 ];      // foot on Y axis
+    const Pz  = [0,  0,  vz];      // foot on Z axis (UP)
+    const Pxy = [vy, vx, 0 ];      // corner on the X-Y plane (z = 0)
+    const Pxz = [0,  vx, vz];      // corner on the X-Z plane (y = 0)
+    const Pyz = [vy, 0,  vz];      // corner on the Y-Z plane (x = 0)
+
+    const dash = [4, 5];
+    const o = COL.box;
+
+    // tip -> far corners
+    line(P, Pxy, o, 1.2, dash, 0.55);
+    line(P, Pxz, o, 1.2, dash, 0.55);
+    line(P, Pyz, o, 1.2, dash, 0.55);
+
+    // far corners -> axis feet
+    line(Pxy, Px, o, 1.2, dash, 0.38);
+    line(Pxy, Py, o, 1.2, dash, 0.38);
+    line(Pxz, Px, o, 1.2, dash, 0.38);
+    line(Pxz, Pz, o, 1.2, dash, 0.38);
+    line(Pyz, Py, o, 1.2, dash, 0.38);
+    line(Pyz, Pz, o, 1.2, dash, 0.38);
+  }
+
+  function drawVector(t) {
+    const P = [state.vy, state.vx, state.vz];   // tip in world coords
+    const len = Math.sqrt(state.vx * state.vx + state.vy * state.vy + state.vz * state.vz);
+
+    if (len < 0.02) return;
+
+    glowLine([0, 0, 0], P, COL.v, 4, 20);
+
+    // pulsing halo at the tip
+    const tip = project(P);
+    const pulse = 1 + Math.sin(t * 2.4) * 0.22;
+    ctx.save();
+    ctx.strokeStyle = COL.v;
+    ctx.globalAlpha = 0.30;
+    ctx.lineWidth = 1.6;
+    ctx.beginPath();
+    ctx.arc(tip.x, tip.y, 9 * pulse, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
+
+    dot(P, COL.v, 5.5, 18);
+  }
+
+  function drawAxisLabels() {
+    for (let i = 0; i < AXES.length; i++) {
+      const ax = AXES[i];
+      const p = [ax.d[0] * (L + 0.42), ax.d[1] * (L + 0.42), ax.d[2] * (L + 0.42)];
+      text(ax.n, p, ax.c, 0, 0, "700 15px " + SANS, "center", "middle", 14);
+    }
+
+    const P = [state.vy, state.vx, state.vz];
+    const len = Math.sqrt(state.vx * state.vx + state.vy * state.vy + state.vz * state.vz);
+    if (len > 0.15) {
+      text("v", P, COL.v, 13, -12, "italic 700 17px " + SANS, "left", "bottom", 14);
+    }
+  }
+
+  /* ------------------------------------------------------------------ *
+   *  RENDER LOOP
+   * ------------------------------------------------------------------ */
+  function render(now) {
+    const t = now / 1000;
+    scale = baseScale * state.zoom;
+
+    ctx.clearRect(0, 0, W, H);
+
+    if (state.showGrid) drawGrid();
+
+    drawAxes();
+
+    if (state.showBox) drawBox();
+
+    drawProjections();
+    drawVector(t);
+    drawAxisLabels();
+  }
+
+  let prevTime = performance.now();
+
+  function loop(now) {
+    const dt = Math.min((now - prevTime) / 1000, 0.05);
+    prevTime = now;
+
+    if (state.playing && state.autoRotate && !dragging) {
+      state.yaw += dt * 0.45;
+    }
+
+    render(now);
+    requestAnimationFrame(loop);
+  }
+
+  /* ------------------------------------------------------------------ *
+   *  UI WIRING
+   * ------------------------------------------------------------------ */
+  const el = {
+    sx: document.getElementById("sx"),
+    sy: document.getElementById("sy"),
+    sz: document.getElementById("sz"),
+    valX: document.getElementById("valX"),
+    valY: document.getElementById("valY"),
+    valZ: document.getElementById("valZ"),
+    outX: document.getElementById("outX"),
+    outY: document.getElementById("outY"),
+    outZ: document.getElementById("outZ"),
+    outM: document.getElementById("outM"),
+    btnPlay: document.getElementById("btnPlay"),
+    btnRotate: document.getElementById("btnRotate"),
+    btnBox: document.getElementById("btnBox"),
+    btnGrid: document.getElementById("btnGrid"),
+    btnReset: document.getElementById("btnReset")
+  };
+
+  function syncUI() {
+    el.sx.value = state.vx;
+    el.sy.value = state.vy;
+    el.sz.value = state.vz;
+
+    el.valX.textContent = state.vx.toFixed(2);
+    el.valY.textContent = state.vy.toFixed(2);
+    el.valZ.textContent = state.vz.toFixed(2);
+
+    el.outX.textContent = state.vx.toFixed(2);
+    el.outY.textContent = state.vy.toFixed(2);
+    el.outZ.textContent = state.vz.toFixed(2);
+    el.outM.textContent = Math.hypot(state.vx, state.vy, state.vz).toFixed(2);
+  }
+
+  el.sx.addEventListener("input", function () { state.vx = parseFloat(this.value); syncUI(); });
+  el.sy.addEventListener("input", function () { state.vy = parseFloat(this.value); syncUI(); });
+  el.sz.addEventListener("input", function () { state.vz = parseFloat(this.value); syncUI(); });
+
+  el.btnPlay.addEventListener("click", function () {
+    state.playing = !state.playing;
+    this.textContent = state.playing ? "Pause" : "Play";
+    this.classList.toggle("active", state.playing);
+  });
+
+  el.btnRotate.addEventListener("click", function () {
+    state.autoRotate = !state.autoRotate;
+    this.classList.toggle("active", state.autoRotate);
+  });
+
+  el.btnBox.addEventListener("click", function () {
+    state.showBox = !state.showBox;
+    this.classList.toggle("active", state.showBox);
+  });
+
+  el.btnGrid.addEventListener("click", function () {
+    state.showGrid = !state.showGrid;
+    this.classList.toggle("active", state.showGrid);
+  });
+
+  el.btnReset.addEventListener("click", function () {
+    Object.assign(state, DEFAULT_STATE);
+    el.btnPlay.textContent = "Pause";
+    el.btnPlay.classList.toggle("active", state.playing);
+    el.btnRotate.classList.toggle("active", state.autoRotate);
+    el.btnBox.classList.toggle("active", state.showBox);
+    el.btnGrid.classList.toggle("active", state.showGrid);
+    syncUI();
+  });
+
+  /* ------------------------------------------------------------------ *
+   *  ORBIT / ZOOM INTERACTION
+   * ------------------------------------------------------------------ */
+  let dragging = false;
+  let lastX = 0, lastY = 0;
+
+  canvas.addEventListener("pointerdown", function (e) {
+    dragging = true;
+    lastX = e.clientX;
+    lastY = e.clientY;
+    canvas.classList.add("dragging");
+    if (canvas.setPointerCapture) {
+      try { canvas.setPointerCapture(e.pointerId); } catch (err) {}
+    }
+  });
+
+  canvas.addEventListener("pointermove", function (e) {
+    if (!dragging) return;
+
+    const dx = e.clientX - lastX;
+    const dy = e.clientY - lastY;
+    lastX = e.clientX;
+    lastY = e.clientY;
+
+    state.yaw += dx * 0.008;
+    state.pitch -= dy * 0.006;
+    state.pitch = Math.max(-1.45, Math.min(1.45, state.pitch));
+
+    if (state.autoRotate) {
+      state.autoRotate = false;
+      el.btnRotate.classList.remove("active");
+    }
+  });
+
+  function endDrag(e) {
+    if (!dragging) return;
+    dragging = false;
+    canvas.classList.remove("dragging");
+    if (canvas.releasePointerCapture && e && e.pointerId !== undefined) {
+      try { canvas.releasePointerCapture(e.pointerId); } catch (err) {}
+    }
+  }
+
+  canvas.addEventListener("pointerup", endDrag);
+  canvas.addEventListener("pointercancel", endDrag);
+  canvas.addEventListener("pointerleave", function (e) { if (dragging && e.buttons === 0) endDrag(e); });
+
+  canvas.addEventListener("wheel", function (e) {
+    e.preventDefault();
+    state.zoom *= Math.exp(-e.deltaY * 0.0012);
+    state.zoom = Math.max(0.45, Math.min(2.4, state.zoom));
+  }, { passive: false });
+
+  /* Touch pinch zoom */
+  let pinchDist = 0;
+  canvas.addEventListener("touchmove", function (e) {
+    if (e.touches.length === 2) {
+      const a = e.touches[0], b = e.touches[1];
+      const d = Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
+      if (pinchDist > 0) {
+        state.zoom *= d / pinchDist;
+        state.zoom = Math.max(0.45, Math.min(2.4, state.zoom));
+      }
+      pinchDist = d;
+      dragging = false;
+      e.preventDefault();
+    }
+  }, { passive: false });
+
+  canvas.addEventListener("touchend", function () { pinchDist = 0; });
+
+  /* ------------------------------------------------------------------ *
+   *  GO
+   * ------------------------------------------------------------------ */
+  resize();
+  syncUI();
+  requestAnimationFrame(loop);
+
+})();
+</script>
+</body>
+</html>
