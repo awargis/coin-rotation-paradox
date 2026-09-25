@@ -1,17 +1,151 @@
-(function(){
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>3D Relative Velocity — Rain &amp; Man (JEE Advanced)</title>
+<style>
+  :root{
+    --bg:#050814;
+    --panel:rgba(13,20,38,.78);
+    --border:rgba(99,102,241,.28);
+    --cyan:#06b6d4;
+    --blue:#3b82f6;
+    --purple:#8b5cf6;
+    --pink:#ec4899;
+    --text:#f8fafc;
+    --muted:#94a3b8;
+    --green:#10b981;
+    --amber:#f59e0b;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{
+    height:100%;overflow:hidden;background:var(--bg);
+    font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    color:var(--text);
+    -webkit-font-smoothing:antialiased;
+  }
+  #scene{display:block;position:fixed;inset:0;width:100%;height:100%;cursor:grab;touch-action:none}
+  #scene:active{cursor:grabbing}
+
+  .panel{
+    position:fixed;
+    background:var(--panel);
+    border:1px solid var(--border);
+    border-radius:16px;
+    backdrop-filter:blur(14px);
+    -webkit-backdrop-filter:blur(14px);
+    box-shadow:0 12px 40px rgba(0,0,0,.55);
+    padding:14px 18px;
+    z-index:10;
+  }
+
+  .title{top:16px;left:16px;max-width:330px}
+  .title h1{
+    font-size:14px;font-weight:700;letter-spacing:.2px;
+    background:linear-gradient(90deg,var(--cyan),var(--purple),var(--pink));
+    -webkit-background-clip:text;background-clip:text;color:transparent;
+  }
+  .title p{font-size:11.5px;color:var(--muted);line-height:1.55;margin-top:6px}
+  .title b{color:var(--text);font-weight:600}
+
+  .readout{top:16px;right:16px;min-width:200px;font-size:12px}
+  .readout .row{
+    display:flex;justify-content:space-between;gap:16px;padding:4px 0;color:var(--muted);
+  }
+  .readout .row b{color:var(--cyan);font-variant-numeric:tabular-nums;font-weight:700}
+  .readout .row:nth-child(2) b{color:var(--pink)}
+  .readout .row:nth-child(3) b{color:var(--amber)}
+
+  .controls{
+    left:16px;bottom:16px;width:296px;
+    display:flex;flex-direction:column;gap:11px;
+  }
+  .controls label{
+    display:grid;grid-template-columns:1fr auto;gap:5px 10px;
+    font-size:11.5px;color:var(--muted);align-items:center;
+  }
+  .controls label b{color:var(--text);font-variant-numeric:tabular-nums;font-size:11.5px}
+  .controls input[type=range]{
+    grid-column:1/-1;width:100%;height:4px;accent-color:var(--cyan);
+    background:transparent;cursor:pointer;
+  }
+  .btns{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .btns button{
+    font:inherit;font-size:11px;font-weight:600;color:var(--text);
+    background:rgba(59,130,246,.14);
+    border:1px solid rgba(99,102,241,.35);
+    border-radius:9px;padding:8px 6px;cursor:pointer;
+    transition:background .18s,opacity .18s,transform .12s;
+  }
+  .btns button:hover{background:rgba(59,130,246,.3)}
+  .btns button:active{transform:scale(.97)}
+  .btns button.off{opacity:.42}
+
+  @media (max-width:640px){
+    .title{max-width:210px;padding:10px 13px}
+    .title p{display:none}
+    .readout{top:auto;bottom:auto;right:10px;top:10px;min-width:150px;padding:10px 12px;font-size:11px}
+    .controls{left:10px;right:10px;bottom:10px;width:auto}
+  }
+</style>
+</head>
+<body>
+
+<canvas id="scene"></canvas>
+
+<div class="panel title">
+  <h1>Relative Velocity in 3D — Rain &amp; Man</h1>
+  <p>Rain falls vertically at <b>v<sub>r</sub></b>. The man walks at <b>v<sub>m</sub></b>.
+     He tilts the umbrella by <b>θ = tan<sup>−1</sup>(v<sub>m</sub>/v<sub>r</sub>)</b> so that the
+     rain appears to fall straight into it.</p>
+</div>
+
+<div class="panel readout">
+  <div class="row"><span>Umbrella tilt θ</span><b id="thetaOut">—</b></div>
+  <div class="row"><span>|v<sub>rel</sub>|</span><b id="vrelOut">—</b></div>
+  <div class="row"><span>v<sub>rel</sub> direction</span><b id="dirOut">—</b></div>
+</div>
+
+<div class="panel controls">
+  <label>
+    <span>Rain speed &nbsp;v<sub>r</sub></span>
+    <b id="rainOut">7.0 m/s</b>
+    <input id="rainSlider" type="range" min="1" max="14" step="0.5" value="7">
+  </label>
+  <label>
+    <span>Man speed &nbsp;v<sub>m</sub></span>
+    <b id="manOut">3.0 m/s</b>
+    <input id="manSlider" type="range" min="0" max="10" step="0.5" value="3">
+  </label>
+  <div class="btns">
+    <button id="btnVectors">Vectors: ON</button>
+    <button id="btnRain">Rain: ON</button>
+    <button id="btnPause">Pause</button>
+    <button id="btnReset">Reset View</button>
+  </div>
+</div>
+
+<script>
+(function () {
   'use strict';
 
+  /* ============================================================
+     CANVAS / CAMERA
+     ============================================================ */
   const canvas = document.getElementById('scene');
   const ctx = canvas.getContext('2d');
 
   let W = 0, H = 0, DPR = 1, focal = 1200;
 
   const cam = {
-    yaw: 0.5,
+    yaw: 0.50,
     pitch: 0.24,
     dist: 13,
     target: { x: 0, y: 1.15, z: 0 }
   };
+
+  const CAM_DEFAULT = { yaw: 0.50, pitch: 0.24, dist: 13 };
 
   const state = {
     rainSpeed: 7,
@@ -25,22 +159,23 @@
     tilt: 0
   };
 
-  /* ---------- resize ---------- */
-  function resize(){
+  function resize() {
     DPR = Math.min(window.devicePixelRatio || 1, 2);
     W = window.innerWidth;
     H = window.innerHeight;
-    canvas.width = Math.round(W * DPR);
+    canvas.width  = Math.round(W * DPR);
     canvas.height = Math.round(H * DPR);
-    canvas.style.width = W + 'px';
+    canvas.style.width  = W + 'px';
     canvas.style.height = H + 'px';
     ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
     focal = Math.min(W, H) * 1.25;
   }
   window.addEventListener('resize', resize);
 
-  /* ---------- projection ---------- */
-  function project(p){
+  /* ============================================================
+     PROJECTION  (world -> screen)
+     ============================================================ */
+  function project(p) {
     const x = p.x - cam.target.x;
     const y = p.y - cam.target.y;
     const z = p.z - cam.target.z;
@@ -50,13 +185,598 @@
     const z1 = -x * sy + z * cy;
 
     const cp = Math.cos(cam.pitch), sp = Math.sin(cam.pitch);
-    const y1 = y * cp + z1 * sp;
+    const y1 =  y * cp + z1 * sp;
     const z2 = -y * sp + z1 * cp;
 
     const zc = z2 + cam.dist;
     if (zc < 0.6) return null;
+
     const f = focal / zc;
     return { x: W * 0.5 + x1 * f, y: H * 0.5 - y1 * f, z: zc, f: f };
   }
-  ...
+
+  /* ============================================================
+     DRAW HELPERS
+     ============================================================ */
+  function line3(a, b, color, width) {
+    const pa = project(a), pb = project(b);
+    if (!pa || !pb) return;
+    ctx.strokeStyle = color;
+    ctx.lineWidth = Math.max(0.5, width);
+    ctx.beginPath();
+    ctx.moveTo(pa.x, pa.y);
+    ctx.lineTo(pb.x, pb.y);
+    ctx.stroke();
+  }
+
+  function arrow3(from, to, color, width, headSize) {
+    const a = project(from), b = project(to);
+    if (!a || !b) return;
+
+    const dx = b.x - a.x, dy = b.y - a.y;
+    const len = Math.hypot(dx, dy);
+    if (len < 2) return;
+
+    const ux = dx / len, uy = dy / len;
+    const hs = Math.min(headSize, len * 0.45);
+
+    ctx.strokeStyle = color;
+    ctx.lineWidth = width;
+    ctx.beginPath();
+    ctx.moveTo(a.x, a.y);
+    ctx.lineTo(b.x - ux * hs * 0.85, b.y - uy * hs * 0.85);
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.moveTo(b.x, b.y);
+    ctx.lineTo(b.x - ux * hs + uy * hs * 0.5, b.y - uy * hs - ux * hs * 0.5);
+    ctx.lineTo(b.x - ux * hs - uy * hs * 0.5, b.y - uy * hs + ux * hs * 0.5);
+    ctx.closePath();
+    ctx.fillStyle = color;
+    ctx.fill();
+  }
+
+  function text3(p, text, color, dx, dy, size) {
+    const q = project(p);
+    if (!q) return;
+    ctx.font = '700 ' + (size || 12) + 'px ui-sans-serif, system-ui, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.lineWidth = 3.5;
+    ctx.strokeStyle = 'rgba(3,7,18,.9)';
+    ctx.strokeText(text, q.x + (dx || 0), q.y + (dy || 0));
+    ctx.fillStyle = color;
+    ctx.fillText(text, q.x + (dx || 0), q.y + (dy || 0));
+  }
+
+  /* ============================================================
+     RAIN PARTICLES
+     ============================================================ */
+  const RAIN_COUNT = 520;
+  const RAIN_HALF  = 9;    // x/z half-extent
+  const RAIN_TOP   = 15;   // height of the rain volume
+
+  const rain = [];
+  for (let i = 0; i < RAIN_COUNT; i++) {
+    rain.push({
+      x: (Math.random() - 0.5) * RAIN_HALF * 2,
+      y: Math.random() * RAIN_TOP,
+      z: (Math.random() - 0.5) * RAIN_HALF * 2
+    });
+  }
+
+  /* ============================================================
+     UPDATE
+     ============================================================ */
+  function update(dt) {
+    state.time += dt;
+
+    const vm = state.manSpeed;
+    const vr = state.rainSpeed;
+
+    // treadmill: man walks in +x, so the ground slides in -x
+    state.groundScroll -= vm * dt;
+
+    // walking animation phase (keeps moving even when vm = 0 is false)
+    state.walkPhase += dt * (1.2 + vm * 1.55);
+
+    // smooth umbrella tilt towards atan(vm / vr)
+    const targetTilt = Math.atan2(vm, Math.max(vr, 0.001));
+    state.tilt += (targetTilt - state.tilt) * Math.min(1, dt * 6);
+
+    // rain fall
+    const fall = vr * dt;
+    for (let i = 0; i < rain.length; i++) {
+      const d = rain[i];
+      d.y -= fall;
+      if (d.y < 0) {
+        d.y += RAIN_TOP;
+        d.x = (Math.random() - 0.5) * RAIN_HALF * 2;
+        d.z = (Math.random() - 0.5) * RAIN_HALF * 2;
+      }
+    }
+  }
+
+  /* ============================================================
+     SCENE PIECES
+     ============================================================ */
+  function drawGround() {
+    const half = 9;
+    const spacing = 1.5;
+    const off = ((state.groundScroll % spacing) + spacing) % spacing;
+    const y = 0;
+
+    ctx.lineWidth = 1;
+
+    // lines parallel to Z (they scroll with the ground)
+    const n = Math.floor(half / spacing);
+    for (let i = -n; i <= n; i++) {
+      const x = i * spacing + off;
+      if (Math.abs(x) > half) continue;
+      const a = project({ x: x, y: y, z: -half });
+      const b = project({ x: x, y: y, z:  half });
+      if (!a || !b) continue;
+      const fade = 1 - Math.abs(x) / half;
+      ctx.strokeStyle = 'rgba(99,102,241,' + (0.05 + fade * 0.18).toFixed(3) + ')';
+      ctx.beginPath();
+      ctx.moveTo(a.x, a.y);
+      ctx.lineTo(b.x, b.y);
+      ctx.stroke();
+    }
+
+    // lines parallel to X (static)
+    for (let i = -n; i <= n; i++) {
+      const z = i * spacing;
+      const a = project({ x: -half, y: y, z: z });
+      const b = project({ x:  half, y: y, z: z });
+      if (!a || !b) continue;
+      const fade = 1 - Math.abs(z) / half;
+      ctx.strokeStyle = 'rgba(6,182,212,' + (0.05 + fade * 0.16).toFixed(3) + ')';
+      ctx.beginPath();
+      ctx.moveTo(a.x, a.y);
+      ctx.lineTo(b.x, b.y);
+      ctx.stroke();
+    }
+  }
+
+  function drawRain() {
+    const streak = state.rainSpeed * 0.05 + 0.05;
+
+    ctx.lineCap = 'round';
+    for (let i = 0; i < rain.length; i++) {
+      const d = rain[i];
+      const a = project(d);
+      if (!a) continue;
+      const b = project({ x: d.x, y: d.y + streak, z: d.z });
+      if (!b) continue;
+
+      let alpha = 1.45 - a.z / 28;
+      if (alpha > 0.6) alpha = 0.6;
+      if (alpha < 0.08) alpha = 0.08;
+
+      ctx.strokeStyle = 'rgba(125,211,252,' + alpha.toFixed(3) + ')';
+      ctx.lineWidth = Math.max(0.6, a.f * 0.012);
+      ctx.beginPath();
+      ctx.moveTo(a.x, a.y);
+      ctx.lineTo(b.x, b.y);
+      ctx.stroke();
+    }
+  }
+
+  function drawMan() {
+    const t = state.walkPhase;
+
+    const originProj = project({ x: 0, y: 1, z: 0 });
+    const f = originProj ? originProj.f : 80;
+
+    /* --- ground shadow --- */
+    const sp = project({ x: 0, y: 0.012, z: 0 });
+    if (sp) {
+      ctx.save();
+      ctx.translate(sp.x, sp.y);
+      ctx.scale(1, 0.36);
+      const rg = ctx.createRadialGradient(0, 0, 0, 0, 0, 0.75 * sp.f);
+      rg.addColorStop(0, 'rgba(6,182,212,.34)');
+      rg.addColorStop(1, 'rgba(6,182,212,0)');
+      ctx.fillStyle = rg;
+      ctx.beginPath();
+      ctx.arc(0, 0, 0.75 * sp.f, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+
+    /* --- legs --- */
+    function footPos(phase, zOff) {
+      return {
+        x: 0.45 * Math.sin(phase),
+        y: 0.14 * Math.max(0, Math.cos(phase)),
+        z: zOff
+      };
+    }
+    const lf = footPos(t, 0.11);
+    const rf = footPos(t + Math.PI, -0.11);
+
+    const hipL = { x: 0, y: 0.92, z: 0.11 };
+    const hipR = { x: 0, y: 0.92, z: -0.11 };
+
+    const kneeL = { x: (hipL.x + lf.x) * 0.5 + 0.10, y: (hipL.y + lf.y) * 0.5, z: 0.11 };
+    const kneeR = { x: (hipR.x + rf.x) * 0.5 + 0.10, y: (hipR.y + rf.y) * 0.5, z: -0.11 };
+
+    line3(hipL, kneeL, '#38bdf8', 0.075 * f);
+    line3(kneeL, lf, '#38bdf8', 0.06 * f);
+    line3(hipR, kneeR, '#38bdf8', 0.075 * f);
+    line3(kneeR, rf, '#38bdf8', 0.06 * f);
+
+    // shoes
+    line3(lf, { x: lf.x + 0.14, y: lf.y, z: lf.z }, '#1e293b', 0.07 * f);
+    line3(rf, { x: rf.x + 0.14, y: rf.y, z: rf.z }, '#1e293b', 0.07 * f);
+
+    /* --- torso --- */
+    const hipC = { x: 0, y: 0.92, z: 0 };
+    const shC  = { x: 0, y: 1.44, z: 0 };
+    line3(hipC, shC, '#e2e8f0', 0.135 * f);
+
+    /* --- left arm (swings) --- */
+    const handL = { x: -0.30 * Math.sin(t) * 1.1, y: 1.10, z: 0.21 };
+    const shL   = { x: 0, y: 1.40, z: 0.17 };
+    const elbL  = {
+      x: (shL.x + handL.x) * 0.5 + 0.05,
+      y: (shL.y + handL.y) * 0.5,
+      z: (shL.z + handL.z) * 0.5 + 0.04
+    };
+    line3(shL, elbL, '#cbd5e1', 0.055 * f);
+    line3(elbL, handL, '#cbd5e1', 0.05 * f);
+
+    /* --- right arm (holds the umbrella, static) --- */
+    const handR = { x: 0, y: 1.12, z: 0.24 };
+    const shR   = { x: 0, y: 1.40, z: -0.17 };
+    const elbR  = { x: 0.16, y: 1.22, z: 0.05 };
+    line3(shR, elbR, '#cbd5e1', 0.055 * f);
+    line3(elbR, handR, '#cbd5e1', 0.05 * f);
+
+    /* --- head --- */
+    const hp = project({ x: 0, y: 1.60, z: 0 });
+    if (hp) {
+      const r = 0.145 * hp.f;
+      const hg = ctx.createRadialGradient(hp.x - r * 0.35, hp.y - r * 0.4, r * 0.1,
+                                          hp.x, hp.y, r);
+      hg.addColorStop(0, '#ffffff');
+      hg.addColorStop(1, '#cbd5e1');
+      ctx.beginPath();
+      ctx.arc(hp.x, hp.y, r, 0, Math.PI * 2);
+      ctx.fillStyle = hg;
+      ctx.fill();
+      ctx.lineWidth = Math.max(1, 0.02 * hp.f);
+      ctx.strokeStyle = 'rgba(56,189,248,.9)';
+      ctx.stroke();
+    }
+  }
+
+  function drawUmbrella(theta) {
+    const d = { x: Math.sin(theta), y: Math.cos(theta), z: 0 };
+
+    const hand = { x: 0, y: 1.12, z: 0.24 };
+    const L = 1.05;
+    const C = { x: hand.x + d.x * L, y: hand.y + d.y * L, z: hand.z };
+
+    const u = { x: Math.cos(theta), y: -Math.sin(theta), z: 0 };
+    const v = { x: 0, y: 0, z: 1 };
+
+    const R = 0.80;
+    const N = 28;
+
+    const rim = [];
+    for (let i = 0; i < N; i++) {
+      const a  = (i / N) * Math.PI * 2;
+      const ca = Math.cos(a) * R;
+      const sa = Math.sin(a) * R;
+      rim.push({
+        x: C.x + ca * u.x + sa * v.x,
+        y: C.y + ca * u.y + sa * v.y,
+        z: C.z + ca * u.z + sa * v.z
+      });
+    }
+    const apex = { x: C.x + d.x * 0.18, y: C.y + d.y * 0.18, z: C.z };
+
+    const cp = project(C);
+    const f  = cp ? cp.f : 80;
+
+    /* shaft */
+    line3(
+      { x: hand.x - d.x * 0.32, y: hand.y - d.y * 0.32, z: hand.z },
+      C, '#94a3b8', Math.max(1.5, 0.03 * f)
+    );
+
+    /* canopy */
+    const P = rim.map(project);
+    let allVisible = true;
+    for (let i = 0; i < P.length; i++) if (!P[i]) { allVisible = false; break; }
+
+    if (allVisible) {
+      let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+      for (let i = 0; i < P.length; i++) {
+        if (P[i].x < minX) minX = P[i].x;
+        if (P[i].x > maxX) maxX = P[i].x;
+        if (P[i].y < minY) minY = P[i].y;
+        if (P[i].y > maxY) maxY = P[i].y;
+      }
+
+      ctx.beginPath();
+      ctx.moveTo(P[0].x, P[0].y);
+      for (let i = 1; i < N; i++) ctx.lineTo(P[i].x, P[i].y);
+      ctx.closePath();
+
+      const g = ctx.createLinearGradient(minX, minY, maxX, maxY);
+      g.addColorStop(0.00, 'rgba(139,92,246,.94)');
+      g.addColorStop(0.50, 'rgba(59,130,246,.94)');
+      g.addColorStop(1.00, 'rgba(236,72,153,.94)');
+      ctx.fillStyle = g;
+      ctx.fill();
+
+      /* ribs */
+      const ap = project(apex);
+      if (ap) {
+        ctx.strokeStyle = 'rgba(255,255,255,.22)';
+        ctx.lineWidth = 1;
+        for (let i = 0; i < N; i += 3) {
+          ctx.beginPath();
+          ctx.moveTo(ap.x, ap.y);
+          ctx.lineTo(P[i].x, P[i].y);
+          ctx.stroke();
+        }
+      }
+
+      /* rim */
+      ctx.beginPath();
+      ctx.moveTo(P[0].x, P[0].y);
+      for (let i = 1; i < N; i++) ctx.lineTo(P[i].x, P[i].y);
+      ctx.closePath();
+      ctx.strokeStyle = 'rgba(226,232,240,.9)';
+      ctx.lineWidth = Math.max(1.2, 0.017 * f);
+      ctx.stroke();
+    }
+  }
+
+  function drawVectors() {
+    const vm = state.manSpeed;
+    const vr = state.rainSpeed;
+    const S  = 0.22;               // world units per (m/s)
+
+    const O = { x: -3.6, y: 3.6, z: 0 };
+
+    const vRain = { x: 0, y: -vr * S };
+    const vMan  = { x: vm * S, y: 0 };
+
+    const A = { x: O.x + vRain.x, y: O.y + vRain.y, z: O.z };
+    const B = { x: A.x - vMan.x,  y: A.y - vMan.y,  z: A.z };
+
+    const C_RAIN = '#06b6d4';
+    const C_MAN  = '#f59e0b';
+    const C_REL  = '#ec4899';
+
+    /* dashed vertical reference */
+    const ov  = project(O);
+    const ovb = project({ x: O.x, y: O.y - 2.9, z: O.z });
+    if (ov && ovb) {
+      ctx.save();
+      ctx.setLineDash([5, 5]);
+      ctx.strokeStyle = 'rgba(148,163,184,.45)';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(ov.x, ov.y);
+      ctx.lineTo(ovb.x, ovb.y);
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    /* angle arc */
+    const theta = Math.atan2(vm, Math.max(vr, 0.0001));
+    if (theta > 0.03) {
+      const AR = 0.95;
+      ctx.beginPath();
+      let started = false;
+      for (let i = 0; i <= 26; i++) {
+        const s = theta * (i / 26);
+        const p = project({
+          x: O.x - AR * Math.sin(s),
+          y: O.y - AR * Math.cos(s),
+          z: O.z
+        });
+        if (!p) { started = false; continue; }
+        if (!started) { ctx.moveTo(p.x, p.y); started = true; }
+        else ctx.lineTo(p.x, p.y);
+      }
+      ctx.strokeStyle = 'rgba(236,72,153,.85)';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+
+      text3(
+        { x: O.x - 1.30 * Math.sin(theta * 0.5),
+          y: O.y - 1.30 * Math.cos(theta * 0.5),
+          z: O.z },
+        'θ', '#f472b6', 0, 0, 14
+      );
+    }
+
+    /* the three vectors */
+    arrow3(O, A, C_RAIN, 2.6, 13);
+    arrow3(A, B, C_MAN,  2.2, 11);
+    arrow3(O, B, C_REL,  2.8, 13);
+
+    /* origin dot */
+    if (ov) {
+      ctx.beginPath();
+      ctx.arc(ov.x, ov.y, 3.5, 0, Math.PI * 2);
+      ctx.fillStyle = '#e2e8f0';
+      ctx.fill();
+    }
+
+    /* labels */
+    text3({ x: (O.x + A.x) / 2, y: (O.y + A.y) / 2, z: O.z },
+          'v rain', C_RAIN, -34, 0, 12);
+    text3({ x: (A.x + B.x) / 2, y: (A.y + B.y) / 2, z: O.z },
+          '−v man', C_MAN, 0, 18, 12);
+    text3({ x: (O.x + B.x) / 2, y: (O.y + B.y) / 2, z: O.z },
+          'v rel', C_REL, 8, 20, 12);
+  }
+
+  /* ============================================================
+     RENDER
+     ============================================================ */
+  function render() {
+    // background
+    const bg = ctx.createRadialGradient(
+      W * 0.5, H * 0.40, 0,
+      W * 0.5, H * 0.50, Math.max(W, H) * 0.80
+    );
+    bg.addColorStop(0.00, '#0e1932');
+    bg.addColorStop(0.55, '#070c1c');
+    bg.addColorStop(1.00, '#03050d');
+    ctx.fillStyle = bg;
+    ctx.fillRect(0, 0, W, H);
+
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+
+    drawGround();
+    if (state.showRain) drawRain();
+    drawMan();
+    drawUmbrella(state.tilt);
+    if (state.showVectors) drawVectors();
+  }
+
+  /* ============================================================
+     HUD
+     ============================================================ */
+  const thetaOut = document.getElementById('thetaOut');
+  const vrelOut  = document.getElementById('vrelOut');
+  const dirOut   = document.getElementById('dirOut');
+  const rainOut  = document.getElementById('rainOut');
+  const manOut   = document.getElementById('manOut');
+
+  let hudAccum = 0;
+  function updateHUD(dt) {
+    hudAccum += dt;
+    if (hudAccum < 0.06) return;
+    hudAccum = 0;
+
+    const vm = state.manSpeed, vr = state.rainSpeed;
+    const theta = Math.atan2(vm, Math.max(vr, 0.0001));
+    const vrel  = Math.sqrt(vm * vm + vr * vr);
+
+    thetaOut.textContent = (theta * 180 / Math.PI).toFixed(1) + '°';
+    vrelOut.textContent  = vrel.toFixed(2) + ' m/s';
+    dirOut.textContent   = (90 - theta * 180 / Math.PI).toFixed(1) + '° from horiz.';
+  }
+
+  /* ============================================================
+     MAIN LOOP
+     ============================================================ */
+  let last = performance.now();
+
+  function frame(now) {
+    let dt = (now - last) / 1000;
+    last = now;
+    if (dt > 0.05) dt = 0.05;
+    if (dt < 0)    dt = 0;
+
+    if (!state.paused) update(dt);
+    render();
+    updateHUD(dt);
+
+    requestAnimationFrame(frame);
+  }
+
+  /* ============================================================
+     INTERACTION
+     ============================================================ */
+  let dragging = false, lastX = 0, lastY = 0;
+
+  canvas.addEventListener('pointerdown', function (e) {
+    dragging = true;
+    lastX = e.clientX;
+    lastY = e.clientY;
+    if (canvas.setPointerCapture) {
+      try { canvas.setPointerCapture(e.pointerId); } catch (err) {}
+    }
+  });
+
+  canvas.addEventListener('pointermove', function (e) {
+    if (!dragging) return;
+    const dx = e.clientX - lastX;
+    const dy = e.clientY - lastY;
+    lastX = e.clientX;
+    lastY = e.clientY;
+
+    cam.yaw -= dx * 0.005;
+    cam.pitch += dy * 0.004;
+    if (cam.pitch < 0.02) cam.pitch = 0.02;
+    if (cam.pitch > 1.20) cam.pitch = 1.20;
+  });
+
+  function endDrag(e) {
+    dragging = false;
+    if (canvas.releasePointerCapture) {
+      try { canvas.releasePointerCapture(e.pointerId); } catch (err) {}
+    }
+  }
+  canvas.addEventListener('pointerup', endDrag);
+  canvas.addEventListener('pointercancel', endDrag);
+
+  /* --- sliders --- */
+  const rainSlider = document.getElementById('rainSlider');
+  const manSlider  = document.getElementById('manSlider');
+
+  rainSlider.addEventListener('input', function () {
+    state.rainSpeed = parseFloat(this.value);
+    rainOut.textContent = state.rainSpeed.toFixed(1) + ' m/s';
+  });
+  manSlider.addEventListener('input', function () {
+    state.manSpeed = parseFloat(this.value);
+    manOut.textContent = state.manSpeed.toFixed(1) + ' m/s';
+  });
+
+  /* --- buttons --- */
+  const btnVectors = document.getElementById('btnVectors');
+  const btnRain    = document.getElementById('btnRain');
+  const btnPause   = document.getElementById('btnPause');
+  const btnReset   = document.getElementById('btnReset');
+
+  btnVectors.addEventListener('click', function () {
+    state.showVectors = !state.showVectors;
+    this.textContent = 'Vectors: ' + (state.showVectors ? 'ON' : 'OFF');
+    this.classList.toggle('off', !state.showVectors);
+  });
+
+  btnRain.addEventListener('click', function () {
+    state.showRain = !state.showRain;
+    this.textContent = 'Rain: ' + (state.showRain ? 'ON' : 'OFF');
+    this.classList.toggle('off', !state.showRain);
+  });
+
+  btnPause.addEventListener('click', function () {
+    state.paused = !state.paused;
+    this.textContent = state.paused ? 'Resume' : 'Pause';
+    this.classList.toggle('off', state.paused);
+  });
+
+  btnReset.addEventListener('click', function () {
+    cam.yaw   = CAM_DEFAULT.yaw;
+    cam.pitch = CAM_DEFAULT.pitch;
+    cam.dist  = CAM_DEFAULT.dist;
+  });
+
+  /* ============================================================
+     BOOT
+     ============================================================ */
+  resize();
+  rainOut.textContent = state.rainSpeed.toFixed(1) + ' m/s';
+  manOut.textContent  = state.manSpeed.toFixed(1) + ' m/s';
+  state.tilt = Math.atan2(state.manSpeed, state.rainSpeed);
+
+  requestAnimationFrame(frame);
+
 })();
+</script>
+</body>
+</html>
