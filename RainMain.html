@@ -1,0 +1,62 @@
+(function(){
+  'use strict';
+
+  const canvas = document.getElementById('scene');
+  const ctx = canvas.getContext('2d');
+
+  let W = 0, H = 0, DPR = 1, focal = 1200;
+
+  const cam = {
+    yaw: 0.5,
+    pitch: 0.24,
+    dist: 13,
+    target: { x: 0, y: 1.15, z: 0 }
+  };
+
+  const state = {
+    rainSpeed: 7,
+    manSpeed: 3,
+    showVectors: true,
+    showRain: true,
+    paused: false,
+    time: 0,
+    walkPhase: 0,
+    groundScroll: 0,
+    tilt: 0
+  };
+
+  /* ---------- resize ---------- */
+  function resize(){
+    DPR = Math.min(window.devicePixelRatio || 1, 2);
+    W = window.innerWidth;
+    H = window.innerHeight;
+    canvas.width = Math.round(W * DPR);
+    canvas.height = Math.round(H * DPR);
+    canvas.style.width = W + 'px';
+    canvas.style.height = H + 'px';
+    ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+    focal = Math.min(W, H) * 1.25;
+  }
+  window.addEventListener('resize', resize);
+
+  /* ---------- projection ---------- */
+  function project(p){
+    const x = p.x - cam.target.x;
+    const y = p.y - cam.target.y;
+    const z = p.z - cam.target.z;
+
+    const cy = Math.cos(cam.yaw), sy = Math.sin(cam.yaw);
+    const x1 =  x * cy + z * sy;
+    const z1 = -x * sy + z * cy;
+
+    const cp = Math.cos(cam.pitch), sp = Math.sin(cam.pitch);
+    const y1 = y * cp + z1 * sp;
+    const z2 = -y * sp + z1 * cp;
+
+    const zc = z2 + cam.dist;
+    if (zc < 0.6) return null;
+    const f = focal / zc;
+    return { x: W * 0.5 + x1 * f, y: H * 0.5 - y1 * f, z: zc, f: f };
+  }
+  ...
+})();
