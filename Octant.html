@@ -1,1489 +1,1034 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
-<title>Octants — The Glass Morphic Space</title>
-
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<meta name="color-scheme" content="dark"/>
+<title>OCTANT — Sign Partition of ℝ³</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@200;300;400;500&family=JetBrains+Mono:wght@300;400&display=swap" rel="stylesheet">
-
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500&family=STIX+Two+Text:ital,wght@1,400;1,500&display=swap" rel="stylesheet">
 <style>
-  :root{
-    --ink:  #e8eef6;
-    --dim:  rgba(232,238,246,0.52);
-    --faint:rgba(232,238,246,0.26);
-    --accent: #8ecbff;
+  :root {
+    --ink: #efe9dd; --dim: rgba(239,233,221,.55); --faint: rgba(239,233,221,.3);
+    --amber: #ffb454; --mint: #7be3c0; --hair: rgba(239,233,221,.14);
   }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; overflow: hidden; background: #000; }
+  body { font-family: 'Space Grotesk', sans-serif; color: var(--ink); -webkit-font-smoothing: antialiased; }
+  
+  #stage { position: fixed; inset: 0; }
+  #stage canvas { display: block; cursor: grab; }
+  #stage:active canvas { cursor: grabbing; }
+  #stage::after {
+    content: ''; position: fixed; inset: 0; pointer-events: none;
+    background: radial-gradient(ellipse at center, transparent 60%, rgba(0,0,0,.42) 100%);
+  }
+  #labels { position: fixed; inset: 0; pointer-events: none; z-index: 3; overflow: hidden; }
 
-  *{ margin:0; padding:0; box-sizing:border-box; }
-  html, body{ height:100%; background:#000; }
-  body{
-    color:var(--ink);
-    font-family:'Inter','SF Pro Display',-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;
-    -webkit-font-smoothing:antialiased;
-    -moz-osx-font-smoothing:grayscale;
-    overflow:hidden;
-    position:fixed; inset:0;
+  .hud {
+    position: fixed; z-index: 5; pointer-events: none; user-select: none; opacity: 0;
+    animation: rise .95s cubic-bezier(.22,.9,.24,1) forwards;
   }
+  @keyframes rise { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+  .tl { top: 36px; left: 40px; animation-delay: .25s; }
+  .tr { top: 36px; right: 40px; text-align: right; animation-delay: .55s; }
+  .bl { left: 40px; bottom: 36px; animation-delay: .85s; }
+  .br { right: 40px; bottom: 36px; animation-delay: 1.1s; }
 
-  #gl{
-    position:fixed; inset:0;
-    width:100vw; height:100vh;
-    display:block;
-    z-index:0;
-    touch-action:none;
-  }
+  .kicker { font-size: 10px; letter-spacing: .34em; color: var(--amber); text-transform: uppercase; margin-bottom: 10px; }
+  h1 { font-size: 30px; font-weight: 300; letter-spacing: .42em; color: var(--ink); }
+  .rule { border: 0; border-top: 1px solid var(--hair); width: 46px; margin: 16px 0 0; }
+  .sub { margin-top: 14px; font-size: 11.5px; font-weight: 300; line-height: 1.75; color: var(--dim); max-width: 300px; }
+  .m { font-family: 'STIX Two Text', serif; font-style: italic; }
 
-  /* ---------- UI layer ---------- */
-  #ui{
-    position:fixed; inset:0;
-    z-index:2;
-    pointer-events:none;
-    user-select:none;
-  }
+  .ro-k { font-size: 9.5px; letter-spacing: .26em; color: var(--dim); text-transform: uppercase; margin-bottom: 8px; }
+  .ro-p { font-family: 'STIX Two Text', serif; font-style: italic; font-size: 22px; }
+  .ro-s { font-family: 'STIX Two Text', serif; font-style: italic; font-size: 22px; color: var(--dim); margin-top: 3px; }
+  .ro-m { margin-top: 10px; font-size: 9.5px; letter-spacing: .2em; color: var(--dim); text-transform: uppercase; font-variant-numeric: tabular-nums; }
+  .pos { color: var(--amber); font-weight: 500; } 
+  .neg { color: var(--mint); font-weight: 500; } 
+  .zro { color: var(--faint); font-weight: 500; }
 
-  .hairline{
-    position:absolute; top:0; left:0; right:0; height:1px;
-    background:linear-gradient(90deg, transparent, rgba(142,203,255,.24) 25%, rgba(160,130,255,.24) 60%, transparent);
-    opacity:.7;
+  .deck {
+    pointer-events: auto; width: 272px; padding: 18px 18px 14px; border: 1px solid var(--hair);
+    border-radius: 12px; background: rgba(8,8,9,.52); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
   }
+  .ctl { margin-bottom: 13px; }
+  .ctl-head { display: flex; align-items: baseline; gap: 9px; margin-bottom: 6px; }
+  .sym { font-family: 'STIX Two Text', serif; font-style: italic; color: var(--amber); font-size: 15px; min-width: 13px; }
+  .name { font-size: 9.5px; letter-spacing: .18em; text-transform: uppercase; color: var(--dim); }
+  .val { margin-left: auto; font-size: 11px; letter-spacing: .06em; font-variant-numeric: tabular-nums; color: var(--ink); }
+  .gap { height: 1px; background: var(--hair); margin: 2px 0 14px; }
+  
+  input[type=range] { -webkit-appearance: none; appearance: none; width: 100%; height: 16px; background: transparent; cursor: ew-resize; display: block; }
+  input[type=range]::-webkit-slider-runnable-track {
+    height: 2px; border-radius: 1px;
+    background: linear-gradient(90deg, var(--amber) var(--p,50%), rgba(239,233,221,.16) var(--p,50%));
+  }
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none; width: 11px; height: 11px; border-radius: 50%;
+    background: #050505; border: 1.5px solid var(--amber); margin-top: -4.5px; transition: transform .15s ease;
+  }
+  input[type=range]:active::-webkit-slider-thumb { transform: scale(1.35); }
+  input[type=range]::-moz-range-track { height: 2px; background: rgba(239,233,221,.16); border-radius: 1px; }
+  input[type=range]::-moz-range-progress { height: 2px; background: var(--amber); border-radius: 1px; }
+  input[type=range]::-moz-range-thumb { width: 9px; height: 9px; border-radius: 50%; background: #050505; border: 1.5px solid var(--amber); }
 
-  .topbar{
-    position:absolute; top:0; left:0; right:0;
-    display:flex; justify-content:space-between; align-items:flex-start;
-    padding: clamp(18px,2.8vw,34px) clamp(22px,4.5vw,64px);
-    font-size:10px; letter-spacing:.32em; text-transform:uppercase;
-    color:var(--faint);
+  .row { display: flex; gap: 8px; margin-top: 2px; }
+  .btn {
+    flex: 1; display: flex; align-items: center; justify-content: center; gap: 6px;
+    font: 500 9.5px 'Space Grotesk', sans-serif; letter-spacing: .16em; text-transform: uppercase;
+    color: var(--dim); background: transparent; border: 1px solid var(--hair); border-radius: 7px;
+    padding: 8px 4px; cursor: pointer; transition: color .2s, border-color .2s;
   }
-  .brand{
-    display:flex; align-items:center; gap:11px;
-    color:rgba(232,238,246,0.7);
-    letter-spacing:.34em;
-  }
-  .brand .mark{
-    width:8px; height:8px; border-radius:2px;
-    background:linear-gradient(135deg,#8ecbff,#b69bff);
-    box-shadow:0 0 12px rgba(142,203,255,.55);
-    transform:rotate(45deg);
-  }
-  .brand .sep{ color:rgba(232,238,246,0.2); letter-spacing:0; }
+  .btn:hover { color: var(--ink); border-color: rgba(239,233,221,.34); }
+  .btn .dot { width: 5px; height: 5px; border-radius: 50%; background: rgba(239,233,221,.22); transition: background .2s; }
+  .btn.on { color: var(--ink); border-color: rgba(255,180,84,.42); }
+  .btn.on .dot { background: var(--amber); }
 
-  /* corner frames */
-  .corner{
-    position:absolute; width:12px; height:12px;
-    border:1px solid rgba(255,255,255,.08);
-    pointer-events:none;
-  }
-  .corner.tl{ top:clamp(18px,2.8vw,34px); left:clamp(22px,4.5vw,64px); border-right:0; border-bottom:0; }
-  .corner.br{ bottom:clamp(18px,2.8vw,34px); right:clamp(22px,4.5vw,64px); border-left:0; border-top:0; }
+  .hints { font-size: 9.5px; letter-spacing: .2em; text-transform: uppercase; color: var(--faint); line-height: 2.1; text-align: right; }
+  .hints b { color: var(--dim); font-weight: 400; }
 
-  /* chapter text stack */
-  #chapters{ position:absolute; inset:0; }
-  .chapter{
-    position:absolute;
-    left: clamp(22px,4.5vw,64px);
-    bottom: clamp(120px,18vh,180px);
-    max-width: min(420px, 42vw);
-    opacity:0;
-    will-change:opacity, transform;
-    transition: none;
-  }
-  .ch-idx{
-    font-size:9.5px; letter-spacing:.3em; text-transform:uppercase;
-    color:rgba(142,203,255,.72);
-    margin-bottom:14px;
-    display:flex; align-items:center; gap:12px;
-  }
-  .ch-idx::after{
-    content:''; flex:1; height:1px; max-width:56px;
-    background:linear-gradient(90deg, rgba(142,203,255,.4), transparent);
-  }
-  .ch-title{
-    font-size: clamp(24px, 3.1vw, 40px);
-    font-weight:300;
-    letter-spacing:-.025em;
-    line-height:1.06;
-    margin-bottom:12px;
-    background:linear-gradient(180deg,#ffffff 0%, rgba(255,255,255,.55) 100%);
-    -webkit-background-clip:text; background-clip:text;
-    color:transparent;
-  }
-  .ch-body{
-    font-size: clamp(11.5px, 1vw, 13.5px);
-    line-height:1.72;
-    font-weight:300;
-    color:var(--dim);
-    letter-spacing:.005em;
-  }
+  .fr { position: fixed; width: 16px; height: 16px; z-index: 4; pointer-events: none; opacity: .8; }
+  .fr.a { top: 16px; left: 16px; border-top: 1px solid var(--hair); border-left: 1px solid var(--hair); }
+  .fr.b { top: 16px; right: 16px; border-top: 1px solid var(--hair); border-right: 1px solid var(--hair); }
+  .fr.c { bottom: 16px; left: 16px; border-bottom: 1px solid var(--hair); border-left: 1px solid var(--hair); }
+  .fr.d { bottom: 16px; right: 16px; border-bottom: 1px solid var(--hair); border-right: 1px solid var(--hair); }
 
-  /* readout */
-  .readout{
-    position:absolute;
-    right: clamp(22px,4.5vw,64px);
-    top: 50%;
-    transform: translateY(-50%);
-    text-align:right;
-    font-family:'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
-    opacity:0;
-    will-change:opacity;
+  .n-label { pointer-events: none; white-space: nowrap; }
+  .n-label .inner {
+    display: block; transform: translate(16px, -50%); border-left: 1px solid rgba(239,233,221,.28);
+    padding-left: 9px; transition: opacity .35s ease;
   }
-  .ro-label{
-    font-size:9px; letter-spacing:.3em; text-transform:uppercase;
-    color:var(--faint); margin-bottom:6px;
-    font-family:'Inter',sans-serif;
-  }
-  .ro-value{
-    font-size: clamp(11px, 1vw, 13px);
-    color:rgba(200,224,250,.85);
-    letter-spacing:.05em;
-    margin-bottom:18px;
-  }
-  .ro-value.sign{ color:#a8dbff; }
+  .n-label .sgn { font-size: 9.5px; letter-spacing: .18em; color: var(--dim); }
+  .n-label .m { font-size: 13.5px; color: var(--ink); }
+  .n-label .o { font-size: 9px; letter-spacing: .2em; color: var(--dim); margin-top: 3px; font-family: 'Space Grotesk', sans-serif; font-style: normal; }
 
-  /* ---------- DOCK ---------- */
-  .dock{
-    position:absolute;
-    left: 50%;
-    bottom: clamp(24px, 4vh, 40px);
-    transform: translateX(-50%);
-    display:flex;
-    align-items:center;
-    gap: 18px;
-    pointer-events:auto;
-    padding: 12px 18px;
-    border-radius: 999px;
-    background: rgba(255,255,255,0.02);
-    border: 1px solid rgba(255,255,255,0.055);
-    backdrop-filter: blur(14px) saturate(1.2);
-    -webkit-backdrop-filter: blur(14px) saturate(1.2);
-    box-shadow: 0 10px 40px -12px rgba(0,0,0,0.9);
-    min-width: min(560px, 84vw);
-  }
-
-  .play-btn{
-    flex: 0 0 auto;
-    width: 32px; height: 32px;
-    border-radius: 50%;
-    border: 1px solid rgba(255,255,255,0.1);
-    background: rgba(255,255,255,0.03);
-    color: #cfe6ff;
-    display:grid; place-items:center;
-    cursor: pointer;
-    transition: background .2s ease, border-color .2s ease, transform .2s ease;
-  }
-  .play-btn:hover{
-    background: rgba(142,203,255,0.12);
-    border-color: rgba(142,203,255,0.35);
-  }
-  .play-btn:active{ transform: scale(0.94); }
-  .play-btn svg{ width:12px; height:12px; fill: currentColor; }
-
-  .track-wrap{
-    flex: 1 1 auto;
-    position: relative;
-    height: 26px;
-    display:flex; align-items:center;
-  }
-  .track{
-    position: relative;
-    width:100%; height:2px;
-    background: rgba(255,255,255,0.08);
-    border-radius:2px;
-    cursor: pointer;
-  }
-  .fill{
-    position:absolute; left:0; top:0; bottom:0;
-    width: 0%;
-    background: linear-gradient(90deg, rgba(142,203,255,.7), rgba(180,150,255,.7));
-    border-radius:2px;
-    box-shadow: 0 0 12px rgba(142,203,255,.35);
-  }
-  .knob{
-    position:absolute; top:50%;
-    left: 0%;
-    width:10px; height:10px;
-    margin-left:-5px; margin-top:-5px;
-    border-radius:50%;
-    background: #cfe6ff;
-    box-shadow: 0 0 0 3px rgba(142,203,255,.14), 0 0 16px rgba(142,203,255,.7);
-    pointer-events: none;
-    transition: transform .2s ease;
-  }
-  .track-wrap:hover .knob{ transform: scale(1.15); }
-
-  .dots{
-    position:absolute; left:0; right:0; top:50%; height:0;
-    pointer-events: none;
-  }
-  .dot{
-    position:absolute;
-    top:-2px;
-    width:4px; height:4px;
-    border-radius:50%;
-    background: rgba(255,255,255,0.14);
-    transform: translate(-50%, 0);
-    transition: background .3s ease, box-shadow .3s ease;
-  }
-  .dot.on{
-    background: #cfe6ff;
-    box-shadow: 0 0 8px rgba(142,203,255,.9);
-  }
-
-  .step-info{
-    flex: 0 0 auto;
-    font-family:'JetBrains Mono', ui-monospace, monospace;
-    font-size: 10px;
-    letter-spacing:.14em;
-    color: rgba(200,224,250,.5);
-    min-width: 52px;
-    text-align: right;
-  }
-
-  /* hint */
-  .hint{
-    position:absolute;
-    left: 50%;
-    top: clamp(70px, 11vh, 108px);
-    transform: translateX(-50%);
-    font-size:9.5px; letter-spacing:.32em; text-transform:uppercase;
-    color:rgba(232,238,246,.32);
-    display:flex; align-items:center; gap:14px;
-    transition: opacity .8s ease;
-    white-space: nowrap;
-  }
-  .hint .sep{ width:3px; height:3px; border-radius:50%; background:rgba(232,238,246,.22); }
-
-  /* loader */
-  #loader{
-    position:fixed; inset:0; z-index:50;
-    background:#000;
-    display:flex; align-items:center; justify-content:center;
-    transition:opacity 1.1s cubic-bezier(.22,1,.36,1);
-    pointer-events:none;
-  }
-  #loader .lm{
-    width:6px;height:6px;border-radius:50%;
-    background:#8ecbff;
-    box-shadow:0 0 22px 4px rgba(142,203,255,.65);
-    animation:pulse 1.7s ease-in-out infinite;
-  }
-  @keyframes pulse{
-    0%,100%{ transform:scale(.55); opacity:.3; }
-    50%    { transform:scale(1.3); opacity:1; }
-  }
-  #loader.gone{ opacity:0; }
-
-  @media (max-width: 860px){
-    .chapter{ max-width: 84vw; bottom: clamp(120px,22vh,200px); }
-    .readout{ display:none; }
-    .corner{ display:none; }
-    .dock{ gap: 12px; padding: 10px 14px; min-width: 90vw; }
-    .step-info{ display:none; }
-    .topbar{ font-size:9px; letter-spacing:.26em; }
-    .brand{ letter-spacing:.28em; }
+  @media(max-width: 760px) {
+    .tl { top: 20px; left: 20px; } h1 { font-size: 20px; } .sub { display: none; }
+    .tr { top: 20px; right: 20px; } .ro-p, .ro-s { font-size: 15px; }
+    .bl { left: 16px; right: 16px; bottom: 16px; } .deck { width: 100%; }
+    .br { display: none; }
   }
 </style>
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+}}
+</script>
 </head>
 <body>
+<div id="stage"></div>
+<div id="labels"></div>
+<div class="fr a"></div><div class="fr b"></div><div class="fr c"></div><div class="fr d"></div>
 
-<canvas id="gl"></canvas>
+<header class="hud tl">
+  <div class="kicker">Sign Partition · ℝ³</div>
+  <h1>OCTANT</h1>
+  <hr class="rule"/>
+  <p class="sub">Three panes of structural glass cleave the void into eight volumetric chambers.
+  Move <span class="m">P</span>, grow the sample, tighten the restriction — every change of state
+  is a physical event, never a cut.</p>
+</header>
 
-<div id="ui">
-  <div class="hairline"></div>
+<div class="hud tr">
+  <div class="ro-k">Analyzed point</div>
+  <div class="ro-p" id="roP"></div>
+  <div class="ro-s" id="roS"></div>
+  <div class="ro-m" id="roM"></div>
+</div>
 
-  <div class="topbar">
-    <div class="brand">
-      <span class="mark"></span>
-      <span>OCTANT<span class="sep"> · </span>ENGINE</span>
+<div class="hud bl">
+  <div class="deck">
+    <div class="ctl">
+      <div class="ctl-head"><span class="sym">n</span><span class="name">sample size</span><span class="val" id="vN"></span></div>
+      <input type="range" id="sN" min="1" max="24" step="1" value="8">
     </div>
-    <div>Spatial Systems Lab — Vol. III</div>
-  </div>
-
-  <div class="corner tl"></div>
-  <div class="corner br"></div>
-
-  <div class="hint" id="hint">
-    <span>Drag to orbit</span>
-    <span class="sep"></span>
-    <span>Scrub to navigate</span>
-  </div>
-
-  <div id="chapters"></div>
-
-  <div class="readout" id="readout">
-    <div class="ro-label">Position</div>
-    <div class="ro-value" id="ro-coords">( 0.00, 0.00, 0.00 )</div>
-    <div class="ro-label">Signature</div>
-    <div class="ro-value sign" id="ro-sign">( +, +, + )</div>
-  </div>
-
-  <div class="dock">
-    <button class="play-btn" id="playBtn" aria-label="Play / Pause">
-      <svg id="playIcon" viewBox="0 0 12 12"><path d="M2 1.2v9.6L10.4 6 2 1.2z"/></svg>
-    </button>
-
-    <div class="track-wrap">
-      <div class="track" id="track">
-        <div class="fill" id="fill"></div>
-        <div class="dots" id="dots"></div>
-      </div>
-      <div class="knob" id="knob"></div>
+    <div class="ctl">
+      <div class="ctl-head"><span class="sym">r</span><span class="name">restriction radius</span><span class="val" id="vR"></span></div>
+      <input type="range" id="sR" min="2.5" max="10" step="0.1" value="6.5">
     </div>
-
-    <div class="step-info" id="stepInfo">01 / 07</div>
+    <div class="gap"></div>
+    <div class="ctl">
+      <div class="ctl-head"><span class="sym">x</span><span class="name">coordinate</span><span class="val" id="vX"></span></div>
+      <input type="range" id="sX" min="-10" max="10" step="0.1" value="2.4">
+    </div>
+    <div class="ctl">
+      <div class="ctl-head"><span class="sym">y</span><span class="name">coordinate</span><span class="val" id="vY"></span></div>
+      <input type="range" id="sY" min="-10" max="10" step="0.1" value="-1.6">
+    </div>
+    <div class="ctl">
+      <div class="ctl-head"><span class="sym">z</span><span class="name">coordinate</span><span class="val" id="vZ"></span></div>
+      <input type="range" id="sZ" min="-10" max="10" step="0.1" value="3.2">
+    </div>
+    <div class="row">
+      <button class="btn" id="bRes">Resample</button>
+      <button class="btn on" id="bOrbit"><span class="dot"></span>Orbit</button>
+      <button class="btn on" id="bOptics"><span class="dot"></span>Optics</button>
+    </div>
   </div>
 </div>
 
-<div id="loader"><div class="lm"></div></div>
-
-<script type="importmap">
-{
-  "imports": {
-    "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
-    "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
-  }
-}
-</script>
+<div class="hud br hints">
+  <b>drag</b> orbit · <b>scroll</b> dolly<br>
+  <b>sliders</b> recompute the space
+</div>
 
 <script type="module">
 import * as THREE from 'three';
-import { OrbitControls }  from 'three/addons/controls/OrbitControls.js';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
-import { RenderPass }     from 'three/addons/postprocessing/RenderPass.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { BokehPass } from 'three/addons/postprocessing/BokehPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
-import { OutputPass }     from 'three/addons/postprocessing/OutputPass.js';
-import { ShaderPass }     from 'three/addons/postprocessing/ShaderPass.js';
+import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 
-/* ══════════════════════════════════════════════════════════════
-   MATH HELPERS
-   ══════════════════════════════════════════════════════════════ */
-const clamp = (x, a, b) => Math.min(b, Math.max(a, x));
-const lerp  = (a, b, t) => a + (b - a) * t;
-function smoothstep(a, b, x){
-  const t = clamp((x - a) / ((b - a) || 1e-6), 0, 1);
-  return t * t * (3 - 2 * t);
-}
+const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+const ri = (a, b) => a + ((Math.random() * (b - a + 1)) | 0);
+const easeInOutCubic = u => u < .5 ? 4 * u * u * u : 1 - Math.pow(-2 * u + 2, 3) / 2;
+const easeInCubic = u => u * u * u;
+const $ = id => document.getElementById(id);
 
-/* ══════════════════════════════════════════════════════════════
-   CONSTANTS
-   ══════════════════════════════════════════════════════════════ */
-const HALF = 5;
-const PLANE_SIZE = HALF * 2;
-
-const C_X = 0x6fc8ff;
-const C_Y = 0x72ffc0;
-const C_Z = 0xbba8ff;
-
-const OCTANTS = [
-  { s:[ 1, 1, 1], color:'#7fd8ff', label:'(+, +, +)' },
-  { s:[ 1, 1,-1], color:'#8ca2ff', label:'(+, +, −)' },
-  { s:[ 1,-1, 1], color:'#b79dff', label:'(+, −, +)' },
-  { s:[ 1,-1,-1], color:'#f2a1c9', label:'(+, −, −)' },
-  { s:[-1, 1, 1], color:'#62dfae', label:'(−, +, +)' },
-  { s:[-1, 1,-1], color:'#b8e17a', label:'(−, +, −)' },
-  { s:[-1,-1, 1], color:'#f0c47c', label:'(−, −, +)' },
-  { s:[-1,-1,-1], color:'#f0949c', label:'(−, −, −)' }
-];
-
-/* ══════════════════════════════════════════════════════════════
-   RENDERER · SCENE · CAMERA
-   ══════════════════════════════════════════════════════════════ */
-const canvas = document.getElementById('gl');
-const renderer = new THREE.WebGLRenderer({
-  canvas,
-  antialias: true,
-  powerPreference: 'high-performance',
-  alpha: false
-});
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-renderer.setSize(window.innerWidth, window.innerHeight);
+const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 1.75));
+renderer.setSize(innerWidth, innerHeight);
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 0.92;
-renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.toneMappingExposure = 1.12;
 renderer.setClearColor(0x000000, 1);
+$('stage').appendChild(renderer.domElement);
 
 const scene = new THREE.Scene();
+scene.fog = new THREE.FogExp2(0x000000, 0.013);
 
-const camera = new THREE.PerspectiveCamera(
-  38,
-  window.innerWidth / window.innerHeight,
-  0.1,
-  400
-);
-camera.position.set(8.2, 6.0, 11.8);
+const camera = new THREE.PerspectiveCamera(42, innerWidth / innerHeight, 0.1, 200);
+const CAMDIR = new THREE.Vector3(0.66, 0.42, 0.62).normalize();
+camera.position.copy(CAMDIR).multiplyScalar(34);
+camera.lookAt(0, 0, 0);
 
-/* ══════════════════════════════════════════════════════════════
-   ORBIT CONTROLS
-   ══════════════════════════════════════════════════════════════ */
-const controls = new OrbitControls(camera, canvas);
-controls.enableDamping = true;
-controls.dampingFactor = 0.055;
-controls.rotateSpeed = 0.72;
-controls.zoomSpeed = 0;
-controls.enableZoom = false;      // wheel is reserved (not used here) — keeps page gesture-free
+const css2d = new CSS2DRenderer({ element: $('labels') });
+css2d.setSize(innerWidth, innerHeight);
+
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true; 
+controls.dampingFactor = 0.032;   // heavy inertia
 controls.enablePan = false;
-controls.minPolarAngle = 0.32;
-controls.maxPolarAngle = Math.PI - 0.32;
-controls.autoRotate = true;
-controls.autoRotateSpeed = 0.35;
-controls.target.set(0, 0, 0);
+controls.minDistance = 6; 
+controls.maxDistance = 44;
+controls.autoRotate = true; 
+controls.autoRotateSpeed = 0.5;
+controls.enabled = false;         // released after intro
 
-let lastInteractionTime = 0;
+const pmrem = new THREE.PMREMGenerator(renderer);
+scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.06).texture;
+const key = new THREE.DirectionalLight(0xfff4e2, 2.4); key.position.set(7, 10, 8); scene.add(key);
+const rimA = new THREE.DirectionalLight(0xa8c4d8, 1.6); rimA.position.set(-9, 4, -7); scene.add(rimA);
+const rimB = new THREE.DirectionalLight(0xffc094, 1.0); rimB.position.set(3, -8, -5); scene.add(rimB);
+scene.add(new THREE.AmbientLight(0xffffff, 0.1));
 
-controls.addEventListener('start', () => {
-  controls.autoRotate = false;
-});
-controls.addEventListener('end', () => {
-  lastInteractionTime = performance.now() / 1000;
-});
-
-/* ══════════════════════════════════════════════════════════════
-   POST PROCESSING — balanced, tasteful bloom
-   ══════════════════════════════════════════════════════════════ */
-const composer = new EffectComposer(renderer);
-composer.setSize(window.innerWidth, window.innerHeight);
-composer.addPass(new RenderPass(scene, camera));
-
-const bloom = new UnrealBloomPass(
-  new THREE.Vector2(window.innerWidth, window.innerHeight),
-  0.22,   // strength — gentle
-  0.62,   // radius
-  0.72    // threshold — only the brightest cores bloom
-);
-composer.addPass(bloom);
-composer.addPass(new OutputPass());
-
-/* chromatic aberration + vignette + film grain */
-const CAPassDef = {
-  uniforms: {
-    tDiffuse: { value: null },
-    uAmount:  { value: 0.5 },
-    uTime:    { value: 0.0 }
-  },
-  vertexShader: /* glsl */`
-    varying vec2 vUv;
-    void main(){
-      vUv = uv;
-      gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+const ROMAN = ['I','II','III','IV','V','VI','VII','VIII'];
+const AXES = ['x','y','z'];
+const SHEET_META = { xy: {n:'z',a:'x',b:'y'}, yz: {n:'x',a:'y',b:'z'}, xz: {n:'y',a:'x',b:'z'} };
+const PLANE_MAP = { xy: (a,b) => [a,b,0], yz: (a,b) => [0,a,b], xz: (a,b) => [a,0,b] };
+const state = { n: 8, r: 6.5, x: 2.4, y: -1.6, z: 3.2 };
+let extent = 0.001, extentTarget = state.r, builtOK = false;
+let elapsed = 0, activeOct = 3, introDone = false, disTimer = 0;
+let originPulse = 0, originAct = 0, originAppear = 0.0001, originOn = false;
+const samples = [];
+const usedCells = new Set();
+const octCount = new Array(8).fill(0);
+const tasks = [];
+function after(d, fn) { tasks.push({ t: elapsed + d, fn }); }
+function runTasks() {
+  for (let i = tasks.length - 1; i >= 0; i--) {
+    if (elapsed >= tasks[i].t) {
+      const f = tasks[i].fn;
+      tasks.splice(i, 1);
+      f();
     }
-  `,
-  fragmentShader: /* glsl */`
-    precision highp float;
-    uniform sampler2D tDiffuse;
-    uniform float uAmount;
-    uniform float uTime;
-    varying vec2 vUv;
+  }
+}
 
-    void main(){
-      vec2 d  = vUv - 0.5;
-      float r2 = dot(d, d);
-      vec2 off = d * r2 * uAmount * 0.0055;
-
-      vec3 col;
-      col.r = texture2D(tDiffuse, vUv + off).r;
-      col.g = texture2D(tDiffuse, vUv).g;
-      col.b = texture2D(tDiffuse, vUv - off).b;
-
-      float vig = smoothstep(1.3, 0.22, length(d) * 1.5);
-      col *= mix(0.72, 1.0, vig);
-
-      float g = fract(sin(dot(vUv * (1.0 + fract(uTime)), vec2(12.9898, 78.233))) * 43758.5453);
-      col += (g - 0.5) * 0.008;
-
-      gl_FragColor = vec4(col, 1.0);
-    }
-  `
-};
-const caPass = new ShaderPass(CAPassDef);
-composer.addPass(caPass);
-
-/* ══════════════════════════════════════════════════════════════
-   GLOW TEXTURE
-   ══════════════════════════════════════════════════════════════ */
-function makeGlowTexture(){
-  const s = 256;
-  const c = document.createElement('canvas');
-  c.width = c.height = s;
-  const ctx = c.getContext('2d');
-  const g = ctx.createRadialGradient(s/2, s/2, 0, s/2, s/2, s/2);
-  g.addColorStop(0.00, 'rgba(255,255,255,1)');
-  g.addColorStop(0.18, 'rgba(210,235,255,0.55)');
-  g.addColorStop(0.42, 'rgba(130,190,255,0.16)');
-  g.addColorStop(0.72, 'rgba(70,130,255,0.035)');
-  g.addColorStop(1.00, 'rgba(0,0,0,0)');
-  ctx.fillStyle = g;
-  ctx.fillRect(0, 0, s, s);
+function frostTexture() {
+  const c = document.createElement('canvas'); c.width = c.height = 256;
+  const g = c.getContext('2d'); const im = g.createImageData(256, 256);
+  for(let i = 0; i < im.data.length; i += 4) {
+    const v = (140 + Math.random() * 115) | 0;
+    im.data[i] = im.data[i+1] = im.data[i+2] = v; im.data[i+3] = 255;
+  }
+  g.putImageData(im, 0, 0);
   const t = new THREE.CanvasTexture(c);
-  t.colorSpace = THREE.SRGBColorSpace;
-  t.minFilter = THREE.LinearFilter;
-  t.generateMipmaps = false;
+  t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(2.5, 2.5);
   return t;
 }
-const GLOW_TEX = makeGlowTexture();
-
-/* ══════════════════════════════════════════════════════════════
-   GLASS PLANE SHADER  — subtle, premium
-   ══════════════════════════════════════════════════════════════ */
-const GLASS_VERT = /* glsl */`
-  varying vec2 vUv;
-  varying vec3 vWorld;
-  varying vec3 vNormalW;
-
-  void main(){
-    vUv = uv;
-    vec4 wp = modelMatrix * vec4(position, 1.0);
-    vWorld = wp.xyz;
-    vNormalW = mat3(modelMatrix) * normal;
-    gl_Position = projectionMatrix * viewMatrix * wp;
-  }
-`;
-
-const GLASS_FRAG = /* glsl */`
-  precision highp float;
-
-  uniform float uTime;
-  uniform float uReveal;
-  uniform float uOpacity;
-  uniform float uGridOpacity;
-  uniform float uGridScale;
-  uniform vec3  uTint;
-
-  varying vec2 vUv;
-  varying vec3 vWorld;
-  varying vec3 vNormalW;
-
-  float hash21(vec2 p){
-    p = fract(p * vec2(123.34, 456.21));
-    p += dot(p, p + 45.32);
-    return fract(p.x * p.y);
-  }
-
-  float vnoise(vec2 p){
-    vec2 i = floor(p);
-    vec2 f = fract(p);
-    f = f * f * (3.0 - 2.0 * f);
-    float a = hash21(i);
-    float b = hash21(i + vec2(1.0, 0.0));
-    float c = hash21(i + vec2(0.0, 1.0));
-    float d = hash21(i + vec2(1.0, 1.0));
-    return mix(mix(a, b, f.x), mix(c, d, f.x), f.y);
-  }
-
-  void main(){
-    vec3 V = normalize(cameraPosition - vWorld);
-    vec3 N = normalize(vNormalW);
-
-    float fres = 1.0 - abs(dot(N, V));
-
-    /* chromatic fringe — subtle */
-    float cr = pow(fres, 2.6);
-    float cg = pow(fres, 3.2);
-    float cb = pow(fres, 3.9);
-    vec3 fringe = vec3(cr, cg, cb);
-
-    /* radial reveal sweep from origin */
-    float d  = length(vUv - 0.5) * 2.0;
-    float rv = smoothstep(0.0, 0.46, uReveal * 2.4 - d);
-
-    /* coordinate grid — fine hairlines */
-    vec2 gc = vUv * uGridScale;
-    vec2 gw = fwidth(gc);
-    vec2 gf = abs(fract(gc - 0.5) - 0.5) / max(gw, vec2(1e-5));
-    float grid = 1.0 - min(min(gf.x, gf.y), 1.0);
-
-    /* frosted micro-grain */
-    float frost = vnoise(vUv * 190.0) * 0.6
-                + vnoise(vUv * 46.0 + uTime * 0.015) * 0.4;
-
-    vec3 col  = uTint * fringe * 0.52;
-    col += uTint * grid * uGridOpacity * (0.09 + 0.42 * fres);
-    col += uTint * frost * 0.022;
-    col += uTint * exp(-d * d * 8.5) * 0.10;
-
-    col *= rv * uOpacity;
-
-    gl_FragColor = vec4(col, 1.0);
-  }
-`;
-
-function createGlassPlane(tint, rotX, rotY){
-  const geo = new THREE.PlaneGeometry(PLANE_SIZE, PLANE_SIZE, 1, 1);
-  const mat = new THREE.ShaderMaterial({
-    uniforms: {
-      uTime:        { value: 0 },
-      uReveal:      { value: 0 },
-      uOpacity:     { value: 1 },
-      uGridOpacity: { value: 0.42 },
-      uGridScale:   { value: 20.0 },
-      uTint:        { value: new THREE.Color(tint) }
-    },
-    vertexShader:   GLASS_VERT,
-    fragmentShader: GLASS_FRAG,
-    transparent: true,
-    blending: THREE.AdditiveBlending,
-    depthWrite: false,
-    depthTest: true,
-    side: THREE.DoubleSide
-  });
-  const mesh = new THREE.Mesh(geo, mat);
-  mesh.rotation.set(rotX, rotY, 0);
-  mesh.renderOrder = 1;
-  mesh.frustumCulled = false;
-  return mesh;
-}
-
-const planeXY = createGlassPlane(0x4f9fe0, 0, 0);
-const planeYZ = createGlassPlane(0x8a72d8, 0, Math.PI / 2);
-const planeXZ = createGlassPlane(0x3fb8a6, -Math.PI / 2, 0);
-
-scene.add(planeXY, planeYZ, planeXZ);
-
-/* ══════════════════════════════════════════════════════════════
-   AXES
-   ══════════════════════════════════════════════════════════════ */
-function createAxis(colorHex){
-  const group = new THREE.Group();
-
-  const mat = new THREE.MeshBasicMaterial({
-    color: colorHex,
-    transparent: true,
-    opacity: 0.62,
-    blending: THREE.AdditiveBlending,
-    depthWrite: false
-  });
-
-  const rod = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.011, 0.011, PLANE_SIZE, 10, 1, true),
-    mat
-  );
-  rod.renderOrder = 2;
-
-  const cone = new THREE.Mesh(
-    new THREE.ConeGeometry(0.05, 0.22, 16),
-    mat
-  );
-  cone.renderOrder = 2;
-
-  group.add(rod, cone);
-  return { group, rod, cone, mat };
-}
-
-const axisX = createAxis(C_X);
-axisX.group.rotation.z = -Math.PI / 2;
-
-const axisY = createAxis(C_Y);
-
-const axisZ = createAxis(C_Z);
-axisZ.group.rotation.x = Math.PI / 2;
-
-scene.add(axisX.group, axisY.group, axisZ.group);
-
-/* ══════════════════════════════════════════════════════════════
-   TEXT LABELS
-   ══════════════════════════════════════════════════════════════ */
-function makeLabel(text, colorHex, worldHeight, opts = {}){
-  const dpr      = 2;
-  const fontSize = opts.fontSize || 72;
-  const weight   = opts.weight   || 400;
-  const spacing  = opts.spacing  || '0.14em';
-  const fontStr  = `${weight} ${fontSize}px Inter, "Helvetica Neue", Helvetica, Arial, sans-serif`;
-
-  const meas = document.createElement('canvas').getContext('2d');
-  meas.font = fontStr;
-  try { meas.letterSpacing = spacing; } catch(e){}
-  const textW = meas.measureText(text).width;
-
-  const padX = 64, padY = 44;
-  const w = Math.ceil(textW) + padX * 2;
-  const h = fontSize + padY * 2;
-
-  const c = document.createElement('canvas');
-  c.width  = w * dpr;
-  c.height = h * dpr;
-
-  const ctx = c.getContext('2d');
-  ctx.scale(dpr, dpr);
-  ctx.font = fontStr;
-  try { ctx.letterSpacing = spacing; } catch(e){}
-  ctx.textAlign    = 'center';
-  ctx.textBaseline = 'middle';
-  ctx.fillStyle    = colorHex;
-  ctx.shadowColor  = colorHex;
-  ctx.shadowBlur   = 18;
-  ctx.fillText(text, w / 2, h / 2);
-  ctx.shadowBlur   = 5;
-  ctx.fillText(text, w / 2, h / 2);
-
-  const tex = new THREE.CanvasTexture(c);
-  tex.colorSpace    = THREE.SRGBColorSpace;
-  tex.minFilter     = THREE.LinearFilter;
-  tex.magFilter     = THREE.LinearFilter;
-  tex.generateMipmaps = false;
-
-  const mat = new THREE.SpriteMaterial({
-    map: tex,
-    transparent: true,
-    opacity: 0,
-    depthWrite: false,
-    depthTest: false,
-    blending: THREE.AdditiveBlending
-  });
-
-  const spr = new THREE.Sprite(mat);
-  const aspect = w / h;
-  spr.scale.set(worldHeight * aspect, worldHeight, 1);
-  spr.renderOrder = 20;
-  spr.userData.aspect = aspect;
-  return spr;
-}
-
-let axisLabelX, axisLabelY, axisLabelZ, originLabel;
-const octantLabels = [];
-
-function buildLabels(){
-  // axis labels
-  axisLabelX = makeLabel('x', '#8fdcff', 0.6, { fontSize: 84, weight: 300 });
-  axisLabelY = makeLabel('y', '#9fffd2', 0.6, { fontSize: 84, weight: 300 });
-  axisLabelZ = makeLabel('z', '#d6c2ff', 0.6, { fontSize: 84, weight: 300 });
-  axisLabelX.position.y = HALF + 0.68;
-  axisLabelY.position.y = HALF + 0.68;
-  axisLabelZ.position.y = HALF + 0.68;
-  axisX.group.add(axisLabelX);
-  axisY.group.add(axisLabelY);
-  axisZ.group.add(axisLabelZ);
-
-  // origin
-  originLabel = makeLabel('O', '#cfe6ff', 0.4, { fontSize: 60, weight: 400 });
-  originLabel.position.set(-0.4, -0.4, 0.4);
-  scene.add(originLabel);
-
-  // octant labels
-  OCTANTS.forEach((o) => {
-    const spr = makeLabel(o.label, o.color, 0.46, { fontSize: 58, weight: 400, spacing: '0.1em' });
-    spr.position.set(o.s[0] * 3.95, o.s[1] * 3.95, o.s[2] * 3.95);
-    scene.add(spr);
-    octantLabels.push(spr);
-  });
-}
-
-/* ══════════════════════════════════════════════════════════════
-   NODE CLOUDS
-   ══════════════════════════════════════════════════════════════ */
-const NODE_VERT = /* glsl */`
-  uniform float uTime;
-  uniform float uAppear;
-  uniform float uSize;
-  uniform float uPixelRatio;
-  attribute float aSeed;
-  varying float vSeed;
-
-  void main(){
-    vSeed = aSeed;
-    vec3 p = position;
-    float s = aSeed * 6.2831;
-    p.x += sin(uTime * 0.35 + s)        * 0.06;
-    p.y += cos(uTime * 0.31 + s * 1.7)  * 0.06;
-    p.z += sin(uTime * 0.27 + s * 2.3)  * 0.06;
-
-    vec4 mv = modelViewMatrix * vec4(p, 1.0);
-    gl_Position = projectionMatrix * mv;
-    float sz = uSize * uPixelRatio / max(-mv.z, 0.001);
-    gl_PointSize = clamp(sz * uAppear, 0.0, 48.0);
-  }
-`;
-
-const NODE_FRAG = /* glsl */`
-  precision highp float;
-  uniform vec3  uColorA;
-  uniform vec3  uColorB;
-  uniform float uOpacity;
-  varying float vSeed;
-
-  void main(){
-    vec2 c = gl_PointCoord - 0.5;
-    float r = length(c) * 2.0;
-    if (r > 1.0) discard;
-
-    float core = pow(1.0 - r, 2.8);
-    float halo = pow(1.0 - r, 0.85) * 0.22;
-
-    vec3 col = mix(uColorA, uColorB, vSeed);
-    float a  = (core + halo) * uOpacity;
-    gl_FragColor = vec4(col * a, 1.0);
-  }
-`;
-
-const nodeClouds = [];
-
-OCTANTS.forEach((o) => {
-  const COUNT = 16;
-  const positions = new Float32Array(COUNT * 3);
-  const seeds     = new Float32Array(COUNT);
-
-  for (let k = 0; k < COUNT; k++){
-    const r     = 1.2 + Math.pow(Math.random(), 0.7) * 2.9;
-    const theta = Math.random() * Math.PI * 2;
-    const phi   = Math.acos(2 * Math.random() - 1);
-
-    let x = r * Math.sin(phi) * Math.cos(theta);
-    let y = r * Math.cos(phi);
-    let z = r * Math.sin(phi) * Math.sin(theta);
-
-    x = Math.abs(x) * o.s[0];
-    y = Math.abs(y) * o.s[1];
-    z = Math.abs(z) * o.s[2];
-
-    positions[k * 3 + 0] = x;
-    positions[k * 3 + 1] = y;
-    positions[k * 3 + 2] = z;
-    seeds[k] = Math.random();
-  }
-
-  const geo = new THREE.BufferGeometry();
-  geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-  geo.setAttribute('aSeed',    new THREE.BufferAttribute(seeds, 1));
-
-  const base = new THREE.Color(o.color);
-  const alt  = base.clone().lerp(new THREE.Color(0xffffff), 0.5);
-
-  const mat = new THREE.ShaderMaterial({
-    uniforms: {
-      uTime:       { value: 0 },
-      uAppear:     { value: 0 },
-      uOpacity:    { value: 0 },
-      uSize:       { value: 34.0 },
-      uPixelRatio: { value: renderer.getPixelRatio() },
-      uColorA:     { value: base },
-      uColorB:     { value: alt }
-    },
-    vertexShader:   NODE_VERT,
-    fragmentShader: NODE_FRAG,
-    transparent: true,
-    blending: THREE.AdditiveBlending,
-    depthWrite: false
-  });
-
-  const pts = new THREE.Points(geo, mat);
-  pts.renderOrder = 5;
-  scene.add(pts);
-
-  nodeClouds.push({
-    points: pts,
-    mat,
-    baseColor: base.clone()
-  });
+const glassMat = new THREE.MeshPhysicalMaterial({
+  color: 0xc9d2ce, metalness: 0, roughness: 0.5, roughnessMap: frostTexture(),
+  transmission: 1, thickness: 0.5, ior: 1.5,
+  clearcoat: 1, clearcoatRoughness: 0.28, envMapIntensity: 0.85
+});
+const rimMat = new THREE.ShaderMaterial({         // fresnel edge — per-channel falloff = chromatic fringing
+  transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
+  uniforms: { uInt: { value: 0.55 } },
+  vertexShader: `varying vec3 vN,vV;
+    void main(){ vec4 mv=modelViewMatrix*vec4(position,1.0);
+      vN=normalize(normalMatrix*normal); vV=normalize(-mv.xyz);
+      gl_Position=projectionMatrix*mv; }`,
+  fragmentShader: `uniform float uInt; varying vec3 vN,vV;
+    void main(){ float f=1.0-abs(dot(normalize(vN),normalize(vV)));
+      vec3 c=vec3(pow(f,4.0)*1.05, pow(f,6.5)*0.95, pow(f,5.0)*1.45);
+      gl_FragColor=vec4(c*uInt,1.0); }`
 });
 
-/* ══════════════════════════════════════════════════════════════
-   ORIGIN
-   ══════════════════════════════════════════════════════════════ */
-const originGroup = new THREE.Group();
-scene.add(originGroup);
-
-const originCore = new THREE.Mesh(
-  new THREE.SphereGeometry(0.05, 22, 16),
-  new THREE.MeshBasicMaterial({
-    color: 0xffffff,
-    transparent: true,
-    opacity: 1,
-    blending: THREE.AdditiveBlending,
-    depthWrite: false
-  })
-);
-originGroup.add(originCore);
-
-const originGlow = new THREE.Sprite(new THREE.SpriteMaterial({
-  map: GLOW_TEX,
-  color: 0x9fd4ff,
-  transparent: true,
-  opacity: 0.5,
-  blending: THREE.AdditiveBlending,
-  depthWrite: false,
-  depthTest: false
-}));
-originGlow.scale.set(1.8, 1.8, 1);
-originGroup.add(originGlow);
-
-/* ══════════════════════════════════════════════════════════════
-   TRAVELER
-   ══════════════════════════════════════════════════════════════ */
-const travelerGroup = new THREE.Group();
-scene.add(travelerGroup);
-
-const travelerCore = new THREE.Mesh(
-  new THREE.SphereGeometry(0.075, 22, 16),
-  new THREE.MeshBasicMaterial({
-    color: 0xffffff,
-    transparent: true,
-    blending: THREE.AdditiveBlending,
-    depthWrite: false
-  })
-);
-travelerGroup.add(travelerCore);
-
-const travelerGlow = new THREE.Sprite(new THREE.SpriteMaterial({
-  map: GLOW_TEX,
-  color: 0xafe1ff,
-  transparent: true,
-  opacity: 0.7,
-  blending: THREE.AdditiveBlending,
-  depthWrite: false,
-  depthTest: false
-}));
-travelerGlow.scale.set(1.1, 1.1, 1);
-travelerGroup.add(travelerGlow);
-
-/* guide segments */
-const guideMat = new THREE.MeshBasicMaterial({
-  color: 0x8ecaff,
-  transparent: true,
-  opacity: 0.32,
-  blending: THREE.AdditiveBlending,
-  depthWrite: false
+const dotsMat = new THREE.ShaderMaterial({         // micro-dots on the sheets
+  transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
+  uniforms: { uE: { value: 0.001 }, uPR: { value: renderer.getPixelRatio() } },
+  vertexShader: `attribute vec2 aP; varying float vA; uniform float uE,uPR;
+    void main(){ float m=max(abs(aP.x),abs(aP.y));
+      float vis=1.0-smoothstep(uE-0.7,uE-0.15,m);
+      vec4 mv=modelViewMatrix*vec4(position,1.0);
+      float d=max(0.1,-mv.z);
+      vA=vis*exp(-d*0.02);
+      gl_PointSize=clamp(uPR*30.0/d,0.0,3.0*uPR);
+      gl_Position=projectionMatrix*mv; }`,
+  fragmentShader: `varying float vA;
+    void main(){ vec2 q=gl_PointCoord-0.5;
+      float a=(1.0-smoothstep(0.18,0.5,length(q)))*vA*0.55;
+      gl_FragColor=vec4(vec3(1.0,0.93,0.8)*a,a); }`
 });
-const guideGeo = new THREE.CylinderGeometry(0.0075, 0.0075, 1, 8, 1, true);
-
-const guideSegs = [];
-for (let i = 0; i < 3; i++){
-  const m = new THREE.Mesh(guideGeo, guideMat);
-  m.renderOrder = 4;
-  scene.add(m);
-  guideSegs.push(m);
-}
-
-/* projection dots */
-const projMat = new THREE.MeshBasicMaterial({
-  color: 0x8ecaff,
-  transparent: true,
-  opacity: 0.55,
-  blending: THREE.AdditiveBlending,
-  depthWrite: false
-});
-const projGeo = new THREE.SphereGeometry(0.038, 14, 10);
-
-const projDots = [];
-for (let i = 0; i < 3; i++){
-  const d = new THREE.Mesh(projGeo, projMat);
-  d.renderOrder = 4;
-  scene.add(d);
-  projDots.push(d);
-}
-
-const UP = new THREE.Vector3(0, 1, 0);
-const _vA = new THREE.Vector3();
-const _vB = new THREE.Vector3();
-const _dir = new THREE.Vector3();
-
-function orientSegment(mesh, a, b){
-  _dir.subVectors(b, a);
-  const len = _dir.length();
-  mesh.position.copy(a).addScaledVector(_dir, 0.5);
-  if (len > 1e-5){
-    mesh.quaternion.setFromUnitVectors(UP, _dir.clone().normalize());
-  }
-  mesh.scale.set(1, Math.max(len, 1e-4), 1);
-}
-
-/* ══════════════════════════════════════════════════════════════
-   VOID DUST — very subtle
-   ══════════════════════════════════════════════════════════════ */
-const DUST_COUNT = 480;
-const dustPos  = new Float32Array(DUST_COUNT * 3);
-const dustSeed = new Float32Array(DUST_COUNT);
-
-for (let i = 0; i < DUST_COUNT; i++){
-  const r     = 10 + Math.random() * 42;
-  const theta = Math.random() * Math.PI * 2;
-  const phi   = Math.acos(2 * Math.random() - 1);
-  dustPos[i*3+0] = r * Math.sin(phi) * Math.cos(theta);
-  dustPos[i*3+1] = r * Math.cos(phi);
-  dustPos[i*3+2] = r * Math.sin(phi) * Math.sin(theta);
-  dustSeed[i]    = Math.random();
-}
-
-const dustGeo = new THREE.BufferGeometry();
-dustGeo.setAttribute('position', new THREE.BufferAttribute(dustPos, 3));
-dustGeo.setAttribute('aSeed',    new THREE.BufferAttribute(dustSeed, 1));
-
-const dustMat = new THREE.ShaderMaterial({
-  uniforms: {
-    uTime:       { value: 0 },
-    uPixelRatio: { value: renderer.getPixelRatio() }
-  },
-  vertexShader: /* glsl */`
-    uniform float uTime;
-    uniform float uPixelRatio;
-    attribute float aSeed;
-    varying float vTwinkle;
-
+const patchBase = new THREE.ShaderMaterial({       // octant wall luminescence
+  transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide,
+  uniforms: { uGlow: { value: 0 }, uTime: { value: 0 }, uSeed: { value: 0 }, uColor: { value: new THREE.Color(1.0, 0.62, 0.25) } },
+  vertexShader: `varying vec2 vUv; void main(){ vUv=uv; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0); }`,
+  fragmentShader: `uniform float uGlow,uTime,uSeed; uniform vec3 uColor; varying vec2 vUv;
     void main(){
-      vec3 p = position;
-      float s = aSeed * 6.2831;
-      p.x += sin(uTime * 0.06 + s) * 0.8;
-      p.y += cos(uTime * 0.05 + s * 1.3) * 0.8;
-
-      vec4 mv = modelViewMatrix * vec4(p, 1.0);
-      gl_Position = projectionMatrix * mv;
-
-      float sz = (0.8 + aSeed * 1.3) * uPixelRatio * (22.0 / max(-mv.z, 0.001));
-      gl_PointSize = clamp(sz, 0.4, 5.0);
-
-      vTwinkle = 0.10 + 0.22 * (0.5 + 0.5 * sin(uTime * 0.5 + aSeed * 42.0));
-    }
-  `,
-  fragmentShader: /* glsl */`
-    precision highp float;
-    varying float vTwinkle;
-    void main(){
-      vec2 c = gl_PointCoord - 0.5;
-      float r = length(c) * 2.0;
-      if (r > 1.0) discard;
-      float a = pow(1.0 - r, 2.2) * vTwinkle;
-      gl_FragColor = vec4(vec3(0.72, 0.84, 1.0) * a, 1.0);
-    }
-  `,
-  transparent: true,
-  blending: THREE.AdditiveBlending,
-  depthWrite: false
+      float g=pow(max(0.0,1.0-length(vUv)*0.85),1.6);
+      float e=smoothstep(0.0,0.05,vUv.x)*smoothstep(0.0,0.05,vUv.y)
+             *smoothstep(0.0,0.05,1.0-vUv.x)*smoothstep(0.0,0.05,1.0-vUv.y);
+      float br=0.8+0.2*sin(uTime*1.5+uSeed);
+      float a=uGlow*g*e*br;
+      gl_FragColor=vec4(uColor*a*1.6,a); }`
 });
 
-const dust = new THREE.Points(dustGeo, dustMat);
-dust.renderOrder = 0;
-scene.add(dust);
-
-/* ══════════════════════════════════════════════════════════════
-   CHAPTERS
-   ══════════════════════════════════════════════════════════════ */
-const CHAPTERS = [
-  {
-    a: 0.00, b: 0.135,
-    idx: '01 — Origin',
-    title: 'The Void',
-    body: 'A single point. Zero dimensions. Every coordinate in the universe begins its address here.'
-  },
-  {
-    a: 0.135, b: 0.275,
-    idx: '02 — XY Plane',
-    title: 'z = 0',
-    body: 'The first sheet of glass. Every point upon it shares one quiet truth: its z-coordinate is exactly zero.'
-  },
-  {
-    a: 0.275, b: 0.415,
-    idx: '03 — YZ Plane',
-    title: 'x = 0',
-    body: 'A second plane, orthogonal to the first. Where the two sheets cross, the y-axis is born.'
-  },
-  {
-    a: 0.415, b: 0.555,
-    idx: '04 — XZ Plane',
-    title: 'y = 0',
-    body: 'The third plane completes the frame. Three sheets, mutually perpendicular, meeting at a single point.'
-  },
-  {
-    a: 0.555, b: 0.700,
-    idx: '05 — Octants',
-    title: '2 × 2 × 2 = 8',
-    body: 'Each plane cuts space in two. Three planes cut it into eight congruent regions — the octants.'
-  },
-  {
-    a: 0.700, b: 0.860,
-    idx: '06 — Signature',
-    title: '(+, +, +)',
-    body: 'Every point carries a signature: the signs of its three coordinates. Eight signatures, eight regions, no exceptions.'
-  },
-  {
-    a: 0.860, b: 1.01,
-    idx: '07 — Completeness',
-    title: 'Every Point, One Address',
-    body: 'Position in space is the product of three independent binary decisions. That is all an octant has ever been.'
-  }
-];
-
-const chaptersLayer = document.getElementById('chapters');
-const chapterEls = CHAPTERS.map((c) => {
-  const el = document.createElement('div');
-  el.className = 'chapter';
-  el.innerHTML = `
-    <div class="ch-idx">${c.idx}</div>
-    <h2 class="ch-title">${c.title}</h2>
-    <p class="ch-body">${c.body}</p>
-  `;
-  chaptersLayer.appendChild(el);
-  return el;
+const rippleBase = new THREE.ShaderMaterial({      // plane-crossing ripple
+  transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide,
+  uniforms: { uC: { value: new THREE.Vector2(0.5, 0.5) }, uT: { value: -1 } },
+  vertexShader: `varying vec2 vUv; void main(){ vUv=uv; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0); }`,
+  fragmentShader: `uniform vec2 uC; uniform float uT; varying vec2 vUv;
+    void main(){ if(uT<0.0) discard;
+      float d=distance(vUv,uC);
+      float R=uT*0.75;
+      float band=exp(-pow((d-R)*16.0,2.0));
+      float a=band*max(0.0,1.0-uT/0.85)*0.9;
+      gl_FragColor=vec4(vec3(1.0,0.8,0.55)*a,a); }`
+});
+const trailBase = new THREE.ShaderMaterial({       // fiber-optic filament
+  transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
+  uniforms: { uA: { value: 0 } },
+  vertexShader: `attribute float aT; varying float vT;
+    void main(){ vT=aT; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0); }`,
+  fragmentShader: `uniform float uA; varying float vT;
+    void main(){ float a=pow(vT,1.5)*uA;
+      vec3 c=mix(vec3(1.0,0.55,0.2),vec3(1.0,0.96,0.88),pow(vT,3.0));
+      gl_FragColor=vec4(c*a*1.5,a); }`
 });
 
-/* Dots on the progress track */
-const dotsLayer = document.getElementById('dots');
-const chapterDots = CHAPTERS.map((c) => {
-  const d = document.createElement('div');
-  d.className = 'dot';
-  d.style.left = (c.a * 100).toFixed(3) + '%';
-  dotsLayer.appendChild(d);
-  return d;
+const coreGeo = new THREE.SphereGeometry(1, 20, 14);
+const shellMat = new THREE.MeshPhysicalMaterial({
+  color: 0xffffff, roughness: 0.22, metalness: 0,
+  transparent: true, opacity: 0.16, clearcoat: 1, clearcoatRoughness: 0.2,
+  envMapIntensity: 1.1, depthWrite: false
 });
 
-const roCoords  = document.getElementById('ro-coords');
-const roSign    = document.getElementById('ro-sign');
-const readoutEl = document.getElementById('readout');
-const hintEl    = document.getElementById('hint');
-const fillEl    = document.getElementById('fill');
-const knobEl    = document.getElementById('knob');
-const trackEl   = document.getElementById('track');
-const playBtn   = document.getElementById('playBtn');
-const playIcon  = document.getElementById('playIcon');
-const stepInfo  = document.getElementById('stepInfo');
-
-/* ══════════════════════════════════════════════════════════════
-   PLAYBACK STATE
-   ══════════════════════════════════════════════════════════════ */
-let isPlaying = true;
-let autoProgress = 0;
-let autoDirection = 1;
-let autoHold = 0.8;   // small initial delay before motion
-let manualScrubUntil = 0;
-
-let displayProgress = 0;
-
-const PLAY_SVG = 'M2 1.2v9.6L10.4 6 2 1.2z';
-const PAUSE_SVG = 'M2.4 1.2v9.6h2.6V1.2H2.4zm4.6 0v9.6h2.6V1.2H7z';
-
-function setPlaying(v){
-  isPlaying = v;
-  playIcon.innerHTML = `<path d="${v ? PAUSE_SVG : PLAY_SVG}"/>`;
-}
-setPlaying(true);
-
-playBtn.addEventListener('click', (e) => {
-  e.stopPropagation();
-  setPlaying(!isPlaying);
-});
-
-/* ---- scrubbing ---- */
-let scrubbing = false;
-
-function progressFromEvent(clientX){
-  const rect = trackEl.getBoundingClientRect();
-  const x = clamp(clientX - rect.left, 0, rect.width);
-  return x / rect.width;
-}
-
-function setProgressFromScrub(clientX){
-  const p = progressFromEvent(clientX);
-  autoProgress = p;
-  autoDirection = 1;
-  autoHold = 0.6;
-  displayProgress = p;
-  manualScrubUntil = performance.now() / 1000 + 0.6;
-  updateDockUI(p);
-  applyProgress(p);
-}
-
-trackEl.addEventListener('pointerdown', (e) => {
-  e.preventDefault();
-  scrubbing = true;
-  trackEl.setPointerCapture(e.pointerId);
-  setPlaying(false);
-  setProgressFromScrub(e.clientX);
-});
-
-trackEl.addEventListener('pointermove', (e) => {
-  if (!scrubbing) return;
-  setProgressFromScrub(e.clientX);
-});
-
-trackEl.addEventListener('pointerup', (e) => {
-  if (!scrubbing) return;
-  scrubbing = false;
-  try { trackEl.releasePointerCapture(e.pointerId); } catch(err){}
-});
-
-trackEl.addEventListener('pointercancel', () => { scrubbing = false; });
-
-/* ══════════════════════════════════════════════════════════════
-   UI UPDATER
-   ══════════════════════════════════════════════════════════════ */
-let lastActiveChapter = -1;
-
-function updateDockUI(p){
-  fillEl.style.width = (p * 100).toFixed(3) + '%';
-  knobEl.style.left  = (p * 100).toFixed(3) + '%';
-
-  let active = 0;
-  for (let i = 0; i < CHAPTERS.length; i++){
-    if (p >= CHAPTERS[i].a) active = i;
-  }
-  if (active !== lastActiveChapter){
-    lastActiveChapter = active;
-    chapterDots.forEach((d, i) => d.classList.toggle('on', i === active));
-    stepInfo.textContent = String(active + 1).padStart(2, '0') + ' / ' + String(CHAPTERS.length).padStart(2, '0');
-  }
-}
-
-function updateChapterText(p){
-  for (let i = 0; i < CHAPTERS.length; i++){
-    const c = CHAPTERS[i];
-    const fade = 0.04;
-    const a = smoothstep(c.a, c.a + fade, p) * (1 - smoothstep(c.b - fade, c.b, p));
-    const el = chapterEls[i];
-    el.style.opacity = a.toFixed(3);
-    el.style.transform = `translateY(${((1 - a) * 14).toFixed(2)}px)`;
-  }
-}
-
-/* ══════════════════════════════════════════════════════════════
-   RESIZE
-   ══════════════════════════════════════════════════════════════ */
-function onResize(){
-  const w = window.innerWidth;
-  const h = window.innerHeight;
-
-  camera.aspect = w / h;
-  camera.updateProjectionMatrix();
-
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-  renderer.setSize(w, h);
-
-  composer.setSize(w, h);
-  bloom.setSize(w, h);
-
-  const pr = renderer.getPixelRatio();
-  dustMat.uniforms.uPixelRatio.value = pr;
-  nodeClouds.forEach((c) => { c.mat.uniforms.uPixelRatio.value = pr; });
-}
-window.addEventListener('resize', onResize);
-
-/* ══════════════════════════════════════════════════════════════
-   APPLY PROGRESS TO SCENE
-   ══════════════════════════════════════════════════════════════ */
-const _weights = new Float32Array(8);
-
-function applyProgress(p, time, dt){
-  /* ---- glass planes ---- */
-  const revXY = smoothstep(0.125, 0.300, p);
-  const revYZ = smoothstep(0.265, 0.440, p);
-  const revXZ = smoothstep(0.405, 0.580, p);
-  const planeDim = 1.0 - 0.35 * smoothstep(0.62, 0.94, p);
-
-  planeXY.material.uniforms.uReveal.value  = revXY;
-  planeYZ.material.uniforms.uReveal.value  = revYZ;
-  planeXZ.material.uniforms.uReveal.value  = revXZ;
-
-  planeXY.material.uniforms.uOpacity.value = planeDim;
-  planeYZ.material.uniforms.uOpacity.value = planeDim;
-  planeXZ.material.uniforms.uOpacity.value = planeDim;
-
-  planeXY.material.uniforms.uTime.value = time;
-  planeYZ.material.uniforms.uTime.value = time;
-  planeXZ.material.uniforms.uTime.value = time;
-
-  /* ---- axes ---- */
-  const axisRev = smoothstep(0.02, 0.185, p);
-  const axisFade = 1.0 - 0.2 * smoothstep(0.65, 0.95, p);
-
-  [axisX, axisY, axisZ].forEach((a) => {
-    const r = Math.max(axisRev, 1e-4);
-    a.rod.scale.y = r;
-    a.cone.scale.setScalar(r);
-    a.cone.position.y = (HALF + 0.11) * axisRev;
-    a.mat.opacity = 0.62 * axisFade;
+function planeQuad(key, pts, uvs) {
+  const map = PLANE_MAP[key];
+  const pos = new Float32Array(12), uv = new Float32Array(8);
+  pts.forEach((p, i) => {
+    const w = map(p[0], p[1]);
+    pos[i * 3] = w[0]; pos[i * 3 + 1] = w[1]; pos[i * 3 + 2] = w[2];
+    uv[i * 2] = uvs[i][0]; uv[i * 2 + 1] = uvs[i][1];
   });
-
-  if (axisLabelX){
-    const op = smoothstep(0.10, 0.22, p) * axisFade * 0.85;
-    const ly = (HALF + 0.68) * Math.max(axisRev, 1e-4);
-    axisLabelX.position.y = ly;
-    axisLabelY.position.y = ly;
-    axisLabelZ.position.y = ly;
-    axisLabelX.material.opacity = op;
-    axisLabelY.material.opacity = op;
-    axisLabelZ.material.opacity = op;
-  }
-
-  /* ---- origin ---- */
-  const originIn = smoothstep(0.0, 0.08, p);
-  const originPulse = 1 + 0.12 * Math.sin(time * 1.5);
-  originCore.material.opacity = originIn * (0.85 + 0.1 * Math.sin(time * 2.0));
-  originGlow.material.opacity = originIn * (0.35 + 0.12 * Math.sin(time * 1.5));
-  originGlow.scale.setScalar(1.8 * originPulse * lerp(0.55, 1.0, originIn));
-
-  if (originLabel){
-    originLabel.material.opacity = smoothstep(0.05, 0.16, p) * (1 - smoothstep(0.62, 0.82, p)) * 0.7;
-  }
-
-  /* ---- traveler ---- */
-  const tx = 3.55 * Math.sin(0.215 * 4 * time);
-  const ty = 3.05 * Math.sin(0.215 * 6 * time + 1.0);
-  const tz = 3.30 * Math.sin(0.215 * 3 * time + 2.0);
-  const tv = smoothstep(0.715, 0.855, p);
-
-  travelerGroup.position.set(tx, ty, tz);
-  travelerCore.material.opacity = tv;
-  travelerGlow.material.opacity = tv * (0.55 + 0.15 * Math.sin(time * 3.0));
-  travelerGlow.scale.setScalar(1.1 + 0.12 * Math.sin(time * 2.3));
-
-  /* ---- guide staircase ---- */
-  _vA.set(0, 0, 0);      _vB.set(tx, 0, 0);   orientSegment(guideSegs[0], _vA, _vB);
-  _vA.set(tx, 0, 0);     _vB.set(tx, ty, 0);  orientSegment(guideSegs[1], _vA, _vB);
-  _vA.set(tx, ty, 0);    _vB.set(tx, ty, tz); orientSegment(guideSegs[2], _vA, _vB);
-  guideMat.opacity = tv * 0.32;
-
-  /* ---- projection dots ---- */
-  projDots[0].position.set(tx, ty, 0);
-  projDots[1].position.set(0, ty, tz);
-  projDots[2].position.set(tx, 0, tz);
-  projMat.opacity = tv * 0.55;
-
-  /* ---- octant weights ---- */
-  const k = 0.62;
-  for (let i = 0; i < 8; i++){
-    const s = OCTANTS[i].s;
-    const wx = 0.5 + 0.5 * s[0] * Math.tanh(tx / k);
-    const wy = 0.5 + 0.5 * s[1] * Math.tanh(ty / k);
-    const wz = 0.5 + 0.5 * s[2] * Math.tanh(tz / k);
-    _weights[i] = wx * wy * wz;
-  }
-
-  /* ---- octant labels ---- */
-  for (let i = 0; i < 8; i++){
-    const spr = octantLabels[i];
-    if (!spr) continue;
-
-    const appear = smoothstep(0.545 + i * 0.012, 0.545 + i * 0.012 + 0.11, p);
-    const w = _weights[i];
-    const focus = lerp(0.14, 0.14 + 1.5 * w, tv);
-    const opacity = appear * (0.28 + focus * 0.7);
-
-    spr.material.opacity = clamp(opacity, 0, 0.95);
-
-    const sc = 0.46 * (1 + 0.22 * w * tv) * lerp(0.8, 1.0, appear);
-    spr.scale.set(sc * spr.userData.aspect, sc, 1);
-  }
-
-  /* ---- node clouds ---- */
-  for (let i = 0; i < 8; i++){
-    const cloud = nodeClouds[i];
-    const appear = smoothstep(0.60 + i * 0.015, 0.60 + i * 0.015 + 0.15, p);
-    const w = _weights[i];
-
-    cloud.mat.uniforms.uAppear.value  = appear * (0.55 + 0.55 * w * tv + 0.4 * (1 - tv));
-    cloud.mat.uniforms.uOpacity.value = appear * (0.4 + 0.7 * w * tv);
-    cloud.mat.uniforms.uTime.value    = time;
-
-    const pulse = 1 + 0.25 * w * tv;
-    cloud.mat.uniforms.uColorA.value.copy(cloud.baseColor).multiplyScalar(pulse);
-  }
-
-  /* ---- readout & hint ---- */
-  const fmt = (v) => (v >= 0 ? '+' : '−') + Math.abs(v).toFixed(2);
-  const sgn = (v) => (v >= 0 ? '+' : '−');
-
-  roCoords.textContent = `( ${fmt(tx)}, ${fmt(ty)}, ${fmt(tz)} )`;
-  roSign.textContent   = `( ${sgn(tx)}, ${sgn(ty)}, ${sgn(tz)} )`;
-  readoutEl.style.opacity = tv.toFixed(3);
-
-  /* live-update chapter 06 title */
-  const el6 = chapterEls[5];
-  const title6 = el6.querySelector('.ch-title');
-  if (title6) title6.textContent = `( ${sgn(tx)}, ${sgn(ty)}, ${sgn(tz)} )`;
-
-  const op = smoothstep(0.05, 0.12, p) * (1 - smoothstep(0.55, 0.75, p));
-  hintEl.style.opacity = (op * 0.7).toFixed(3);
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  g.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
+  g.setIndex([0, 1, 2, 0, 2, 3]);
+  return g;
 }
-
-/* ══════════════════════════════════════════════════════════════
-   MAIN LOOP
-   ══════════════════════════════════════════════════════════════ */
-let time = 0;
-let lastTime = performance.now() / 1000;
-
-function tick(){
-  const now = performance.now() / 1000;
-  const dt  = Math.min(now - lastTime, 0.05);
-  lastTime  = now;
-  time     += dt;
-
-  /* ---- autoplay progression ---- */
-  const nowSec = performance.now() / 1000;
-  const inManualWindow = nowSec < manualScrubUntil;
-
-  if (isPlaying && !inManualWindow && !scrubbing){
-    if (autoHold > 0){
-      autoHold -= dt;
-    } else {
-      autoProgress += dt * 0.014 * autoDirection;
-      if (autoProgress >= 1){
-        autoProgress = 1;
-        autoDirection = -1;
-        autoHold = 3.5;
-      } else if (autoProgress <= 0){
-        autoProgress = 0;
-        autoDirection = 1;
-        autoHold = 1.8;
+function buildSheetGeo(key, E) {
+  const t = 0.14, rad = Math.min(0.07, Math.max(E, 0.001) * 0.6);
+  if (key === 'xy') return new RoundedBoxGeometry(2 * E, 2 * E, t, 4, rad);
+  if (key === 'yz') return new RoundedBoxGeometry(t, 2 * E, 2 * E, 4, rad);
+  return new RoundedBoxGeometry(2 * E, t, 2 * E, 4, rad);
+}
+function makeDotsGeo(key) {
+  const pos = [], aP = [];
+  for (let i = -22; i <= 22; i++) {
+    for (let j = -22; j <= 22; j++) {
+      for (const off of [0.1, -0.1]) {
+        if (key === 'xy') pos.push(i, j, off);
+        else if (key === 'yz') pos.push(off, i, j);
+        else pos.push(i, off, j);
+        aP.push(i, j);
       }
     }
   }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.setAttribute('aP', new THREE.Float32BufferAttribute(aP, 2));
+  return g;
+}
 
-  /* ---- damped display progress ---- */
-  if (!scrubbing){
-    const dmp = 1 - Math.pow(0.03, dt);
-    displayProgress += (autoProgress - displayProgress) * dmp;
+const sheets = {};
+const ripples = {};
+for (const key of ['xy', 'yz', 'xz']) {
+  const g = buildSheetGeo(key, extent);
+  const glass = new THREE.Mesh(g, glassMat);
+  const rim = new THREE.Mesh(g, rimMat); rim.scale.setScalar(1.004); rim.renderOrder = 1;
+  const dots = new THREE.Points(makeDotsGeo(key), dotsMat); dots.renderOrder = 1;
+  
+  // ripple: two copies, one face per side of the slab
+  const rGeo = planeQuad(key, [[-1,-1],[1,-1],[1,1],[-1,1]], [[0,0],[1,0],[1,1],[0,1]]);
+  const rMat = rippleBase.clone(); rMat.uniforms.uT.value = -1;
+  const off = 0.115, nAx = SHEET_META[key].n;
+  const rf = new THREE.Mesh(rGeo, rMat), rb = new THREE.Mesh(rGeo, rMat);
+  rf.renderOrder = rb.renderOrder = 2;
+  rf.position[nAx] = off; rb.position[nAx] = -off;
+  rf.scale.setScalar(0.001); rb.scale.setScalar(0.001);
+  scene.add(glass, rim, dots, rf, rb);
+  
+  sheets[key] = { glass, rim, builtE: extent };
+  ripples[key] = { mat: rMat, meshes: [rf, rb], active: false };
+}
+
+function octIdxFromSigns(sx, sy, sz) {
+  const px = sx >= 0, py = sy >= 0, pz = sz >= 0;
+  if (pz) return px ? (py ? 0 : 3) : (py ? 1 : 2);
+  return px ? (py ? 4 : 7) : (py ? 5 : 6);
+}
+function octSigns(oct) {
+  for (const sx of [1, -1]) for (const sy of [1, -1]) for (const sz of [1, -1])
+    if (octIdxFromSigns(sx, sy, sz) === oct) return [sx, sy, sz];
+  return [1, 1, 1];
+}
+
+const allPatches = [], octPatches = Array.from({ length: 8 }, () => []);
+function patchSigns(key, sx, sy, sz) { return key === 'xy' ? [sx, sy] : key === 'yz' ? [sy, sz] : [sx, sz]; }
+
+for (const sx of [1, -1]) {
+  for (const sy of [1, -1]) {
+    for (const sz of [1, -1]) {
+      const oct = octIdxFromSigns(sx, sy, sz);
+      for (const key of ['xy', 'yz', 'xz']) {
+        const [sA, sB] = patchSigns(key, sx, sy, sz);
+        const g = planeQuad(key, [[0,0],[sA,0],[sA,sB],[0,sB]], [[0,0],[1,0],[1,1],[0,1]]);
+        const m = patchBase.clone(); m.uniforms.uSeed.value = Math.random() * 10;
+        const mesh = new THREE.Mesh(g, m);
+        mesh.renderOrder = 2; mesh.scale.setScalar(0.001);
+        const nAx = SHEET_META[key].n, nSg = { x: sx, y: sy, z: sz }[nAx];
+        mesh.position[nAx] = nSg * 0.085;
+        mesh.userData = { oct, pulse: 0, seed: m.uniforms.uSeed.value };
+        scene.add(mesh); allPatches.push(mesh); octPatches[oct].push(mesh);
+      }
+    }
+  }
+}
+function pulseOctant(oct) { for (const m of octPatches[oct]) m.userData.pulse = 1; }
+function updatePatches(dt) {
+  for (const m of allPatches) {
+    const base = (m.userData.oct === activeOct) ? 0.085 + 0.03 * Math.sin(elapsed * 1.35 + m.userData.seed) : 0;
+    m.userData.pulse *= Math.exp(-dt * 2.6);
+    m.material.uniforms.uGlow.value = base + m.userData.pulse;
+    m.material.uniforms.uTime.value = elapsed;
+    m.scale.setScalar(Math.max(extent, 0.001));
+  }
+}
+
+const ringPts = [];
+for (let i = 0; i < 128; i++) {
+  const a = i / 128 * Math.PI * 2;
+  ringPts.push(new THREE.Vector3(Math.cos(a), Math.sin(a), 0));
+}
+const ringGeo = new THREE.BufferGeometry().setFromPoints(ringPts);
+const ringMat = new THREE.LineBasicMaterial({
+  color: 0xffa64d, transparent: true, opacity: 0.15,
+  blending: THREE.AdditiveBlending, depthWrite: false
+});
+const rings = [
+  new THREE.LineLoop(ringGeo, ringMat),
+  new THREE.LineLoop(ringGeo, ringMat),
+  new THREE.LineLoop(ringGeo, ringMat)
+];
+rings[1].rotation.x = Math.PI / 2; rings[2].rotation.y = Math.PI / 2;
+rings.forEach(r => { r.renderOrder = 1; scene.add(r); });
+
+const latticeMat = new THREE.ShaderMaterial({
+  transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
+  uniforms: { uPR: { value: renderer.getPixelRatio() } },
+  vertexShader: `attribute float aSeed; varying float vA; uniform float uPR;
+    void main(){ vec4 mv=modelViewMatrix*vec4(position,1.0);
+      float d=max(0.1,-mv.z);
+      float fade=1.0-smoothstep(10.5,14.0,length(position));
+      vA=fade*exp(-d*0.05)*0.5;
+      gl_PointSize=clamp(uPR*20.0/d,0.0,2.0*uPR);
+      gl_Position=projectionMatrix*mv; }`,
+  fragmentShader: `varying float vA;
+    void main(){ vec2 q=gl_PointCoord-0.5;
+      float a=(1.0-smoothstep(0.15,0.5,length(q)))*vA;
+      gl_FragColor=vec4(vec3(1.0,0.95,0.85)*a,a); }`
+});
+{
+  const pos = [], sd = [];
+  for (let i = -14; i <= 14; i++) for (let j = -14; j <= 14; j++) for (let k = -14; k <= 14; k++) {
+    pos.push(i, j, k); sd.push(Math.random());
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.setAttribute('aSeed', new THREE.Float32BufferAttribute(sd, 1));
+  const pts = new THREE.Points(g, latticeMat); pts.renderOrder = 0; scene.add(pts);
+}
+
+const dustMat = new THREE.ShaderMaterial({
+  transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
+  uniforms: { uTime: { value: 0 }, uPR: { value: renderer.getPixelRatio() } },
+  vertexShader: `attribute float aSeed; varying float vA; uniform float uTime,uPR;
+    void main(){
+      vec3 p=position+vec3(sin(uTime*0.12+aSeed*7.0),cos(uTime*0.1+aSeed*13.0),sin(uTime*0.14+aSeed*5.0))*0.6;
+      vec4 mv=modelViewMatrix*vec4(p,1.0);
+      float d=max(0.1,-mv.z);
+      vA=0.16*(1.0-smoothstep(16.0,22.0,length(position)))*exp(-d*0.02);
+      gl_PointSize=clamp(uPR*(30.0+aSeed*20.0)/d,0.0,2.6*uPR);
+      gl_Position=projectionMatrix*mv; }`,
+  fragmentShader: `varying float vA;
+    void main(){ vec2 q=gl_PointCoord-0.5;
+      float a=(1.0-smoothstep(0.1,0.5,length(q)))*vA;
+      gl_FragColor=vec4(vec3(1.0,0.9,0.75)*a,a); }`
+});
+{
+  const N = 240, pos = new Float32Array(N * 3), sd = new Float32Array(N);
+  for (let i = 0; i < N; i++) {
+    const v = new THREE.Vector3(Math.random() * 2 - 1, Math.random() * 2 - 1, Math.random() * 2 - 1).normalize()
+      .multiplyScalar(7 + Math.random() * 15);
+    pos.set([v.x, v.y, v.z], i * 3); sd[i] = Math.random() * 100;
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  g.setAttribute('aSeed', new THREE.BufferAttribute(sd, 1));
+  const pts = new THREE.Points(g, dustMat); pts.renderOrder = 0; scene.add(pts);
+}
+
+const PMAX = 4096;
+const pPos = new Float32Array(PMAX * 3), pVel = new Float32Array(PMAX * 3),
+      pBirth = new Float32Array(PMAX).fill(-1e3), pLife = new Float32Array(PMAX).fill(1),
+      pSeed = new Float32Array(PMAX), pSize = new Float32Array(PMAX);
+const pGeo = new THREE.BufferGeometry();
+pGeo.setAttribute('position', new THREE.BufferAttribute(pPos, 3).setUsage(THREE.DynamicDrawUsage));
+pGeo.setAttribute('aVel', new THREE.BufferAttribute(pVel, 3).setUsage(THREE.DynamicDrawUsage));
+pGeo.setAttribute('aBirth', new THREE.BufferAttribute(pBirth, 1).setUsage(THREE.DynamicDrawUsage));
+pGeo.setAttribute('aLife', new THREE.BufferAttribute(pLife, 1).setUsage(THREE.DynamicDrawUsage));
+pGeo.setAttribute('aSeed', new THREE.BufferAttribute(pSeed, 1).setUsage(THREE.DynamicDrawUsage));
+pGeo.setAttribute('aSize', new THREE.BufferAttribute(pSize, 1).setUsage(THREE.DynamicDrawUsage));
+const pMat = new THREE.ShaderMaterial({
+  transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
+  uniforms: { uTime: { value: 0 }, uPR: { value: renderer.getPixelRatio() } },
+  vertexShader: `attribute vec3 aVel; attribute float aBirth,aLife,aSeed,aSize;
+    uniform float uTime,uPR; varying float vA,vS;
+    void main(){
+      float age=uTime-aBirth;
+      float k=clamp(age/aLife,0.0,1.0);
+      float dec=(1.0-exp(-2.0*max(age,0.0)))/2.0;
+      vec3 p=position+aVel*dec;
+      float a=(1.0-k); a*=a;
+      a*=0.75+0.25*sin(uTime*20.0+aSeed*90.0);
+      if(age<0.0||k>=1.0) a=0.0;
+      vA=a; vS=aSeed;
+      vec4 mv=modelViewMatrix*vec4(p,1.0);
+      gl_PointSize=aSize*uPR*(34.0/max(0.1,-mv.z))*(0.5+0.5*(1.0-k));
+      gl_Position=projectionMatrix*mv; }`,
+  fragmentShader: `varying float vA,vS;
+    void main(){ vec2 q=gl_PointCoord-0.5;
+      float a=(1.0-smoothstep(0.1,0.5,length(q)))*vA;
+      vec3 c=mix(vec3(1.0,0.72,0.35),vec3(1.0,0.95,0.85),vS);
+      gl_FragColor=vec4(c*a*1.8,a); }`
+});
+const pSys = new THREE.Points(pGeo, pMat); pSys.frustumCulled = false; pSys.renderOrder = 3; scene.add(pSys);
+let pCur = 0;
+function emitPhotons(center, count, speed = 1) {
+  for (let i = 0; i < count; i++) {
+    const idx = pCur; pCur = (pCur + 1) % PMAX;
+    let x = Math.random() * 2 - 1, y = Math.random() * 2 - 1, z = Math.random() * 2 - 1;
+    const l = Math.hypot(x, y, z) || 1; x /= l; y /= l; z /= l;
+    const sp = (0.3 + Math.random() * Math.random() * 2.4) * speed;
+    pPos[idx * 3] = center.x + x * 0.06; pPos[idx * 3 + 1] = center.y + y * 0.06; pPos[idx * 3 + 2] = center.z + z * 0.06;
+    pVel[idx * 3] = x * sp; pVel[idx * 3 + 1] = y * sp; pVel[idx * 3 + 2] = z * sp;
+    pBirth[idx] = elapsed; pLife[idx] = 0.7 + Math.random() * 1.2;
+    pSeed[idx] = Math.random(); pSize[idx] = 0.7 + Math.random() * 1.7;
+  }
+  for (const k of ['position', 'aVel', 'aBirth', 'aLife', 'aSeed', 'aSize']) pGeo.attributes[k].needsUpdate = true;
+}
+
+const TRAIL_MAX = 72;
+const cooling = [];
+class Trail {
+  constructor() {
+    this.n = 0; this.hot = 0;
+    this.arr = new Float32Array(TRAIL_MAX * 3);
+    this.geom = new THREE.BufferGeometry();
+    this.posAttr = new THREE.BufferAttribute(this.arr, 3).setUsage(THREE.DynamicDrawUsage);
+    this.tAttr = new THREE.BufferAttribute(new Float32Array(TRAIL_MAX), 1).setUsage(THREE.DynamicDrawUsage);
+    this.geom.setAttribute('position', this.posAttr);
+    this.geom.setAttribute('aT', this.tAttr);
+    this.geom.setDrawRange(0, 0);
+    this.mat = trailBase.clone();
+    this.line = new THREE.Line(this.geom, this.mat);
+    this.line.frustumCulled = false; this.line.renderOrder = 3; this.line.visible = false;
+    scene.add(this.line);
+  }
+  push(p) {
+    if (this.n < TRAIL_MAX) this.n++;
+    this.arr.copyWithin(0, 3, TRAIL_MAX * 3);
+    const k = (this.n - 1) * 3;
+    this.arr[k] = p.x; this.arr[k + 1] = p.y; this.arr[k + 2] = p.z;
+    for (let i = 0; i < this.n; i++) this.tAttr.array[i] = this.n < 2 ? 0 : i / (this.n - 1);
+    this.posAttr.needsUpdate = true; this.tAttr.needsUpdate = true;
+    this.geom.setDrawRange(0, this.n);
+    this.line.visible = true; this.hot = 1;
+  }
+  update(dt) {
+    this.hot = Math.max(0, this.hot - dt * 1.1);
+    const a = this.hot * this.hot;
+    this.mat.uniforms.uA.value = a;
+    if (a < 0.012) { this.line.visible = false; return true; }
+    return false;
+  }
+  cool() { cooling.push(this); }
+  dispose() { scene.remove(this.line); this.geom.dispose(); this.mat.dispose(); }
+}
+function updateCooling(dt) {
+  for (let i = cooling.length - 1; i >= 0; i--)
+    if (cooling[i].update(dt)) { cooling[i].dispose(); cooling.splice(i, 1); }
+}
+
+const origin = { core: null, shell: null, group: new THREE.Group() };
+{
+  origin.core = new THREE.Mesh(coreGeo, new THREE.MeshBasicMaterial({ color: new THREE.Color(2.4, 1.75, 0.95) }));
+  origin.shell = new THREE.Mesh(coreGeo, shellMat);
+  origin.group.add(origin.core, origin.shell);
+  origin.group.scale.setScalar(0.0001);
+  scene.add(origin.group);
+}
+const originQ = new THREE.Quaternion(), UP = new THREE.Vector3(0, 1, 0), IDQ = new THREE.Quaternion();
+function originReach(dir) { originQ.setFromUnitVectors(UP, dir); originAct = 1; }
+function updateOrigin(dt) {
+  if (originOn) originAppear += (1 - originAppear) * (1 - Math.exp(-dt * 4));
+  originAct *= Math.exp(-dt * 2.4);
+  origin.group.quaternion.slerp(originAct > 0.02 ? originQ : IDQ, 1 - Math.exp(-dt * 9));
+  const ap = Math.max(originAppear, 0.0001);
+  origin.group.scale.set(ap * (1 - 0.22 * originAct), ap * (1 + 1.25 * originAct), ap * (1 - 0.22 * originAct));
+  originPulse *= Math.exp(-dt * 2.3);
+  const br = 1 + 0.4 * originPulse;
+  origin.core.scale.setScalar(0.2 * (1 + 0.05 * Math.sin(elapsed * 2.2)) * br);
+  origin.shell.scale.setScalar(0.52 * (1 + 0.25 * originPulse));
+  origin.core.material.color.setRGB(2.4 * br, 1.75 * br, 0.95 * br);
+}
+
+const _v = new THREE.Vector3(), _v2 = new THREE.Vector3(), _dir = new THREE.Vector3(), _c = new THREE.Color();
+function computePTarget(out) {
+  out.set(state.x, state.y, state.z);
+  const m = out.length(), maxR = extentTarget * 0.965;
+  if (m > maxR) out.multiplyScalar(maxR / m);
+  return out;
+}
+
+class GNode {
+  constructor(o) {
+    this.isP = !!o.isP; this.radius = o.radius;
+    this.baseCore = o.coreColor.clone(); this.dead = false;
+    this.group = new THREE.Group();
+    this.core = new THREE.Mesh(coreGeo, new THREE.MeshBasicMaterial({ color: o.coreColor.clone() }));
+    this.shell = new THREE.Mesh(coreGeo, shellMat);
+    this.group.add(this.core, this.shell);
+    this.group.scale.setScalar(0.0001);
+    this.pos = this.group.position;
+    this.basePos = new THREE.Vector3(); this.to = new THREE.Vector3(); this.from = new THREE.Vector3();
+    this.phase = 'idle'; this.timer = 0; this.t = 0; this.dur = 1; this.snap = 0;
+    this.emph = o.isP ? 1 : 0.3; this.emphT = o.isP ? 1 : 0.3;
+    this.trail = null; this.labelEl = null; this.labelWrap = null;
+    this.cellKey = null; this.oct = -1; this.signs = [1, 1, 1];
+    this.pSign = [1, 1, 1]; this.seedPhase = Math.random() * 10;
+    scene.add(this.group);
+    this.applyRadius();
+  }
+  applyRadius(pop = 1) { this.core.scale.setScalar(this.radius * pop); this.shell.scale.setScalar(this.radius * 2.5 * pop); }
+  attachLabel(big) {
+    const wrap = document.createElement('div'); wrap.className = 'n-label' + (big ? ' big' : '');
+    const inner = document.createElement('div'); inner.className = 'inner'; wrap.appendChild(inner);
+    const obj = new CSS2DObject(wrap); obj.position.set(0, this.radius * 2.2, 0);
+    this.group.add(obj);
+    this.labelEl = inner; this.labelWrap = wrap;
+    return inner;
+  }
+  bud(to, delay) {
+    this.phase = 'wait'; this.timer = -delay;
+    this.to.copy(to); this.pos.set(0, 0, 0); this.group.scale.setScalar(0.0001);
+    this.group.visible = false;
+  }
+  startMerge() {
+    if (this.dead) return;
+    if (this.phase === 'wait') { this.kill(); return; }
+    if (this.phase !== 'idle' && this.phase !== 'bud') return;
+    if (this.cellKey) { usedCells.delete(this.cellKey); this.cellKey = null; }
+    if (this.oct >= 0) { octCount[this.oct]--; this.oct = -1; }
+    this.phase = 'merge'; this.t = 0; this.from.copy(this.pos);
+    _dir.copy(this.pos);
+    if (_dir.lengthSq() < 1e-6) _dir.set(0, 1, 0);
+    originReach(_dir.normalize());
+  }
+  startDissolve() {
+    if (this.phase !== 'idle') return;
+    if (this.cellKey) { usedCells.delete(this.cellKey); this.cellKey = null; }
+    if (this.oct >= 0) { octCount[this.oct]--; this.oct = -1; }
+    this.phase = 'dissolve'; this.t = 0;
+  }
+  kill() {
+    if (this.dead) return; this.dead = true;
+    if (this.trail) { this.trail.cool(); this.trail = null; }
+    scene.remove(this.group);
+    this.core.material.dispose();
+    if (this.labelWrap) this.labelWrap.remove();
+    const i = samples.indexOf(this); if (i >= 0) samples.splice(i, 1);
+  }
+  pushTrail() { if (!this.trail) this.trail = new Trail(); this.trail.push(this.pos); }
+  update(dt) {
+    switch (this.phase) {
+      case 'wait':
+        this.timer += dt;
+        if (this.isP) this.to.copy(computePTarget(_v));
+        if (this.timer >= 0) {
+          this.phase = 'bud'; this.t = 0; this.dur = this.isP ? 0.95 : 1.05;
+          this.from.set(0, 0, 0); this.group.visible = true;
+          _dir.copy(this.to).normalize();
+          originReach(_dir);
+        }
+        break;
+      case 'bud': {
+        this.t += dt; const u = Math.min(1, this.t / this.dur);
+        this.pos.lerpVectors(this.from, this.to, easeInOutCubic(u));
+        _dir.subVectors(this.to, this.from);
+        const L = Math.max(_dir.length(), 0.0001); _dir.divideScalar(L);
+        this.group.quaternion.setFromUnitVectors(UP, _dir);
+        const s = 1 + 2.4 * (4 * u * (1 - u));                 // liquid stretch, peak mid-flight
+        this.group.scale.set(1 / Math.sqrt(s), s, 1 / Math.sqrt(s));
+        this.pushTrail();
+        if (u >= 1) {
+          this.phase = 'idle'; this.pos.copy(this.to);
+          this.group.quaternion.identity(); this.group.scale.setScalar(1);
+          this.snap = 1;
+          if (this.isP) {
+            for (let i = 0; i < 3; i++) this.pSign[i] = this.pos.getComponent(i) >= 0 ? 1 : -1;
+            this.oct = octIdxFromSigns(this.pSign[0], this.pSign[1], this.pSign[2]);
+          }
+          onNodeArrive(this);
+        }
+        break; }
+      case 'idle':
+        if (this.isP) this.chase(dt);
+        else this.pos.copy(this.basePos);
+        break;
+      case 'merge': {
+        this.t += dt; const u = Math.min(1, this.t / 0.7);
+        _dir.subVectors(ORIGIN, this.from);
+        if (_dir.lengthSq() < 1e-6) _dir.set(0, 1, 0);
+        _dir.normalize();
+        this.pos.lerpVectors(this.from, ORIGIN, easeInCubic(u));   // gravitational pull
+        this.group.quaternion.setFromUnitVectors(UP, _dir);
+        const s = 1 + 1.8 * (4 * u * (1 - u));
+        this.group.scale.set(1 / Math.sqrt(s), s, 1 / Math.sqrt(s));
+        this.pushTrail();
+        if (u >= 1) { originPulse = 1; emitPhotons(ORIGIN, 90, 0.7); this.kill(); }
+        break; }
+      case 'dissolve': {
+        this.t += dt; const u = Math.min(1, this.t / 0.16);
+        this.group.scale.setScalar(Math.max(0.0001, 1 - u));
+        if (u >= 1) { emitPhotons(this.pos, 460, 1.0); this.kill(); }
+        break; }
+    }
+    this.emph += (this.emphT - this.emph) * (1 - Math.exp(-dt * 6));
+    const breathe = 0.85 + 0.15 * Math.sin(elapsed * 2 + this.seedPhase);
+    _c.copy(this.baseCore).multiplyScalar((0.28 + 0.72 * this.emph) * breathe);
+    this.core.material.color.copy(_c);
+    if (this.snap > 0) {
+      this.snap = Math.max(0, this.snap - dt * 1.7);
+      this.applyRadius(1 + 0.55 * Math.sin(Math.PI * Math.min(1, this.snap)));
+    }
+  }
+  chase(dt) {
+    computePTarget(_v);
+    _v2.copy(this.pos);
+    this.pos.lerp(_v, 1 - Math.exp(-dt * 5.2));
+    if (this.pos.distanceToSquared(_v2) > 1e-8) {
+      this.pushTrail();
+      for (let i = 0; i < 3; i++) {                       // plane crossing → ripple on that sheet
+        const a = _v2.getComponent(i), b = this.pos.getComponent(i);
+        if ((a > 0.02 && b <= 0) || (a < -0.02 && b >= 0)) triggerRipple(AXES[i], this.pos);
+      }
+    }
+    for (let i = 0; i < 3; i++) {
+      const v = this.pos.getComponent(i);
+      if (v > 0.02) this.pSign[i] = 1; else if (v < -0.02) this.pSign[i] = -1;
+    }
+    this.oct = octIdxFromSigns(this.pSign[0], this.pSign[1], this.pSign[2]);
+  }
+}
+
+const ORIGIN = new THREE.Vector3(0, 0, 0);
+function onNodeArrive(node) {
+  if (node.oct >= 0) pulseOctant(node.oct);
+  emitPhotons(node.pos, node.isP ? 40 : 26, 0.55);
+}
+function triggerRipple(axis, pos) {
+  if (extent < 1) return;
+  const key = { x: 'yz', y: 'xz', z: 'xy' }[axis];
+  const { a, b } = SHEET_META[key], E = extent;
+  const r = ripples[key];
+  r.mat.uniforms.uC.value.set(
+    clamp(pos[a] / (2 * E) + 0.5, 0.04, 0.96),
+    clamp(pos[b] / (2 * E) + 0.5, 0.04, 0.96));
+  r.mat.uniforms.uT.value = 0; r.active = true;
+}
+
+function pickCell(R) {
+  const Fl = Math.floor(R);
+  let minC = Math.min(...octCount);
+  const cands = []; for (let o = 0; o < 8; o++) if (octCount[o] === minC) cands.push(o);
+  const oct = cands[(Math.random() * cands.length) | 0];
+  const s = octSigns(oct);
+  for (let a = 0; a < 300; a++) {
+    const c = [0, 0, 0];
+    for (let i = 0; i < 3; i++) c[i] = Math.random() < 0.22 ? 0 : s[i] * ri(0, Fl);
+    const d = Math.hypot(c[0], c[1], c[2]);
+    if (d < 1.15 || d > R - 0.7) continue;
+    if (c[0] === 0 && c[1] === 0 && c[2] === 0) continue;
+    const key = c.join('|');
+    if (usedCells.has(key)) continue;
+    return { v: c, key };
+  }
+  for (let a = 0; a < 600; a++) {
+    const c = [ri(-Fl, Fl), ri(-Fl, Fl), ri(-Fl, Fl)];
+    const d = Math.hypot(c[0], c[1], c[2]);
+    if (d < 1.15 || d > R - 0.7) continue;
+    const key = c.join('|');
+    if (usedCells.has(key)) continue;
+    return { v: c, key };
+  }
+  return null;
+}
+function spawnSample(delay) {
+  const cell = pickCell(extentTarget);
+  if (!cell) return;
+  usedCells.add(cell.key);
+  const [x, y, z] = cell.v;
+  const sg = [x >= 0 ? 1 : -1, y >= 0 ? 1 : -1, z >= 0 ? 1 : -1];
+  const oct = octIdxFromSigns(sg[0], sg[1], sg[2]);
+  octCount[oct]++;
+  const node = new GNode({ radius: 0.115, coreColor: new THREE.Color(1.9, 1.62, 1.18) });
+  node.cellKey = cell.key; node.oct = oct; node.signs = sg;
+  node.basePos.set(x, y, z);
+  node.bud(node.basePos, delay);
+  const st = sg.map((s, i) => {
+    const v = cell.v[i];
+    const ch = v > 0 ? ['pos', '+'] : v < 0 ? ['neg', '−'] : ['zro', '0'];
+    return `<b class="${ch[0]}">${ch[1]}</b>`;
+  }).join(', ');
+  node.attachLabel(false).innerHTML = `<span class="sgn">( ${st} )</span>`;
+  samples.push(node);
+}
+
+function mergeAway(k) {
+  const pool = samples.filter(s => s.phase === 'idle' || s.phase === 'bud');
+  const victims = pool.slice(-k);
+  victims.forEach((v, i) => after(i * 0.13, () => v.startMerge()));
+  if (victims.length) after(victims.length * 0.13 + 0.6, reconcile);
+}
+function dissolveOutOfBounds() {
+  const victims = samples.filter(s => s.phase === 'idle' && s.basePos.length() > extent - 0.1)
+    .sort((a, b) => b.basePos.length() - a.basePos.length());
+  victims.forEach((v, i) => after(i * 0.07, () => { if (v.phase === 'idle') v.startDissolve(); }));
+  if (victims.length) after(victims.length * 0.07 + 0.5, reconcile);
+}
+function reconcile() {
+  if (!introDone) return;
+  const alive = samples.filter(s => s.phase === 'idle' || s.phase === 'bud' || s.phase === 'wait').length;
+  const deficit = state.n - alive;
+  if (deficit > 0) { for (let i = 0; i < deficit; i++) spawnSample(0.06 + i * 0.13); }
+  else if (deficit < 0) { mergeAway(-deficit); }
+}
+function resample() {
+  if (!introDone) return;
+  const idle = samples.filter(s => s.phase === 'idle');
+  idle.forEach((s, i) => after(i * 0.055, () => { if (s.phase === 'idle') s.startDissolve(); }));
+  after(idle.length * 0.055 + 0.75, reconcile);
+}
+
+// Fixed element lookups to use proper tree context instead of strict document.getElementById
+const P = new GNode({ radius: 0.16, coreColor: new THREE.Color(2.7, 1.85, 0.95), isP: true });
+P.pSign = [1, -1, 1];
+P.bud(computePTarget(new THREE.Vector3()), 1.25);
+const pInner = P.attachLabel(true);
+pInner.innerHTML = '<div class="m" id="lpC"></div><div class="o" id="lpO"></div>';
+pInner.style.opacity = '0';
+const lpC = pInner.querySelector('#lpC'); 
+const lpO = pInner.querySelector('#lpO');
+
+const composer = new EffectComposer(renderer);
+composer.setPixelRatio(renderer.getPixelRatio());
+composer.addPass(new RenderPass(scene, camera));
+const bokeh = new BokehPass(scene, camera, { focus: 18, aperture: 0.00135, maxblur: 0.011 });
+composer.addPass(bokeh);
+composer.addPass(new UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), 0.5, 0.6, 0.78));
+composer.addPass(new OutputPass());
+
+function applyExtent(E) {
+  for (const key of ['xy', 'yz', 'xz']) {
+    const s = sheets[key];
+    if (Math.abs(E - s.builtE) > 0.02) {
+      const g = buildSheetGeo(key, E);
+      s.glass.geometry.dispose();
+      s.glass.geometry = g; s.rim.geometry = g;
+      s.builtE = E;
+    }
+    for (const m of ripples[key].meshes) m.scale.setScalar(Math.max(E, 0.001));
+  }
+  dotsMat.uniforms.uE.value = E;
+  for (const m of allPatches) m.scale.setScalar(Math.max(E, 0.001));
+  for (const r of rings) r.scale.setScalar(Math.max(E, 0.001));
+}
+
+const roP = $('roP'), roS = $('roS'), roM = $('roM');
+const fw = v => (v < 0 ? '−' : '+') + Math.abs(v).toFixed(1);
+const signHTML = v => v > 0.05 ? '<b class="pos">+</b>' : v < -0.05 ? '<b class="neg">−</b>' : '<b class="zro">0</b>';
+let c1 = '', c2 = '', c3 = '', c4 = '', c5 = '';
+function refreshHUD() {
+  const px = P.pos.x, py = P.pos.y, pz = P.pos.z;
+  const a = `P(${fw(px)}, ${fw(py)}, ${fw(pz)})`;
+  const sh = [px, py, pz].map(signHTML).join(', ');
+  const b = `= ( ${sh} )`;
+  const len = Math.hypot(px, py, pz);
+  let inOct = 0; for (const s of samples) if (s.phase === 'idle' && s.oct === activeOct) inOct++;
+  const c = `OCTANT ${ROMAN[activeOct]} · ‖P‖ ${len.toFixed(2)} · CHAMBER ${String(inOct).padStart(2, '0')}/${String(samples.length).padStart(2, '0')}`;
+  
+  if (a !== c1) { roP.textContent = a; c1 = a; }
+  if (b !== c2) { roS.innerHTML = b; c2 = b; }
+  if (c !== c3) { roM.textContent = c; c3 = c; }
+  
+  // These use the queried child nodes appropriately now
+  if (a !== c4 && lpC) { lpC.textContent = a; c4 = a; }
+  const e = `OCTANT ${ROMAN[activeOct]} · ( ${sh} )`;
+  if (e !== c5 && lpO) { lpO.innerHTML = e; c5 = e; }
+  
+  pInner.style.opacity = P.phase === 'idle' ? '1' : '0';
+}
+
+function bindSlider(sfx, key, fmt, change) {
+  const el = $('s' + sfx), v = $('v' + sfx);
+  const h = () => {
+    const val = parseFloat(el.value);
+    state[key] = val; v.textContent = fmt(val);
+    el.style.setProperty('--p', ((val - parseFloat(el.min)) / (parseFloat(el.max) - parseFloat(el.min)) * 100) + '%');
+    if (change) change(val);
+  };
+  el.addEventListener('input', h); h();
+}
+bindSlider('N', 'n', v => String(v).padStart(2, '0'), () => reconcile());
+bindSlider('R', 'r', v => v.toFixed(1), () => {
+  extentTarget = state.r;
+  dissolveOutOfBounds();
+  after(0.8, reconcile);
+});
+bindSlider('X', 'x', fw); bindSlider('Y', 'y', fw); bindSlider('Z', 'z', fw);
+$('bRes').addEventListener('click', resample);
+$('bOrbit').addEventListener('click', e => {
+  controls.autoRotate = !controls.autoRotate;
+  e.currentTarget.classList.toggle('on', controls.autoRotate);
+});
+$('bOptics').addEventListener('click', e => {
+  bokeh.enabled = !bokeh.enabled;
+  e.currentTarget.classList.toggle('on', bokeh.enabled);
+});
+
+let introActive = true, introT = 0, introFast = false;
+renderer.domElement.addEventListener('pointerdown', () => { introFast = true; });
+after(0.85, () => { originOn = true; originPulse = 1.3; emitPhotons(ORIGIN, 240, 0.95); });
+after(2.0, () => { introDone = true; reconcile(); });
+
+addEventListener('resize', () => {
+  camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+  composer.setSize(innerWidth, innerHeight);
+  css2d.setSize(innerWidth, innerHeight);
+});
+
+const clock = new THREE.Clock();
+function tick() {
+  requestAnimationFrame(tick);
+  const dt = Math.min(clock.getDelta(), 0.05);
+  elapsed += dt;
+  runTasks();
+
+  if (Math.abs(extentTarget - extent) > 0.0004) {
+    extent += (extentTarget - extent) * (1 - Math.exp(-dt * 3.1));
+    applyExtent(extent);
+  }
+  if (extentTarget < extent - 0.05) {
+    disTimer += dt;
+    if (disTimer > 0.12) { disTimer = 0; dissolveOutOfBounds(); }
+  } else disTimer = 0;
+
+  for (const key of ['xy', 'yz', 'xz']) {
+    const r = ripples[key];
+    if (r.active) { r.mat.uniforms.uT.value += dt; if (r.mat.uniforms.uT.value > 0.85) { r.mat.uniforms.uT.value = -1; r.active = false; } }
+  }
+
+  P.update(dt);
+  activeOct = P.oct;
+  for (const s of samples.slice()) s.update(dt);
+
+  for (const s of samples) {
+    const focus = s.phase === 'idle' && s.oct === activeOct;
+    s.emphT = focus ? 1 : 0.22;
+    if (s.labelEl) s.labelEl.style.opacity = (s.phase === 'idle' ? 0.25 + 0.65 * s.emph : 0).toFixed(2);
+  }
+
+  updatePatches(dt);
+  updateOrigin(dt);
+  updateCooling(dt);
+  pMat.uniforms.uTime.value = elapsed;
+  dustMat.uniforms.uTime.value = elapsed;
+
+  // depth of field locked onto the analyzed point
+  const fd = clamp(camera.position.distanceTo(P.pos), 2, 80);
+  bokeh.uniforms.focus.value += (fd - bokeh.uniforms.focus.value) * (1 - Math.exp(-dt * 3.5));
+
+  // heavy-inertia camera, gently biased toward P
+  _v.copy(P.pos).multiplyScalar(0.22);
+  controls.target.lerp(_v, 1 - Math.exp(-dt * 1.5));
+  if (introActive) {
+    introT += dt * (introFast ? 4.5 : 1);
+    const u = Math.min(1, introT / 2.7);
+    camera.position.copy(CAMDIR).multiplyScalar(34 + (15.5 - 34) * easeInOutCubic(u));
+    camera.lookAt(0, 0, 0);
+    if (u >= 1) { introActive = false; controls.enabled = true; }
   } else {
-    displayProgress = autoProgress;
+    controls.update();
   }
 
-  const p = clamp(displayProgress, 0, 1);
-
-  /* ---- apply to scene ---- */
-  applyProgress(p, time, dt);
-
-  /* ---- UI ---- */
-  updateChapterText(p);
-  if (!scrubbing) updateDockUI(p);
-
-  /* ---- dust ---- */
-  dustMat.uniforms.uTime.value = time;
-  dust.rotation.y = time * 0.008;
-
-  /* ---- controls idle resume ---- */
-  if (!controls.autoRotate && nowSec - lastInteractionTime > 3.2){
-    controls.autoRotate = true;
-  }
-  controls.update();
-
-  /* ---- post ---- */
-  caPass.uniforms.uTime.value = time;
-
+  refreshHUD();
   composer.render();
+  css2d.render(scene, camera);
 }
-
-/* ══════════════════════════════════════════════════════════════
-   BOOT
-   ══════════════════════════════════════════════════════════════ */
-async function boot(){
-  try {
-    await Promise.race([
-      document.fonts.ready,
-      new Promise(r => setTimeout(r, 1200))
-    ]);
-  } catch(e){}
-
-  await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
-
-  buildLabels();
-  onResize();
-
-  updateDockUI(0);
-
-  const loader = document.getElementById('loader');
-  loader.classList.add('gone');
-  setTimeout(() => loader.remove(), 1400);
-
-  renderer.setAnimationLoop(tick);
-}
-
-boot();
+tick();
 </script>
 </body>
 </html>
