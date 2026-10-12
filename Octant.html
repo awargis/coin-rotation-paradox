@@ -2,50 +2,38 @@
 <html lang="en">
 <head>
 <meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
 <title>Octants — The Glass Morphic Space</title>
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@200;300;400;500;600&family=JetBrains+Mono:wght@300;400&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@200;300;400;500&family=JetBrains+Mono:wght@300;400&display=swap" rel="stylesheet">
 
 <style>
   :root{
-    --ink:  #e9f0f8;
-    --dim:  rgba(233,240,248,0.56);
-    --faint:rgba(233,240,248,0.28);
-    --line: rgba(255,255,255,0.09);
-    --accent: #7fd4ff;
+    --ink:  #e8eef6;
+    --dim:  rgba(232,238,246,0.52);
+    --faint:rgba(232,238,246,0.26);
+    --accent: #8ecbff;
   }
 
   *{ margin:0; padding:0; box-sizing:border-box; }
-
-  html{ background:#000; }
-
+  html, body{ height:100%; background:#000; }
   body{
-    background:#000;
     color:var(--ink);
     font-family:'Inter','SF Pro Display',-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;
     -webkit-font-smoothing:antialiased;
     -moz-osx-font-smoothing:grayscale;
-    overflow-x:hidden;
-    overscroll-behavior-y:none;
+    overflow:hidden;
+    position:fixed; inset:0;
   }
 
-  /* ---------- WebGL canvas ---------- */
   #gl{
     position:fixed; inset:0;
     width:100vw; height:100vh;
     display:block;
     z-index:0;
-  }
-
-  /* ---------- Scroll driver ---------- */
-  #scroll-space{
-    position:relative;
-    height:760vh;
-    z-index:1;
-    pointer-events:none;
+    touch-action:none;
   }
 
   /* ---------- UI layer ---------- */
@@ -56,69 +44,75 @@
     user-select:none;
   }
 
-  /* top bar */
+  .hairline{
+    position:absolute; top:0; left:0; right:0; height:1px;
+    background:linear-gradient(90deg, transparent, rgba(142,203,255,.24) 25%, rgba(160,130,255,.24) 60%, transparent);
+    opacity:.7;
+  }
+
   .topbar{
     position:absolute; top:0; left:0; right:0;
     display:flex; justify-content:space-between; align-items:flex-start;
-    padding: clamp(20px,3.2vw,38px) clamp(24px,5vw,74px);
+    padding: clamp(18px,2.8vw,34px) clamp(22px,4.5vw,64px);
     font-size:10px; letter-spacing:.32em; text-transform:uppercase;
     color:var(--faint);
   }
   .brand{
-    display:flex; align-items:center; gap:12px;
-    color:rgba(233,240,248,0.72);
-    letter-spacing:.36em;
+    display:flex; align-items:center; gap:11px;
+    color:rgba(232,238,246,0.7);
+    letter-spacing:.34em;
   }
   .brand .mark{
-    width:9px; height:9px; border-radius:2px;
-    background:linear-gradient(135deg,#7fd4ff,#b98cff);
-    box-shadow:0 0 16px rgba(127,212,255,.8);
+    width:8px; height:8px; border-radius:2px;
+    background:linear-gradient(135deg,#8ecbff,#b69bff);
+    box-shadow:0 0 12px rgba(142,203,255,.55);
     transform:rotate(45deg);
   }
-  .brand .sep{ color:rgba(233,240,248,0.22); letter-spacing:0; }
+  .brand .sep{ color:rgba(232,238,246,0.2); letter-spacing:0; }
 
-  /* top hairline */
-  .hairline{
-    position:absolute; top:0; left:0; right:0; height:1px;
-    background:linear-gradient(90deg, transparent, rgba(127,212,255,.35) 20%, rgba(185,140,255,.35) 55%, transparent);
-    opacity:.6;
+  /* corner frames */
+  .corner{
+    position:absolute; width:12px; height:12px;
+    border:1px solid rgba(255,255,255,.08);
+    pointer-events:none;
   }
+  .corner.tl{ top:clamp(18px,2.8vw,34px); left:clamp(22px,4.5vw,64px); border-right:0; border-bottom:0; }
+  .corner.br{ bottom:clamp(18px,2.8vw,34px); right:clamp(22px,4.5vw,64px); border-left:0; border-top:0; }
 
-  /* chapter text */
-  #chapters{
-    position:absolute; inset:0;
-  }
+  /* chapter text stack */
+  #chapters{ position:absolute; inset:0; }
   .chapter{
     position:absolute;
-    left: clamp(24px,5vw,74px);
-    bottom: clamp(30px,8vh,80px);
-    max-width: min(430px, 42vw);
+    left: clamp(22px,4.5vw,64px);
+    bottom: clamp(120px,18vh,180px);
+    max-width: min(420px, 42vw);
     opacity:0;
     will-change:opacity, transform;
+    transition: none;
   }
   .ch-idx{
-    font-size:10px; letter-spacing:.3em; text-transform:uppercase;
-    color:rgba(127,212,255,.8);
-    margin-bottom:16px;
+    font-size:9.5px; letter-spacing:.3em; text-transform:uppercase;
+    color:rgba(142,203,255,.72);
+    margin-bottom:14px;
     display:flex; align-items:center; gap:12px;
   }
   .ch-idx::after{
-    content:''; flex:1; height:1px; max-width:60px;
-    background:linear-gradient(90deg, rgba(127,212,255,.5), transparent);
+    content:''; flex:1; height:1px; max-width:56px;
+    background:linear-gradient(90deg, rgba(142,203,255,.4), transparent);
   }
   .ch-title{
-    font-size: clamp(26px, 3.4vw, 46px);
+    font-size: clamp(24px, 3.1vw, 40px);
     font-weight:300;
     letter-spacing:-.025em;
-    line-height:1.04;
-    margin-bottom:14px;
-    background:linear-gradient(180deg,#ffffff 0%, rgba(255,255,255,.58) 100%);
+    line-height:1.06;
+    margin-bottom:12px;
+    background:linear-gradient(180deg,#ffffff 0%, rgba(255,255,255,.55) 100%);
     -webkit-background-clip:text; background-clip:text;
     color:transparent;
   }
   .ch-body{
-    font-size: clamp(12px, 1.05vw, 14.5px);
-    line-height:1.7;
+    font-size: clamp(11.5px, 1vw, 13.5px);
+    line-height:1.72;
     font-weight:300;
     color:var(--dim);
     letter-spacing:.005em;
@@ -127,8 +121,9 @@
   /* readout */
   .readout{
     position:absolute;
-    right: clamp(24px,5vw,74px);
-    bottom: clamp(30px,8vh,80px);
+    right: clamp(22px,4.5vw,64px);
+    top: 50%;
+    transform: translateY(-50%);
     text-align:right;
     font-family:'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
     opacity:0;
@@ -136,95 +131,158 @@
   }
   .ro-label{
     font-size:9px; letter-spacing:.3em; text-transform:uppercase;
-    color:var(--faint); margin-bottom:7px;
+    color:var(--faint); margin-bottom:6px;
     font-family:'Inter',sans-serif;
   }
   .ro-value{
-    font-size: clamp(11px, 1vw, 14px);
-    color:rgba(207,230,255,.92);
+    font-size: clamp(11px, 1vw, 13px);
+    color:rgba(200,224,250,.85);
     letter-spacing:.05em;
-    margin-bottom:20px;
-    text-shadow:0 0 22px rgba(127,212,255,.45);
+    margin-bottom:18px;
   }
-  .ro-value.sign{ color:#b9e4ff; }
+  .ro-value.sign{ color:#a8dbff; }
 
-  /* progress rail */
-  .rail{
+  /* ---------- DOCK ---------- */
+  .dock{
     position:absolute;
-    right: clamp(18px,2.6vw,34px);
-    top:50%;
-    transform:translateY(-50%);
-    display:flex; flex-direction:column; align-items:center; gap:16px;
-  }
-  .rail .tick{
-    width:4px; height:4px; border-radius:50%;
-    background:rgba(255,255,255,.14);
-    transition:background .35s ease, box-shadow .35s ease, transform .35s ease;
-  }
-  .rail .tick.on{
-    background:var(--accent);
-    box-shadow:0 0 12px var(--accent);
-    transform:scale(1.5);
-  }
-  .rail .line{
-    width:1px; height:52px;
-    background:linear-gradient(180deg, rgba(255,255,255,.16), rgba(255,255,255,.02));
+    left: 50%;
+    bottom: clamp(24px, 4vh, 40px);
+    transform: translateX(-50%);
+    display:flex;
+    align-items:center;
+    gap: 18px;
+    pointer-events:auto;
+    padding: 12px 18px;
+    border-radius: 999px;
+    background: rgba(255,255,255,0.02);
+    border: 1px solid rgba(255,255,255,0.055);
+    backdrop-filter: blur(14px) saturate(1.2);
+    -webkit-backdrop-filter: blur(14px) saturate(1.2);
+    box-shadow: 0 10px 40px -12px rgba(0,0,0,0.9);
+    min-width: min(560px, 84vw);
   }
 
-  /* scroll hint */
+  .play-btn{
+    flex: 0 0 auto;
+    width: 32px; height: 32px;
+    border-radius: 50%;
+    border: 1px solid rgba(255,255,255,0.1);
+    background: rgba(255,255,255,0.03);
+    color: #cfe6ff;
+    display:grid; place-items:center;
+    cursor: pointer;
+    transition: background .2s ease, border-color .2s ease, transform .2s ease;
+  }
+  .play-btn:hover{
+    background: rgba(142,203,255,0.12);
+    border-color: rgba(142,203,255,0.35);
+  }
+  .play-btn:active{ transform: scale(0.94); }
+  .play-btn svg{ width:12px; height:12px; fill: currentColor; }
+
+  .track-wrap{
+    flex: 1 1 auto;
+    position: relative;
+    height: 26px;
+    display:flex; align-items:center;
+  }
+  .track{
+    position: relative;
+    width:100%; height:2px;
+    background: rgba(255,255,255,0.08);
+    border-radius:2px;
+    cursor: pointer;
+  }
+  .fill{
+    position:absolute; left:0; top:0; bottom:0;
+    width: 0%;
+    background: linear-gradient(90deg, rgba(142,203,255,.7), rgba(180,150,255,.7));
+    border-radius:2px;
+    box-shadow: 0 0 12px rgba(142,203,255,.35);
+  }
+  .knob{
+    position:absolute; top:50%;
+    left: 0%;
+    width:10px; height:10px;
+    margin-left:-5px; margin-top:-5px;
+    border-radius:50%;
+    background: #cfe6ff;
+    box-shadow: 0 0 0 3px rgba(142,203,255,.14), 0 0 16px rgba(142,203,255,.7);
+    pointer-events: none;
+    transition: transform .2s ease;
+  }
+  .track-wrap:hover .knob{ transform: scale(1.15); }
+
+  .dots{
+    position:absolute; left:0; right:0; top:50%; height:0;
+    pointer-events: none;
+  }
+  .dot{
+    position:absolute;
+    top:-2px;
+    width:4px; height:4px;
+    border-radius:50%;
+    background: rgba(255,255,255,0.14);
+    transform: translate(-50%, 0);
+    transition: background .3s ease, box-shadow .3s ease;
+  }
+  .dot.on{
+    background: #cfe6ff;
+    box-shadow: 0 0 8px rgba(142,203,255,.9);
+  }
+
+  .step-info{
+    flex: 0 0 auto;
+    font-family:'JetBrains Mono', ui-monospace, monospace;
+    font-size: 10px;
+    letter-spacing:.14em;
+    color: rgba(200,224,250,.5);
+    min-width: 52px;
+    text-align: right;
+  }
+
+  /* hint */
   .hint{
     position:absolute;
-    left:50%; bottom: clamp(22px,4vh,40px);
-    transform:translateX(-50%);
-    font-size:9.5px; letter-spacing:.34em; text-transform:uppercase;
-    color:rgba(233,240,248,.34);
-    display:flex; flex-direction:column; align-items:center; gap:12px;
-    transition:opacity .8s ease;
+    left: 50%;
+    top: clamp(70px, 11vh, 108px);
+    transform: translateX(-50%);
+    font-size:9.5px; letter-spacing:.32em; text-transform:uppercase;
+    color:rgba(232,238,246,.32);
+    display:flex; align-items:center; gap:14px;
+    transition: opacity .8s ease;
+    white-space: nowrap;
   }
-  .hint .stem{
-    width:1px; height:34px;
-    background:linear-gradient(180deg, rgba(127,212,255,.75), transparent);
-    animation:stem 2.4s ease-in-out infinite;
-    transform-origin:top;
-  }
-  @keyframes stem{
-    0%,100%{ opacity:.25; transform:scaleY(.45); }
-    50%    { opacity:1;   transform:scaleY(1); }
-  }
+  .hint .sep{ width:3px; height:3px; border-radius:50%; background:rgba(232,238,246,.22); }
 
   /* loader */
   #loader{
     position:fixed; inset:0; z-index:50;
     background:#000;
     display:flex; align-items:center; justify-content:center;
-    transition:opacity 1.2s cubic-bezier(.22,1,.36,1);
+    transition:opacity 1.1s cubic-bezier(.22,1,.36,1);
     pointer-events:none;
   }
   #loader .lm{
-    width:7px;height:7px;border-radius:50%;
-    background:#7fd4ff;
-    box-shadow:0 0 24px 4px rgba(127,212,255,.85);
-    animation:pulse 1.6s ease-in-out infinite;
+    width:6px;height:6px;border-radius:50%;
+    background:#8ecbff;
+    box-shadow:0 0 22px 4px rgba(142,203,255,.65);
+    animation:pulse 1.7s ease-in-out infinite;
   }
   @keyframes pulse{
-    0%,100%{ transform:scale(.6); opacity:.35; }
-    50%    { transform:scale(1.35); opacity:1; }
+    0%,100%{ transform:scale(.55); opacity:.3; }
+    50%    { transform:scale(1.3); opacity:1; }
   }
   #loader.gone{ opacity:0; }
 
-  /* subtle corner frame */
-  .corner{
-    position:absolute; width:14px; height:14px;
-    border:1px solid rgba(255,255,255,.09);
-  }
-  .corner.tl{ top:clamp(20px,3.2vw,38px); left:clamp(24px,5vw,74px); border-right:0; border-bottom:0; }
-  .corner.br{ bottom:clamp(20px,3.2vw,38px); right:clamp(24px,5vw,74px); border-left:0; border-top:0; }
-
   @media (max-width: 860px){
-    .chapter{ max-width: 78vw; }
+    .chapter{ max-width: 84vw; bottom: clamp(120px,22vh,200px); }
     .readout{ display:none; }
-    .rail{ display:none; }
     .corner{ display:none; }
+    .dock{ gap: 12px; padding: 10px 14px; min-width: 90vw; }
+    .step-info{ display:none; }
+    .topbar{ font-size:9px; letter-spacing:.26em; }
+    .brand{ letter-spacing:.28em; }
   }
 </style>
 </head>
@@ -246,6 +304,12 @@
   <div class="corner tl"></div>
   <div class="corner br"></div>
 
+  <div class="hint" id="hint">
+    <span>Drag to orbit</span>
+    <span class="sep"></span>
+    <span>Scrub to navigate</span>
+  </div>
+
   <div id="chapters"></div>
 
   <div class="readout" id="readout">
@@ -255,15 +319,22 @@
     <div class="ro-value sign" id="ro-sign">( +, +, + )</div>
   </div>
 
-  <div class="rail" id="rail"></div>
+  <div class="dock">
+    <button class="play-btn" id="playBtn" aria-label="Play / Pause">
+      <svg id="playIcon" viewBox="0 0 12 12"><path d="M2 1.2v9.6L10.4 6 2 1.2z"/></svg>
+    </button>
 
-  <div class="hint" id="hint">
-    <span>Scroll</span>
-    <span class="stem"></span>
+    <div class="track-wrap">
+      <div class="track" id="track">
+        <div class="fill" id="fill"></div>
+        <div class="dots" id="dots"></div>
+      </div>
+      <div class="knob" id="knob"></div>
+    </div>
+
+    <div class="step-info" id="stepInfo">01 / 07</div>
   </div>
 </div>
-
-<div id="scroll-space"></div>
 
 <div id="loader"><div class="lm"></div></div>
 
@@ -278,14 +349,15 @@
 
 <script type="module">
 import * as THREE from 'three';
-import { EffectComposer }   from 'three/addons/postprocessing/EffectComposer.js';
-import { RenderPass }       from 'three/addons/postprocessing/RenderPass.js';
-import { UnrealBloomPass }  from 'three/addons/postprocessing/UnrealBloomPass.js';
-import { OutputPass }       from 'three/addons/postprocessing/OutputPass.js';
-import { ShaderPass }       from 'three/addons/postprocessing/ShaderPass.js';
+import { OrbitControls }  from 'three/addons/controls/OrbitControls.js';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass }     from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+import { OutputPass }     from 'three/addons/postprocessing/OutputPass.js';
+import { ShaderPass }     from 'three/addons/postprocessing/ShaderPass.js';
 
 /* ══════════════════════════════════════════════════════════════
-   0 · MATH HELPERS
+   MATH HELPERS
    ══════════════════════════════════════════════════════════════ */
 const clamp = (x, a, b) => Math.min(b, Math.max(a, x));
 const lerp  = (a, b, t) => a + (b - a) * t;
@@ -295,28 +367,28 @@ function smoothstep(a, b, x){
 }
 
 /* ══════════════════════════════════════════════════════════════
-   1 · CONSTANTS
+   CONSTANTS
    ══════════════════════════════════════════════════════════════ */
-const HALF = 5;                 // half-extent of the glass cube
+const HALF = 5;
 const PLANE_SIZE = HALF * 2;
 
-const C_X = 0x49d8ff;
-const C_Y = 0x5cffb1;
-const C_Z = 0xb98cff;
+const C_X = 0x6fc8ff;
+const C_Y = 0x72ffc0;
+const C_Z = 0xbba8ff;
 
 const OCTANTS = [
-  { s:[ 1, 1, 1], color:'#5ee7ff', label:'(+, +, +)' },
-  { s:[ 1, 1,-1], color:'#6f8cff', label:'(+, +, −)' },
-  { s:[ 1,-1, 1], color:'#a78bfa', label:'(+, −, +)' },
-  { s:[ 1,-1,-1], color:'#f472b6', label:'(+, −, −)' },
-  { s:[-1, 1, 1], color:'#34d399', label:'(−, +, +)' },
-  { s:[-1, 1,-1], color:'#a3e635', label:'(−, +, −)' },
-  { s:[-1,-1, 1], color:'#fbbf24', label:'(−, −, +)' },
-  { s:[-1,-1,-1], color:'#fb7185', label:'(−, −, −)' }
+  { s:[ 1, 1, 1], color:'#7fd8ff', label:'(+, +, +)' },
+  { s:[ 1, 1,-1], color:'#8ca2ff', label:'(+, +, −)' },
+  { s:[ 1,-1, 1], color:'#b79dff', label:'(+, −, +)' },
+  { s:[ 1,-1,-1], color:'#f2a1c9', label:'(+, −, −)' },
+  { s:[-1, 1, 1], color:'#62dfae', label:'(−, +, +)' },
+  { s:[-1, 1,-1], color:'#b8e17a', label:'(−, +, −)' },
+  { s:[-1,-1, 1], color:'#f0c47c', label:'(−, −, +)' },
+  { s:[-1,-1,-1], color:'#f0949c', label:'(−, −, −)' }
 ];
 
 /* ══════════════════════════════════════════════════════════════
-   2 · RENDERER · SCENE · CAMERA
+   RENDERER · SCENE · CAMERA
    ══════════════════════════════════════════════════════════════ */
 const canvas = document.getElementById('gl');
 const renderer = new THREE.WebGLRenderer({
@@ -328,43 +400,66 @@ const renderer = new THREE.WebGLRenderer({
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 1.02;
+renderer.toneMappingExposure = 0.92;
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.setClearColor(0x000000, 1);
 
 const scene = new THREE.Scene();
 
 const camera = new THREE.PerspectiveCamera(
-  40,
+  38,
   window.innerWidth / window.innerHeight,
   0.1,
   400
 );
-camera.position.set(0, 0.5, 14);
+camera.position.set(8.2, 6.0, 11.8);
 
 /* ══════════════════════════════════════════════════════════════
-   3 · POST PROCESSING
+   ORBIT CONTROLS
+   ══════════════════════════════════════════════════════════════ */
+const controls = new OrbitControls(camera, canvas);
+controls.enableDamping = true;
+controls.dampingFactor = 0.055;
+controls.rotateSpeed = 0.72;
+controls.zoomSpeed = 0;
+controls.enableZoom = false;      // wheel is reserved (not used here) — keeps page gesture-free
+controls.enablePan = false;
+controls.minPolarAngle = 0.32;
+controls.maxPolarAngle = Math.PI - 0.32;
+controls.autoRotate = true;
+controls.autoRotateSpeed = 0.35;
+controls.target.set(0, 0, 0);
+
+let lastInteractionTime = 0;
+
+controls.addEventListener('start', () => {
+  controls.autoRotate = false;
+});
+controls.addEventListener('end', () => {
+  lastInteractionTime = performance.now() / 1000;
+});
+
+/* ══════════════════════════════════════════════════════════════
+   POST PROCESSING — balanced, tasteful bloom
    ══════════════════════════════════════════════════════════════ */
 const composer = new EffectComposer(renderer);
 composer.setSize(window.innerWidth, window.innerHeight);
-
 composer.addPass(new RenderPass(scene, camera));
 
 const bloom = new UnrealBloomPass(
   new THREE.Vector2(window.innerWidth, window.innerHeight),
-  0.62,   // strength
-  0.85,   // radius
-  0.18    // threshold
+  0.22,   // strength — gentle
+  0.62,   // radius
+  0.72    // threshold — only the brightest cores bloom
 );
 composer.addPass(bloom);
-
 composer.addPass(new OutputPass());
 
-/* --- chromatic aberration + vignette + grain ------------------ */
+/* chromatic aberration + vignette + film grain */
 const CAPassDef = {
   uniforms: {
     tDiffuse: { value: null },
-    uAmount:  { value: 1.0 },
+    uAmount:  { value: 0.5 },
     uTime:    { value: 0.0 }
   },
   vertexShader: /* glsl */`
@@ -384,18 +479,18 @@ const CAPassDef = {
     void main(){
       vec2 d  = vUv - 0.5;
       float r2 = dot(d, d);
-      vec2 off = d * r2 * uAmount * 0.0075;
+      vec2 off = d * r2 * uAmount * 0.0055;
 
       vec3 col;
       col.r = texture2D(tDiffuse, vUv + off).r;
       col.g = texture2D(tDiffuse, vUv).g;
       col.b = texture2D(tDiffuse, vUv - off).b;
 
-      float vig = smoothstep(1.25, 0.18, length(d) * 1.55);
-      col *= mix(0.68, 1.0, vig);
+      float vig = smoothstep(1.3, 0.22, length(d) * 1.5);
+      col *= mix(0.72, 1.0, vig);
 
       float g = fract(sin(dot(vUv * (1.0 + fract(uTime)), vec2(12.9898, 78.233))) * 43758.5453);
-      col += (g - 0.5) * 0.011;
+      col += (g - 0.5) * 0.008;
 
       gl_FragColor = vec4(col, 1.0);
     }
@@ -405,7 +500,7 @@ const caPass = new ShaderPass(CAPassDef);
 composer.addPass(caPass);
 
 /* ══════════════════════════════════════════════════════════════
-   4 · SHARED TEXTURES
+   GLOW TEXTURE
    ══════════════════════════════════════════════════════════════ */
 function makeGlowTexture(){
   const s = 256;
@@ -414,9 +509,9 @@ function makeGlowTexture(){
   const ctx = c.getContext('2d');
   const g = ctx.createRadialGradient(s/2, s/2, 0, s/2, s/2, s/2);
   g.addColorStop(0.00, 'rgba(255,255,255,1)');
-  g.addColorStop(0.14, 'rgba(200,238,255,0.72)');
-  g.addColorStop(0.36, 'rgba(120,190,255,0.22)');
-  g.addColorStop(0.66, 'rgba(70,130,255,0.06)');
+  g.addColorStop(0.18, 'rgba(210,235,255,0.55)');
+  g.addColorStop(0.42, 'rgba(130,190,255,0.16)');
+  g.addColorStop(0.72, 'rgba(70,130,255,0.035)');
   g.addColorStop(1.00, 'rgba(0,0,0,0)');
   ctx.fillStyle = g;
   ctx.fillRect(0, 0, s, s);
@@ -429,7 +524,7 @@ function makeGlowTexture(){
 const GLOW_TEX = makeGlowTexture();
 
 /* ══════════════════════════════════════════════════════════════
-   5 · GLASS PLANE SHADER
+   GLASS PLANE SHADER  — subtle, premium
    ══════════════════════════════════════════════════════════════ */
 const GLASS_VERT = /* glsl */`
   varying vec2 vUv;
@@ -482,30 +577,30 @@ const GLASS_FRAG = /* glsl */`
 
     float fres = 1.0 - abs(dot(N, V));
 
-    /* --- chromatic fringe: each channel peaks at a different angle --- */
-    float cr = pow(fres, 2.35);
-    float cg = pow(fres, 3.00);
-    float cb = pow(fres, 3.85);
+    /* chromatic fringe — subtle */
+    float cr = pow(fres, 2.6);
+    float cg = pow(fres, 3.2);
+    float cb = pow(fres, 3.9);
     vec3 fringe = vec3(cr, cg, cb);
 
-    /* --- radial reveal sweep from origin --- */
+    /* radial reveal sweep from origin */
     float d  = length(vUv - 0.5) * 2.0;
-    float rv = smoothstep(0.0, 0.42, uReveal * 2.4 - d);
+    float rv = smoothstep(0.0, 0.46, uReveal * 2.4 - d);
 
-    /* --- coordinate grid --- */
+    /* coordinate grid — fine hairlines */
     vec2 gc = vUv * uGridScale;
     vec2 gw = fwidth(gc);
     vec2 gf = abs(fract(gc - 0.5) - 0.5) / max(gw, vec2(1e-5));
     float grid = 1.0 - min(min(gf.x, gf.y), 1.0);
 
-    /* --- frosted micro-grain --- */
+    /* frosted micro-grain */
     float frost = vnoise(vUv * 190.0) * 0.6
-                + vnoise(vUv * 46.0 + uTime * 0.02) * 0.4;
+                + vnoise(vUv * 46.0 + uTime * 0.015) * 0.4;
 
-    vec3 col  = uTint * fringe * 1.75;
-    col += uTint * grid * uGridOpacity * (0.20 + 1.15 * fres);
-    col += uTint * frost * 0.048;
-    col += uTint * exp(-d * d * 7.0) * 0.30;
+    vec3 col  = uTint * fringe * 0.52;
+    col += uTint * grid * uGridOpacity * (0.09 + 0.42 * fres);
+    col += uTint * frost * 0.022;
+    col += uTint * exp(-d * d * 8.5) * 0.10;
 
     col *= rv * uOpacity;
 
@@ -520,7 +615,7 @@ function createGlassPlane(tint, rotX, rotY){
       uTime:        { value: 0 },
       uReveal:      { value: 0 },
       uOpacity:     { value: 1 },
-      uGridOpacity: { value: 0.55 },
+      uGridOpacity: { value: 0.42 },
       uGridScale:   { value: 20.0 },
       uTint:        { value: new THREE.Color(tint) }
     },
@@ -539,14 +634,14 @@ function createGlassPlane(tint, rotX, rotY){
   return mesh;
 }
 
-const planeXY = createGlassPlane(0x4fa8ff, 0, 0);
-const planeYZ = createGlassPlane(0x9a7bff, 0, Math.PI / 2);
-const planeXZ = createGlassPlane(0x3fe0c8, -Math.PI / 2, 0);
+const planeXY = createGlassPlane(0x4f9fe0, 0, 0);
+const planeYZ = createGlassPlane(0x8a72d8, 0, Math.PI / 2);
+const planeXZ = createGlassPlane(0x3fb8a6, -Math.PI / 2, 0);
 
 scene.add(planeXY, planeYZ, planeXZ);
 
 /* ══════════════════════════════════════════════════════════════
-   6 · AXES
+   AXES
    ══════════════════════════════════════════════════════════════ */
 function createAxis(colorHex){
   const group = new THREE.Group();
@@ -554,19 +649,19 @@ function createAxis(colorHex){
   const mat = new THREE.MeshBasicMaterial({
     color: colorHex,
     transparent: true,
-    opacity: 0.9,
+    opacity: 0.62,
     blending: THREE.AdditiveBlending,
     depthWrite: false
   });
 
   const rod = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.012, 0.012, PLANE_SIZE, 12, 1, true),
+    new THREE.CylinderGeometry(0.011, 0.011, PLANE_SIZE, 10, 1, true),
     mat
   );
   rod.renderOrder = 2;
 
   const cone = new THREE.Mesh(
-    new THREE.ConeGeometry(0.062, 0.26, 18),
+    new THREE.ConeGeometry(0.05, 0.22, 16),
     mat
   );
   cone.renderOrder = 2;
@@ -576,17 +671,17 @@ function createAxis(colorHex){
 }
 
 const axisX = createAxis(C_X);
-axisX.group.rotation.z = -Math.PI / 2;   // local +Y → world +X
+axisX.group.rotation.z = -Math.PI / 2;
 
-const axisY = createAxis(C_Y);           // local +Y → world +Y
+const axisY = createAxis(C_Y);
 
 const axisZ = createAxis(C_Z);
-axisZ.group.rotation.x = Math.PI / 2;    // local +Y → world +Z
+axisZ.group.rotation.x = Math.PI / 2;
 
 scene.add(axisX.group, axisY.group, axisZ.group);
 
 /* ══════════════════════════════════════════════════════════════
-   7 · TEXT SPRITES
+   TEXT LABELS
    ══════════════════════════════════════════════════════════════ */
 function makeLabel(text, colorHex, worldHeight, opts = {}){
   const dpr      = 2;
@@ -595,7 +690,6 @@ function makeLabel(text, colorHex, worldHeight, opts = {}){
   const spacing  = opts.spacing  || '0.14em';
   const fontStr  = `${weight} ${fontSize}px Inter, "Helvetica Neue", Helvetica, Arial, sans-serif`;
 
-  // measure
   const meas = document.createElement('canvas').getContext('2d');
   meas.font = fontStr;
   try { meas.letterSpacing = spacing; } catch(e){}
@@ -617,9 +711,9 @@ function makeLabel(text, colorHex, worldHeight, opts = {}){
   ctx.textBaseline = 'middle';
   ctx.fillStyle    = colorHex;
   ctx.shadowColor  = colorHex;
-  ctx.shadowBlur   = 26;
+  ctx.shadowBlur   = 18;
   ctx.fillText(text, w / 2, h / 2);
-  ctx.shadowBlur   = 9;
+  ctx.shadowBlur   = 5;
   ctx.fillText(text, w / 2, h / 2);
 
   const tex = new THREE.CanvasTexture(c);
@@ -641,71 +735,70 @@ function makeLabel(text, colorHex, worldHeight, opts = {}){
   const aspect = w / h;
   spr.scale.set(worldHeight * aspect, worldHeight, 1);
   spr.renderOrder = 20;
+  spr.userData.aspect = aspect;
   return spr;
 }
 
-/* --- axis labels --- */
-const axisLabelX = makeLabel('x', '#8fe3ff', 0.66, { fontSize: 84, weight: 300 });
-const axisLabelY = makeLabel('y', '#9dffd0', 0.66, { fontSize: 84, weight: 300 });
-const axisLabelZ = makeLabel('z', '#d3b6ff', 0.66, { fontSize: 84, weight: 300 });
-axisLabelX.position.y = HALF + 0.72;
-axisLabelY.position.y = HALF + 0.72;
-axisLabelZ.position.y = HALF + 0.72;
-axisX.group.add(axisLabelX);
-axisY.group.add(axisLabelY);
-axisZ.group.add(axisLabelZ);
-
-/* --- octant labels --- */
+let axisLabelX, axisLabelY, axisLabelZ, originLabel;
 const octantLabels = [];
-OCTANTS.forEach((o, i) => {
-  const spr = makeLabel(o.label, o.color, 0.52, { fontSize: 60, weight: 400, spacing: '0.1em' });
-  spr.position.set(o.s[0] * 4.0, o.s[1] * 4.0, o.s[2] * 4.0);
-  scene.add(spr);
-  octantLabels.push(spr);
-});
 
-/* --- origin label --- */
-const originLabel = makeLabel('O', '#cfe6ff', 0.44, { fontSize: 60, weight: 400 });
-originLabel.position.set(-0.42, -0.42, 0.42);
-scene.add(originLabel);
+function buildLabels(){
+  // axis labels
+  axisLabelX = makeLabel('x', '#8fdcff', 0.6, { fontSize: 84, weight: 300 });
+  axisLabelY = makeLabel('y', '#9fffd2', 0.6, { fontSize: 84, weight: 300 });
+  axisLabelZ = makeLabel('z', '#d6c2ff', 0.6, { fontSize: 84, weight: 300 });
+  axisLabelX.position.y = HALF + 0.68;
+  axisLabelY.position.y = HALF + 0.68;
+  axisLabelZ.position.y = HALF + 0.68;
+  axisX.group.add(axisLabelX);
+  axisY.group.add(axisLabelY);
+  axisZ.group.add(axisLabelZ);
+
+  // origin
+  originLabel = makeLabel('O', '#cfe6ff', 0.4, { fontSize: 60, weight: 400 });
+  originLabel.position.set(-0.4, -0.4, 0.4);
+  scene.add(originLabel);
+
+  // octant labels
+  OCTANTS.forEach((o) => {
+    const spr = makeLabel(o.label, o.color, 0.46, { fontSize: 58, weight: 400, spacing: '0.1em' });
+    spr.position.set(o.s[0] * 3.95, o.s[1] * 3.95, o.s[2] * 3.95);
+    scene.add(spr);
+    octantLabels.push(spr);
+  });
+}
 
 /* ══════════════════════════════════════════════════════════════
-   8 · NODE CLOUDS (one per octant)
+   NODE CLOUDS
    ══════════════════════════════════════════════════════════════ */
 const NODE_VERT = /* glsl */`
   uniform float uTime;
   uniform float uAppear;
   uniform float uSize;
   uniform float uPixelRatio;
-
   attribute float aSeed;
-
   varying float vSeed;
 
   void main(){
     vSeed = aSeed;
-
     vec3 p = position;
     float s = aSeed * 6.2831;
-    p.x += sin(uTime * 0.35 + s)        * 0.07;
-    p.y += cos(uTime * 0.31 + s * 1.7)  * 0.07;
-    p.z += sin(uTime * 0.27 + s * 2.3)  * 0.07;
+    p.x += sin(uTime * 0.35 + s)        * 0.06;
+    p.y += cos(uTime * 0.31 + s * 1.7)  * 0.06;
+    p.z += sin(uTime * 0.27 + s * 2.3)  * 0.06;
 
     vec4 mv = modelViewMatrix * vec4(p, 1.0);
     gl_Position = projectionMatrix * mv;
-
     float sz = uSize * uPixelRatio / max(-mv.z, 0.001);
-    gl_PointSize = clamp(sz * uAppear, 0.0, 64.0);
+    gl_PointSize = clamp(sz * uAppear, 0.0, 48.0);
   }
 `;
 
 const NODE_FRAG = /* glsl */`
   precision highp float;
-
   uniform vec3  uColorA;
   uniform vec3  uColorB;
   uniform float uOpacity;
-
   varying float vSeed;
 
   void main(){
@@ -713,25 +806,24 @@ const NODE_FRAG = /* glsl */`
     float r = length(c) * 2.0;
     if (r > 1.0) discard;
 
-    float core = pow(1.0 - r, 2.6);
-    float halo = pow(1.0 - r, 0.75) * 0.34;
+    float core = pow(1.0 - r, 2.8);
+    float halo = pow(1.0 - r, 0.85) * 0.22;
 
     vec3 col = mix(uColorA, uColorB, vSeed);
     float a  = (core + halo) * uOpacity;
-
     gl_FragColor = vec4(col * a, 1.0);
   }
 `;
 
 const nodeClouds = [];
 
-OCTANTS.forEach((o, idx) => {
-  const COUNT = 18;
+OCTANTS.forEach((o) => {
+  const COUNT = 16;
   const positions = new Float32Array(COUNT * 3);
   const seeds     = new Float32Array(COUNT);
 
   for (let k = 0; k < COUNT; k++){
-    const r     = 1.15 + Math.pow(Math.random(), 0.68) * 3.05;
+    const r     = 1.2 + Math.pow(Math.random(), 0.7) * 2.9;
     const theta = Math.random() * Math.PI * 2;
     const phi   = Math.acos(2 * Math.random() - 1);
 
@@ -754,14 +846,14 @@ OCTANTS.forEach((o, idx) => {
   geo.setAttribute('aSeed',    new THREE.BufferAttribute(seeds, 1));
 
   const base = new THREE.Color(o.color);
-  const alt  = base.clone().lerp(new THREE.Color(0xffffff), 0.55);
+  const alt  = base.clone().lerp(new THREE.Color(0xffffff), 0.5);
 
   const mat = new THREE.ShaderMaterial({
     uniforms: {
       uTime:       { value: 0 },
       uAppear:     { value: 0 },
       uOpacity:    { value: 0 },
-      uSize:       { value: 46.0 },
+      uSize:       { value: 34.0 },
       uPixelRatio: { value: renderer.getPixelRatio() },
       uColorA:     { value: base },
       uColorB:     { value: alt }
@@ -780,19 +872,18 @@ OCTANTS.forEach((o, idx) => {
   nodeClouds.push({
     points: pts,
     mat,
-    baseColor: base.clone(),
-    weight: 0.125
+    baseColor: base.clone()
   });
 });
 
 /* ══════════════════════════════════════════════════════════════
-   9 · ORIGIN GLOW
+   ORIGIN
    ══════════════════════════════════════════════════════════════ */
 const originGroup = new THREE.Group();
 scene.add(originGroup);
 
 const originCore = new THREE.Mesh(
-  new THREE.SphereGeometry(0.055, 24, 16),
+  new THREE.SphereGeometry(0.05, 22, 16),
   new THREE.MeshBasicMaterial({
     color: 0xffffff,
     transparent: true,
@@ -805,24 +896,24 @@ originGroup.add(originCore);
 
 const originGlow = new THREE.Sprite(new THREE.SpriteMaterial({
   map: GLOW_TEX,
-  color: 0x9fd8ff,
+  color: 0x9fd4ff,
   transparent: true,
-  opacity: 0.85,
+  opacity: 0.5,
   blending: THREE.AdditiveBlending,
   depthWrite: false,
   depthTest: false
 }));
-originGlow.scale.set(2.4, 2.4, 1);
+originGlow.scale.set(1.8, 1.8, 1);
 originGroup.add(originGlow);
 
 /* ══════════════════════════════════════════════════════════════
-   10 · THE TRAVELER + GUIDE STRUCTURE
+   TRAVELER
    ══════════════════════════════════════════════════════════════ */
 const travelerGroup = new THREE.Group();
 scene.add(travelerGroup);
 
 const travelerCore = new THREE.Mesh(
-  new THREE.SphereGeometry(0.085, 24, 16),
+  new THREE.SphereGeometry(0.075, 22, 16),
   new THREE.MeshBasicMaterial({
     color: 0xffffff,
     transparent: true,
@@ -834,25 +925,25 @@ travelerGroup.add(travelerCore);
 
 const travelerGlow = new THREE.Sprite(new THREE.SpriteMaterial({
   map: GLOW_TEX,
-  color: 0xa9e2ff,
+  color: 0xafe1ff,
   transparent: true,
-  opacity: 0.95,
+  opacity: 0.7,
   blending: THREE.AdditiveBlending,
   depthWrite: false,
   depthTest: false
 }));
-travelerGlow.scale.set(1.5, 1.5, 1);
+travelerGlow.scale.set(1.1, 1.1, 1);
 travelerGroup.add(travelerGlow);
 
-/* --- guide segments (a glowing staircase from O → (x,0,0) → (x,y,0) → P) --- */
+/* guide segments */
 const guideMat = new THREE.MeshBasicMaterial({
-  color: 0x8fd0ff,
+  color: 0x8ecaff,
   transparent: true,
-  opacity: 0.5,
+  opacity: 0.32,
   blending: THREE.AdditiveBlending,
   depthWrite: false
 });
-const guideGeo = new THREE.CylinderGeometry(0.0085, 0.0085, 1, 8, 1, true);
+const guideGeo = new THREE.CylinderGeometry(0.0075, 0.0075, 1, 8, 1, true);
 
 const guideSegs = [];
 for (let i = 0; i < 3; i++){
@@ -862,15 +953,15 @@ for (let i = 0; i < 3; i++){
   guideSegs.push(m);
 }
 
-/* --- projection dots on the three coordinate planes --- */
+/* projection dots */
 const projMat = new THREE.MeshBasicMaterial({
-  color: 0x7fd4ff,
+  color: 0x8ecaff,
   transparent: true,
-  opacity: 0.7,
+  opacity: 0.55,
   blending: THREE.AdditiveBlending,
   depthWrite: false
 });
-const projGeo = new THREE.SphereGeometry(0.045, 16, 12);
+const projGeo = new THREE.SphereGeometry(0.038, 14, 10);
 
 const projDots = [];
 for (let i = 0; i < 3; i++){
@@ -896,14 +987,14 @@ function orientSegment(mesh, a, b){
 }
 
 /* ══════════════════════════════════════════════════════════════
-   11 · VOID DUST
+   VOID DUST — very subtle
    ══════════════════════════════════════════════════════════════ */
-const DUST_COUNT = 720;
+const DUST_COUNT = 480;
 const dustPos  = new Float32Array(DUST_COUNT * 3);
 const dustSeed = new Float32Array(DUST_COUNT);
 
 for (let i = 0; i < DUST_COUNT; i++){
-  const r     = 9 + Math.random() * 46;
+  const r     = 10 + Math.random() * 42;
   const theta = Math.random() * Math.PI * 2;
   const phi   = Math.acos(2 * Math.random() - 1);
   dustPos[i*3+0] = r * Math.sin(phi) * Math.cos(theta);
@@ -930,16 +1021,16 @@ const dustMat = new THREE.ShaderMaterial({
     void main(){
       vec3 p = position;
       float s = aSeed * 6.2831;
-      p.x += sin(uTime * 0.06 + s) * 0.9;
-      p.y += cos(uTime * 0.05 + s * 1.3) * 0.9;
+      p.x += sin(uTime * 0.06 + s) * 0.8;
+      p.y += cos(uTime * 0.05 + s * 1.3) * 0.8;
 
       vec4 mv = modelViewMatrix * vec4(p, 1.0);
       gl_Position = projectionMatrix * mv;
 
-      float sz = (0.9 + aSeed * 1.6) * uPixelRatio * (26.0 / max(-mv.z, 0.001));
-      gl_PointSize = clamp(sz, 0.4, 6.0);
+      float sz = (0.8 + aSeed * 1.3) * uPixelRatio * (22.0 / max(-mv.z, 0.001));
+      gl_PointSize = clamp(sz, 0.4, 5.0);
 
-      vTwinkle = 0.16 + 0.34 * (0.5 + 0.5 * sin(uTime * 0.55 + aSeed * 42.0));
+      vTwinkle = 0.10 + 0.22 * (0.5 + 0.5 * sin(uTime * 0.5 + aSeed * 42.0));
     }
   `,
   fragmentShader: /* glsl */`
@@ -949,8 +1040,8 @@ const dustMat = new THREE.ShaderMaterial({
       vec2 c = gl_PointCoord - 0.5;
       float r = length(c) * 2.0;
       if (r > 1.0) discard;
-      float a = pow(1.0 - r, 2.0) * vTwinkle;
-      gl_FragColor = vec4(vec3(0.72, 0.86, 1.0) * a, 1.0);
+      float a = pow(1.0 - r, 2.2) * vTwinkle;
+      gl_FragColor = vec4(vec3(0.72, 0.84, 1.0) * a, 1.0);
     }
   `,
   transparent: true,
@@ -963,45 +1054,7 @@ dust.renderOrder = 0;
 scene.add(dust);
 
 /* ══════════════════════════════════════════════════════════════
-   12 · CAMERA RIG
-   ══════════════════════════════════════════════════════════════ */
-const camKeys = [
-  new THREE.Vector3(  0.0,  0.5, 14.0 ),   //  0.00  void
-  new THREE.Vector3(  7.6,  4.6, 11.2 ),   //  0.16  XY plane
-  new THREE.Vector3( -8.6,  5.6,  9.6 ),   //  0.33  YZ plane
-  new THREE.Vector3(  0.6, 12.8,  8.2 ),   //  0.50  XZ plane
-  new THREE.Vector3( 10.8,  7.2, 10.6 ),   //  0.66  octants
-  new THREE.Vector3(  5.6,  4.2,  8.6 ),   //  0.83  traveler
-  new THREE.Vector3(  0.0,  8.6, 17.0 )    //  1.00  overview
-];
-
-const tgtKeys = [
-  new THREE.Vector3( 0.0,  0.0,  0.0 ),
-  new THREE.Vector3( 0.6,  0.6,  0.0 ),
-  new THREE.Vector3(-0.6,  0.6,  0.0 ),
-  new THREE.Vector3( 0.0,  0.0,  0.0 ),
-  new THREE.Vector3( 0.0,  0.0,  0.0 ),
-  new THREE.Vector3( 0.5,  0.2,  0.3 ),
-  new THREE.Vector3( 0.0,  0.0,  0.0 )
-];
-
-const camCurve = new THREE.CatmullRomCurve3(camKeys, false, 'catmullrom', 0.5);
-const tgtCurve = new THREE.CatmullRomCurve3(tgtKeys, false, 'catmullrom', 0.5);
-
-const _camPos = new THREE.Vector3();
-const _camTgt = new THREE.Vector3();
-const _parallax = new THREE.Vector3();
-
-let pointerX = 0, pointerY = 0;
-let pointerSmoothX = 0, pointerSmoothY = 0;
-
-window.addEventListener('pointermove', (e) => {
-  pointerX = (e.clientX / window.innerWidth  - 0.5) * 2;
-  pointerY = (e.clientY / window.innerHeight - 0.5) * 2;
-}, { passive: true });
-
-/* ══════════════════════════════════════════════════════════════
-   13 · UI
+   CHAPTERS
    ══════════════════════════════════════════════════════════════ */
 const CHAPTERS = [
   {
@@ -1061,306 +1114,126 @@ const chapterEls = CHAPTERS.map((c) => {
   return el;
 });
 
-const railEl = document.getElementById('rail');
-const railTicks = CHAPTERS.map(() => {
+/* Dots on the progress track */
+const dotsLayer = document.getElementById('dots');
+const chapterDots = CHAPTERS.map((c) => {
   const d = document.createElement('div');
-  d.className = 'tick';
-  railEl.appendChild(d);
+  d.className = 'dot';
+  d.style.left = (c.a * 100).toFixed(3) + '%';
+  dotsLayer.appendChild(d);
   return d;
 });
-// decorative line at the end of the rail
-const railLine = document.createElement('div');
-railLine.className = 'line';
-railEl.appendChild(railLine);
 
-const roCoords = document.getElementById('ro-coords');
-const roSign   = document.getElementById('ro-sign');
+const roCoords  = document.getElementById('ro-coords');
+const roSign    = document.getElementById('ro-sign');
 const readoutEl = document.getElementById('readout');
-const hintEl   = document.getElementById('hint');
+const hintEl    = document.getElementById('hint');
+const fillEl    = document.getElementById('fill');
+const knobEl    = document.getElementById('knob');
+const trackEl   = document.getElementById('track');
+const playBtn   = document.getElementById('playBtn');
+const playIcon  = document.getElementById('playIcon');
+const stepInfo  = document.getElementById('stepInfo');
 
 /* ══════════════════════════════════════════════════════════════
-   14 · SCROLL / PROGRESS
+   PLAYBACK STATE
    ══════════════════════════════════════════════════════════════ */
-let userScrolled = false;
+let isPlaying = true;
 let autoProgress = 0;
-let targetProgress = 0;
-let progress = 0;
+let autoDirection = 1;
+let autoHold = 0.8;   // small initial delay before motion
+let manualScrubUntil = 0;
 
-function maxScroll(){
-  return Math.max(1, document.documentElement.scrollHeight - window.innerHeight);
+let displayProgress = 0;
+
+const PLAY_SVG = 'M2 1.2v9.6L10.4 6 2 1.2z';
+const PAUSE_SVG = 'M2.4 1.2v9.6h2.6V1.2H2.4zm4.6 0v9.6h2.6V1.2H7z';
+
+function setPlaying(v){
+  isPlaying = v;
+  playIcon.innerHTML = `<path d="${v ? PAUSE_SVG : PLAY_SVG}"/>`;
 }
-function rawScroll(){
-  return clamp(window.scrollY / maxScroll(), 0, 1);
+setPlaying(true);
+
+playBtn.addEventListener('click', (e) => {
+  e.stopPropagation();
+  setPlaying(!isPlaying);
+});
+
+/* ---- scrubbing ---- */
+let scrubbing = false;
+
+function progressFromEvent(clientX){
+  const rect = trackEl.getBoundingClientRect();
+  const x = clamp(clientX - rect.left, 0, rect.width);
+  return x / rect.width;
 }
 
-function engageUser(){
-  if (userScrolled) return;
-  userScrolled = true;
-  // seamless hand-off: line the document scroll up with the autoplay position
-  window.scrollTo(0, autoProgress * maxScroll());
-  hintEl.style.opacity = '0';
+function setProgressFromScrub(clientX){
+  const p = progressFromEvent(clientX);
+  autoProgress = p;
+  autoDirection = 1;
+  autoHold = 0.6;
+  displayProgress = p;
+  manualScrubUntil = performance.now() / 1000 + 0.6;
+  updateDockUI(p);
+  applyProgress(p);
 }
 
-window.addEventListener('wheel',       engageUser, { passive: true });
-window.addEventListener('touchstart',  engageUser, { passive: true });
-window.addEventListener('keydown', (e) => {
-  if (['ArrowDown','ArrowUp','PageDown','PageUp','Home','End',' '].includes(e.key)) engageUser();
-}, { passive: true });
+trackEl.addEventListener('pointerdown', (e) => {
+  e.preventDefault();
+  scrubbing = true;
+  trackEl.setPointerCapture(e.pointerId);
+  setPlaying(false);
+  setProgressFromScrub(e.clientX);
+});
+
+trackEl.addEventListener('pointermove', (e) => {
+  if (!scrubbing) return;
+  setProgressFromScrub(e.clientX);
+});
+
+trackEl.addEventListener('pointerup', (e) => {
+  if (!scrubbing) return;
+  scrubbing = false;
+  try { trackEl.releasePointerCapture(e.pointerId); } catch(err){}
+});
+
+trackEl.addEventListener('pointercancel', () => { scrubbing = false; });
 
 /* ══════════════════════════════════════════════════════════════
-   15 · ANIMATION STATE
-   ══════════════════════════════════════════════════════════════ */
-let time = 0;
-let lastTime = performance.now() / 1000;
-
-const travelerState = { x: 0, y: 0, z: 0, visible: 0 };
-const weights = new Float32Array(8);
-
-/* ══════════════════════════════════════════════════════════════
-   16 · MAIN LOOP
-   ══════════════════════════════════════════════════════════════ */
-function tick(){
-  const now = performance.now() / 1000;
-  const dt  = Math.min(now - lastTime, 0.05);
-  lastTime  = now;
-  time     += dt;
-
-  /* ---------- progress ---------- */
-  if (!userScrolled){
-    autoProgress = Math.min(1, autoProgress + dt * 0.0125);
-    targetProgress = autoProgress;
-  } else {
-    targetProgress = rawScroll();
-  }
-
-  // framerate-independent damping — guarantees fluid, cut-free motion
-  const damp = 1 - Math.pow(0.02, dt);
-  progress += (targetProgress - progress) * damp;
-  const p = progress;
-
-  /* ---------- pointer parallax ---------- */
-  pointerSmoothX += (pointerX - pointerSmoothX) * (1 - Math.pow(0.05, dt));
-  pointerSmoothY += (pointerY - pointerSmoothY) * (1 - Math.pow(0.05, dt));
-
-  /* ---------- glass planes ---------- */
-  const revXY = smoothstep(0.125, 0.300, p);
-  const revYZ = smoothstep(0.265, 0.440, p);
-  const revXZ = smoothstep(0.405, 0.580, p);
-  const planeDim = 1.0 - 0.42 * smoothstep(0.62, 0.94, p);
-
-  planeXY.material.uniforms.uReveal.value  = revXY;
-  planeYZ.material.uniforms.uReveal.value  = revYZ;
-  planeXZ.material.uniforms.uReveal.value  = revXZ;
-
-  planeXY.material.uniforms.uOpacity.value = planeDim;
-  planeYZ.material.uniforms.uOpacity.value = planeDim;
-  planeXZ.material.uniforms.uOpacity.value = planeDim;
-
-  planeXY.material.uniforms.uTime.value = time;
-  planeYZ.material.uniforms.uTime.value = time;
-  planeXZ.material.uniforms.uTime.value = time;
-
-  /* ---------- axes ---------- */
-  const axisRev = smoothstep(0.02, 0.185, p);
-  const axisFade = 1.0 - 0.25 * smoothstep(0.65, 0.95, p);
-
-  [axisX, axisY, axisZ].forEach((a, i) => {
-    const r = Math.max(axisRev, 1e-4);
-    a.rod.scale.y  = r;
-    a.cone.scale.setScalar(r);
-    a.cone.position.y = (HALF + 0.13) * axisRev;
-    a.mat.opacity = (i === 1 ? 0.85 : 0.9) * axisFade;
-  });
-
-  const axisLabelOpacity = smoothstep(0.10, 0.22, p) * axisFade;
-  const labelY = (HALF + 0.72) * Math.max(axisRev, 1e-4);
-  axisLabelX.position.y = labelY;
-  axisLabelY.position.y = labelY;
-  axisLabelZ.position.y = labelY;
-  axisLabelX.material.opacity = axisLabelOpacity;
-  axisLabelY.material.opacity = axisLabelOpacity;
-  axisLabelZ.material.opacity = axisLabelOpacity;
-
-  /* ---------- origin ---------- */
-  const originIn = smoothstep(0.0, 0.08, p);
-  const originPulse = 1 + 0.14 * Math.sin(time * 1.6);
-  originCore.material.opacity = originIn * (0.9 + 0.1 * Math.sin(time * 2.2));
-  originGlow.material.opacity = originIn * (0.55 + 0.18 * Math.sin(time * 1.6));
-  originGlow.scale.setScalar(2.4 * originPulse * lerp(0.6, 1.0, originIn));
-  originLabel.material.opacity = smoothstep(0.05, 0.16, p) * (1 - smoothstep(0.62, 0.82, p)) * 0.8;
-
-  /* ---------- traveler position (continuous Lissajous) ---------- */
-  const w0 = 0.2;
-  const tx = 3.65 * Math.sin(w0 * 4 * time);
-  const ty = 3.15 * Math.sin(w0 * 6 * time + 1.0);
-  const tz = 3.40 * Math.sin(w0 * 3 * time + 2.0);
-
-  travelerState.x = tx;
-  travelerState.y = ty;
-  travelerState.z = tz;
-  travelerState.visible = smoothstep(0.715, 0.855, p);
-
-  const tv = travelerState.visible;
-
-  travelerGroup.position.set(tx, ty, tz);
-  travelerCore.material.opacity = tv;
-  travelerGlow.material.opacity = tv * (0.75 + 0.2 * Math.sin(time * 3.1));
-  travelerGlow.scale.setScalar(1.5 + 0.16 * Math.sin(time * 2.4));
-
-  /* ---------- guide staircase ---------- */
-  _vA.set(0, 0, 0);
-  _vB.set(tx, 0, 0);
-  orientSegment(guideSegs[0], _vA, _vB);
-
-  _vA.set(tx, 0, 0);
-  _vB.set(tx, ty, 0);
-  orientSegment(guideSegs[1], _vA, _vB);
-
-  _vA.set(tx, ty, 0);
-  _vB.set(tx, ty, tz);
-  orientSegment(guideSegs[2], _vA, _vB);
-
-  guideMat.opacity = tv * 0.55;
-
-  /* ---------- projection dots ---------- */
-  projDots[0].position.set(tx, ty, 0);
-  projDots[1].position.set(0, ty, tz);
-  projDots[2].position.set(tx, 0, tz);
-  projMat.opacity = tv * 0.8;
-
-  /* ---------- octant highlight weights ---------- */
-  const k = 0.62;
-  let sumW = 0;
-  for (let i = 0; i < 8; i++){
-    const s = OCTANTS[i].s;
-    const wx = 0.5 + 0.5 * s[0] * Math.tanh(tx / k);
-    const wy = 0.5 + 0.5 * s[1] * Math.tanh(ty / k);
-    const wz = 0.5 + 0.5 * s[2] * Math.tanh(tz / k);
-    weights[i] = wx * wy * wz;
-    sumW += weights[i];
-  }
-
-  /* ---------- octant labels ---------- */
-  for (let i = 0; i < 8; i++){
-    const appear = smoothstep(0.545 + i * 0.012, 0.545 + i * 0.012 + 0.11, p);
-    const w = weights[i];
-
-    // blend between "all equal" and "traveler-weighted"
-    const focus = lerp(0.16, 0.16 + 1.9 * w, tv);
-    const baseOpacity = 0.42 * appear;
-    const opacity = appear * (baseOpacity + focus * 0.95);
-
-    const spr = octantLabels[i];
-    spr.material.opacity = clamp(opacity, 0, 1);
-    const sc = 0.52 * (1 + 0.30 * w * tv) * lerp(0.75, 1.0, appear);
-    spr.scale.set(sc * (spr.scale.x / (spr.scale.y || 1)) * (spr.scale.y / sc), sc, 1);
-    // keep aspect ratio: recompute from stored aspect
-    const asp = spr.userData.aspect || 2.9;
-    spr.scale.set(sc * asp, sc, 1);
-  }
-
-  /* ---------- node clouds ---------- */
-  for (let i = 0; i < 8; i++){
-    const cloud = nodeClouds[i];
-    const appear = smoothstep(0.60 + i * 0.015, 0.60 + i * 0.015 + 0.15, p);
-    const w = weights[i];
-
-    cloud.mat.uniforms.uAppear.value  = appear * (0.55 + 0.65 * w * tv + 0.45 * (1 - tv));
-    cloud.mat.uniforms.uOpacity.value = appear * (0.55 + 1.05 * w * tv);
-    cloud.mat.uniforms.uTime.value    = time;
-
-    const pulse = 1 + 0.35 * w * tv;
-    cloud.mat.uniforms.uColorA.value.copy(cloud.baseColor).multiplyScalar(pulse);
-  }
-
-  /* ---------- dust ---------- */
-  dustMat.uniforms.uTime.value = time;
-  dust.rotation.y = time * 0.008;
-
-  /* ---------- camera ---------- */
-  camCurve.getPoint(p, _camPos);
-  tgtCurve.getPoint(p, _camTgt);
-
-  // idle drift — never perfectly still, never jarring
-  _camPos.x += Math.sin(time * 0.121) * 0.38;
-  _camPos.y += Math.sin(time * 0.093 + 1.7) * 0.30;
-  _camPos.z += Math.sin(time * 0.077 + 3.1) * 0.28;
-
-  camera.position.copy(_camPos);
-
-  // pointer parallax applied in camera space
-  _parallax.set(pointerSmoothX * 0.9, -pointerSmoothY * 0.7, 0);
-  _parallax.applyQuaternion(camera.quaternion);
-  camera.position.add(_parallax);
-
-  camera.lookAt(_camTgt);
-  camera.rotation.z += Math.sin(time * 0.063) * 0.012;
-
-  /* ---------- UI ---------- */
-  updateUI(p, tx, ty, tz, tv);
-
-  /* ---------- post ---------- */
-  caPass.uniforms.uTime.value = time;
-
-  composer.render();
-}
-
-/* ══════════════════════════════════════════════════════════════
-   17 · UI UPDATE
+   UI UPDATER
    ══════════════════════════════════════════════════════════════ */
 let lastActiveChapter = -1;
 
-function updateUI(p, tx, ty, tz, tv){
-  /* chapters — crossfading, stacked, absolutely positioned */
-  for (let i = 0; i < CHAPTERS.length; i++){
-    const c = CHAPTERS[i];
-    const fade = 0.045;
-    const a = smoothstep(c.a, c.a + fade, p) * (1 - smoothstep(c.b - fade, c.b, p));
-    const el = chapterEls[i];
-    el.style.opacity = a.toFixed(3);
-    el.style.transform = `translateY(${((1 - a) * 16).toFixed(2)}px)`;
-  }
+function updateDockUI(p){
+  fillEl.style.width = (p * 100).toFixed(3) + '%';
+  knobEl.style.left  = (p * 100).toFixed(3) + '%';
 
-  /* active chapter → rail */
   let active = 0;
   for (let i = 0; i < CHAPTERS.length; i++){
     if (p >= CHAPTERS[i].a) active = i;
   }
   if (active !== lastActiveChapter){
     lastActiveChapter = active;
-    railTicks.forEach((t, i) => t.classList.toggle('on', i === active));
+    chapterDots.forEach((d, i) => d.classList.toggle('on', i === active));
+    stepInfo.textContent = String(active + 1).padStart(2, '0') + ' / ' + String(CHAPTERS.length).padStart(2, '0');
   }
+}
 
-  /* dynamic title for the signature chapter */
-  const fmt = (v) => (v >= 0 ? '+' : '−') + Math.abs(v).toFixed(2);
-  const sgn = (v) => (v >= 0 ? '+' : '−');
-
-  const sig = `( ${sgn(tx)}, ${sgn(ty)}, ${sgn(tz)} )`;
-  const coords = `( ${fmt(tx)}, ${fmt(ty)}, ${fmt(tz)} )`;
-
-  roCoords.textContent = coords;
-  roSign.textContent   = sig;
-
-  // chapter 06 title follows the traveler
-  const c6 = CHAPTERS[5];
-  const el6 = chapterEls[5];
-  const title6 = el6.querySelector('.ch-title');
-  if (title6) title6.textContent = sig;
-  el6.querySelector('.ch-body').textContent =
-    `Every point carries a signature: the signs of its three coordinates. The point you are watching lives in octant ${sig}.`;
-
-  readoutEl.style.opacity = tv.toFixed(3);
+function updateChapterText(p){
+  for (let i = 0; i < CHAPTERS.length; i++){
+    const c = CHAPTERS[i];
+    const fade = 0.04;
+    const a = smoothstep(c.a, c.a + fade, p) * (1 - smoothstep(c.b - fade, c.b, p));
+    const el = chapterEls[i];
+    el.style.opacity = a.toFixed(3);
+    el.style.transform = `translateY(${((1 - a) * 14).toFixed(2)}px)`;
+  }
 }
 
 /* ══════════════════════════════════════════════════════════════
-   18 · ASPECT RATIO STORE FOR LABELS
-   ══════════════════════════════════════════════════════════════ */
-octantLabels.forEach((spr) => {
-  spr.userData.aspect = spr.scale.x / spr.scale.y;
-});
-
-/* ══════════════════════════════════════════════════════════════
-   19 · RESIZE
+   RESIZE
    ══════════════════════════════════════════════════════════════ */
 function onResize(){
   const w = window.innerWidth;
@@ -1380,79 +1253,234 @@ function onResize(){
   nodeClouds.forEach((c) => { c.mat.uniforms.uPixelRatio.value = pr; });
 }
 window.addEventListener('resize', onResize);
-onResize();
 
 /* ══════════════════════════════════════════════════════════════
-   20 · BOOT
+   APPLY PROGRESS TO SCENE
+   ══════════════════════════════════════════════════════════════ */
+const _weights = new Float32Array(8);
+
+function applyProgress(p, time, dt){
+  /* ---- glass planes ---- */
+  const revXY = smoothstep(0.125, 0.300, p);
+  const revYZ = smoothstep(0.265, 0.440, p);
+  const revXZ = smoothstep(0.405, 0.580, p);
+  const planeDim = 1.0 - 0.35 * smoothstep(0.62, 0.94, p);
+
+  planeXY.material.uniforms.uReveal.value  = revXY;
+  planeYZ.material.uniforms.uReveal.value  = revYZ;
+  planeXZ.material.uniforms.uReveal.value  = revXZ;
+
+  planeXY.material.uniforms.uOpacity.value = planeDim;
+  planeYZ.material.uniforms.uOpacity.value = planeDim;
+  planeXZ.material.uniforms.uOpacity.value = planeDim;
+
+  planeXY.material.uniforms.uTime.value = time;
+  planeYZ.material.uniforms.uTime.value = time;
+  planeXZ.material.uniforms.uTime.value = time;
+
+  /* ---- axes ---- */
+  const axisRev = smoothstep(0.02, 0.185, p);
+  const axisFade = 1.0 - 0.2 * smoothstep(0.65, 0.95, p);
+
+  [axisX, axisY, axisZ].forEach((a) => {
+    const r = Math.max(axisRev, 1e-4);
+    a.rod.scale.y = r;
+    a.cone.scale.setScalar(r);
+    a.cone.position.y = (HALF + 0.11) * axisRev;
+    a.mat.opacity = 0.62 * axisFade;
+  });
+
+  if (axisLabelX){
+    const op = smoothstep(0.10, 0.22, p) * axisFade * 0.85;
+    const ly = (HALF + 0.68) * Math.max(axisRev, 1e-4);
+    axisLabelX.position.y = ly;
+    axisLabelY.position.y = ly;
+    axisLabelZ.position.y = ly;
+    axisLabelX.material.opacity = op;
+    axisLabelY.material.opacity = op;
+    axisLabelZ.material.opacity = op;
+  }
+
+  /* ---- origin ---- */
+  const originIn = smoothstep(0.0, 0.08, p);
+  const originPulse = 1 + 0.12 * Math.sin(time * 1.5);
+  originCore.material.opacity = originIn * (0.85 + 0.1 * Math.sin(time * 2.0));
+  originGlow.material.opacity = originIn * (0.35 + 0.12 * Math.sin(time * 1.5));
+  originGlow.scale.setScalar(1.8 * originPulse * lerp(0.55, 1.0, originIn));
+
+  if (originLabel){
+    originLabel.material.opacity = smoothstep(0.05, 0.16, p) * (1 - smoothstep(0.62, 0.82, p)) * 0.7;
+  }
+
+  /* ---- traveler ---- */
+  const tx = 3.55 * Math.sin(0.215 * 4 * time);
+  const ty = 3.05 * Math.sin(0.215 * 6 * time + 1.0);
+  const tz = 3.30 * Math.sin(0.215 * 3 * time + 2.0);
+  const tv = smoothstep(0.715, 0.855, p);
+
+  travelerGroup.position.set(tx, ty, tz);
+  travelerCore.material.opacity = tv;
+  travelerGlow.material.opacity = tv * (0.55 + 0.15 * Math.sin(time * 3.0));
+  travelerGlow.scale.setScalar(1.1 + 0.12 * Math.sin(time * 2.3));
+
+  /* ---- guide staircase ---- */
+  _vA.set(0, 0, 0);      _vB.set(tx, 0, 0);   orientSegment(guideSegs[0], _vA, _vB);
+  _vA.set(tx, 0, 0);     _vB.set(tx, ty, 0);  orientSegment(guideSegs[1], _vA, _vB);
+  _vA.set(tx, ty, 0);    _vB.set(tx, ty, tz); orientSegment(guideSegs[2], _vA, _vB);
+  guideMat.opacity = tv * 0.32;
+
+  /* ---- projection dots ---- */
+  projDots[0].position.set(tx, ty, 0);
+  projDots[1].position.set(0, ty, tz);
+  projDots[2].position.set(tx, 0, tz);
+  projMat.opacity = tv * 0.55;
+
+  /* ---- octant weights ---- */
+  const k = 0.62;
+  for (let i = 0; i < 8; i++){
+    const s = OCTANTS[i].s;
+    const wx = 0.5 + 0.5 * s[0] * Math.tanh(tx / k);
+    const wy = 0.5 + 0.5 * s[1] * Math.tanh(ty / k);
+    const wz = 0.5 + 0.5 * s[2] * Math.tanh(tz / k);
+    _weights[i] = wx * wy * wz;
+  }
+
+  /* ---- octant labels ---- */
+  for (let i = 0; i < 8; i++){
+    const spr = octantLabels[i];
+    if (!spr) continue;
+
+    const appear = smoothstep(0.545 + i * 0.012, 0.545 + i * 0.012 + 0.11, p);
+    const w = _weights[i];
+    const focus = lerp(0.14, 0.14 + 1.5 * w, tv);
+    const opacity = appear * (0.28 + focus * 0.7);
+
+    spr.material.opacity = clamp(opacity, 0, 0.95);
+
+    const sc = 0.46 * (1 + 0.22 * w * tv) * lerp(0.8, 1.0, appear);
+    spr.scale.set(sc * spr.userData.aspect, sc, 1);
+  }
+
+  /* ---- node clouds ---- */
+  for (let i = 0; i < 8; i++){
+    const cloud = nodeClouds[i];
+    const appear = smoothstep(0.60 + i * 0.015, 0.60 + i * 0.015 + 0.15, p);
+    const w = _weights[i];
+
+    cloud.mat.uniforms.uAppear.value  = appear * (0.55 + 0.55 * w * tv + 0.4 * (1 - tv));
+    cloud.mat.uniforms.uOpacity.value = appear * (0.4 + 0.7 * w * tv);
+    cloud.mat.uniforms.uTime.value    = time;
+
+    const pulse = 1 + 0.25 * w * tv;
+    cloud.mat.uniforms.uColorA.value.copy(cloud.baseColor).multiplyScalar(pulse);
+  }
+
+  /* ---- readout & hint ---- */
+  const fmt = (v) => (v >= 0 ? '+' : '−') + Math.abs(v).toFixed(2);
+  const sgn = (v) => (v >= 0 ? '+' : '−');
+
+  roCoords.textContent = `( ${fmt(tx)}, ${fmt(ty)}, ${fmt(tz)} )`;
+  roSign.textContent   = `( ${sgn(tx)}, ${sgn(ty)}, ${sgn(tz)} )`;
+  readoutEl.style.opacity = tv.toFixed(3);
+
+  /* live-update chapter 06 title */
+  const el6 = chapterEls[5];
+  const title6 = el6.querySelector('.ch-title');
+  if (title6) title6.textContent = `( ${sgn(tx)}, ${sgn(ty)}, ${sgn(tz)} )`;
+
+  const op = smoothstep(0.05, 0.12, p) * (1 - smoothstep(0.55, 0.75, p));
+  hintEl.style.opacity = (op * 0.7).toFixed(3);
+}
+
+/* ══════════════════════════════════════════════════════════════
+   MAIN LOOP
+   ══════════════════════════════════════════════════════════════ */
+let time = 0;
+let lastTime = performance.now() / 1000;
+
+function tick(){
+  const now = performance.now() / 1000;
+  const dt  = Math.min(now - lastTime, 0.05);
+  lastTime  = now;
+  time     += dt;
+
+  /* ---- autoplay progression ---- */
+  const nowSec = performance.now() / 1000;
+  const inManualWindow = nowSec < manualScrubUntil;
+
+  if (isPlaying && !inManualWindow && !scrubbing){
+    if (autoHold > 0){
+      autoHold -= dt;
+    } else {
+      autoProgress += dt * 0.014 * autoDirection;
+      if (autoProgress >= 1){
+        autoProgress = 1;
+        autoDirection = -1;
+        autoHold = 3.5;
+      } else if (autoProgress <= 0){
+        autoProgress = 0;
+        autoDirection = 1;
+        autoHold = 1.8;
+      }
+    }
+  }
+
+  /* ---- damped display progress ---- */
+  if (!scrubbing){
+    const dmp = 1 - Math.pow(0.03, dt);
+    displayProgress += (autoProgress - displayProgress) * dmp;
+  } else {
+    displayProgress = autoProgress;
+  }
+
+  const p = clamp(displayProgress, 0, 1);
+
+  /* ---- apply to scene ---- */
+  applyProgress(p, time, dt);
+
+  /* ---- UI ---- */
+  updateChapterText(p);
+  if (!scrubbing) updateDockUI(p);
+
+  /* ---- dust ---- */
+  dustMat.uniforms.uTime.value = time;
+  dust.rotation.y = time * 0.008;
+
+  /* ---- controls idle resume ---- */
+  if (!controls.autoRotate && nowSec - lastInteractionTime > 3.2){
+    controls.autoRotate = true;
+  }
+  controls.update();
+
+  /* ---- post ---- */
+  caPass.uniforms.uTime.value = time;
+
+  composer.render();
+}
+
+/* ══════════════════════════════════════════════════════════════
+   BOOT
    ══════════════════════════════════════════════════════════════ */
 async function boot(){
-  try { await document.fonts.ready; } catch(e){}
-  // give the browser one paint cycle with fonts in place
-  await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+  try {
+    await Promise.race([
+      document.fonts.ready,
+      new Promise(r => setTimeout(r, 1200))
+    ]);
+  } catch(e){}
 
-  // regenerate labels now that webfonts are available
-  rebuildLabels();
+  await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+
+  buildLabels();
+  onResize();
+
+  updateDockUI(0);
 
   const loader = document.getElementById('loader');
   loader.classList.add('gone');
   setTimeout(() => loader.remove(), 1400);
 
   renderer.setAnimationLoop(tick);
-}
-
-/* Re-create text sprites once Inter has loaded, for crisp typography. */
-function rebuildLabels(){
-  const specs = [
-    { spr: axisLabelX, text: 'x', color: '#8fe3ff', h: 0.66, o: { fontSize: 84, weight: 300 } },
-    { spr: axisLabelY, text: 'y', color: '#9dffd0', h: 0.66, o: { fontSize: 84, weight: 300 } },
-    { spr: axisLabelZ, text: 'z', color: '#d3b6ff', h: 0.66, o: { fontSize: 84, weight: 300 } },
-    { spr: originLabel, text: 'O', color: '#cfe6ff', h: 0.44, o: { fontSize: 60, weight: 400 } }
-  ];
-
-  specs.forEach((spec) => {
-    const parent = spec.spr.parent;
-    const pos = spec.spr.position.clone();
-    const op = spec.spr.material.opacity;
-    const fresh = makeLabel(spec.text, spec.color, spec.h, spec.o);
-    fresh.position.copy(pos);
-    fresh.material.opacity = op;
-    parent.remove(spec.spr);
-    spec.spr.material.map.dispose();
-    spec.spr.material.dispose();
-    parent.add(fresh);
-    spec.spr = fresh;
-  });
-
-  // reassign references
-  axisX.group.remove(axisX.group.children.find(c => c.isSprite));
-  // simpler: rebuild by clearing and re-adding
-  [axisX, axisY, axisZ].forEach((a) => {
-    a.group.children.filter(c => c.isSprite).forEach(c => a.group.remove(c));
-  });
-
-  const lx = makeLabel('x', '#8fe3ff', 0.66, { fontSize: 84, weight: 300 });
-  const ly = makeLabel('y', '#9dffd0', 0.66, { fontSize: 84, weight: 300 });
-  const lz = makeLabel('z', '#d3b6ff', 0.66, { fontSize: 84, weight: 300 });
-  lx.position.y = HALF + 0.72;
-  ly.position.y = HALF + 0.72;
-  lz.position.y = HALF + 0.72;
-  axisX.group.add(lx);
-  axisY.group.add(ly);
-  axisZ.group.add(lz);
-
-  // octant labels
-  octantLabels.forEach((spr, i) => {
-    const o = OCTANTS[i];
-    const fresh = makeLabel(o.label, o.color, 0.52, { fontSize: 60, weight: 400, spacing: '0.1em' });
-    fresh.position.copy(spr.position);
-    fresh.material.opacity = spr.material.opacity;
-    fresh.userData.aspect = fresh.scale.x / fresh.scale.y;
-    scene.remove(spr);
-    spr.material.map.dispose();
-    spr.material.dispose();
-    scene.add(fresh);
-    octantLabels[i] = fresh;
-  });
 }
 
 boot();
