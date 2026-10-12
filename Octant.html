@@ -1,725 +1,1461 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cinematic 3D Octants Visualization</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: radial-gradient(circle at center, #0a0a2a 0%, #000000 100%);
-            color: #fff;
-            overflow: hidden;
-            height: 100vh;
-        }
-        
-        #container {
-            position: relative;
-            width: 100%;
-            height: 100%;
-        }
-        
-        #canvas-container {
-            width: 100%;
-            height: 100%;
-        }
-        
-        #ui {
-            position: absolute;
-            top: 20px;
-            left: 20px;
-            z-index: 100;
-            background: rgba(10, 15, 30, 0.85);
-            padding: 20px;
-            border-radius: 15px;
-            max-width: 320px;
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(100, 150, 255, 0.2);
-            box-shadow: 0 0 30px rgba(0, 50, 150, 0.3);
-        }
-        
-        h1 {
-            font-size: 26px;
-            margin-bottom: 20px;
-            background: linear-gradient(90deg, #4cc9f0, #f72585);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            text-shadow: 0 0 20px rgba(76, 201, 240, 0.3);
-        }
-        
-        .control-group {
-            margin-bottom: 20px;
-            padding-bottom: 15px;
-            border-bottom: 1px solid rgba(100, 150, 255, 0.2);
-        }
-        
-        h2 {
-            font-size: 18px;
-            margin-bottom: 12px;
-            color: #4cc9f0;
-            display: flex;
-            align-items: center;
-        }
-        
-        h2::before {
-            content: "";
-            display: inline-block;
-            width: 4px;
-            height: 16px;
-            background: #f72585;
-            margin-right: 8px;
-            border-radius: 2px;
-        }
-        
-        .button-group {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 8px;
-        }
-        
-        button {
-            background: linear-gradient(135deg, #4361ee, #3a0ca3);
-            color: white;
-            border: none;
-            padding: 10px 15px;
-            border-radius: 8px;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            font-size: 14px;
-            flex: 1;
-            min-width: 120px;
-            box-shadow: 0 4px 10px rgba(67, 97, 238, 0.3);
-            position: relative;
-            overflow: hidden;
-        }
-        
-        button::before {
-            content: "";
-            position: absolute;
-            top: 0;
-            left: -100%;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
-            transition: 0.5s;
-        }
-        
-        button:hover::before {
-            left: 100%;
-        }
-        
-        button:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 7px 15px rgba(67, 97, 238, 0.4);
-        }
-        
-        button:active {
-            transform: translateY(1px);
-        }
-        
-        .point-button {
-            background: linear-gradient(135deg, #f72585, #b5179e);
-            box-shadow: 0 4px 10px rgba(247, 37, 133, 0.3);
-        }
-        
-        .point-button:hover {
-            box-shadow: 0 7px 15px rgba(247, 37, 133, 0.4);
-        }
-        
-        .secondary-button {
-            background: linear-gradient(135deg, #7209b7, #560bad);
-            box-shadow: 0 4px 10px rgba(114, 9, 183, 0.3);
-        }
-        
-        .secondary-button:hover {
-            box-shadow: 0 7px 15px rgba(114, 9, 183, 0.4);
-        }
-        
-        .coordinates {
-            position: absolute;
-            bottom: 20px;
-            right: 20px;
-            background: rgba(10, 15, 30, 0.85);
-            padding: 20px;
-            border-radius: 15px;
-            z-index: 100;
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(100, 150, 255, 0.2);
-            box-shadow: 0 0 30px rgba(0, 50, 150, 0.3);
-            min-width: 250px;
-        }
-        
-        .coordinates h2 {
-            margin-bottom: 15px;
-        }
-        
-        .coord-display {
-            display: flex;
-            justify-content: space-between;
-            margin: 8px 0;
-            padding: 8px 0;
-            border-bottom: 1px solid rgba(100, 150, 255, 0.1);
-        }
-        
-        .coord-value {
-            font-weight: bold;
-            color: #4cc9f0;
-        }
-        
-        .octant-display {
-            margin-top: 15px;
-            padding: 12px;
-            background: rgba(76, 201, 240, 0.1);
-            border-radius: 8px;
-            border-left: 4px solid #4cc9f0;
-        }
-        
-        .loading {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            font-size: 24px;
-            color: #4cc9f0;
-            z-index: 200;
-            text-align: center;
-        }
-        
-        .loading-spinner {
-            border: 5px solid rgba(76, 201, 240, 0.3);
-            border-top: 5px solid #4cc9f0;
-            border-radius: 50%;
-            width: 50px;
-            height: 50px;
-            animation: spin 1s linear infinite;
-            margin: 0 auto 20px;
-        }
-        
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-        
-        .instructions {
-            position: absolute;
-            bottom: 20px;
-            left: 20px;
-            background: rgba(10, 15, 30, 0.7);
-            padding: 15px;
-            border-radius: 10px;
-            backdrop-filter: blur(5px);
-            font-size: 14px;
-            max-width: 300px;
-        }
-        
-        .instructions p {
-            margin: 5px 0;
-            color: #a0c0ff;
-        }
-        
-        .tooltip {
-            position: relative;
-            display: inline-block;
-            margin-left: 5px;
-            color: #4cc9f0;
-            cursor: help;
-        }
-        
-        .tooltip .tooltiptext {
-            visibility: hidden;
-            width: 200px;
-            background-color: rgba(10, 15, 40, 0.9);
-            color: #fff;
-            text-align: center;
-            border-radius: 6px;
-            padding: 10px;
-            position: absolute;
-            z-index: 1;
-            bottom: 125%;
-            left: 50%;
-            transform: translateX(-50%);
-            opacity: 0;
-            transition: opacity 0.3s;
-            font-size: 13px;
-            line-height: 1.4;
-            border: 1px solid rgba(100, 150, 255, 0.3);
-        }
-        
-        .tooltip:hover .tooltiptext {
-            visibility: visible;
-            opacity: 1;
-        }
-    </style>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+<title>Octants — The Glass Morphic Space</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@200;300;400;500;600&family=JetBrains+Mono:wght@300;400&display=swap" rel="stylesheet">
+
+<style>
+  :root{
+    --ink:  #e9f0f8;
+    --dim:  rgba(233,240,248,0.56);
+    --faint:rgba(233,240,248,0.28);
+    --line: rgba(255,255,255,0.09);
+    --accent: #7fd4ff;
+  }
+
+  *{ margin:0; padding:0; box-sizing:border-box; }
+
+  html{ background:#000; }
+
+  body{
+    background:#000;
+    color:var(--ink);
+    font-family:'Inter','SF Pro Display',-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;
+    -webkit-font-smoothing:antialiased;
+    -moz-osx-font-smoothing:grayscale;
+    overflow-x:hidden;
+    overscroll-behavior-y:none;
+  }
+
+  /* ---------- WebGL canvas ---------- */
+  #gl{
+    position:fixed; inset:0;
+    width:100vw; height:100vh;
+    display:block;
+    z-index:0;
+  }
+
+  /* ---------- Scroll driver ---------- */
+  #scroll-space{
+    position:relative;
+    height:760vh;
+    z-index:1;
+    pointer-events:none;
+  }
+
+  /* ---------- UI layer ---------- */
+  #ui{
+    position:fixed; inset:0;
+    z-index:2;
+    pointer-events:none;
+    user-select:none;
+  }
+
+  /* top bar */
+  .topbar{
+    position:absolute; top:0; left:0; right:0;
+    display:flex; justify-content:space-between; align-items:flex-start;
+    padding: clamp(20px,3.2vw,38px) clamp(24px,5vw,74px);
+    font-size:10px; letter-spacing:.32em; text-transform:uppercase;
+    color:var(--faint);
+  }
+  .brand{
+    display:flex; align-items:center; gap:12px;
+    color:rgba(233,240,248,0.72);
+    letter-spacing:.36em;
+  }
+  .brand .mark{
+    width:9px; height:9px; border-radius:2px;
+    background:linear-gradient(135deg,#7fd4ff,#b98cff);
+    box-shadow:0 0 16px rgba(127,212,255,.8);
+    transform:rotate(45deg);
+  }
+  .brand .sep{ color:rgba(233,240,248,0.22); letter-spacing:0; }
+
+  /* top hairline */
+  .hairline{
+    position:absolute; top:0; left:0; right:0; height:1px;
+    background:linear-gradient(90deg, transparent, rgba(127,212,255,.35) 20%, rgba(185,140,255,.35) 55%, transparent);
+    opacity:.6;
+  }
+
+  /* chapter text */
+  #chapters{
+    position:absolute; inset:0;
+  }
+  .chapter{
+    position:absolute;
+    left: clamp(24px,5vw,74px);
+    bottom: clamp(30px,8vh,80px);
+    max-width: min(430px, 42vw);
+    opacity:0;
+    will-change:opacity, transform;
+  }
+  .ch-idx{
+    font-size:10px; letter-spacing:.3em; text-transform:uppercase;
+    color:rgba(127,212,255,.8);
+    margin-bottom:16px;
+    display:flex; align-items:center; gap:12px;
+  }
+  .ch-idx::after{
+    content:''; flex:1; height:1px; max-width:60px;
+    background:linear-gradient(90deg, rgba(127,212,255,.5), transparent);
+  }
+  .ch-title{
+    font-size: clamp(26px, 3.4vw, 46px);
+    font-weight:300;
+    letter-spacing:-.025em;
+    line-height:1.04;
+    margin-bottom:14px;
+    background:linear-gradient(180deg,#ffffff 0%, rgba(255,255,255,.58) 100%);
+    -webkit-background-clip:text; background-clip:text;
+    color:transparent;
+  }
+  .ch-body{
+    font-size: clamp(12px, 1.05vw, 14.5px);
+    line-height:1.7;
+    font-weight:300;
+    color:var(--dim);
+    letter-spacing:.005em;
+  }
+
+  /* readout */
+  .readout{
+    position:absolute;
+    right: clamp(24px,5vw,74px);
+    bottom: clamp(30px,8vh,80px);
+    text-align:right;
+    font-family:'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+    opacity:0;
+    will-change:opacity;
+  }
+  .ro-label{
+    font-size:9px; letter-spacing:.3em; text-transform:uppercase;
+    color:var(--faint); margin-bottom:7px;
+    font-family:'Inter',sans-serif;
+  }
+  .ro-value{
+    font-size: clamp(11px, 1vw, 14px);
+    color:rgba(207,230,255,.92);
+    letter-spacing:.05em;
+    margin-bottom:20px;
+    text-shadow:0 0 22px rgba(127,212,255,.45);
+  }
+  .ro-value.sign{ color:#b9e4ff; }
+
+  /* progress rail */
+  .rail{
+    position:absolute;
+    right: clamp(18px,2.6vw,34px);
+    top:50%;
+    transform:translateY(-50%);
+    display:flex; flex-direction:column; align-items:center; gap:16px;
+  }
+  .rail .tick{
+    width:4px; height:4px; border-radius:50%;
+    background:rgba(255,255,255,.14);
+    transition:background .35s ease, box-shadow .35s ease, transform .35s ease;
+  }
+  .rail .tick.on{
+    background:var(--accent);
+    box-shadow:0 0 12px var(--accent);
+    transform:scale(1.5);
+  }
+  .rail .line{
+    width:1px; height:52px;
+    background:linear-gradient(180deg, rgba(255,255,255,.16), rgba(255,255,255,.02));
+  }
+
+  /* scroll hint */
+  .hint{
+    position:absolute;
+    left:50%; bottom: clamp(22px,4vh,40px);
+    transform:translateX(-50%);
+    font-size:9.5px; letter-spacing:.34em; text-transform:uppercase;
+    color:rgba(233,240,248,.34);
+    display:flex; flex-direction:column; align-items:center; gap:12px;
+    transition:opacity .8s ease;
+  }
+  .hint .stem{
+    width:1px; height:34px;
+    background:linear-gradient(180deg, rgba(127,212,255,.75), transparent);
+    animation:stem 2.4s ease-in-out infinite;
+    transform-origin:top;
+  }
+  @keyframes stem{
+    0%,100%{ opacity:.25; transform:scaleY(.45); }
+    50%    { opacity:1;   transform:scaleY(1); }
+  }
+
+  /* loader */
+  #loader{
+    position:fixed; inset:0; z-index:50;
+    background:#000;
+    display:flex; align-items:center; justify-content:center;
+    transition:opacity 1.2s cubic-bezier(.22,1,.36,1);
+    pointer-events:none;
+  }
+  #loader .lm{
+    width:7px;height:7px;border-radius:50%;
+    background:#7fd4ff;
+    box-shadow:0 0 24px 4px rgba(127,212,255,.85);
+    animation:pulse 1.6s ease-in-out infinite;
+  }
+  @keyframes pulse{
+    0%,100%{ transform:scale(.6); opacity:.35; }
+    50%    { transform:scale(1.35); opacity:1; }
+  }
+  #loader.gone{ opacity:0; }
+
+  /* subtle corner frame */
+  .corner{
+    position:absolute; width:14px; height:14px;
+    border:1px solid rgba(255,255,255,.09);
+  }
+  .corner.tl{ top:clamp(20px,3.2vw,38px); left:clamp(24px,5vw,74px); border-right:0; border-bottom:0; }
+  .corner.br{ bottom:clamp(20px,3.2vw,38px); right:clamp(24px,5vw,74px); border-left:0; border-top:0; }
+
+  @media (max-width: 860px){
+    .chapter{ max-width: 78vw; }
+    .readout{ display:none; }
+    .rail{ display:none; }
+    .corner{ display:none; }
+  }
+</style>
 </head>
 <body>
-    <div id="container">
-        <div id="canvas-container"></div>
-        
-        <div id="ui">
-            <h1>🎬 3D Octants Visualization</h1>
-            
-            <div class="control-group">
-                <h2>Scene Elements</h2>
-                <div class="button-group">
-                    <button id="toggle-planes">Toggle Planes</button>
-                    <button id="toggle-octants">Toggle Octants</button>
-                    <button id="toggle-axes">Toggle Axes</button>
-                </div>
-            </div>
-            
-            <div class="control-group">
-                <h2>Add Points</h2>
-                <div class="button-group">
-                    <button class="point-button" data-point="2,3,4">(2, 3, 4)</button>
-                    <button class="point-button" data-point="-2,3,4">(-2, 3, 4)</button>
-                    <button class="point-button" data-point="2,-3,-4">(2, -3, -4)</button>
-                    <button class="point-button" data-point="-2,-3,-4">(-2, -3, -4)</button>
-                    <button id="clear-points" class="secondary-button">Clear Points</button>
-                </div>
-            </div>
-            
-            <div class="control-group">
-                <h2>Camera Controls</h2>
-                <p style="color: #a0c0ff; font-size: 14px; margin-bottom: 10px;">Use mouse to rotate, scroll to zoom</p>
-                <div class="button-group">
-                    <button id="reset-camera" class="secondary-button">Reset Camera</button>
-                    <button id="auto-rotate" class="secondary-button">Auto Rotate</button>
-                </div>
-            </div>
-        </div>
-        
-        <div class="coordinates">
-            <h2>Current Point</h2>
-            <div class="coord-display">
-                <span>Coordinates:</span>
-                <span id="current-coords" class="coord-value">None</span>
-            </div>
-            <div class="octant-display">
-                <strong>Octant:</strong> <span id="current-octant">-</span>
-            </div>
-        </div>
-        
-        <div class="instructions">
-            <p><strong>How to use:</strong></p>
-            <p>• Click point buttons to visualize coordinates</p>
-            <p>• Drag to rotate the 3D view</p>
-            <p>• Scroll to zoom in/out</p>
-            <p>• Toggle elements to focus on specific parts</p>
-        </div>
-        
-        <div class="loading" id="loading">
-            <div class="loading-spinner"></div>
-            Loading Cinematic 3D Scene...
-        </div>
-    </div>
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.min.js"></script>
-    <script>
-        // Main application
-        document.addEventListener('DOMContentLoaded', function() {
-            // Scene setup
-            const scene = new THREE.Scene();
-            scene.fog = new THREE.Fog(0x000011, 20, 100);
-            
-            const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
-            const renderer = new THREE.WebGLRenderer({ 
-                antialias: true, 
-                alpha: true,
-                powerPreference: "high-performance"
-            });
-            
-            renderer.setSize(window.innerWidth, window.innerHeight);
-            renderer.setClearColor(0x000000, 0);
-            renderer.shadowMap.enabled = true;
-            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-            renderer.outputEncoding = THREE.sRGBEncoding;
-            
-            document.getElementById('canvas-container').appendChild(renderer.domElement);
-            
-            // Camera controls
-            const controls = new THREE.OrbitControls(camera, renderer.domElement);
-            controls.enableDamping = true;
-            controls.dampingFactor = 0.05;
-            controls.rotateSpeed = 0.5;
-            controls.autoRotate = false;
-            controls.autoRotateSpeed = 1;
-            
-            // Camera position
-            camera.position.set(12, 12, 12);
-            controls.update();
-            
-            // Enhanced lighting
-            const ambientLight = new THREE.AmbientLight(0x404060, 0.4);
-            scene.add(ambientLight);
-            
-            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
-            directionalLight.position.set(15, 15, 15);
-            directionalLight.castShadow = true;
-            directionalLight.shadow.mapSize.width = 2048;
-            directionalLight.shadow.mapSize.height = 2048;
-            scene.add(directionalLight);
-            
-            const pointLight = new THREE.PointLight(0x4cc9f0, 0.5, 50);
-            pointLight.position.set(0, 0, 0);
-            scene.add(pointLight);
-            
-            // Create axes with better appearance
-            const axesHelper = new THREE.AxesHelper(8);
-            scene.add(axesHelper);
-            
-            // Create planes with enhanced materials
-            const planeGeometry = new THREE.PlaneGeometry(18, 18);
-            
-            // XY plane (blue)
-            const xyPlane = new THREE.Mesh(
-                planeGeometry,
-                new THREE.MeshPhongMaterial({ 
-                    color: 0x0066ff, 
-                    side: THREE.DoubleSide, 
-                    transparent: true, 
-                    opacity: 0.25,
-                    emissive: 0x001133,
-                    specular: 0x4488ff
-                })
-            );
-            xyPlane.rotation.x = Math.PI / 2;
-            scene.add(xyPlane);
-            
-            // YZ plane (green)
-            const yzPlane = new THREE.Mesh(
-                planeGeometry,
-                new THREE.MeshPhongMaterial({ 
-                    color: 0x00cc44, 
-                    side: THREE.DoubleSide, 
-                    transparent: true, 
-                    opacity: 0.25,
-                    emissive: 0x002211,
-                    specular: 0x44ff88
-                })
-            );
-            yzPlane.rotation.y = Math.PI / 2;
-            scene.add(yzPlane);
-            
-            // XZ plane (red)
-            const xzPlane = new THREE.Mesh(
-                planeGeometry,
-                new THREE.MeshPhongMaterial({ 
-                    color: 0xff3300, 
-                    side: THREE.DoubleSide, 
-                    transparent: true, 
-                    opacity: 0.25,
-                    emissive: 0x331100,
-                    specular: 0xff6644
-                })
-            );
-            scene.add(xzPlane);
-            
-            // Create enhanced glowing origin point
-            const originGeometry = new THREE.SphereGeometry(0.25, 32, 32);
-            const originMaterial = new THREE.MeshBasicMaterial({ 
-                color: 0xffffff, 
-                emissive: 0xffffff,
-                emissiveIntensity: 0.8
-            });
-            const origin = new THREE.Mesh(originGeometry, originMaterial);
-            scene.add(origin);
-            
-            // Add a lens flare effect at origin
-            const flareTexture = new THREE.TextureLoader().load('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==');
-            const lensFlare = new THREE.PointLight(0xffffff, 1, 0);
-            lensFlare.add(new THREE.Sprite(new THREE.SpriteMaterial({
-                map: flareTexture,
-                color: 0x4488ff,
-                transparent: true,
-                opacity: 0.7
-            })));
-            scene.add(lensFlare);
-            
-            // Create octants with improved color scheme
-            const octantColors = [
-                0x4cc9f0, // cyan - (+,+,+)
-                0xf72585, // magenta (-,+,+)
-                0xbfd200, // yellow-green (+,-,+)
-                0xff9e00, // orange (-,-,+)
-                0x7209b7, // purple (+,+,-)
-                0x3a86ff, // blue (-,+,-)
-                0x06d6a0, // teal (+,-,-)
-                0xff006e  // pink (-,-,-)
-            ];
-            
-            const octantSigns = [
-                '(+,+,+)', '(-,+,+)', '(+,-,+)', '(-,-,+)',
-                '(+,+,-)', '(-,+,-)', '(+,-,-)', '(-,-,-)'
-            ];
-            
-            const octants = [];
-            const octantGroup = new THREE.Group();
-            scene.add(octantGroup);
-            
-            // Create octant cubes with improved materials
-            for (let i = 0; i < 8; i++) {
-                const geometry = new THREE.BoxGeometry(4.5, 4.5, 4.5);
-                const material = new THREE.MeshPhongMaterial({
-                    color: octantColors[i],
-                    transparent: true,
-                    opacity: 0.12,
-                    side: THREE.DoubleSide,
-                    emissive: octantColors[i],
-                    emissiveIntensity: 0.05,
-                    specular: 0x222222,
-                    shininess: 30
-                });
-                
-                const octant = new THREE.Mesh(geometry, material);
-                
-                // Position each octant based on its index
-                const x = (i & 1) ? -2.25 : 2.25;
-                const y = (i & 2) ? -2.25 : 2.25;
-                const z = (i & 4) ? -2.25 : 2.25;
-                
-                octant.position.set(x, y, z);
-                octant.userData.sign = octantSigns[i];
-                octant.userData.index = i;
-                
-                octants.push(octant);
-                octantGroup.add(octant);
-            }
-            
-            // Create enhanced particle system for background
-            const particleCount = 1500;
-            const particles = new THREE.BufferGeometry();
-            const particlePositions = new Float32Array(particleCount * 3);
-            const particleColors = new Float32Array(particleCount * 3);
-            const particleSizes = new Float32Array(particleCount);
-            
-            for (let i = 0; i < particleCount; i++) {
-                const i3 = i * 3;
-                // Position particles in a sphere
-                const radius = 30 + Math.random() * 70;
-                const theta = Math.random() * Math.PI * 2;
-                const phi = Math.acos((Math.random() * 2) - 1);
-                
-                particlePositions[i3] = radius * Math.sin(phi) * Math.cos(theta);
-                particlePositions[i3 + 1] = radius * Math.sin(phi) * Math.sin(theta);
-                particlePositions[i3 + 2] = radius * Math.cos(phi);
-                
-                // Color particles with a blue/purple gradient
-                const color = new THREE.Color();
-                color.setHSL(0.7 + Math.random() * 0.2, 0.5, 0.4 + Math.random() * 0.3);
-                particleColors[i3] = color.r;
-                particleColors[i3 + 1] = color.g;
-                particleColors[i3 + 2] = color.b;
-                
-                particleSizes[i] = Math.random() * 1.5;
-            }
-            
-            particles.setAttribute('position', new THREE.BufferAttribute(particlePositions, 3));
-            particles.setAttribute('color', new THREE.BufferAttribute(particleColors, 3));
-            particles.setAttribute('size', new THREE.BufferAttribute(particleSizes, 1));
-            
-            const particleMaterial = new THREE.PointsMaterial({
-                size: 1.5,
-                vertexColors: true,
-                transparent: true,
-                opacity: 0.8,
-                sizeAttenuation: true
-            });
-            
-            const particleSystem = new THREE.Points(particles, particleMaterial);
-            scene.add(particleSystem);
-            
-            // Store points and trails
-            const points = [];
-            const trails = [];
-            
-            // Function to add a point to the scene
-            function addPoint(x, y, z) {
-                const geometry = new THREE.SphereGeometry(0.25, 32, 32);
-                const material = new THREE.MeshPhongMaterial({ 
-                    color: 0xffff00,
-                    emissive: 0xffff00,
-                    emissiveIntensity: 0.3,
-                    specular: 0xffffaa,
-                    shininess: 100
-                });
-                
-                const point = new THREE.Mesh(geometry, material);
-                point.position.set(x, y, z);
-                point.castShadow = true;
-                scene.add(point);
-                points.push(point);
-                
-                // Create trail from origin to point
-                const trailGeometry = new THREE.BufferGeometry().setFromPoints([
-                    new THREE.Vector3(0, 0, 0),
-                    new THREE.Vector3(x, y, z)
-                ]);
-                
-                const trailMaterial = new THREE.LineBasicMaterial({ 
-                    color: 0xffff00,
-                    transparent: true,
-                    opacity: 0.7,
-                    linewidth: 2
-                });
-                
-                const trail = new THREE.Line(trailGeometry, trailMaterial);
-                scene.add(trail);
-                trails.push(trail);
-                
-                // Determine which octant the point is in
-                const octantIndex = getOctantIndex(x, y, z);
-                highlightOctant(octantIndex);
-                
-                // Update UI
-                document.getElementById('current-coords').textContent = `(${x}, ${y}, ${z})`;
-                document.getElementById('current-octant').textContent = octantSigns[octantIndex];
-                
-                // Animate the point appearance
-                animatePointAppearance(point, trail);
-            }
-            
-            // Function to determine octant index based on coordinates
-            function getOctantIndex(x, y, z) {
-                let index = 0;
-                if (x < 0) index |= 1;
-                if (y < 0) index |= 2;
-                if (z < 0) index |= 4;
-                return index;
-            }
-            
-            // Function to highlight an octant
-            function highlightOctant(index) {
-                // Reset all octants to normal opacity
-                octants.forEach(octant => {
-                    octant.material.opacity = 0.12;
-                    octant.material.emissiveIntensity = 0.05;
-                });
-                
-                // Highlight the selected octant
-                if (index >= 0 && index < 8) {
-                    octants[index].material.opacity = 0.3;
-                    octants[index].material.emissiveIntensity = 0.2;
-                }
-            }
-            
-            // Function to animate point appearance
-            function animatePointAppearance(point, trail) {
-                const startScale = 0.1;
-                const endScale = 1;
-                const duration = 600; // ms
-                const startTime = Date.now();
-                
-                function animate() {
-                    const elapsed = Date.now() - startTime;
-                    const progress = Math.min(elapsed / duration, 1);
-                    
-                    // Ease out scaling
-                    const scale = startScale + (endScale - startScale) * (1 - Math.pow(1 - progress, 3));
-                    point.scale.set(scale, scale, scale);
-                    
-                    // Fade in trail
-                    trail.material.opacity = 0.7 * progress;
-                    
-                    if (progress < 1) {
-                        requestAnimationFrame(animate);
-                    }
-                }
-                
-                animate();
-            }
-            
-            // Function to clear all points
-            function clearPoints() {
-                points.forEach(point => scene.remove(point));
-                trails.forEach(trail => scene.remove(trail));
-                
-                points.length = 0;
-                trails.length = 0;
-                
-                // Reset octant highlights
-                highlightOctant(-1);
-                
-                // Reset UI
-                document.getElementById('current-coords').textContent = 'None';
-                document.getElementById('current-octant').textContent = '-';
-            }
-            
-            // Animation loop
-            function animate() {
-                requestAnimationFrame(animate);
-                
-                // Rotate particle system slowly
-                particleSystem.rotation.x += 0.0001;
-                particleSystem.rotation.y += 0.0002;
-                
-                // Pulsate origin point
-                const pulse = Math.sin(Date.now() * 0.005) * 0.1 + 1;
-                origin.scale.set(pulse, pulse, pulse);
-                
-                // Update lens flare position to follow camera
-                lensFlare.position.copy(camera.position);
-                lensFlare.position.normalize().multiplyScalar(5);
-                
-                controls.update();
-                renderer.render(scene, camera);
-            }
-            
-            // Event listeners for UI
-            document.getElementById('toggle-planes').addEventListener('click', function() {
-                xyPlane.visible = !xyPlane.visible;
-                yzPlane.visible = !yzPlane.visible;
-                xzPlane.visible = !xzPlane.visible;
-            });
-            
-            document.getElementById('toggle-octants').addEventListener('click', function() {
-                octantGroup.visible = !octantGroup.visible;
-            });
-            
-            document.getElementById('toggle-axes').addEventListener('click', function() {
-                axesHelper.visible = !axesHelper.visible;
-            });
-            
-            document.getElementById('clear-points').addEventListener('click', clearPoints);
-            
-            document.getElementById('reset-camera').addEventListener('click', function() {
-                controls.reset();
-                camera.position.set(12, 12, 12);
-                controls.update();
-            });
-            
-            document.getElementById('auto-rotate').addEventListener('click', function() {
-                controls.autoRotate = !controls.autoRotate;
-                this.textContent = controls.autoRotate ? 'Stop Rotation' : 'Auto Rotate';
-            });
-            
-            // Add points when buttons are clicked
-            document.querySelectorAll('.point-button').forEach(button => {
-                button.addEventListener('click', function() {
-                    const coords = this.getAttribute('data-point').split(',').map(Number);
-                    addPoint(coords[0], coords[1], coords[2]);
-                });
-            });
-            
-            // Handle window resize
-            window.addEventListener('resize', function() {
-                camera.aspect = window.innerWidth / window.innerHeight;
-                camera.updateProjectionMatrix();
-                renderer.setSize(window.innerWidth, window.innerHeight);
-            });
-            
-            // Hide loading screen and start animation
-            setTimeout(function() {
-                document.getElementById('loading').style.display = 'none';
-                animate();
-            }, 1500);
-        });
-    </script>
+<canvas id="gl"></canvas>
+
+<div id="ui">
+  <div class="hairline"></div>
+
+  <div class="topbar">
+    <div class="brand">
+      <span class="mark"></span>
+      <span>OCTANT<span class="sep"> · </span>ENGINE</span>
+    </div>
+    <div>Spatial Systems Lab — Vol. III</div>
+  </div>
+
+  <div class="corner tl"></div>
+  <div class="corner br"></div>
+
+  <div id="chapters"></div>
+
+  <div class="readout" id="readout">
+    <div class="ro-label">Position</div>
+    <div class="ro-value" id="ro-coords">( 0.00, 0.00, 0.00 )</div>
+    <div class="ro-label">Signature</div>
+    <div class="ro-value sign" id="ro-sign">( +, +, + )</div>
+  </div>
+
+  <div class="rail" id="rail"></div>
+
+  <div class="hint" id="hint">
+    <span>Scroll</span>
+    <span class="stem"></span>
+  </div>
+</div>
+
+<div id="scroll-space"></div>
+
+<div id="loader"><div class="lm"></div></div>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import { EffectComposer }   from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass }       from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass }  from 'three/addons/postprocessing/UnrealBloomPass.js';
+import { OutputPass }       from 'three/addons/postprocessing/OutputPass.js';
+import { ShaderPass }       from 'three/addons/postprocessing/ShaderPass.js';
+
+/* ══════════════════════════════════════════════════════════════
+   0 · MATH HELPERS
+   ══════════════════════════════════════════════════════════════ */
+const clamp = (x, a, b) => Math.min(b, Math.max(a, x));
+const lerp  = (a, b, t) => a + (b - a) * t;
+function smoothstep(a, b, x){
+  const t = clamp((x - a) / ((b - a) || 1e-6), 0, 1);
+  return t * t * (3 - 2 * t);
+}
+
+/* ══════════════════════════════════════════════════════════════
+   1 · CONSTANTS
+   ══════════════════════════════════════════════════════════════ */
+const HALF = 5;                 // half-extent of the glass cube
+const PLANE_SIZE = HALF * 2;
+
+const C_X = 0x49d8ff;
+const C_Y = 0x5cffb1;
+const C_Z = 0xb98cff;
+
+const OCTANTS = [
+  { s:[ 1, 1, 1], color:'#5ee7ff', label:'(+, +, +)' },
+  { s:[ 1, 1,-1], color:'#6f8cff', label:'(+, +, −)' },
+  { s:[ 1,-1, 1], color:'#a78bfa', label:'(+, −, +)' },
+  { s:[ 1,-1,-1], color:'#f472b6', label:'(+, −, −)' },
+  { s:[-1, 1, 1], color:'#34d399', label:'(−, +, +)' },
+  { s:[-1, 1,-1], color:'#a3e635', label:'(−, +, −)' },
+  { s:[-1,-1, 1], color:'#fbbf24', label:'(−, −, +)' },
+  { s:[-1,-1,-1], color:'#fb7185', label:'(−, −, −)' }
+];
+
+/* ══════════════════════════════════════════════════════════════
+   2 · RENDERER · SCENE · CAMERA
+   ══════════════════════════════════════════════════════════════ */
+const canvas = document.getElementById('gl');
+const renderer = new THREE.WebGLRenderer({
+  canvas,
+  antialias: true,
+  powerPreference: 'high-performance',
+  alpha: false
+});
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.02;
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.setClearColor(0x000000, 1);
+
+const scene = new THREE.Scene();
+
+const camera = new THREE.PerspectiveCamera(
+  40,
+  window.innerWidth / window.innerHeight,
+  0.1,
+  400
+);
+camera.position.set(0, 0.5, 14);
+
+/* ══════════════════════════════════════════════════════════════
+   3 · POST PROCESSING
+   ══════════════════════════════════════════════════════════════ */
+const composer = new EffectComposer(renderer);
+composer.setSize(window.innerWidth, window.innerHeight);
+
+composer.addPass(new RenderPass(scene, camera));
+
+const bloom = new UnrealBloomPass(
+  new THREE.Vector2(window.innerWidth, window.innerHeight),
+  0.62,   // strength
+  0.85,   // radius
+  0.18    // threshold
+);
+composer.addPass(bloom);
+
+composer.addPass(new OutputPass());
+
+/* --- chromatic aberration + vignette + grain ------------------ */
+const CAPassDef = {
+  uniforms: {
+    tDiffuse: { value: null },
+    uAmount:  { value: 1.0 },
+    uTime:    { value: 0.0 }
+  },
+  vertexShader: /* glsl */`
+    varying vec2 vUv;
+    void main(){
+      vUv = uv;
+      gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+    }
+  `,
+  fragmentShader: /* glsl */`
+    precision highp float;
+    uniform sampler2D tDiffuse;
+    uniform float uAmount;
+    uniform float uTime;
+    varying vec2 vUv;
+
+    void main(){
+      vec2 d  = vUv - 0.5;
+      float r2 = dot(d, d);
+      vec2 off = d * r2 * uAmount * 0.0075;
+
+      vec3 col;
+      col.r = texture2D(tDiffuse, vUv + off).r;
+      col.g = texture2D(tDiffuse, vUv).g;
+      col.b = texture2D(tDiffuse, vUv - off).b;
+
+      float vig = smoothstep(1.25, 0.18, length(d) * 1.55);
+      col *= mix(0.68, 1.0, vig);
+
+      float g = fract(sin(dot(vUv * (1.0 + fract(uTime)), vec2(12.9898, 78.233))) * 43758.5453);
+      col += (g - 0.5) * 0.011;
+
+      gl_FragColor = vec4(col, 1.0);
+    }
+  `
+};
+const caPass = new ShaderPass(CAPassDef);
+composer.addPass(caPass);
+
+/* ══════════════════════════════════════════════════════════════
+   4 · SHARED TEXTURES
+   ══════════════════════════════════════════════════════════════ */
+function makeGlowTexture(){
+  const s = 256;
+  const c = document.createElement('canvas');
+  c.width = c.height = s;
+  const ctx = c.getContext('2d');
+  const g = ctx.createRadialGradient(s/2, s/2, 0, s/2, s/2, s/2);
+  g.addColorStop(0.00, 'rgba(255,255,255,1)');
+  g.addColorStop(0.14, 'rgba(200,238,255,0.72)');
+  g.addColorStop(0.36, 'rgba(120,190,255,0.22)');
+  g.addColorStop(0.66, 'rgba(70,130,255,0.06)');
+  g.addColorStop(1.00, 'rgba(0,0,0,0)');
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, s, s);
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  t.minFilter = THREE.LinearFilter;
+  t.generateMipmaps = false;
+  return t;
+}
+const GLOW_TEX = makeGlowTexture();
+
+/* ══════════════════════════════════════════════════════════════
+   5 · GLASS PLANE SHADER
+   ══════════════════════════════════════════════════════════════ */
+const GLASS_VERT = /* glsl */`
+  varying vec2 vUv;
+  varying vec3 vWorld;
+  varying vec3 vNormalW;
+
+  void main(){
+    vUv = uv;
+    vec4 wp = modelMatrix * vec4(position, 1.0);
+    vWorld = wp.xyz;
+    vNormalW = mat3(modelMatrix) * normal;
+    gl_Position = projectionMatrix * viewMatrix * wp;
+  }
+`;
+
+const GLASS_FRAG = /* glsl */`
+  precision highp float;
+
+  uniform float uTime;
+  uniform float uReveal;
+  uniform float uOpacity;
+  uniform float uGridOpacity;
+  uniform float uGridScale;
+  uniform vec3  uTint;
+
+  varying vec2 vUv;
+  varying vec3 vWorld;
+  varying vec3 vNormalW;
+
+  float hash21(vec2 p){
+    p = fract(p * vec2(123.34, 456.21));
+    p += dot(p, p + 45.32);
+    return fract(p.x * p.y);
+  }
+
+  float vnoise(vec2 p){
+    vec2 i = floor(p);
+    vec2 f = fract(p);
+    f = f * f * (3.0 - 2.0 * f);
+    float a = hash21(i);
+    float b = hash21(i + vec2(1.0, 0.0));
+    float c = hash21(i + vec2(0.0, 1.0));
+    float d = hash21(i + vec2(1.0, 1.0));
+    return mix(mix(a, b, f.x), mix(c, d, f.x), f.y);
+  }
+
+  void main(){
+    vec3 V = normalize(cameraPosition - vWorld);
+    vec3 N = normalize(vNormalW);
+
+    float fres = 1.0 - abs(dot(N, V));
+
+    /* --- chromatic fringe: each channel peaks at a different angle --- */
+    float cr = pow(fres, 2.35);
+    float cg = pow(fres, 3.00);
+    float cb = pow(fres, 3.85);
+    vec3 fringe = vec3(cr, cg, cb);
+
+    /* --- radial reveal sweep from origin --- */
+    float d  = length(vUv - 0.5) * 2.0;
+    float rv = smoothstep(0.0, 0.42, uReveal * 2.4 - d);
+
+    /* --- coordinate grid --- */
+    vec2 gc = vUv * uGridScale;
+    vec2 gw = fwidth(gc);
+    vec2 gf = abs(fract(gc - 0.5) - 0.5) / max(gw, vec2(1e-5));
+    float grid = 1.0 - min(min(gf.x, gf.y), 1.0);
+
+    /* --- frosted micro-grain --- */
+    float frost = vnoise(vUv * 190.0) * 0.6
+                + vnoise(vUv * 46.0 + uTime * 0.02) * 0.4;
+
+    vec3 col  = uTint * fringe * 1.75;
+    col += uTint * grid * uGridOpacity * (0.20 + 1.15 * fres);
+    col += uTint * frost * 0.048;
+    col += uTint * exp(-d * d * 7.0) * 0.30;
+
+    col *= rv * uOpacity;
+
+    gl_FragColor = vec4(col, 1.0);
+  }
+`;
+
+function createGlassPlane(tint, rotX, rotY){
+  const geo = new THREE.PlaneGeometry(PLANE_SIZE, PLANE_SIZE, 1, 1);
+  const mat = new THREE.ShaderMaterial({
+    uniforms: {
+      uTime:        { value: 0 },
+      uReveal:      { value: 0 },
+      uOpacity:     { value: 1 },
+      uGridOpacity: { value: 0.55 },
+      uGridScale:   { value: 20.0 },
+      uTint:        { value: new THREE.Color(tint) }
+    },
+    vertexShader:   GLASS_VERT,
+    fragmentShader: GLASS_FRAG,
+    transparent: true,
+    blending: THREE.AdditiveBlending,
+    depthWrite: false,
+    depthTest: true,
+    side: THREE.DoubleSide
+  });
+  const mesh = new THREE.Mesh(geo, mat);
+  mesh.rotation.set(rotX, rotY, 0);
+  mesh.renderOrder = 1;
+  mesh.frustumCulled = false;
+  return mesh;
+}
+
+const planeXY = createGlassPlane(0x4fa8ff, 0, 0);
+const planeYZ = createGlassPlane(0x9a7bff, 0, Math.PI / 2);
+const planeXZ = createGlassPlane(0x3fe0c8, -Math.PI / 2, 0);
+
+scene.add(planeXY, planeYZ, planeXZ);
+
+/* ══════════════════════════════════════════════════════════════
+   6 · AXES
+   ══════════════════════════════════════════════════════════════ */
+function createAxis(colorHex){
+  const group = new THREE.Group();
+
+  const mat = new THREE.MeshBasicMaterial({
+    color: colorHex,
+    transparent: true,
+    opacity: 0.9,
+    blending: THREE.AdditiveBlending,
+    depthWrite: false
+  });
+
+  const rod = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.012, 0.012, PLANE_SIZE, 12, 1, true),
+    mat
+  );
+  rod.renderOrder = 2;
+
+  const cone = new THREE.Mesh(
+    new THREE.ConeGeometry(0.062, 0.26, 18),
+    mat
+  );
+  cone.renderOrder = 2;
+
+  group.add(rod, cone);
+  return { group, rod, cone, mat };
+}
+
+const axisX = createAxis(C_X);
+axisX.group.rotation.z = -Math.PI / 2;   // local +Y → world +X
+
+const axisY = createAxis(C_Y);           // local +Y → world +Y
+
+const axisZ = createAxis(C_Z);
+axisZ.group.rotation.x = Math.PI / 2;    // local +Y → world +Z
+
+scene.add(axisX.group, axisY.group, axisZ.group);
+
+/* ══════════════════════════════════════════════════════════════
+   7 · TEXT SPRITES
+   ══════════════════════════════════════════════════════════════ */
+function makeLabel(text, colorHex, worldHeight, opts = {}){
+  const dpr      = 2;
+  const fontSize = opts.fontSize || 72;
+  const weight   = opts.weight   || 400;
+  const spacing  = opts.spacing  || '0.14em';
+  const fontStr  = `${weight} ${fontSize}px Inter, "Helvetica Neue", Helvetica, Arial, sans-serif`;
+
+  // measure
+  const meas = document.createElement('canvas').getContext('2d');
+  meas.font = fontStr;
+  try { meas.letterSpacing = spacing; } catch(e){}
+  const textW = meas.measureText(text).width;
+
+  const padX = 64, padY = 44;
+  const w = Math.ceil(textW) + padX * 2;
+  const h = fontSize + padY * 2;
+
+  const c = document.createElement('canvas');
+  c.width  = w * dpr;
+  c.height = h * dpr;
+
+  const ctx = c.getContext('2d');
+  ctx.scale(dpr, dpr);
+  ctx.font = fontStr;
+  try { ctx.letterSpacing = spacing; } catch(e){}
+  ctx.textAlign    = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillStyle    = colorHex;
+  ctx.shadowColor  = colorHex;
+  ctx.shadowBlur   = 26;
+  ctx.fillText(text, w / 2, h / 2);
+  ctx.shadowBlur   = 9;
+  ctx.fillText(text, w / 2, h / 2);
+
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace    = THREE.SRGBColorSpace;
+  tex.minFilter     = THREE.LinearFilter;
+  tex.magFilter     = THREE.LinearFilter;
+  tex.generateMipmaps = false;
+
+  const mat = new THREE.SpriteMaterial({
+    map: tex,
+    transparent: true,
+    opacity: 0,
+    depthWrite: false,
+    depthTest: false,
+    blending: THREE.AdditiveBlending
+  });
+
+  const spr = new THREE.Sprite(mat);
+  const aspect = w / h;
+  spr.scale.set(worldHeight * aspect, worldHeight, 1);
+  spr.renderOrder = 20;
+  return spr;
+}
+
+/* --- axis labels --- */
+const axisLabelX = makeLabel('x', '#8fe3ff', 0.66, { fontSize: 84, weight: 300 });
+const axisLabelY = makeLabel('y', '#9dffd0', 0.66, { fontSize: 84, weight: 300 });
+const axisLabelZ = makeLabel('z', '#d3b6ff', 0.66, { fontSize: 84, weight: 300 });
+axisLabelX.position.y = HALF + 0.72;
+axisLabelY.position.y = HALF + 0.72;
+axisLabelZ.position.y = HALF + 0.72;
+axisX.group.add(axisLabelX);
+axisY.group.add(axisLabelY);
+axisZ.group.add(axisLabelZ);
+
+/* --- octant labels --- */
+const octantLabels = [];
+OCTANTS.forEach((o, i) => {
+  const spr = makeLabel(o.label, o.color, 0.52, { fontSize: 60, weight: 400, spacing: '0.1em' });
+  spr.position.set(o.s[0] * 4.0, o.s[1] * 4.0, o.s[2] * 4.0);
+  scene.add(spr);
+  octantLabels.push(spr);
+});
+
+/* --- origin label --- */
+const originLabel = makeLabel('O', '#cfe6ff', 0.44, { fontSize: 60, weight: 400 });
+originLabel.position.set(-0.42, -0.42, 0.42);
+scene.add(originLabel);
+
+/* ══════════════════════════════════════════════════════════════
+   8 · NODE CLOUDS (one per octant)
+   ══════════════════════════════════════════════════════════════ */
+const NODE_VERT = /* glsl */`
+  uniform float uTime;
+  uniform float uAppear;
+  uniform float uSize;
+  uniform float uPixelRatio;
+
+  attribute float aSeed;
+
+  varying float vSeed;
+
+  void main(){
+    vSeed = aSeed;
+
+    vec3 p = position;
+    float s = aSeed * 6.2831;
+    p.x += sin(uTime * 0.35 + s)        * 0.07;
+    p.y += cos(uTime * 0.31 + s * 1.7)  * 0.07;
+    p.z += sin(uTime * 0.27 + s * 2.3)  * 0.07;
+
+    vec4 mv = modelViewMatrix * vec4(p, 1.0);
+    gl_Position = projectionMatrix * mv;
+
+    float sz = uSize * uPixelRatio / max(-mv.z, 0.001);
+    gl_PointSize = clamp(sz * uAppear, 0.0, 64.0);
+  }
+`;
+
+const NODE_FRAG = /* glsl */`
+  precision highp float;
+
+  uniform vec3  uColorA;
+  uniform vec3  uColorB;
+  uniform float uOpacity;
+
+  varying float vSeed;
+
+  void main(){
+    vec2 c = gl_PointCoord - 0.5;
+    float r = length(c) * 2.0;
+    if (r > 1.0) discard;
+
+    float core = pow(1.0 - r, 2.6);
+    float halo = pow(1.0 - r, 0.75) * 0.34;
+
+    vec3 col = mix(uColorA, uColorB, vSeed);
+    float a  = (core + halo) * uOpacity;
+
+    gl_FragColor = vec4(col * a, 1.0);
+  }
+`;
+
+const nodeClouds = [];
+
+OCTANTS.forEach((o, idx) => {
+  const COUNT = 18;
+  const positions = new Float32Array(COUNT * 3);
+  const seeds     = new Float32Array(COUNT);
+
+  for (let k = 0; k < COUNT; k++){
+    const r     = 1.15 + Math.pow(Math.random(), 0.68) * 3.05;
+    const theta = Math.random() * Math.PI * 2;
+    const phi   = Math.acos(2 * Math.random() - 1);
+
+    let x = r * Math.sin(phi) * Math.cos(theta);
+    let y = r * Math.cos(phi);
+    let z = r * Math.sin(phi) * Math.sin(theta);
+
+    x = Math.abs(x) * o.s[0];
+    y = Math.abs(y) * o.s[1];
+    z = Math.abs(z) * o.s[2];
+
+    positions[k * 3 + 0] = x;
+    positions[k * 3 + 1] = y;
+    positions[k * 3 + 2] = z;
+    seeds[k] = Math.random();
+  }
+
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+  geo.setAttribute('aSeed',    new THREE.BufferAttribute(seeds, 1));
+
+  const base = new THREE.Color(o.color);
+  const alt  = base.clone().lerp(new THREE.Color(0xffffff), 0.55);
+
+  const mat = new THREE.ShaderMaterial({
+    uniforms: {
+      uTime:       { value: 0 },
+      uAppear:     { value: 0 },
+      uOpacity:    { value: 0 },
+      uSize:       { value: 46.0 },
+      uPixelRatio: { value: renderer.getPixelRatio() },
+      uColorA:     { value: base },
+      uColorB:     { value: alt }
+    },
+    vertexShader:   NODE_VERT,
+    fragmentShader: NODE_FRAG,
+    transparent: true,
+    blending: THREE.AdditiveBlending,
+    depthWrite: false
+  });
+
+  const pts = new THREE.Points(geo, mat);
+  pts.renderOrder = 5;
+  scene.add(pts);
+
+  nodeClouds.push({
+    points: pts,
+    mat,
+    baseColor: base.clone(),
+    weight: 0.125
+  });
+});
+
+/* ══════════════════════════════════════════════════════════════
+   9 · ORIGIN GLOW
+   ══════════════════════════════════════════════════════════════ */
+const originGroup = new THREE.Group();
+scene.add(originGroup);
+
+const originCore = new THREE.Mesh(
+  new THREE.SphereGeometry(0.055, 24, 16),
+  new THREE.MeshBasicMaterial({
+    color: 0xffffff,
+    transparent: true,
+    opacity: 1,
+    blending: THREE.AdditiveBlending,
+    depthWrite: false
+  })
+);
+originGroup.add(originCore);
+
+const originGlow = new THREE.Sprite(new THREE.SpriteMaterial({
+  map: GLOW_TEX,
+  color: 0x9fd8ff,
+  transparent: true,
+  opacity: 0.85,
+  blending: THREE.AdditiveBlending,
+  depthWrite: false,
+  depthTest: false
+}));
+originGlow.scale.set(2.4, 2.4, 1);
+originGroup.add(originGlow);
+
+/* ══════════════════════════════════════════════════════════════
+   10 · THE TRAVELER + GUIDE STRUCTURE
+   ══════════════════════════════════════════════════════════════ */
+const travelerGroup = new THREE.Group();
+scene.add(travelerGroup);
+
+const travelerCore = new THREE.Mesh(
+  new THREE.SphereGeometry(0.085, 24, 16),
+  new THREE.MeshBasicMaterial({
+    color: 0xffffff,
+    transparent: true,
+    blending: THREE.AdditiveBlending,
+    depthWrite: false
+  })
+);
+travelerGroup.add(travelerCore);
+
+const travelerGlow = new THREE.Sprite(new THREE.SpriteMaterial({
+  map: GLOW_TEX,
+  color: 0xa9e2ff,
+  transparent: true,
+  opacity: 0.95,
+  blending: THREE.AdditiveBlending,
+  depthWrite: false,
+  depthTest: false
+}));
+travelerGlow.scale.set(1.5, 1.5, 1);
+travelerGroup.add(travelerGlow);
+
+/* --- guide segments (a glowing staircase from O → (x,0,0) → (x,y,0) → P) --- */
+const guideMat = new THREE.MeshBasicMaterial({
+  color: 0x8fd0ff,
+  transparent: true,
+  opacity: 0.5,
+  blending: THREE.AdditiveBlending,
+  depthWrite: false
+});
+const guideGeo = new THREE.CylinderGeometry(0.0085, 0.0085, 1, 8, 1, true);
+
+const guideSegs = [];
+for (let i = 0; i < 3; i++){
+  const m = new THREE.Mesh(guideGeo, guideMat);
+  m.renderOrder = 4;
+  scene.add(m);
+  guideSegs.push(m);
+}
+
+/* --- projection dots on the three coordinate planes --- */
+const projMat = new THREE.MeshBasicMaterial({
+  color: 0x7fd4ff,
+  transparent: true,
+  opacity: 0.7,
+  blending: THREE.AdditiveBlending,
+  depthWrite: false
+});
+const projGeo = new THREE.SphereGeometry(0.045, 16, 12);
+
+const projDots = [];
+for (let i = 0; i < 3; i++){
+  const d = new THREE.Mesh(projGeo, projMat);
+  d.renderOrder = 4;
+  scene.add(d);
+  projDots.push(d);
+}
+
+const UP = new THREE.Vector3(0, 1, 0);
+const _vA = new THREE.Vector3();
+const _vB = new THREE.Vector3();
+const _dir = new THREE.Vector3();
+
+function orientSegment(mesh, a, b){
+  _dir.subVectors(b, a);
+  const len = _dir.length();
+  mesh.position.copy(a).addScaledVector(_dir, 0.5);
+  if (len > 1e-5){
+    mesh.quaternion.setFromUnitVectors(UP, _dir.clone().normalize());
+  }
+  mesh.scale.set(1, Math.max(len, 1e-4), 1);
+}
+
+/* ══════════════════════════════════════════════════════════════
+   11 · VOID DUST
+   ══════════════════════════════════════════════════════════════ */
+const DUST_COUNT = 720;
+const dustPos  = new Float32Array(DUST_COUNT * 3);
+const dustSeed = new Float32Array(DUST_COUNT);
+
+for (let i = 0; i < DUST_COUNT; i++){
+  const r     = 9 + Math.random() * 46;
+  const theta = Math.random() * Math.PI * 2;
+  const phi   = Math.acos(2 * Math.random() - 1);
+  dustPos[i*3+0] = r * Math.sin(phi) * Math.cos(theta);
+  dustPos[i*3+1] = r * Math.cos(phi);
+  dustPos[i*3+2] = r * Math.sin(phi) * Math.sin(theta);
+  dustSeed[i]    = Math.random();
+}
+
+const dustGeo = new THREE.BufferGeometry();
+dustGeo.setAttribute('position', new THREE.BufferAttribute(dustPos, 3));
+dustGeo.setAttribute('aSeed',    new THREE.BufferAttribute(dustSeed, 1));
+
+const dustMat = new THREE.ShaderMaterial({
+  uniforms: {
+    uTime:       { value: 0 },
+    uPixelRatio: { value: renderer.getPixelRatio() }
+  },
+  vertexShader: /* glsl */`
+    uniform float uTime;
+    uniform float uPixelRatio;
+    attribute float aSeed;
+    varying float vTwinkle;
+
+    void main(){
+      vec3 p = position;
+      float s = aSeed * 6.2831;
+      p.x += sin(uTime * 0.06 + s) * 0.9;
+      p.y += cos(uTime * 0.05 + s * 1.3) * 0.9;
+
+      vec4 mv = modelViewMatrix * vec4(p, 1.0);
+      gl_Position = projectionMatrix * mv;
+
+      float sz = (0.9 + aSeed * 1.6) * uPixelRatio * (26.0 / max(-mv.z, 0.001));
+      gl_PointSize = clamp(sz, 0.4, 6.0);
+
+      vTwinkle = 0.16 + 0.34 * (0.5 + 0.5 * sin(uTime * 0.55 + aSeed * 42.0));
+    }
+  `,
+  fragmentShader: /* glsl */`
+    precision highp float;
+    varying float vTwinkle;
+    void main(){
+      vec2 c = gl_PointCoord - 0.5;
+      float r = length(c) * 2.0;
+      if (r > 1.0) discard;
+      float a = pow(1.0 - r, 2.0) * vTwinkle;
+      gl_FragColor = vec4(vec3(0.72, 0.86, 1.0) * a, 1.0);
+    }
+  `,
+  transparent: true,
+  blending: THREE.AdditiveBlending,
+  depthWrite: false
+});
+
+const dust = new THREE.Points(dustGeo, dustMat);
+dust.renderOrder = 0;
+scene.add(dust);
+
+/* ══════════════════════════════════════════════════════════════
+   12 · CAMERA RIG
+   ══════════════════════════════════════════════════════════════ */
+const camKeys = [
+  new THREE.Vector3(  0.0,  0.5, 14.0 ),   //  0.00  void
+  new THREE.Vector3(  7.6,  4.6, 11.2 ),   //  0.16  XY plane
+  new THREE.Vector3( -8.6,  5.6,  9.6 ),   //  0.33  YZ plane
+  new THREE.Vector3(  0.6, 12.8,  8.2 ),   //  0.50  XZ plane
+  new THREE.Vector3( 10.8,  7.2, 10.6 ),   //  0.66  octants
+  new THREE.Vector3(  5.6,  4.2,  8.6 ),   //  0.83  traveler
+  new THREE.Vector3(  0.0,  8.6, 17.0 )    //  1.00  overview
+];
+
+const tgtKeys = [
+  new THREE.Vector3( 0.0,  0.0,  0.0 ),
+  new THREE.Vector3( 0.6,  0.6,  0.0 ),
+  new THREE.Vector3(-0.6,  0.6,  0.0 ),
+  new THREE.Vector3( 0.0,  0.0,  0.0 ),
+  new THREE.Vector3( 0.0,  0.0,  0.0 ),
+  new THREE.Vector3( 0.5,  0.2,  0.3 ),
+  new THREE.Vector3( 0.0,  0.0,  0.0 )
+];
+
+const camCurve = new THREE.CatmullRomCurve3(camKeys, false, 'catmullrom', 0.5);
+const tgtCurve = new THREE.CatmullRomCurve3(tgtKeys, false, 'catmullrom', 0.5);
+
+const _camPos = new THREE.Vector3();
+const _camTgt = new THREE.Vector3();
+const _parallax = new THREE.Vector3();
+
+let pointerX = 0, pointerY = 0;
+let pointerSmoothX = 0, pointerSmoothY = 0;
+
+window.addEventListener('pointermove', (e) => {
+  pointerX = (e.clientX / window.innerWidth  - 0.5) * 2;
+  pointerY = (e.clientY / window.innerHeight - 0.5) * 2;
+}, { passive: true });
+
+/* ══════════════════════════════════════════════════════════════
+   13 · UI
+   ══════════════════════════════════════════════════════════════ */
+const CHAPTERS = [
+  {
+    a: 0.00, b: 0.135,
+    idx: '01 — Origin',
+    title: 'The Void',
+    body: 'A single point. Zero dimensions. Every coordinate in the universe begins its address here.'
+  },
+  {
+    a: 0.135, b: 0.275,
+    idx: '02 — XY Plane',
+    title: 'z = 0',
+    body: 'The first sheet of glass. Every point upon it shares one quiet truth: its z-coordinate is exactly zero.'
+  },
+  {
+    a: 0.275, b: 0.415,
+    idx: '03 — YZ Plane',
+    title: 'x = 0',
+    body: 'A second plane, orthogonal to the first. Where the two sheets cross, the y-axis is born.'
+  },
+  {
+    a: 0.415, b: 0.555,
+    idx: '04 — XZ Plane',
+    title: 'y = 0',
+    body: 'The third plane completes the frame. Three sheets, mutually perpendicular, meeting at a single point.'
+  },
+  {
+    a: 0.555, b: 0.700,
+    idx: '05 — Octants',
+    title: '2 × 2 × 2 = 8',
+    body: 'Each plane cuts space in two. Three planes cut it into eight congruent regions — the octants.'
+  },
+  {
+    a: 0.700, b: 0.860,
+    idx: '06 — Signature',
+    title: '(+, +, +)',
+    body: 'Every point carries a signature: the signs of its three coordinates. Eight signatures, eight regions, no exceptions.'
+  },
+  {
+    a: 0.860, b: 1.01,
+    idx: '07 — Completeness',
+    title: 'Every Point, One Address',
+    body: 'Position in space is the product of three independent binary decisions. That is all an octant has ever been.'
+  }
+];
+
+const chaptersLayer = document.getElementById('chapters');
+const chapterEls = CHAPTERS.map((c) => {
+  const el = document.createElement('div');
+  el.className = 'chapter';
+  el.innerHTML = `
+    <div class="ch-idx">${c.idx}</div>
+    <h2 class="ch-title">${c.title}</h2>
+    <p class="ch-body">${c.body}</p>
+  `;
+  chaptersLayer.appendChild(el);
+  return el;
+});
+
+const railEl = document.getElementById('rail');
+const railTicks = CHAPTERS.map(() => {
+  const d = document.createElement('div');
+  d.className = 'tick';
+  railEl.appendChild(d);
+  return d;
+});
+// decorative line at the end of the rail
+const railLine = document.createElement('div');
+railLine.className = 'line';
+railEl.appendChild(railLine);
+
+const roCoords = document.getElementById('ro-coords');
+const roSign   = document.getElementById('ro-sign');
+const readoutEl = document.getElementById('readout');
+const hintEl   = document.getElementById('hint');
+
+/* ══════════════════════════════════════════════════════════════
+   14 · SCROLL / PROGRESS
+   ══════════════════════════════════════════════════════════════ */
+let userScrolled = false;
+let autoProgress = 0;
+let targetProgress = 0;
+let progress = 0;
+
+function maxScroll(){
+  return Math.max(1, document.documentElement.scrollHeight - window.innerHeight);
+}
+function rawScroll(){
+  return clamp(window.scrollY / maxScroll(), 0, 1);
+}
+
+function engageUser(){
+  if (userScrolled) return;
+  userScrolled = true;
+  // seamless hand-off: line the document scroll up with the autoplay position
+  window.scrollTo(0, autoProgress * maxScroll());
+  hintEl.style.opacity = '0';
+}
+
+window.addEventListener('wheel',       engageUser, { passive: true });
+window.addEventListener('touchstart',  engageUser, { passive: true });
+window.addEventListener('keydown', (e) => {
+  if (['ArrowDown','ArrowUp','PageDown','PageUp','Home','End',' '].includes(e.key)) engageUser();
+}, { passive: true });
+
+/* ══════════════════════════════════════════════════════════════
+   15 · ANIMATION STATE
+   ══════════════════════════════════════════════════════════════ */
+let time = 0;
+let lastTime = performance.now() / 1000;
+
+const travelerState = { x: 0, y: 0, z: 0, visible: 0 };
+const weights = new Float32Array(8);
+
+/* ══════════════════════════════════════════════════════════════
+   16 · MAIN LOOP
+   ══════════════════════════════════════════════════════════════ */
+function tick(){
+  const now = performance.now() / 1000;
+  const dt  = Math.min(now - lastTime, 0.05);
+  lastTime  = now;
+  time     += dt;
+
+  /* ---------- progress ---------- */
+  if (!userScrolled){
+    autoProgress = Math.min(1, autoProgress + dt * 0.0125);
+    targetProgress = autoProgress;
+  } else {
+    targetProgress = rawScroll();
+  }
+
+  // framerate-independent damping — guarantees fluid, cut-free motion
+  const damp = 1 - Math.pow(0.02, dt);
+  progress += (targetProgress - progress) * damp;
+  const p = progress;
+
+  /* ---------- pointer parallax ---------- */
+  pointerSmoothX += (pointerX - pointerSmoothX) * (1 - Math.pow(0.05, dt));
+  pointerSmoothY += (pointerY - pointerSmoothY) * (1 - Math.pow(0.05, dt));
+
+  /* ---------- glass planes ---------- */
+  const revXY = smoothstep(0.125, 0.300, p);
+  const revYZ = smoothstep(0.265, 0.440, p);
+  const revXZ = smoothstep(0.405, 0.580, p);
+  const planeDim = 1.0 - 0.42 * smoothstep(0.62, 0.94, p);
+
+  planeXY.material.uniforms.uReveal.value  = revXY;
+  planeYZ.material.uniforms.uReveal.value  = revYZ;
+  planeXZ.material.uniforms.uReveal.value  = revXZ;
+
+  planeXY.material.uniforms.uOpacity.value = planeDim;
+  planeYZ.material.uniforms.uOpacity.value = planeDim;
+  planeXZ.material.uniforms.uOpacity.value = planeDim;
+
+  planeXY.material.uniforms.uTime.value = time;
+  planeYZ.material.uniforms.uTime.value = time;
+  planeXZ.material.uniforms.uTime.value = time;
+
+  /* ---------- axes ---------- */
+  const axisRev = smoothstep(0.02, 0.185, p);
+  const axisFade = 1.0 - 0.25 * smoothstep(0.65, 0.95, p);
+
+  [axisX, axisY, axisZ].forEach((a, i) => {
+    const r = Math.max(axisRev, 1e-4);
+    a.rod.scale.y  = r;
+    a.cone.scale.setScalar(r);
+    a.cone.position.y = (HALF + 0.13) * axisRev;
+    a.mat.opacity = (i === 1 ? 0.85 : 0.9) * axisFade;
+  });
+
+  const axisLabelOpacity = smoothstep(0.10, 0.22, p) * axisFade;
+  const labelY = (HALF + 0.72) * Math.max(axisRev, 1e-4);
+  axisLabelX.position.y = labelY;
+  axisLabelY.position.y = labelY;
+  axisLabelZ.position.y = labelY;
+  axisLabelX.material.opacity = axisLabelOpacity;
+  axisLabelY.material.opacity = axisLabelOpacity;
+  axisLabelZ.material.opacity = axisLabelOpacity;
+
+  /* ---------- origin ---------- */
+  const originIn = smoothstep(0.0, 0.08, p);
+  const originPulse = 1 + 0.14 * Math.sin(time * 1.6);
+  originCore.material.opacity = originIn * (0.9 + 0.1 * Math.sin(time * 2.2));
+  originGlow.material.opacity = originIn * (0.55 + 0.18 * Math.sin(time * 1.6));
+  originGlow.scale.setScalar(2.4 * originPulse * lerp(0.6, 1.0, originIn));
+  originLabel.material.opacity = smoothstep(0.05, 0.16, p) * (1 - smoothstep(0.62, 0.82, p)) * 0.8;
+
+  /* ---------- traveler position (continuous Lissajous) ---------- */
+  const w0 = 0.2;
+  const tx = 3.65 * Math.sin(w0 * 4 * time);
+  const ty = 3.15 * Math.sin(w0 * 6 * time + 1.0);
+  const tz = 3.40 * Math.sin(w0 * 3 * time + 2.0);
+
+  travelerState.x = tx;
+  travelerState.y = ty;
+  travelerState.z = tz;
+  travelerState.visible = smoothstep(0.715, 0.855, p);
+
+  const tv = travelerState.visible;
+
+  travelerGroup.position.set(tx, ty, tz);
+  travelerCore.material.opacity = tv;
+  travelerGlow.material.opacity = tv * (0.75 + 0.2 * Math.sin(time * 3.1));
+  travelerGlow.scale.setScalar(1.5 + 0.16 * Math.sin(time * 2.4));
+
+  /* ---------- guide staircase ---------- */
+  _vA.set(0, 0, 0);
+  _vB.set(tx, 0, 0);
+  orientSegment(guideSegs[0], _vA, _vB);
+
+  _vA.set(tx, 0, 0);
+  _vB.set(tx, ty, 0);
+  orientSegment(guideSegs[1], _vA, _vB);
+
+  _vA.set(tx, ty, 0);
+  _vB.set(tx, ty, tz);
+  orientSegment(guideSegs[2], _vA, _vB);
+
+  guideMat.opacity = tv * 0.55;
+
+  /* ---------- projection dots ---------- */
+  projDots[0].position.set(tx, ty, 0);
+  projDots[1].position.set(0, ty, tz);
+  projDots[2].position.set(tx, 0, tz);
+  projMat.opacity = tv * 0.8;
+
+  /* ---------- octant highlight weights ---------- */
+  const k = 0.62;
+  let sumW = 0;
+  for (let i = 0; i < 8; i++){
+    const s = OCTANTS[i].s;
+    const wx = 0.5 + 0.5 * s[0] * Math.tanh(tx / k);
+    const wy = 0.5 + 0.5 * s[1] * Math.tanh(ty / k);
+    const wz = 0.5 + 0.5 * s[2] * Math.tanh(tz / k);
+    weights[i] = wx * wy * wz;
+    sumW += weights[i];
+  }
+
+  /* ---------- octant labels ---------- */
+  for (let i = 0; i < 8; i++){
+    const appear = smoothstep(0.545 + i * 0.012, 0.545 + i * 0.012 + 0.11, p);
+    const w = weights[i];
+
+    // blend between "all equal" and "traveler-weighted"
+    const focus = lerp(0.16, 0.16 + 1.9 * w, tv);
+    const baseOpacity = 0.42 * appear;
+    const opacity = appear * (baseOpacity + focus * 0.95);
+
+    const spr = octantLabels[i];
+    spr.material.opacity = clamp(opacity, 0, 1);
+    const sc = 0.52 * (1 + 0.30 * w * tv) * lerp(0.75, 1.0, appear);
+    spr.scale.set(sc * (spr.scale.x / (spr.scale.y || 1)) * (spr.scale.y / sc), sc, 1);
+    // keep aspect ratio: recompute from stored aspect
+    const asp = spr.userData.aspect || 2.9;
+    spr.scale.set(sc * asp, sc, 1);
+  }
+
+  /* ---------- node clouds ---------- */
+  for (let i = 0; i < 8; i++){
+    const cloud = nodeClouds[i];
+    const appear = smoothstep(0.60 + i * 0.015, 0.60 + i * 0.015 + 0.15, p);
+    const w = weights[i];
+
+    cloud.mat.uniforms.uAppear.value  = appear * (0.55 + 0.65 * w * tv + 0.45 * (1 - tv));
+    cloud.mat.uniforms.uOpacity.value = appear * (0.55 + 1.05 * w * tv);
+    cloud.mat.uniforms.uTime.value    = time;
+
+    const pulse = 1 + 0.35 * w * tv;
+    cloud.mat.uniforms.uColorA.value.copy(cloud.baseColor).multiplyScalar(pulse);
+  }
+
+  /* ---------- dust ---------- */
+  dustMat.uniforms.uTime.value = time;
+  dust.rotation.y = time * 0.008;
+
+  /* ---------- camera ---------- */
+  camCurve.getPoint(p, _camPos);
+  tgtCurve.getPoint(p, _camTgt);
+
+  // idle drift — never perfectly still, never jarring
+  _camPos.x += Math.sin(time * 0.121) * 0.38;
+  _camPos.y += Math.sin(time * 0.093 + 1.7) * 0.30;
+  _camPos.z += Math.sin(time * 0.077 + 3.1) * 0.28;
+
+  camera.position.copy(_camPos);
+
+  // pointer parallax applied in camera space
+  _parallax.set(pointerSmoothX * 0.9, -pointerSmoothY * 0.7, 0);
+  _parallax.applyQuaternion(camera.quaternion);
+  camera.position.add(_parallax);
+
+  camera.lookAt(_camTgt);
+  camera.rotation.z += Math.sin(time * 0.063) * 0.012;
+
+  /* ---------- UI ---------- */
+  updateUI(p, tx, ty, tz, tv);
+
+  /* ---------- post ---------- */
+  caPass.uniforms.uTime.value = time;
+
+  composer.render();
+}
+
+/* ══════════════════════════════════════════════════════════════
+   17 · UI UPDATE
+   ══════════════════════════════════════════════════════════════ */
+let lastActiveChapter = -1;
+
+function updateUI(p, tx, ty, tz, tv){
+  /* chapters — crossfading, stacked, absolutely positioned */
+  for (let i = 0; i < CHAPTERS.length; i++){
+    const c = CHAPTERS[i];
+    const fade = 0.045;
+    const a = smoothstep(c.a, c.a + fade, p) * (1 - smoothstep(c.b - fade, c.b, p));
+    const el = chapterEls[i];
+    el.style.opacity = a.toFixed(3);
+    el.style.transform = `translateY(${((1 - a) * 16).toFixed(2)}px)`;
+  }
+
+  /* active chapter → rail */
+  let active = 0;
+  for (let i = 0; i < CHAPTERS.length; i++){
+    if (p >= CHAPTERS[i].a) active = i;
+  }
+  if (active !== lastActiveChapter){
+    lastActiveChapter = active;
+    railTicks.forEach((t, i) => t.classList.toggle('on', i === active));
+  }
+
+  /* dynamic title for the signature chapter */
+  const fmt = (v) => (v >= 0 ? '+' : '−') + Math.abs(v).toFixed(2);
+  const sgn = (v) => (v >= 0 ? '+' : '−');
+
+  const sig = `( ${sgn(tx)}, ${sgn(ty)}, ${sgn(tz)} )`;
+  const coords = `( ${fmt(tx)}, ${fmt(ty)}, ${fmt(tz)} )`;
+
+  roCoords.textContent = coords;
+  roSign.textContent   = sig;
+
+  // chapter 06 title follows the traveler
+  const c6 = CHAPTERS[5];
+  const el6 = chapterEls[5];
+  const title6 = el6.querySelector('.ch-title');
+  if (title6) title6.textContent = sig;
+  el6.querySelector('.ch-body').textContent =
+    `Every point carries a signature: the signs of its three coordinates. The point you are watching lives in octant ${sig}.`;
+
+  readoutEl.style.opacity = tv.toFixed(3);
+}
+
+/* ══════════════════════════════════════════════════════════════
+   18 · ASPECT RATIO STORE FOR LABELS
+   ══════════════════════════════════════════════════════════════ */
+octantLabels.forEach((spr) => {
+  spr.userData.aspect = spr.scale.x / spr.scale.y;
+});
+
+/* ══════════════════════════════════════════════════════════════
+   19 · RESIZE
+   ══════════════════════════════════════════════════════════════ */
+function onResize(){
+  const w = window.innerWidth;
+  const h = window.innerHeight;
+
+  camera.aspect = w / h;
+  camera.updateProjectionMatrix();
+
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.setSize(w, h);
+
+  composer.setSize(w, h);
+  bloom.setSize(w, h);
+
+  const pr = renderer.getPixelRatio();
+  dustMat.uniforms.uPixelRatio.value = pr;
+  nodeClouds.forEach((c) => { c.mat.uniforms.uPixelRatio.value = pr; });
+}
+window.addEventListener('resize', onResize);
+onResize();
+
+/* ══════════════════════════════════════════════════════════════
+   20 · BOOT
+   ══════════════════════════════════════════════════════════════ */
+async function boot(){
+  try { await document.fonts.ready; } catch(e){}
+  // give the browser one paint cycle with fonts in place
+  await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+
+  // regenerate labels now that webfonts are available
+  rebuildLabels();
+
+  const loader = document.getElementById('loader');
+  loader.classList.add('gone');
+  setTimeout(() => loader.remove(), 1400);
+
+  renderer.setAnimationLoop(tick);
+}
+
+/* Re-create text sprites once Inter has loaded, for crisp typography. */
+function rebuildLabels(){
+  const specs = [
+    { spr: axisLabelX, text: 'x', color: '#8fe3ff', h: 0.66, o: { fontSize: 84, weight: 300 } },
+    { spr: axisLabelY, text: 'y', color: '#9dffd0', h: 0.66, o: { fontSize: 84, weight: 300 } },
+    { spr: axisLabelZ, text: 'z', color: '#d3b6ff', h: 0.66, o: { fontSize: 84, weight: 300 } },
+    { spr: originLabel, text: 'O', color: '#cfe6ff', h: 0.44, o: { fontSize: 60, weight: 400 } }
+  ];
+
+  specs.forEach((spec) => {
+    const parent = spec.spr.parent;
+    const pos = spec.spr.position.clone();
+    const op = spec.spr.material.opacity;
+    const fresh = makeLabel(spec.text, spec.color, spec.h, spec.o);
+    fresh.position.copy(pos);
+    fresh.material.opacity = op;
+    parent.remove(spec.spr);
+    spec.spr.material.map.dispose();
+    spec.spr.material.dispose();
+    parent.add(fresh);
+    spec.spr = fresh;
+  });
+
+  // reassign references
+  axisX.group.remove(axisX.group.children.find(c => c.isSprite));
+  // simpler: rebuild by clearing and re-adding
+  [axisX, axisY, axisZ].forEach((a) => {
+    a.group.children.filter(c => c.isSprite).forEach(c => a.group.remove(c));
+  });
+
+  const lx = makeLabel('x', '#8fe3ff', 0.66, { fontSize: 84, weight: 300 });
+  const ly = makeLabel('y', '#9dffd0', 0.66, { fontSize: 84, weight: 300 });
+  const lz = makeLabel('z', '#d3b6ff', 0.66, { fontSize: 84, weight: 300 });
+  lx.position.y = HALF + 0.72;
+  ly.position.y = HALF + 0.72;
+  lz.position.y = HALF + 0.72;
+  axisX.group.add(lx);
+  axisY.group.add(ly);
+  axisZ.group.add(lz);
+
+  // octant labels
+  octantLabels.forEach((spr, i) => {
+    const o = OCTANTS[i];
+    const fresh = makeLabel(o.label, o.color, 0.52, { fontSize: 60, weight: 400, spacing: '0.1em' });
+    fresh.position.copy(spr.position);
+    fresh.material.opacity = spr.material.opacity;
+    fresh.userData.aspect = fresh.scale.x / fresh.scale.y;
+    scene.remove(spr);
+    spr.material.map.dispose();
+    spr.material.dispose();
+    scene.add(fresh);
+    octantLabels[i] = fresh;
+  });
+}
+
+boot();
+</script>
 </body>
 </html>
