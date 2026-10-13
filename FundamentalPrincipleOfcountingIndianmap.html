@@ -1,0 +1,1493 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+<title>Fundamental Principle of Counting · India Diorama</title>
+<style>
+  :root{
+    --cyan:#48d8ff;
+    --ink:#04060b;
+    --text:#e9f0fa;
+    --muted:rgba(190,210,235,.62);
+    --line:rgba(120,180,255,.14);
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  html,body{width:100%;height:100%;overflow:hidden;background:var(--ink);}
+  body{
+    font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    color:var(--text);
+    -webkit-font-smoothing:antialiased;
+    text-rendering:optimizeLegibility;
+  }
+  #app{position:fixed;inset:0;}
+  canvas{display:block;}
+
+  .hud{position:fixed;inset:0;pointer-events:none;z-index:10;}
+
+  .panel{
+    background:linear-gradient(160deg,rgba(17,24,38,.80),rgba(7,10,17,.72));
+    border:1px solid var(--line);
+    border-radius:14px;
+    backdrop-filter:blur(16px) saturate(150%);
+    -webkit-backdrop-filter:blur(16px) saturate(150%);
+    box-shadow:0 22px 60px -24px rgba(0,0,0,.95),inset 0 1px 0 rgba(255,255,255,.055);
+  }
+
+  #title{
+    position:absolute;top:24px;left:26px;padding:16px 20px 15px;pointer-events:auto;
+    max-width:min(420px,44vw);
+  }
+  #title .eyebrow{
+    font-size:10px;letter-spacing:.34em;text-transform:uppercase;
+    color:var(--cyan);opacity:.85;font-weight:600;
+  }
+  #title h1{
+    font-size:19px;font-weight:650;letter-spacing:.012em;margin-top:7px;line-height:1.24;
+    background:linear-gradient(92deg,#ffffff 0%,#bcd8ff 55%,#7ea8e8 100%);
+    -webkit-background-clip:text;background-clip:text;color:transparent;
+  }
+  #title p{margin-top:6px;font-size:11.5px;color:var(--muted);letter-spacing:.02em;line-height:1.5;}
+
+  #controlsPanel{
+    position:absolute;top:24px;right:26px;padding:16px;pointer-events:auto;
+    width:300px;
+  }
+  #controlsPanel .hd{
+    display:flex;align-items:baseline;justify-content:space-between;gap:14px;margin-bottom:14px;
+  }
+  #controlsPanel .hd span:first-child{
+    font-size:10px;letter-spacing:.26em;text-transform:uppercase;color:var(--muted);font-weight:600;
+  }
+  #controlsPanel .hd span:last-child{
+    font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:10.5px;color:var(--cyan);
+  }
+
+  .leg-section{margin-bottom:14px;}
+  .leg-label{
+    display:flex;align-items:center;gap:8px;
+    font-size:11px;font-weight:600;letter-spacing:.03em;color:rgba(215,230,250,.9);
+    margin-bottom:8px;
+  }
+  .leg-label .leg-dot{
+    width:7px;height:7px;border-radius:50%;
+  }
+  .leg-label .leg-count{
+    margin-left:auto;
+    font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
+    font-size:10px;font-weight:700;
+    color:rgba(190,210,235,.6);letter-spacing:.06em;
+    padding:2px 8px;border-radius:5px;
+    background:rgba(120,160,210,.12);
+    transition:all .25s ease;
+  }
+  .leg-label .leg-count.complete{
+    background:rgba(75,224,165,.22);
+    color:#7cf5c4;
+    box-shadow:0 0 12px -2px rgba(75,224,165,.5);
+  }
+
+  .branch-grid-4{
+    display:grid;grid-template-columns:repeat(4,1fr);gap:7px;
+  }
+
+  .branch-btn{
+    position:relative;aspect-ratio:1;border-radius:11px;cursor:pointer;
+    display:flex;align-items:center;justify-content:center;
+    background:linear-gradient(160deg,rgba(28,40,60,.55),rgba(11,16,26,.6));
+    border:1px solid rgba(120,170,240,.16);
+    font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
+    font-size:14px;font-weight:700;
+    color:rgba(180,200,225,.45);
+    transition:all .22s cubic-bezier(.4,0,.2,1);
+  }
+  .branch-btn:hover{
+    transform:translateY(-1px);
+    border-color:rgba(120,190,255,.4);
+    color:rgba(220,235,255,.8);
+  }
+  .branch-btn.active{
+    background:linear-gradient(160deg,var(--btn-bg-a),var(--btn-bg-b));
+    border-color:var(--btn-border);
+    color:var(--btn-accent);
+    box-shadow:
+      0 0 0 1px var(--btn-ring),
+      0 0 20px -4px var(--btn-glow),
+      inset 0 1px 0 rgba(255,255,255,.15);
+    text-shadow:0 0 12px var(--btn-glow);
+  }
+
+  .quick-actions{
+    display:flex;gap:7px;margin-top:4px;
+  }
+  .mini-btn{
+    flex:1;padding:9px;border-radius:9px;cursor:pointer;
+    background:linear-gradient(160deg,rgba(30,44,64,.55),rgba(11,16,26,.6));
+    border:1px solid rgba(120,170,240,.14);
+    color:rgba(200,218,240,.7);font:inherit;font-size:10.5px;font-weight:600;
+    letter-spacing:.05em;text-transform:uppercase;transition:all .2s ease;
+  }
+  .mini-btn:hover{
+    color:#fff;border-color:rgba(110,200,255,.4);
+    transform:translateY(-1px);
+  }
+  .mini-btn.primary{
+    background:linear-gradient(160deg,rgba(50,140,220,.4),rgba(20,55,95,.5));
+    border-color:rgba(90,200,255,.35);color:#dff2ff;
+  }
+
+  #equation{
+    position:absolute;left:50%;bottom:26px;transform:translateX(-50%);
+    padding:14px 26px;display:flex;align-items:center;gap:22px;pointer-events:auto;
+    white-space:nowrap;
+  }
+  .eq-term{display:flex;flex-direction:column;align-items:center;gap:3px;}
+  .eq-term .n{
+    font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
+    font-size:28px;font-weight:700;line-height:1;
+    letter-spacing:-.02em;transition:color .3s ease;
+  }
+  .eq-term .k{
+    font-size:9px;letter-spacing:.22em;text-transform:uppercase;
+    color:var(--muted);font-weight:600;
+  }
+  .eq-term.a .n{color:#5fe3ff;}
+  .eq-term.b .n{color:#ffb347;}
+  .eq-term.t .n{color:#ffffff;}
+  .eq-op{font-family:ui-monospace,monospace;font-size:22px;color:rgba(180,205,235,.55);}
+  .eq-div{
+    width:1px;height:38px;
+    background:linear-gradient(180deg,transparent,rgba(120,180,255,.32),transparent);
+  }
+
+  @keyframes pop{
+    0%{transform:scale(1);}
+    35%{transform:scale(1.4);}
+    100%{transform:scale(1);}
+  }
+  .eq-term.pop .n{animation:pop .55s cubic-bezier(.3,0,.3,1);}
+
+  #viewControls{
+    position:absolute;left:26px;bottom:26px;padding:11px;display:flex;gap:7px;
+    pointer-events:auto;flex-wrap:wrap;max-width:min(420px,54vw);
+  }
+  .btn{
+    font:inherit;font-size:11px;font-weight:550;letter-spacing:.02em;
+    padding:9px 14px;border-radius:9px;cursor:pointer;color:#cfe0f5;
+    background:linear-gradient(160deg,rgba(34,50,76,.72),rgba(13,19,31,.72));
+    border:1px solid rgba(120,170,240,.16);
+    transition:all .2s cubic-bezier(.4,0,.2,1);
+  }
+  .btn:hover{color:#fff;border-color:rgba(110,200,255,.5);transform:translateY(-1px);}
+  .btn.primary{
+    background:linear-gradient(160deg,rgba(50,140,220,.55),rgba(20,55,95,.6));
+    border-color:rgba(90,200,255,.45);color:#eaf7ff;
+  }
+
+  #stats{
+    position:absolute;right:26px;bottom:26px;padding:9px 13px;pointer-events:none;
+    font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:10px;
+    letter-spacing:.09em;color:rgba(160,190,225,.55);display:flex;gap:14px;
+  }
+  #stats b{color:var(--cyan);font-weight:600;}
+
+  #loader{
+    position:fixed;inset:0;z-index:50;display:flex;align-items:center;justify-content:center;
+    background:var(--ink);transition:opacity .8s ease;
+    font-size:11px;letter-spacing:.3em;text-transform:uppercase;color:rgba(120,180,255,.7);
+  }
+  #loader.gone{opacity:0;pointer-events:none;}
+  #errorOverlay{
+    position:fixed;inset:0;z-index:60;display:none;
+    align-items:center;justify-content:center;padding:40px;
+    background:rgba(4,6,11,.94);color:#ff9a9a;font:500 13px/1.6 ui-monospace,monospace;
+    text-align:center;white-space:pre-wrap;
+  }
+  #errorOverlay.on{display:flex;}
+
+  @media (max-width:900px){
+    #title{max-width:60vw;padding:12px 14px;}
+    #title h1{font-size:15px;}
+    #controlsPanel{width:250px;padding:12px;transform:scale(.88);transform-origin:top right;}
+    #equation{gap:14px;padding:11px 18px;}
+    .eq-term .n{font-size:20px;}
+    #viewControls{max-width:70vw;}
+    #stats{display:none;}
+  }
+</style>
+</head>
+<body>
+<div id="app"></div>
+
+<div class="hud">
+  <div id="title" class="panel">
+    <div class="eyebrow">Combinatorics · Module 01</div>
+    <h1>The Fundamental Principle of Counting</h1>
+    <p>If one event can occur in <b>m</b> ways and a second in <b>n</b> ways, the two together occur in <b>m × n</b> ways.</p>
+  </div>
+
+  <div id="controlsPanel" class="panel">
+    <div class="hd">
+      <span>Journey Control</span>
+      <span id="totalWays">0 ways</span>
+    </div>
+
+    <div class="leg-section">
+      <div class="leg-label">
+        <span class="leg-dot" style="background:#5fe3ff;box-shadow:0 0 8px #5fe3ff"></span>
+        Varanasi → Delhi
+        <span class="leg-count" id="leg1Count">0 / 4</span>
+      </div>
+      <div class="branch-grid-4" id="leg1Grid"></div>
+    </div>
+
+    <div class="leg-section" style="margin-bottom:6px;">
+      <div class="leg-label">
+        <span class="leg-dot" style="background:#ffb347;box-shadow:0 0 8px #ffb347"></span>
+        Delhi → Mumbai
+        <span class="leg-count" id="leg2Count">0 / 4</span>
+      </div>
+      <div class="branch-grid-4" id="leg2Grid"></div>
+    </div>
+
+    <div class="quick-actions">
+      <button class="mini-btn primary" id="btnShowAll">Show All</button>
+      <button class="mini-btn" id="btnHideAll">Hide All</button>
+    </div>
+  </div>
+
+  <div id="equation" class="panel">
+    <div class="eq-term a" id="eqA">
+      <div class="n" id="nA">0</div>
+      <div class="k">Varanasi → Delhi</div>
+    </div>
+    <div class="eq-op">×</div>
+    <div class="eq-term b" id="eqB">
+      <div class="n" id="nB">0</div>
+      <div class="k">Delhi → Mumbai</div>
+    </div>
+    <div class="eq-div"></div>
+    <div class="eq-term t" id="eqT">
+      <div class="n" id="nT">0</div>
+      <div class="k">Total Journeys</div>
+    </div>
+  </div>
+
+  <div id="viewControls" class="panel">
+    <button class="btn primary" id="btnTour">▶ Auto Count</button>
+    <button class="btn" id="btnVaranasi">Varanasi</button>
+    <button class="btn" id="btnDelhi">Delhi</button>
+    <button class="btn" id="btnMumbai">Mumbai</button>
+    <button class="btn" id="btnHome">Overview</button>
+  </div>
+
+  <div id="stats" class="panel">
+    <span>FPS <b id="fps">60</b></span>
+    <span>WEBGL <b id="glver">2.0</b></span>
+    <span>TRI <b id="tris">0</b></span>
+  </div>
+</div>
+
+<div id="loader">Forging Obsidian&nbsp;…</div>
+<div id="errorOverlay"></div>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls }   from 'three/addons/controls/OrbitControls.js';
+import { EffectComposer }  from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass }      from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+import { OutputPass }      from 'three/addons/postprocessing/OutputPass.js';
+
+/* ============================================================
+   ERROR SAFETY NET
+   ============================================================ */
+function fatal(msg){
+  const el = document.getElementById('errorOverlay');
+  if (el){ el.textContent = 'Render failed.\n\n' + msg; el.classList.add('on'); }
+  const l = document.getElementById('loader');
+  if (l) l.classList.add('gone');
+}
+window.addEventListener('error', e => {
+  console.error(e.error || e.message);
+  fatal(String(e.error || e.message));
+});
+
+/* ============================================================
+   0 · GEOGRAPHIC DATA
+   ============================================================ */
+const INDIA_OUTLINE = [
+  [77.5,  8.1],[76.5,  9.5],[75.8, 11.5],[74.8, 13.5],[73.8, 15.5],
+  [72.9, 17.9],[72.8, 19.2],[72.6, 20.7],[72.8, 21.5],[72.2, 21.7],
+  [70.5, 20.8],[69.0, 21.8],[68.2, 22.8],[68.4, 23.8],[70.5, 24.3],
+  [71.0, 24.0],[70.0, 25.5],[70.7, 27.0],[72.5, 28.5],[73.9, 29.9],
+  [74.6, 31.0],[75.3, 32.0],[74.0, 34.0],[74.5, 34.7],[76.0, 35.5],
+  [78.0, 35.5],[79.5, 34.5],[79.0, 33.0],[81.0, 30.3],[83.0, 29.3],
+  [85.0, 28.0],[88.0, 27.9],[88.9, 27.3],[88.8, 26.5],[89.7, 26.2],
+  [92.0, 26.9],[94.5, 27.6],[96.5, 28.4],[97.4, 27.5],[96.2, 25.0],
+  [94.5, 23.9],[93.3, 22.2],[92.5, 23.6],[91.5, 23.0],[89.8, 22.0],
+  [88.9, 21.6],[86.9, 20.7],[84.8, 19.1],[82.3, 17.0],[80.3, 15.8],
+  [80.2, 13.1],[79.3, 10.3]
+];
+
+const CENTER = { lon: 82.5, lat: 22.0 };
+
+const CITY_GEO = {
+  varanasi: { lon: 82.97, lat: 25.32, label: 'VARANASI', sub: 'गंगा घाट · The Ghats' },
+  delhi:    { lon: 77.21, lat: 28.61, label: 'DELHI',    sub: 'इंडिया गेट · India Gate' },
+  mumbai:   { lon: 73.35, lat: 19.15, label: 'MUMBAI',   sub: 'गेटवे · Gateway of India' }
+};
+
+const toWorld = (lon, lat, y = 0) =>
+  new THREE.Vector3(lon - CENTER.lon, y, -(lat - CENTER.lat));
+
+const CITY_POS = {
+  varanasi: toWorld(CITY_GEO.varanasi.lon, CITY_GEO.varanasi.lat),
+  delhi:    toWorld(CITY_GEO.delhi.lon,    CITY_GEO.delhi.lat),
+  mumbai:   toWorld(CITY_GEO.mumbai.lon,   CITY_GEO.mumbai.lat)
+};
+
+const BRANCHES_PER_LEG = 4;
+
+/* ============================================================
+   1 · RENDERER · SCENE · CAMERA
+   ============================================================ */
+const container = document.getElementById('app');
+
+let renderer;
+try {
+  renderer = new THREE.WebGLRenderer({
+    antialias: true,
+    powerPreference: 'high-performance',
+    stencil: false,
+    alpha: false
+  });
+} catch (e) {
+  fatal(String(e));
+  throw e;
+}
+
+let pixelRatio = Math.min(window.devicePixelRatio || 1, 2);
+renderer.setPixelRatio(pixelRatio);
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 0.95;
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.shadowMap.autoUpdate = false;
+container.appendChild(renderer.domElement);
+
+document.getElementById('glver').textContent =
+  renderer.capabilities.isWebGL2 ? '2.0' : '1.0';
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x05070d);
+scene.fog = new THREE.FogExp2(0x05070d, 0.0085);
+
+const camera = new THREE.PerspectiveCamera(
+  40, window.innerWidth / window.innerHeight, 0.5, 400
+);
+const HOME_POS = new THREE.Vector3(2.5, 26, 33);
+const HOME_TGT = new THREE.Vector3(0, 0, -2.5);
+camera.position.set(22, 52, 62);
+
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.target.copy(HOME_TGT);
+controls.enableDamping = true;
+controls.dampingFactor = 0.055;
+controls.rotateSpeed = 0.62;
+controls.zoomSpeed = 0.8;
+controls.panSpeed = 0.6;
+controls.minDistance = 4;
+controls.maxDistance = 78;
+controls.maxPolarAngle = Math.PI * 0.478;
+controls.autoRotate = true;
+controls.autoRotateSpeed = 0.35;
+controls.update();
+
+/* ============================================================
+   2 · ENVIRONMENT
+   ============================================================ */
+function buildEnvironment() {
+  const envScene = new THREE.Scene();
+  const planeGeo = new THREE.PlaneGeometry(1, 1);
+
+  const panel = (hex, intensity, pos, rot, sx, sy) => {
+    const mat = new THREE.MeshBasicMaterial({
+      color: new THREE.Color(hex).multiplyScalar(intensity),
+      side: THREE.DoubleSide,
+      toneMapped: false
+    });
+    const m = new THREE.Mesh(planeGeo, mat);
+    m.position.set(pos[0], pos[1], pos[2]);
+    m.rotation.set(rot[0], rot[1], rot[2]);
+    m.scale.set(sx, sy, 1);
+    envScene.add(m);
+  };
+
+  panel(0xfff2e0, 3.0, [ 0,  9,  5], [ Math.PI / 2, 0, 0], 22, 22);
+  panel(0x2f6bff, 2.0, [-11,  4, -7], [0,  Math.PI / 2.4, 0], 26, 14);
+  panel(0xff2f7a, 1.0, [ 11,  2, -5], [0, -Math.PI / 2.4, 0], 22, 12);
+  panel(0x9fd4ff, 1.3, [  0, -2,-14], [0, 0, 0], 26, 14);
+  panel(0x101a2c, 0.8, [  0, -9,  0], [-Math.PI / 2, 0, 0], 34, 34);
+
+  return envScene;
+}
+
+try {
+  const pmrem = new THREE.PMREMGenerator(renderer);
+  const envRT = pmrem.fromScene(buildEnvironment(), 0.035, 0.1, 120);
+  scene.environment = envRT.texture;
+  pmrem.dispose();
+} catch (e) {
+  console.warn('PMREM skipped:', e);
+}
+
+/* ============================================================
+   3 · LIGHTING
+   ============================================================ */
+const ambient = new THREE.AmbientLight(0x35496e, 0.55);
+scene.add(ambient);
+
+const hemi = new THREE.HemisphereLight(0x2b4d8f, 0x0a0f1a, 0.30);
+scene.add(hemi);
+
+const keyLight = new THREE.DirectionalLight(0xfff4e4, 1.35);
+keyLight.position.set(14, 24, 12);
+keyLight.castShadow = true;
+keyLight.shadow.mapSize.set(2048, 2048);
+keyLight.shadow.camera.near = 4;
+keyLight.shadow.camera.far = 70;
+keyLight.shadow.camera.left = -20;
+keyLight.shadow.camera.right = 20;
+keyLight.shadow.camera.top = 20;
+keyLight.shadow.camera.bottom = -20;
+keyLight.shadow.bias = -0.0007;
+keyLight.shadow.normalBias = 0.02;
+scene.add(keyLight);
+
+const rimLight = new THREE.DirectionalLight(0x4f86ff, 0.65);
+rimLight.position.set(-16, 9, -14);
+scene.add(rimLight);
+
+const fillLight = new THREE.DirectionalLight(0xffb070, 0.28);
+fillLight.position.set(6, 4, -18);
+scene.add(fillLight);
+
+const varanasiLight = new THREE.PointLight(0xffb066, 2.2, 7, 2);
+varanasiLight.position.copy(CITY_POS.varanasi).add(new THREE.Vector3(0, 0.9, 0.6));
+scene.add(varanasiLight);
+
+const mumbaiLight = new THREE.PointLight(0x66b8ff, 1.4, 7, 2);
+mumbaiLight.position.copy(CITY_POS.mumbai).add(new THREE.Vector3(0, 0.9, 0.8));
+scene.add(mumbaiLight);
+
+/* ============================================================
+   4 · MATERIALS
+   ============================================================ */
+const obsidianMat = new THREE.MeshPhysicalMaterial({
+  color: 0x0c1018, roughness: 0.22, metalness: 0.35,
+  clearcoat: 0.85, clearcoatRoughness: 0.12, reflectivity: 0.9,
+  envMapIntensity: 1.05, sheen: 0.25, sheenRoughness: 0.7,
+  sheenColor: new THREE.Color(0x24385f)
+});
+
+const stoneMat = new THREE.MeshStandardMaterial({
+  color: 0xd8cbb2, roughness: 0.68, metalness: 0.04, envMapIntensity: 0.55
+});
+
+const darkStoneMat = new THREE.MeshStandardMaterial({
+  color: 0x8b7c66, roughness: 0.85, metalness: 0.03, envMapIntensity: 0.45
+});
+
+const goldMat = new THREE.MeshStandardMaterial({
+  color: 0xe6b46a, roughness: 0.34, metalness: 1.0, envMapIntensity: 0.85
+});
+
+/* ============================================================
+   5 · GROUND · GRID
+   ============================================================ */
+const voidMat = new THREE.MeshPhysicalMaterial({
+  color: 0x03050a, roughness: 0.18, metalness: 0.88,
+  envMapIntensity: 0.85, reflectivity: 0.85
+});
+
+const voidPlane = new THREE.Mesh(new THREE.CircleGeometry(90, 96), voidMat);
+voidPlane.rotation.x = -Math.PI / 2;
+voidPlane.position.y = -1.35;
+scene.add(voidPlane);
+
+const gridUniforms = {
+  uTime:  { value: 0 },
+  uColor: { value: new THREE.Color(0x2f8fd8) }
+};
+
+const gridMat = new THREE.ShaderMaterial({
+  uniforms: gridUniforms,
+  transparent: true, depthWrite: false,
+  blending: THREE.AdditiveBlending, side: THREE.DoubleSide,
+  vertexShader: `
+    varying vec3 vPos;
+    void main(){
+      vPos = position;
+      gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+    }
+  `,
+  fragmentShader: `
+    uniform float uTime;
+    uniform vec3  uColor;
+    varying vec3  vPos;
+    void main(){
+      vec2 p  = vPos.xy * 0.42;
+      vec2 f  = abs(fract(p) - 0.5);
+      float l = min(f.x, f.y);
+      float line = 1.0 - smoothstep(0.0, 0.035, l);
+      float d    = length(vPos.xy);
+      float fall = smoothstep(58.0, 4.0, d);
+      float pulse = 0.55 + 0.45 * sin(d * 0.42 - uTime * 1.15);
+      float a = line * fall * pulse;
+      gl_FragColor = vec4(uColor * a * 0.95, a * 0.32);
+    }
+  `
+});
+
+const gridPlane = new THREE.Mesh(new THREE.PlaneGeometry(170, 170), gridMat);
+gridPlane.rotation.x = -Math.PI / 2;
+gridPlane.position.y = -1.30;
+scene.add(gridPlane);
+
+/* ============================================================
+   6 · INDIA DIORAMA
+   ============================================================ */
+function chaikin(points, iterations = 2) {
+  let pts = points;
+  for (let it = 0; it < iterations; it++) {
+    const out = [];
+    for (let i = 0; i < pts.length; i++) {
+      const a = pts[i];
+      const b = pts[(i + 1) % pts.length];
+      out.push(new THREE.Vector2(a.x + (b.x - a.x) * 0.25, a.y + (b.y - a.y) * 0.25));
+      out.push(new THREE.Vector2(a.x + (b.x - a.x) * 0.75, a.y + (b.y - a.y) * 0.75));
+    }
+    pts = out;
+  }
+  return pts;
+}
+
+const DEPTH = 0.95;
+const BEVEL = 0.11;
+
+function buildIndia() {
+  const group = new THREE.Group();
+
+  const raw = INDIA_OUTLINE.map(([lon, lat]) =>
+    new THREE.Vector2(lon - CENTER.lon, lat - CENTER.lat)
+  );
+  const pts = chaikin(raw, 2);
+  const shape = new THREE.Shape(pts);
+
+  const geo = new THREE.ExtrudeGeometry(shape, {
+    depth: DEPTH, bevelEnabled: true, bevelThickness: BEVEL,
+    bevelSize: BEVEL, bevelOffset: 0, bevelSegments: 3, curveSegments: 1
+  });
+  geo.rotateX(-Math.PI / 2);
+  geo.computeVertexNormals();
+
+  const land = new THREE.Mesh(geo, obsidianMat);
+  land.position.y = -(DEPTH + BEVEL);
+  land.castShadow = true;
+  land.receiveShadow = true;
+  group.add(land);
+
+  const edgePts = pts.map(p => new THREE.Vector3(p.x, 0.012, -p.y));
+  edgePts.push(edgePts[0].clone());
+  const edgeGeo = new THREE.BufferGeometry().setFromPoints(edgePts);
+  group.add(new THREE.Line(edgeGeo, new THREE.LineBasicMaterial({
+    color: 0x4aa8e6, transparent: true, opacity: 0.30,
+    blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false
+  })));
+
+  const shelfPts = pts.map(p => new THREE.Vector3(p.x * 1.045, -0.30, -p.y * 1.045));
+  shelfPts.push(shelfPts[0].clone());
+  const shelfGeo = new THREE.BufferGeometry().setFromPoints(shelfPts);
+  group.add(new THREE.Line(shelfGeo, new THREE.LineBasicMaterial({
+    color: 0x184a80, transparent: true, opacity: 0.18,
+    blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false
+  })));
+
+  return group;
+}
+
+scene.add(buildIndia());
+
+/* ============================================================
+   7 · MONUMENTS
+   ============================================================ */
+function makeArch({ width, height, depth, radius, tube, mat }) {
+  const g = new THREE.Group();
+  const pillarW = Math.max(0.02, width / 2 - radius);
+  const springY = height - radius - tube;
+  const pillarGeo = new THREE.BoxGeometry(pillarW, springY, depth);
+
+  for (const s of [-1, 1]) {
+    const p = new THREE.Mesh(pillarGeo, mat);
+    p.position.set(s * (radius + pillarW / 2), springY / 2, 0);
+    p.castShadow = true; p.receiveShadow = true;
+    g.add(p);
+  }
+
+  const ring = new THREE.Mesh(
+    new THREE.TorusGeometry(radius + tube / 2, tube / 2, 9, 30, Math.PI), mat
+  );
+  ring.position.y = springY;
+  ring.castShadow = true; ring.receiveShadow = true;
+  g.add(ring);
+
+  const capH = tube * 0.9;
+  const cap = new THREE.Mesh(new THREE.BoxGeometry(width, capH, depth), mat);
+  cap.position.y = height + capH / 2 - tube * 0.1;
+  cap.castShadow = true; cap.receiveShadow = true;
+  g.add(cap);
+
+  g.userData.top = height + capH;
+  return g;
+}
+
+function buildIndiaGate() {
+  const g = new THREE.Group();
+  const plinth = new THREE.Mesh(new THREE.BoxGeometry(1.62, 0.09, 0.86), darkStoneMat);
+  plinth.position.y = 0.045; plinth.receiveShadow = true; g.add(plinth);
+
+  const arch = makeArch({
+    width: 1.16, height: 1.18, depth: 0.52,
+    radius: 0.365, tube: 0.085, mat: stoneMat
+  });
+  arch.position.y = 0.09; g.add(arch);
+
+  const topY = 0.09 + arch.userData.top;
+  const cornice = new THREE.Mesh(new THREE.BoxGeometry(1.30, 0.055, 0.60), stoneMat);
+  cornice.position.y = topY + 0.027; cornice.castShadow = true; g.add(cornice);
+
+  const drum = new THREE.Mesh(new THREE.CylinderGeometry(0.30, 0.345, 0.11, 26), stoneMat);
+  drum.position.y = topY + 0.11; drum.castShadow = true; g.add(drum);
+
+  const bowl = new THREE.Mesh(
+    new THREE.SphereGeometry(0.30, 26, 14, 0, Math.PI * 2, 0, Math.PI * 0.42), stoneMat
+  );
+  bowl.position.y = topY + 0.165; bowl.scale.y = 0.55; bowl.castShadow = true; g.add(bowl);
+
+  const finial = new THREE.Mesh(new THREE.ConeGeometry(0.035, 0.13, 12), goldMat);
+  finial.position.y = topY + 0.30; g.add(finial);
+
+  const lintel = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.018, 0.545), goldMat);
+  lintel.position.y = topY - 0.02; g.add(lintel);
+
+  return g;
+}
+
+function buildGateway() {
+  const g = new THREE.Group();
+  const plinth = new THREE.Mesh(new THREE.BoxGeometry(2.05, 0.10, 0.95), darkStoneMat);
+  plinth.position.y = 0.05; plinth.receiveShadow = true; g.add(plinth);
+
+  const arch = makeArch({
+    width: 1.46, height: 1.02, depth: 0.60,
+    radius: 0.40, tube: 0.085, mat: stoneMat
+  });
+  arch.position.y = 0.10; g.add(arch);
+
+  const topY = 0.10 + arch.userData.top;
+  const cornice = new THREE.Mesh(new THREE.BoxGeometry(1.60, 0.06, 0.68), stoneMat);
+  cornice.position.y = topY + 0.03; cornice.castShadow = true; g.add(cornice);
+
+  const turretGeo = new THREE.CylinderGeometry(0.075, 0.09, 1.20, 12);
+  const domeGeo = new THREE.SphereGeometry(0.085, 14, 10, 0, Math.PI * 2, 0, Math.PI * 0.55);
+  const spikeGeo = new THREE.ConeGeometry(0.022, 0.09, 8);
+
+  for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
+    const x = sx * 0.80, z = sz * 0.30;
+    const t = new THREE.Mesh(turretGeo, stoneMat);
+    t.position.set(x, 0.10 + 0.60, z); t.castShadow = true; g.add(t);
+    const d = new THREE.Mesh(domeGeo, stoneMat);
+    d.position.set(x, 0.10 + 1.20, z); d.castShadow = true; g.add(d);
+    const s = new THREE.Mesh(spikeGeo, goldMat);
+    s.position.set(x, 0.10 + 1.29, z); g.add(s);
+  }
+
+  const drum = new THREE.Mesh(new THREE.CylinderGeometry(0.26, 0.30, 0.14, 22), stoneMat);
+  drum.position.set(0, topY + 0.09, -0.34); drum.castShadow = true; g.add(drum);
+
+  const dome = new THREE.Mesh(
+    new THREE.SphereGeometry(0.28, 24, 14, 0, Math.PI * 2, 0, Math.PI * 0.52), stoneMat
+  );
+  dome.position.set(0, topY + 0.16, -0.34); dome.castShadow = true; g.add(dome);
+
+  const finial = new THREE.Mesh(new THREE.ConeGeometry(0.028, 0.11, 10), goldMat);
+  finial.position.set(0, topY + 0.44, -0.34); g.add(finial);
+
+  for (const sx of [-1, 1]) {
+    const niche = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.30, 0.06), darkStoneMat);
+    niche.position.set(sx * 0.60, 0.42, 0.31); g.add(niche);
+  }
+
+  return g;
+}
+
+function buildVaranasiGhats() {
+  const g = new THREE.Group();
+  const TIERS = 9;
+  const stepGeo = new THREE.BoxGeometry(2.5, 0.055, 0.155);
+  for (let i = 0; i < TIERS; i++) {
+    const m = new THREE.Mesh(stepGeo, darkStoneMat);
+    m.position.set(0, 0.66 - i * 0.070, -0.52 + i * 0.152);
+    m.castShadow = true; m.receiveShadow = true; g.add(m);
+  }
+
+  const riverMat = new THREE.MeshPhysicalMaterial({
+    color: 0x061427, roughness: 0.10, metalness: 0.90,
+    envMapIntensity: 0.95, transparent: true, opacity: 0.95
+  });
+  const river = new THREE.Mesh(new THREE.PlaneGeometry(3.6, 2.4), riverMat);
+  river.rotation.x = -Math.PI / 2;
+  river.position.set(0, 0.012, 1.28);
+  g.add(river);
+
+  const templeBodyGeo = new THREE.BoxGeometry(0.22, 0.34, 0.22);
+  const spireGeo = new THREE.ConeGeometry(0.145, 0.34, 8);
+  const templePositions = [
+    [-1.05, -1.02], [-0.62, -1.22], [-0.18, -1.05],
+    [ 0.28, -1.24], [ 0.72, -1.00], [ 1.12, -1.18]
+  ];
+
+  for (const [x, z] of templePositions) {
+    const h = 0.30 + Math.random() * 0.10;
+    const body = new THREE.Mesh(templeBodyGeo, darkStoneMat);
+    body.scale.set(1, h / 0.34, 1);
+    body.position.set(x, 0.66 + (h * 0.34) / 2 + 0.02, z);
+    body.castShadow = true; body.receiveShadow = true; g.add(body);
+    const spire = new THREE.Mesh(spireGeo, goldMat);
+    spire.position.set(x, 0.66 + h * 0.34 + 0.19, z);
+    spire.castShadow = true; g.add(spire);
+  }
+
+  const LANTERN_COUNT = 46;
+  const lanternGeo = new THREE.SphereGeometry(0.026, 7, 6);
+  const lanternMat = new THREE.MeshBasicMaterial({
+    color: new THREE.Color(0xffb45a).multiplyScalar(1.8), toneMapped: false
+  });
+  const lanterns = new THREE.InstancedMesh(lanternGeo, lanternMat, LANTERN_COUNT);
+  lanterns.instanceMatrix.setUsage(THREE.StaticDrawUsage);
+  const dummy = new THREE.Object3D();
+  const perRow = Math.ceil(LANTERN_COUNT / TIERS);
+  for (let i = 0; i < LANTERN_COUNT; i++) {
+    const tier = i % TIERS;
+    const side = (i / TIERS) | 0;
+    const x = -1.18 + (side / Math.max(1, perRow - 1)) * 2.36 + (Math.random() - 0.5) * 0.14;
+    const z = -0.52 + tier * 0.152;
+    const y = 0.66 - tier * 0.070 + 0.055;
+    dummy.position.set(x, y, z);
+    dummy.scale.setScalar(0.75 + Math.random() * 0.55);
+    dummy.updateMatrix();
+    lanterns.setMatrixAt(i, dummy.matrix);
+  }
+  lanterns.instanceMatrix.needsUpdate = true;
+  g.add(lanterns);
+
+  const boat = new THREE.Mesh(new THREE.CapsuleGeometry(0.035, 0.20, 4, 8), darkStoneMat);
+  boat.rotation.z = Math.PI / 2;
+  boat.position.set(-0.85, 0.035, 1.25);
+  g.add(boat);
+
+  return g;
+}
+
+const gv = buildVaranasiGhats();
+gv.position.copy(CITY_POS.varanasi);
+gv.rotation.y = -0.42;
+gv.scale.setScalar(0.92);
+scene.add(gv);
+
+const gd = buildIndiaGate();
+gd.position.copy(CITY_POS.delhi);
+gd.rotation.y = 0.28;
+gd.scale.setScalar(0.94);
+scene.add(gd);
+
+const gm = buildGateway();
+gm.position.copy(CITY_POS.mumbai);
+gm.rotation.y = -0.62;
+gm.scale.setScalar(0.86);
+scene.add(gm);
+
+/* ============================================================
+   8 · CITY MARKERS
+   ============================================================ */
+function makeLabel(text, sub, colorHex) {
+  const W = 512, H = 160;
+  const canvas = document.createElement('canvas');
+  canvas.width = W; canvas.height = H;
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, W, H);
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+
+  ctx.font = '700 54px ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif';
+  ctx.shadowColor = colorHex;
+  ctx.shadowBlur = 12;
+  ctx.fillStyle = '#ffffff';
+  ctx.fillText(text, W / 2, 54);
+
+  ctx.shadowBlur = 0;
+  ctx.font = '400 28px ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif';
+  ctx.fillStyle = 'rgba(196,218,244,0.72)';
+  ctx.fillText(sub, W / 2, 106);
+
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy());
+
+  const sprite = new THREE.Sprite(new THREE.SpriteMaterial({
+    map: tex, transparent: true, depthWrite: false, depthTest: false,
+    toneMapped: false, opacity: 0.96
+  }));
+  sprite.scale.set(2.6, 0.81, 1);
+  sprite.renderOrder = 20;
+  return sprite;
+}
+
+const pulseRings = [];
+
+function addCityMarker(cityKey, colorHex) {
+  const g = new THREE.Group();
+  g.position.copy(CITY_POS[cityKey]);
+
+  const ringMat = new THREE.MeshBasicMaterial({
+    color: new THREE.Color(colorHex), transparent: true, opacity: 0.55,
+    side: THREE.DoubleSide, blending: THREE.AdditiveBlending,
+    depthWrite: false, toneMapped: false
+  });
+
+  const ring = new THREE.Mesh(new THREE.RingGeometry(0.30, 0.375, 56), ringMat);
+  ring.rotation.x = -Math.PI / 2; ring.position.y = 0.014;
+  g.add(ring);
+
+  const pulseMat = ringMat.clone(); pulseMat.opacity = 0.0;
+  const pulse = new THREE.Mesh(new THREE.RingGeometry(0.30, 0.345, 56), pulseMat);
+  pulse.rotation.x = -Math.PI / 2; pulse.position.y = 0.016;
+  g.add(pulse);
+  pulseRings.push({ mesh: pulse, phase: Math.random() });
+
+  const core = new THREE.Mesh(
+    new THREE.SphereGeometry(0.055, 12, 10),
+    new THREE.MeshBasicMaterial({
+      color: new THREE.Color(colorHex).multiplyScalar(2.0), toneMapped: false
+    })
+  );
+  core.position.y = 0.10;
+  g.add(core);
+
+  const info = CITY_GEO[cityKey];
+  const label = makeLabel(info.label, info.sub, colorHex);
+  label.position.set(0, 2.05, 0);
+  g.add(label);
+
+  scene.add(g);
+}
+
+addCityMarker('varanasi', '#ffb154');
+addCityMarker('delhi',    '#ffffff');
+addCityMarker('mumbai',   '#48d8ff');
+
+/* ============================================================
+   9 · BOLD PATHS
+   ============================================================
+   TWO legs, each with FOUR independently toggleable branches.
+   → 4 × 4 = 16 total possible journeys.
+
+   Leg 1 (Varanasi → Delhi) uses CYAN family colours.
+   Leg 2 (Delhi    → Mumbai) uses WARM family colours.
+============================================================ */
+
+const pathVertexShader = /* glsl */`
+  varying vec2 vUv;
+  void main(){
+    vUv = uv;
+    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+  }
+`;
+
+const pathFragmentShader = /* glsl */`
+  uniform float uTime;
+  uniform vec3  uColor;
+  uniform float uHighlight;
+  uniform float uProgress;
+  varying vec2  vUv;
+
+  void main(){
+    float reveal = 1.0 - smoothstep(uProgress - 0.03, uProgress + 0.005, vUv.x);
+    if (reveal < 0.005) discard;
+
+    float s1 = sin((vUv.x * 9.0  - uTime * 1.05) * 6.28318530718);
+    float s2 = sin((vUv.x * 26.0 - uTime * 2.30) * 6.28318530718);
+    float band   = pow(0.5 + 0.5 * s1, 3.0);
+    float detail = pow(0.5 + 0.5 * s2, 6.0);
+    float pulse  = band * 0.85 + detail * 0.55;
+
+    float edge = sin(vUv.y * 3.14159265);
+    float core = pow(edge, 0.55);
+
+    float bright = 0.85 + pulse * 1.5 + uHighlight * 0.9;
+
+    vec3 col = uColor * bright;
+    float alpha = reveal * (0.92 + pulse * 0.08) * core;
+    gl_FragColor = vec4(col, alpha);
+  }
+`;
+
+const haloFragmentShader = /* glsl */`
+  uniform float uTime;
+  uniform vec3  uColor;
+  uniform float uHighlight;
+  uniform float uProgress;
+  varying vec2  vUv;
+
+  void main(){
+    float reveal = 1.0 - smoothstep(uProgress - 0.06, uProgress + 0.02, vUv.x);
+    if (reveal < 0.005) discard;
+
+    float s1 = sin((vUv.x * 9.0 - uTime * 1.05) * 6.28318530718);
+    float pulse = pow(0.5 + 0.5 * s1, 2.5);
+    float edge = pow(sin(vUv.y * 3.14159265), 2.5);
+
+    vec3 col = uColor * (0.7 + pulse * 0.8 + uHighlight * 0.9);
+    float alpha = reveal * edge * (0.055 + pulse * 0.045 + uHighlight * 0.06);
+    gl_FragColor = vec4(col, alpha);
+  }
+`;
+
+function buildBoldPath({ from, to, sideOffset, lift, color, leg, branchIndex }) {
+  const A = CITY_POS[from];
+  const B = CITY_POS[to];
+
+  const dir  = new THREE.Vector3().subVectors(B, A).setY(0).normalize();
+  const perp = new THREE.Vector3(-dir.z, 0, dir.x);
+  const mid  = new THREE.Vector3().addVectors(A, B).multiplyScalar(0.5);
+
+  const p0 = A.clone().setY(0.14);
+  const p3 = B.clone().setY(0.14);
+  const p1 = mid.clone().addScaledVector(perp, sideOffset)
+                        .addScaledVector(dir, -1.35).setY(lift);
+  const p2 = mid.clone().addScaledVector(perp, sideOffset)
+                        .addScaledVector(dir,  1.35).setY(lift * 1.18);
+
+  const curve = new THREE.CatmullRomCurve3([p0, p1, p2, p3], false, 'catmullrom', 0.5);
+
+  const TUBULAR = 140;
+  const RADIAL  = 12;
+
+  const mainRadius = 0.085;
+  const haloRadius = 0.22;
+
+  const tubeGeo = new THREE.TubeGeometry(curve, TUBULAR, mainRadius, RADIAL, false);
+  const haloGeo = new THREE.TubeGeometry(curve, TUBULAR, haloRadius, RADIAL, false);
+
+  const mkUniforms = () => ({
+    uTime:      { value: 0 },
+    uColor:     { value: new THREE.Color(color) },
+    uHighlight: { value: 0 },
+    uProgress:  { value: 0 }
+  });
+
+  const mainUniforms = mkUniforms();
+  const haloUniforms = mkUniforms();
+
+  const mainMat = new THREE.ShaderMaterial({
+    uniforms: mainUniforms,
+    vertexShader:   pathVertexShader,
+    fragmentShader: pathFragmentShader,
+    transparent: true, depthWrite: false,
+    blending: THREE.AdditiveBlending, side: THREE.DoubleSide
+  });
+
+  const haloMat = new THREE.ShaderMaterial({
+    uniforms: haloUniforms,
+    vertexShader:   pathVertexShader,
+    fragmentShader: haloFragmentShader,
+    transparent: true, depthWrite: false,
+    blending: THREE.AdditiveBlending, side: THREE.DoubleSide
+  });
+
+  const mainMesh = new THREE.Mesh(tubeGeo, mainMat);
+  const haloMesh = new THREE.Mesh(haloGeo, haloMat);
+  mainMesh.renderOrder = 5;
+  haloMesh.renderOrder = 4;
+  mainMesh.frustumCulled = false;
+  haloMesh.frustumCulled = false;
+  mainMesh.visible = false;
+  haloMesh.visible = false;
+
+  scene.add(haloMesh);
+  scene.add(mainMesh);
+
+  const pts = curve.getSpacedPoints(90);
+
+  return {
+    leg, branchIndex, from, to, color,
+    curve, mainMesh, haloMesh,
+    mainUniforms, haloUniforms, pts,
+    progress: 0, target: 0,
+    highlight: 0, highlightTarget: 0
+  };
+}
+
+/* --- Leg 1: four toggleable branches Varanasi → Delhi (cyan family) --- */
+const LEG1_DEFS = [
+  { offset: -1.90, lift: 1.55, color: 0x5fe3ff },  // ① bright cyan
+  { offset: -0.65, lift: 2.15, color: 0x4be0a5 },  // ② mint green
+  { offset:  0.65, lift: 2.15, color: 0x5a9cff },  // ③ sky blue
+  { offset:  1.90, lift: 1.55, color: 0x8874ff }   // ④ violet-blue
+];
+
+const leg1Paths = LEG1_DEFS.map((def, i) => buildBoldPath({
+  from: 'varanasi', to: 'delhi',
+  sideOffset: def.offset, lift: def.lift, color: def.color,
+  leg: 1, branchIndex: i
+}));
+
+/* --- Leg 2: four toggleable branches Delhi → Mumbai (warm family) --- */
+const LEG2_DEFS = [
+  { offset: -1.90, lift: 1.65, color: 0xffb347 },  // ① warm amber
+  { offset: -0.65, lift: 2.25, color: 0xff8b3d },  // ② orange
+  { offset:  0.65, lift: 2.25, color: 0xff6b9d },  // ③ rose pink
+  { offset:  1.90, lift: 1.65, color: 0xff4d6d }   // ④ deep rose
+];
+
+const leg2Paths = LEG2_DEFS.map((def, i) => buildBoldPath({
+  from: 'delhi', to: 'mumbai',
+  sideOffset: def.offset, lift: def.lift, color: def.color,
+  leg: 2, branchIndex: i
+}));
+
+const allPaths = [...leg1Paths, ...leg2Paths];
+
+/* ============================================================
+   10 · FLOW PACKETS
+   ============================================================ */
+const PACKETS_PER_PATH = 4;
+const totalPackets = allPaths.length * PACKETS_PER_PATH;
+
+const packetGeo = new THREE.SphereGeometry(0.095, 12, 10);
+const packetMat = new THREE.MeshBasicMaterial({
+  color: 0xffffff, transparent: true, opacity: 1.0,
+  blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false
+});
+const packets = new THREE.InstancedMesh(packetGeo, packetMat, totalPackets);
+packets.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+packets.frustumCulled = false;
+
+const packetData = [];
+const tmpColor = new THREE.Color();
+
+for (let pi = 0; pi < allPaths.length; pi++) {
+  const path = allPaths[pi];
+  for (let k = 0; k < PACKETS_PER_PATH; k++) {
+    const idx = pi * PACKETS_PER_PATH + k;
+    packets.setColorAt(idx, tmpColor.set(path.color).multiplyScalar(2.4));
+    packetData.push({
+      path,
+      phase: k / PACKETS_PER_PATH + Math.random() * 0.06,
+      speed: 0.16 + Math.random() * 0.06,
+      scale: 0.85 + Math.random() * 0.45
+    });
+  }
+}
+if (packets.instanceColor) packets.instanceColor.needsUpdate = true;
+scene.add(packets);
+
+const dummyMatrix = new THREE.Object3D();
+
+/* ============================================================
+   11 · POST-PROCESSING
+   ============================================================ */
+const composer = new EffectComposer(renderer);
+composer.setPixelRatio(pixelRatio);
+composer.setSize(window.innerWidth, window.innerHeight);
+composer.addPass(new RenderPass(scene, camera));
+
+const bloomPass = new UnrealBloomPass(
+  new THREE.Vector2(window.innerWidth, window.innerHeight),
+  0.68, 0.55, 0.78
+);
+composer.addPass(bloomPass);
+composer.addPass(new OutputPass());
+
+/* ============================================================
+   12 · UI
+   ============================================================ */
+const leg1State = [false, false, false, false];
+const leg2State = [false, false, false, false];
+
+const leg1Grid = document.getElementById('leg1Grid');
+const leg2Grid = document.getElementById('leg2Grid');
+const leg1Count = document.getElementById('leg1Count');
+const leg2Count = document.getElementById('leg2Count');
+const totalWaysEl = document.getElementById('totalWays');
+
+const eqA = document.getElementById('eqA');
+const eqB = document.getElementById('eqB');
+const eqT = document.getElementById('eqT');
+const nA  = document.getElementById('nA');
+const nB  = document.getElementById('nB');
+const nT  = document.getElementById('nT');
+
+/* --- Build the branch buttons dynamically with their colours --- */
+const leg1Btns = [];
+const leg2Btns = [];
+
+function buildButtons(defs, gridEl, btnsArr, stateArr, legNo) {
+  defs.forEach((def, i) => {
+    const c = new THREE.Color(def.color);
+    const cHex = '#' + c.getHexString();
+
+    const btn = document.createElement('button');
+    btn.className = 'branch-btn';
+    btn.textContent = String(i + 1);
+    btn.style.setProperty('--btn-accent', cHex);
+    btn.style.setProperty('--btn-bg-a', `rgba(${Math.round(c.r*120)},${Math.round(c.g*120)},${Math.round(c.b*120)},.55)`);
+    btn.style.setProperty('--btn-bg-b', `rgba(${Math.round(c.r*50)},${Math.round(c.g*50)},${Math.round(c.b*50)},.65)`);
+    btn.style.setProperty('--btn-border', `rgba(${Math.round(c.r*255)},${Math.round(c.g*255)},${Math.round(c.b*255)},.7)`);
+    btn.style.setProperty('--btn-ring', `rgba(${Math.round(c.r*255)},${Math.round(c.g*255)},${Math.round(c.b*255)},.22)`);
+    btn.style.setProperty('--btn-glow', `rgba(${Math.round(c.r*255)},${Math.round(c.g*255)},${Math.round(c.b*255)},.55)`);
+
+    btn.addEventListener('click', () => {
+      stateArr[i] = !stateArr[i];
+      const path = (legNo === 1 ? leg1Paths : leg2Paths)[i];
+      path.target = stateArr[i] ? 1 : 0;
+      updateUI(legNo === 1 ? 'leg1' : 'leg2');
+    });
+
+    gridEl.appendChild(btn);
+    btnsArr.push(btn);
+  });
+}
+
+buildButtons(LEG1_DEFS, leg1Grid, leg1Btns, leg1State, 1);
+buildButtons(LEG2_DEFS, leg2Grid, leg2Btns, leg2State, 2);
+
+function popEq(el) {
+  el.classList.remove('pop');
+  void el.offsetWidth;
+  el.classList.add('pop');
+}
+
+function updateUI(popWhich = null) {
+  const c1 = leg1State.filter(Boolean).length;
+  const c2 = leg2State.filter(Boolean).length;
+  const total = c1 * c2;
+
+  leg1Btns.forEach((b, i) => b.classList.toggle('active', leg1State[i]));
+  leg2Btns.forEach((b, i) => b.classList.toggle('active', leg2State[i]));
+
+  leg1Count.textContent = `${c1} / ${BRANCHES_PER_LEG}`;
+  leg2Count.textContent = `${c2} / ${BRANCHES_PER_LEG}`;
+  leg1Count.classList.toggle('complete', c1 === BRANCHES_PER_LEG);
+  leg2Count.classList.toggle('complete', c2 === BRANCHES_PER_LEG);
+
+  totalWaysEl.textContent = `${total} way${total === 1 ? '' : 's'}`;
+
+  nA.textContent = String(c1);
+  nB.textContent = String(c2);
+  nT.textContent = String(total);
+
+  if (popWhich === 'leg1') { popEq(eqA); popEq(eqT); }
+  if (popWhich === 'leg2') { popEq(eqB); popEq(eqT); }
+  if (popWhich === 'all')  { popEq(eqA); popEq(eqB); popEq(eqT); }
+}
+
+/* ---- Quick actions ---- */
+document.getElementById('btnShowAll').addEventListener('click', () => {
+  clearTourTimeouts();
+  for (let i = 0; i < BRANCHES_PER_LEG; i++) {
+    leg1State[i] = true;
+    leg2State[i] = true;
+    leg1Paths[i].target = 1;
+    leg2Paths[i].target = 1;
+  }
+  updateUI('all');
+});
+
+document.getElementById('btnHideAll').addEventListener('click', () => {
+  clearTourTimeouts();
+  for (let i = 0; i < BRANCHES_PER_LEG; i++) {
+    leg1State[i] = false;
+    leg2State[i] = false;
+    leg1Paths[i].target = 0;
+    leg2Paths[i].target = 0;
+  }
+  updateUI('all');
+});
+
+/* ---- Auto Count tour ---- */
+let tourTimeouts = [];
+function clearTourTimeouts() { tourTimeouts.forEach(clearTimeout); tourTimeouts = []; }
+function schedule(fn, ms) { tourTimeouts.push(setTimeout(fn, ms)); }
+
+document.getElementById('btnTour').addEventListener('click', () => {
+  clearTourTimeouts();
+  for (let i = 0; i < BRANCHES_PER_LEG; i++) {
+    leg1State[i] = false;
+    leg2State[i] = false;
+    leg1Paths[i].target = 0;
+    leg2Paths[i].target = 0;
+  }
+  updateUI();
+
+  /* Phase 1 — reveal all FOUR Varanasi → Delhi branches */
+  let t = 800;
+  for (let i = 0; i < BRANCHES_PER_LEG; i++) {
+    const idx = i;
+    schedule(() => {
+      leg1State[idx] = true;
+      leg1Paths[idx].target = 1;
+      updateUI('leg1');
+    }, t);
+    t += 700;
+  }
+
+  /* Phase 2 — reveal Delhi → Mumbai branches one by one,
+     watching the total multiply: 4×1, 4×2, 4×3, 4×4 */
+  t += 900;
+  for (let j = 0; j < BRANCHES_PER_LEG; j++) {
+    const idx = j;
+    schedule(() => {
+      leg2State[idx] = true;
+      leg2Paths[idx].target = 1;
+      updateUI('leg2');
+    }, t);
+    t += 900;
+  }
+});
+
+/* ---- View buttons ---- */
+function flyToCity(key, distance, height) {
+  const p = CITY_POS[key];
+  const dirOut = new THREE.Vector3(p.x, 0, p.z);
+  if (dirOut.lengthSq() < 0.0001) dirOut.set(0, 0, 1);
+  dirOut.normalize();
+  const camPos = p.clone()
+    .addScaledVector(dirOut, distance * 0.72)
+    .add(new THREE.Vector3(0, height, distance * 0.62));
+  flyTo(camPos, p.clone().add(new THREE.Vector3(0, 0.55, 0)), 1.5);
+}
+
+document.getElementById('btnVaranasi').addEventListener('click', () => flyToCity('varanasi', 6.5, 4.2));
+document.getElementById('btnDelhi').addEventListener('click',    () => flyToCity('delhi',    6.0, 4.0));
+document.getElementById('btnMumbai').addEventListener('click',   () => flyToCity('mumbai',   6.0, 4.2));
+document.getElementById('btnHome').addEventListener('click',     () => flyTo(HOME_POS, HOME_TGT, 1.6));
+
+/* ============================================================
+   13 · CAMERA FLIGHT
+   ============================================================ */
+let flight = null;
+
+function flyTo(pos, target, duration = 1.2) {
+  flight = {
+    fromPos: camera.position.clone(),
+    toPos: pos.clone(),
+    fromTgt: controls.target.clone(),
+    toTgt: target.clone(),
+    t: 0, duration
+  };
+  controls.autoRotate = false;
+}
+
+/* ============================================================
+   14 · UPDATE LOOP
+   ============================================================ */
+const clock = new THREE.Clock();
+let elapsed = 0;
+
+let fpsFrames = 0, fpsAccum = 0;
+const hudFps  = document.getElementById('fps');
+const hudTris = document.getElementById('tris');
+
+function updatePaths(dt) {
+  for (const p of allPaths) {
+    p.progress  = THREE.MathUtils.damp(p.progress,  p.target,          2.4, dt);
+    p.highlight = THREE.MathUtils.damp(p.highlight, p.highlightTarget, 6.0, dt);
+
+    p.mainUniforms.uTime.value      = elapsed;
+    p.mainUniforms.uProgress.value  = p.progress;
+    p.mainUniforms.uHighlight.value = p.highlight;
+
+    p.haloUniforms.uTime.value      = elapsed;
+    p.haloUniforms.uProgress.value  = p.progress;
+    p.haloUniforms.uHighlight.value = p.highlight;
+
+    const visible = p.progress > 0.005;
+    p.mainMesh.visible = visible;
+    p.haloMesh.visible = visible;
+  }
+}
+
+function updatePackets() {
+  for (let n = 0; n < packetData.length; n++) {
+    const pd = packetData[n];
+    const p = pd.path;
+
+    if (p.progress < 0.08) {
+      dummyMatrix.position.set(0, -9999, 0);
+      dummyMatrix.scale.setScalar(0.0001);
+      dummyMatrix.updateMatrix();
+      packets.setMatrixAt(n, dummyMatrix.matrix);
+      continue;
+    }
+
+    let t = (pd.phase + elapsed * pd.speed) % 1;
+    t *= p.progress;
+
+    const P = p.pts;
+    const f  = t * (P.length - 1);
+    const i0 = Math.floor(f);
+    const i1 = Math.min(i0 + 1, P.length - 1);
+    const a  = f - i0;
+
+    dummyMatrix.position.lerpVectors(P[i0], P[i1], a);
+    const s = pd.scale * (1 + p.highlight * 0.6);
+    dummyMatrix.scale.setScalar(s);
+    dummyMatrix.updateMatrix();
+    packets.setMatrixAt(n, dummyMatrix.matrix);
+  }
+  packets.instanceMatrix.needsUpdate = true;
+}
+
+function updatePulseRings() {
+  for (const pr of pulseRings) {
+    const t = (elapsed * 0.55 + pr.phase) % 1;
+    const s = 1 + t * 1.9;
+    pr.mesh.scale.set(s, s, s);
+    pr.mesh.material.opacity = (1 - t) * 0.35;
+  }
+}
+
+function updateFlight(dt) {
+  if (!flight) return;
+  flight.t += dt / flight.duration;
+  const raw = Math.min(flight.t, 1);
+  const e = raw < 0.5
+    ? 4 * raw * raw * raw
+    : 1 - Math.pow(-2 * raw + 2, 3) / 2;
+
+  camera.position.lerpVectors(flight.fromPos, flight.toPos, e);
+  controls.target.lerpVectors(flight.fromTgt, flight.toTgt, e);
+
+  if (raw >= 1) {
+    flight = null;
+    controls.autoRotate = true;
+  }
+}
+
+function update(dt) {
+  elapsed += dt;
+  gridUniforms.uTime.value = elapsed;
+
+  updatePaths(dt);
+  updatePackets();
+  updatePulseRings();
+  updateFlight(dt);
+
+  varanasiLight.intensity = 2.2 + Math.sin(elapsed * 7.3) * 0.22 + Math.sin(elapsed * 17.1) * 0.10;
+}
+
+renderer.domElement.addEventListener('pointerdown', () => { controls.autoRotate = false; });
+renderer.domElement.addEventListener('wheel', () => { controls.autoRotate = false; }, { passive: true });
+
+function monitorPerformance(dt) {
+  fpsFrames++; fpsAccum += dt;
+  if (fpsAccum >= 1.0) {
+    const fps = fpsFrames / fpsAccum;
+    hudFps.textContent = Math.round(fps);
+    if (fps < 45 && pixelRatio > 0.75) {
+      pixelRatio = Math.max(0.75, pixelRatio - 0.25);
+      renderer.setPixelRatio(pixelRatio);
+      composer.setPixelRatio(pixelRatio);
+      composer.setSize(window.innerWidth, window.innerHeight);
+    }
+    fpsFrames = 0; fpsAccum = 0;
+  }
+}
+
+/* ============================================================
+   15 · RESIZE
+   ============================================================ */
+function onResize() {
+  const w = window.innerWidth, h = window.innerHeight;
+  camera.aspect = w / h;
+  camera.updateProjectionMatrix();
+  renderer.setPixelRatio(pixelRatio);
+  renderer.setSize(w, h);
+  composer.setPixelRatio(pixelRatio);
+  composer.setSize(w, h);
+  bloomPass.resolution.set(w, h);
+}
+window.addEventListener('resize', onResize, { passive: true });
+window.addEventListener('orientationchange', onResize, { passive: true });
+
+/* ============================================================
+   16 · MAIN LOOP
+   ============================================================ */
+let triCounter = 0;
+
+function tick() {
+  requestAnimationFrame(tick);
+  const dt = Math.min(clock.getDelta(), 1 / 30);
+  update(dt);
+  controls.update();
+  composer.render();
+  monitorPerformance(dt);
+
+  triCounter++;
+  if (triCounter % 30 === 0) {
+    const tri = renderer.info.render.triangles;
+    hudTris.textContent = tri > 999 ? (tri / 1000).toFixed(1) + 'k' : String(tri);
+  }
+}
+
+/* ============================================================
+   17 · BOOT
+   ============================================================ */
+renderer.shadowMap.needsUpdate = true;
+
+let booted = false;
+function hideLoader() {
+  if (booted) return;
+  booted = true;
+  const loader = document.getElementById('loader');
+  if (!loader) return;
+  loader.classList.add('gone');
+  setTimeout(() => loader.remove(), 900);
+}
+setTimeout(hideLoader, 6000);
+
+flyTo(HOME_POS, HOME_TGT, 2.8);
+
+requestAnimationFrame(() => {
+  requestAnimationFrame(() => setTimeout(hideLoader, 250));
+});
+
+updateUI();
+
+tick();
+</script>
+</body>
+</html>
