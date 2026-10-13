@@ -117,9 +117,7 @@
     text-shadow:0 0 12px var(--btn-glow);
   }
 
-  .quick-actions{
-    display:flex;gap:7px;margin-top:4px;
-  }
+  .quick-actions{display:flex;gap:7px;margin-top:4px;}
   .mini-btn{
     flex:1;padding:9px;border-radius:9px;cursor:pointer;
     background:linear-gradient(160deg,rgba(30,44,64,.55),rgba(11,16,26,.6));
@@ -288,7 +286,7 @@
   </div>
 </div>
 
-<div id="loader">Forging Obsidian&nbsp;…</div>
+<div id="loader">Forging Diorama&nbsp;…</div>
 <div id="errorOverlay"></div>
 
 <script type="importmap">
@@ -380,8 +378,11 @@ let pixelRatio = Math.min(window.devicePixelRatio || 1, 2);
 renderer.setPixelRatio(pixelRatio);
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.outputColorSpace = THREE.SRGBColorSpace;
+
+/* ── Lower exposure: no blown highlights, wider mid-tones ── */
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 0.95;
+renderer.toneMappingExposure = 0.82;
+
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.shadowMap.autoUpdate = false;
@@ -392,7 +393,7 @@ document.getElementById('glver').textContent =
 
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x05070d);
-scene.fog = new THREE.FogExp2(0x05070d, 0.0085);
+scene.fog = new THREE.FogExp2(0x05070d, 0.0090);
 
 const camera = new THREE.PerspectiveCamera(
   40, window.innerWidth / window.innerHeight, 0.5, 400
@@ -416,8 +417,11 @@ controls.autoRotateSpeed = 0.35;
 controls.update();
 
 /* ============================================================
-   2 · ENVIRONMENT
-   ============================================================ */
+   2 · ENVIRONMENT  (SOFT STUDIO — no hot panels)
+   ============================================================
+   Panel intensities roughly halved vs. previous version so
+   the reflective tricolor surface stays calm, not mirror-hot.
+============================================================ */
 function buildEnvironment() {
   const envScene = new THREE.Scene();
   const planeGeo = new THREE.PlaneGeometry(1, 1);
@@ -435,11 +439,11 @@ function buildEnvironment() {
     envScene.add(m);
   };
 
-  panel(0xfff2e0, 3.0, [ 0,  9,  5], [ Math.PI / 2, 0, 0], 22, 22);
-  panel(0x2f6bff, 2.0, [-11,  4, -7], [0,  Math.PI / 2.4, 0], 26, 14);
-  panel(0xff2f7a, 1.0, [ 11,  2, -5], [0, -Math.PI / 2.4, 0], 22, 12);
-  panel(0x9fd4ff, 1.3, [  0, -2,-14], [0, 0, 0], 26, 14);
-  panel(0x101a2c, 0.8, [  0, -9,  0], [-Math.PI / 2, 0, 0], 34, 34);
+  panel(0xfff2e0, 1.55, [ 0,  9,  5], [ Math.PI / 2, 0, 0], 22, 22);
+  panel(0x2f6bff, 1.00, [-11,  4, -7], [0,  Math.PI / 2.4, 0], 26, 14);
+  panel(0xff2f7a, 0.50, [ 11,  2, -5], [0, -Math.PI / 2.4, 0], 22, 12);
+  panel(0x9fd4ff, 0.65, [  0, -2,-14], [0, 0, 0], 26, 14);
+  panel(0x101a2c, 0.45, [  0, -9,  0], [-Math.PI / 2, 0, 0], 34, 34);
 
   return envScene;
 }
@@ -454,15 +458,19 @@ try {
 }
 
 /* ============================================================
-   3 · LIGHTING
-   ============================================================ */
-const ambient = new THREE.AmbientLight(0x35496e, 0.55);
+   3 · LIGHTING  (CLASSROOM-BALANCED, NO GLARE)
+   ============================================================
+   Key directional dropped from 1.35 → 0.95. Rim & fill scaled
+   down. Ambient kept slightly lower so shadows read but don't
+   crush. Net effect: soft, even, projector-friendly.
+============================================================ */
+const ambient = new THREE.AmbientLight(0x3a5178, 0.42);
 scene.add(ambient);
 
-const hemi = new THREE.HemisphereLight(0x2b4d8f, 0x0a0f1a, 0.30);
+const hemi = new THREE.HemisphereLight(0x2b4d8f, 0x0a0f1a, 0.22);
 scene.add(hemi);
 
-const keyLight = new THREE.DirectionalLight(0xfff4e4, 1.35);
+const keyLight = new THREE.DirectionalLight(0xfff4e4, 0.95);
 keyLight.position.set(14, 24, 12);
 keyLight.castShadow = true;
 keyLight.shadow.mapSize.set(2048, 2048);
@@ -476,50 +484,59 @@ keyLight.shadow.bias = -0.0007;
 keyLight.shadow.normalBias = 0.02;
 scene.add(keyLight);
 
-const rimLight = new THREE.DirectionalLight(0x4f86ff, 0.65);
+const rimLight = new THREE.DirectionalLight(0x4f86ff, 0.40);
 rimLight.position.set(-16, 9, -14);
 scene.add(rimLight);
 
-const fillLight = new THREE.DirectionalLight(0xffb070, 0.28);
+const fillLight = new THREE.DirectionalLight(0xffb070, 0.18);
 fillLight.position.set(6, 4, -18);
 scene.add(fillLight);
 
-const varanasiLight = new THREE.PointLight(0xffb066, 2.2, 7, 2);
+const varanasiLight = new THREE.PointLight(0xffb066, 1.4, 6, 2);
 varanasiLight.position.copy(CITY_POS.varanasi).add(new THREE.Vector3(0, 0.9, 0.6));
 scene.add(varanasiLight);
 
-const mumbaiLight = new THREE.PointLight(0x66b8ff, 1.4, 7, 2);
+const mumbaiLight = new THREE.PointLight(0x66b8ff, 0.9, 6, 2);
 mumbaiLight.position.copy(CITY_POS.mumbai).add(new THREE.Vector3(0, 0.9, 0.8));
 scene.add(mumbaiLight);
 
 /* ============================================================
    4 · MATERIALS
    ============================================================ */
-const obsidianMat = new THREE.MeshPhysicalMaterial({
-  color: 0x0c1018, roughness: 0.22, metalness: 0.35,
-  clearcoat: 0.85, clearcoatRoughness: 0.12, reflectivity: 0.9,
-  envMapIntensity: 1.05, sheen: 0.25, sheenRoughness: 0.7,
-  sheenColor: new THREE.Color(0x24385f)
+
+/* --- Tricolor map — matte-polished, NOT glass --- */
+const tricolorMat = new THREE.MeshPhysicalMaterial({
+  color: 0xffffff,
+  vertexColors: true,
+  roughness: 0.52,            // was 0.32 → less mirror-like
+  metalness: 0.02,
+  clearcoat: 0.45,            // was 0.92 → subtle sheen only
+  clearcoatRoughness: 0.35,
+  reflectivity: 0.55,
+  envMapIntensity: 0.32,      // was 0.55 → quiet reflections
+  sheen: 0.08,
+  sheenRoughness: 0.85,
+  sheenColor: new THREE.Color(0xffffff)
 });
 
 const stoneMat = new THREE.MeshStandardMaterial({
-  color: 0xd8cbb2, roughness: 0.68, metalness: 0.04, envMapIntensity: 0.55
+  color: 0xd8cbb2, roughness: 0.72, metalness: 0.03, envMapIntensity: 0.42
 });
 
 const darkStoneMat = new THREE.MeshStandardMaterial({
-  color: 0x8b7c66, roughness: 0.85, metalness: 0.03, envMapIntensity: 0.45
+  color: 0x8b7c66, roughness: 0.88, metalness: 0.02, envMapIntensity: 0.32
 });
 
 const goldMat = new THREE.MeshStandardMaterial({
-  color: 0xe6b46a, roughness: 0.34, metalness: 1.0, envMapIntensity: 0.85
+  color: 0xe6b46a, roughness: 0.42, metalness: 0.95, envMapIntensity: 0.55
 });
 
 /* ============================================================
    5 · GROUND · GRID
    ============================================================ */
 const voidMat = new THREE.MeshPhysicalMaterial({
-  color: 0x03050a, roughness: 0.18, metalness: 0.88,
-  envMapIntensity: 0.85, reflectivity: 0.85
+  color: 0x03050a, roughness: 0.24, metalness: 0.82,
+  envMapIntensity: 0.55, reflectivity: 0.65
 });
 
 const voidPlane = new THREE.Mesh(new THREE.CircleGeometry(90, 96), voidMat);
@@ -532,6 +549,8 @@ const gridUniforms = {
   uColor: { value: new THREE.Color(0x2f8fd8) }
 };
 
+/* Grid output dimmed (was 0.85/0.28, now 0.55/0.16) so it
+   recedes against the tricolor map and glowing paths. */
 const gridMat = new THREE.ShaderMaterial({
   uniforms: gridUniforms,
   transparent: true, depthWrite: false,
@@ -556,7 +575,7 @@ const gridMat = new THREE.ShaderMaterial({
       float fall = smoothstep(58.0, 4.0, d);
       float pulse = 0.55 + 0.45 * sin(d * 0.42 - uTime * 1.15);
       float a = line * fall * pulse;
-      gl_FragColor = vec4(uColor * a * 0.95, a * 0.32);
+      gl_FragColor = vec4(uColor * a * 0.55, a * 0.16);
     }
   `
 });
@@ -567,7 +586,7 @@ gridPlane.position.y = -1.30;
 scene.add(gridPlane);
 
 /* ============================================================
-   6 · INDIA DIORAMA
+   6 · INDIA DIORAMA — TRICOLOR
    ============================================================ */
 function chaikin(points, iterations = 2) {
   let pts = points;
@@ -587,6 +606,54 @@ function chaikin(points, iterations = 2) {
 const DEPTH = 0.95;
 const BEVEL = 0.11;
 
+/* Tricolor palette — slightly muted so it reads as "polished stone"
+   rather than a neon flag. */
+const C_SAFFRON = new THREE.Color(0xe8823a);
+const C_WHITE   = new THREE.Color(0xeeeef2);
+const C_GREEN   = new THREE.Color(0x188a18);
+
+function smooth01(t) {
+  t = THREE.MathUtils.clamp(t, 0, 1);
+  return t * t * (3 - 2 * t);
+}
+
+function tricolorAt(lat) {
+  const u = THREE.MathUtils.clamp((lat - 7) / 29, 0, 1);
+
+  const greenEnd  = 0.42;
+  const saffronIn = 0.70;
+  const band = 0.06;
+  const hb = band * 0.5;
+
+  if (u < greenEnd - hb) return C_GREEN;
+  if (u < greenEnd + hb) {
+    const t = (u - (greenEnd - hb)) / band;
+    return C_GREEN.clone().lerp(C_WHITE, smooth01(t));
+  }
+  if (u < saffronIn - hb) return C_WHITE;
+  if (u < saffronIn + hb) {
+    const t = (u - (saffronIn - hb)) / band;
+    return C_WHITE.clone().lerp(C_SAFFRON, smooth01(t));
+  }
+  return C_SAFFRON;
+}
+
+function applyTricolorToGeometry(geo) {
+  const pos = geo.attributes.position;
+  const colors = new Float32Array(pos.count * 3);
+
+  for (let i = 0; i < pos.count; i++) {
+    const worldZ = pos.getZ(i);
+    const lat = CENTER.lat - worldZ;
+    const c = tricolorAt(lat);
+    colors[i * 3 + 0] = c.r;
+    colors[i * 3 + 1] = c.g;
+    colors[i * 3 + 2] = c.b;
+  }
+
+  geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+}
+
 function buildIndia() {
   const group = new THREE.Group();
 
@@ -603,25 +670,29 @@ function buildIndia() {
   geo.rotateX(-Math.PI / 2);
   geo.computeVertexNormals();
 
-  const land = new THREE.Mesh(geo, obsidianMat);
+  applyTricolorToGeometry(geo);
+
+  const land = new THREE.Mesh(geo, tricolorMat);
   land.position.y = -(DEPTH + BEVEL);
   land.castShadow = true;
   land.receiveShadow = true;
   group.add(land);
 
+  /* Coastal rim — dimmer warm gold */
   const edgePts = pts.map(p => new THREE.Vector3(p.x, 0.012, -p.y));
   edgePts.push(edgePts[0].clone());
   const edgeGeo = new THREE.BufferGeometry().setFromPoints(edgePts);
   group.add(new THREE.Line(edgeGeo, new THREE.LineBasicMaterial({
-    color: 0x4aa8e6, transparent: true, opacity: 0.30,
+    color: 0xffe6b8, transparent: true, opacity: 0.18,
     blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false
   })));
 
+  /* Sea shelf glow — very soft */
   const shelfPts = pts.map(p => new THREE.Vector3(p.x * 1.045, -0.30, -p.y * 1.045));
   shelfPts.push(shelfPts[0].clone());
   const shelfGeo = new THREE.BufferGeometry().setFromPoints(shelfPts);
   group.add(new THREE.Line(shelfGeo, new THREE.LineBasicMaterial({
-    color: 0x184a80, transparent: true, opacity: 0.18,
+    color: 0x386fa8, transparent: true, opacity: 0.14,
     blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false
   })));
 
@@ -754,8 +825,8 @@ function buildVaranasiGhats() {
   }
 
   const riverMat = new THREE.MeshPhysicalMaterial({
-    color: 0x061427, roughness: 0.10, metalness: 0.90,
-    envMapIntensity: 0.95, transparent: true, opacity: 0.95
+    color: 0x061427, roughness: 0.12, metalness: 0.88,
+    envMapIntensity: 0.60, transparent: true, opacity: 0.95
   });
   const river = new THREE.Mesh(new THREE.PlaneGeometry(3.6, 2.4), riverMat);
   river.rotation.x = -Math.PI / 2;
@@ -782,8 +853,9 @@ function buildVaranasiGhats() {
 
   const LANTERN_COUNT = 46;
   const lanternGeo = new THREE.SphereGeometry(0.026, 7, 6);
+  /* Lantern emissive reduced from 1.8 → 1.1 so they twinkle without blooming */
   const lanternMat = new THREE.MeshBasicMaterial({
-    color: new THREE.Color(0xffb45a).multiplyScalar(1.8), toneMapped: false
+    color: new THREE.Color(0xffb45a).multiplyScalar(1.1), toneMapped: false
   });
   const lanterns = new THREE.InstancedMesh(lanternGeo, lanternMat, LANTERN_COUNT);
   lanterns.instanceMatrix.setUsage(THREE.StaticDrawUsage);
@@ -843,13 +915,13 @@ function makeLabel(text, sub, colorHex) {
 
   ctx.font = '700 54px ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif';
   ctx.shadowColor = colorHex;
-  ctx.shadowBlur = 12;
+  ctx.shadowBlur = 10;
   ctx.fillStyle = '#ffffff';
   ctx.fillText(text, W / 2, 54);
 
   ctx.shadowBlur = 0;
   ctx.font = '400 28px ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif';
-  ctx.fillStyle = 'rgba(196,218,244,0.72)';
+  ctx.fillStyle = 'rgba(230,240,255,0.82)';
   ctx.fillText(sub, W / 2, 106);
 
   const tex = new THREE.CanvasTexture(canvas);
@@ -872,7 +944,7 @@ function addCityMarker(cityKey, colorHex) {
   g.position.copy(CITY_POS[cityKey]);
 
   const ringMat = new THREE.MeshBasicMaterial({
-    color: new THREE.Color(colorHex), transparent: true, opacity: 0.55,
+    color: new THREE.Color(colorHex), transparent: true, opacity: 0.42,
     side: THREE.DoubleSide, blending: THREE.AdditiveBlending,
     depthWrite: false, toneMapped: false
   });
@@ -887,10 +959,11 @@ function addCityMarker(cityKey, colorHex) {
   g.add(pulse);
   pulseRings.push({ mesh: pulse, phase: Math.random() });
 
+  /* Core sphere reduced from 2.0 → 1.3 multiplier */
   const core = new THREE.Mesh(
     new THREE.SphereGeometry(0.055, 12, 10),
     new THREE.MeshBasicMaterial({
-      color: new THREE.Color(colorHex).multiplyScalar(2.0), toneMapped: false
+      color: new THREE.Color(colorHex).multiplyScalar(1.3), toneMapped: false
     })
   );
   core.position.y = 0.10;
@@ -910,13 +983,7 @@ addCityMarker('mumbai',   '#48d8ff');
 
 /* ============================================================
    9 · BOLD PATHS
-   ============================================================
-   TWO legs, each with FOUR independently toggleable branches.
-   → 4 × 4 = 16 total possible journeys.
-
-   Leg 1 (Varanasi → Delhi) uses CYAN family colours.
-   Leg 2 (Delhi    → Mumbai) uses WARM family colours.
-============================================================ */
+   ============================================================ */
 
 const pathVertexShader = /* glsl */`
   varying vec2 vUv;
@@ -926,6 +993,8 @@ const pathVertexShader = /* glsl */`
   }
 `;
 
+/* Path brightness reduced overall (base 0.85 → 0.55) so paths
+   still glow, but the surrounding bloom is contained. */
 const pathFragmentShader = /* glsl */`
   uniform float uTime;
   uniform vec3  uColor;
@@ -946,10 +1015,10 @@ const pathFragmentShader = /* glsl */`
     float edge = sin(vUv.y * 3.14159265);
     float core = pow(edge, 0.55);
 
-    float bright = 0.85 + pulse * 1.5 + uHighlight * 0.9;
+    float bright = 0.55 + pulse * 1.05 + uHighlight * 0.65;
 
     vec3 col = uColor * bright;
-    float alpha = reveal * (0.92 + pulse * 0.08) * core;
+    float alpha = reveal * (0.88 + pulse * 0.12) * core;
     gl_FragColor = vec4(col, alpha);
   }
 `;
@@ -969,8 +1038,8 @@ const haloFragmentShader = /* glsl */`
     float pulse = pow(0.5 + 0.5 * s1, 2.5);
     float edge = pow(sin(vUv.y * 3.14159265), 2.5);
 
-    vec3 col = uColor * (0.7 + pulse * 0.8 + uHighlight * 0.9);
-    float alpha = reveal * edge * (0.055 + pulse * 0.045 + uHighlight * 0.06);
+    vec3 col = uColor * (0.40 + pulse * 0.55 + uHighlight * 0.65);
+    float alpha = reveal * edge * (0.035 + pulse * 0.030 + uHighlight * 0.045);
     gl_FragColor = vec4(col, alpha);
   }
 `;
@@ -1050,12 +1119,11 @@ function buildBoldPath({ from, to, sideOffset, lift, color, leg, branchIndex }) 
   };
 }
 
-/* --- Leg 1: four toggleable branches Varanasi → Delhi (cyan family) --- */
 const LEG1_DEFS = [
-  { offset: -1.90, lift: 1.55, color: 0x5fe3ff },  // ① bright cyan
-  { offset: -0.65, lift: 2.15, color: 0x4be0a5 },  // ② mint green
-  { offset:  0.65, lift: 2.15, color: 0x5a9cff },  // ③ sky blue
-  { offset:  1.90, lift: 1.55, color: 0x8874ff }   // ④ violet-blue
+  { offset: -1.90, lift: 1.55, color: 0x5fe3ff },
+  { offset: -0.65, lift: 2.15, color: 0x4be0a5 },
+  { offset:  0.65, lift: 2.15, color: 0x5a9cff },
+  { offset:  1.90, lift: 1.55, color: 0x8874ff }
 ];
 
 const leg1Paths = LEG1_DEFS.map((def, i) => buildBoldPath({
@@ -1064,12 +1132,11 @@ const leg1Paths = LEG1_DEFS.map((def, i) => buildBoldPath({
   leg: 1, branchIndex: i
 }));
 
-/* --- Leg 2: four toggleable branches Delhi → Mumbai (warm family) --- */
 const LEG2_DEFS = [
-  { offset: -1.90, lift: 1.65, color: 0xffb347 },  // ① warm amber
-  { offset: -0.65, lift: 2.25, color: 0xff8b3d },  // ② orange
-  { offset:  0.65, lift: 2.25, color: 0xff6b9d },  // ③ rose pink
-  { offset:  1.90, lift: 1.65, color: 0xff4d6d }   // ④ deep rose
+  { offset: -1.90, lift: 1.65, color: 0xffb347 },
+  { offset: -0.65, lift: 2.25, color: 0xff8b3d },
+  { offset:  0.65, lift: 2.25, color: 0xff6b9d },
+  { offset:  1.90, lift: 1.65, color: 0xff4d6d }
 ];
 
 const leg2Paths = LEG2_DEFS.map((def, i) => buildBoldPath({
@@ -1082,11 +1149,14 @@ const allPaths = [...leg1Paths, ...leg2Paths];
 
 /* ============================================================
    10 · FLOW PACKETS
-   ============================================================ */
+   ============================================================
+   Packet color multiplier reduced 2.4 → 1.5. Slightly smaller
+   spheres (0.095 → 0.082) so the trail feels precise, not fuzzy.
+============================================================ */
 const PACKETS_PER_PATH = 4;
 const totalPackets = allPaths.length * PACKETS_PER_PATH;
 
-const packetGeo = new THREE.SphereGeometry(0.095, 12, 10);
+const packetGeo = new THREE.SphereGeometry(0.082, 12, 10);
 const packetMat = new THREE.MeshBasicMaterial({
   color: 0xffffff, transparent: true, opacity: 1.0,
   blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false
@@ -1102,7 +1172,7 @@ for (let pi = 0; pi < allPaths.length; pi++) {
   const path = allPaths[pi];
   for (let k = 0; k < PACKETS_PER_PATH; k++) {
     const idx = pi * PACKETS_PER_PATH + k;
-    packets.setColorAt(idx, tmpColor.set(path.color).multiplyScalar(2.4));
+    packets.setColorAt(idx, tmpColor.set(path.color).multiplyScalar(1.5));
     packetData.push({
       path,
       phase: k / PACKETS_PER_PATH + Math.random() * 0.06,
@@ -1117,8 +1187,12 @@ scene.add(packets);
 const dummyMatrix = new THREE.Object3D();
 
 /* ============================================================
-   11 · POST-PROCESSING
-   ============================================================ */
+   11 · POST-PROCESSING  (GLARE CONTAINED)
+   ============================================================
+   strength 0.68 → 0.36    (much softer halo)
+   radius   0.55 → 0.52    (kept tight)
+   threshold 0.78 → 0.88   (map stays BELOW, only paths/packets bloom)
+============================================================ */
 const composer = new EffectComposer(renderer);
 composer.setPixelRatio(pixelRatio);
 composer.setSize(window.innerWidth, window.innerHeight);
@@ -1126,7 +1200,7 @@ composer.addPass(new RenderPass(scene, camera));
 
 const bloomPass = new UnrealBloomPass(
   new THREE.Vector2(window.innerWidth, window.innerHeight),
-  0.68, 0.55, 0.78
+  0.36, 0.52, 0.88
 );
 composer.addPass(bloomPass);
 composer.addPass(new OutputPass());
@@ -1150,7 +1224,6 @@ const nA  = document.getElementById('nA');
 const nB  = document.getElementById('nB');
 const nT  = document.getElementById('nT');
 
-/* --- Build the branch buttons dynamically with their colours --- */
 const leg1Btns = [];
 const leg2Btns = [];
 
@@ -1214,7 +1287,6 @@ function updateUI(popWhich = null) {
   if (popWhich === 'all')  { popEq(eqA); popEq(eqB); popEq(eqT); }
 }
 
-/* ---- Quick actions ---- */
 document.getElementById('btnShowAll').addEventListener('click', () => {
   clearTourTimeouts();
   for (let i = 0; i < BRANCHES_PER_LEG; i++) {
@@ -1237,7 +1309,6 @@ document.getElementById('btnHideAll').addEventListener('click', () => {
   updateUI('all');
 });
 
-/* ---- Auto Count tour ---- */
 let tourTimeouts = [];
 function clearTourTimeouts() { tourTimeouts.forEach(clearTimeout); tourTimeouts = []; }
 function schedule(fn, ms) { tourTimeouts.push(setTimeout(fn, ms)); }
@@ -1252,7 +1323,6 @@ document.getElementById('btnTour').addEventListener('click', () => {
   }
   updateUI();
 
-  /* Phase 1 — reveal all FOUR Varanasi → Delhi branches */
   let t = 800;
   for (let i = 0; i < BRANCHES_PER_LEG; i++) {
     const idx = i;
@@ -1264,8 +1334,6 @@ document.getElementById('btnTour').addEventListener('click', () => {
     t += 700;
   }
 
-  /* Phase 2 — reveal Delhi → Mumbai branches one by one,
-     watching the total multiply: 4×1, 4×2, 4×3, 4×4 */
   t += 900;
   for (let j = 0; j < BRANCHES_PER_LEG; j++) {
     const idx = j;
@@ -1278,7 +1346,6 @@ document.getElementById('btnTour').addEventListener('click', () => {
   }
 });
 
-/* ---- View buttons ---- */
 function flyToCity(key, distance, height) {
   const p = CITY_POS[key];
   const dirOut = new THREE.Vector3(p.x, 0, p.z);
@@ -1376,7 +1443,7 @@ function updatePulseRings() {
     const t = (elapsed * 0.55 + pr.phase) % 1;
     const s = 1 + t * 1.9;
     pr.mesh.scale.set(s, s, s);
-    pr.mesh.material.opacity = (1 - t) * 0.35;
+    pr.mesh.material.opacity = (1 - t) * 0.30;
   }
 }
 
@@ -1406,7 +1473,8 @@ function update(dt) {
   updatePulseRings();
   updateFlight(dt);
 
-  varanasiLight.intensity = 2.2 + Math.sin(elapsed * 7.3) * 0.22 + Math.sin(elapsed * 17.1) * 0.10;
+  /* Softer Varanasi flicker */
+  varanasiLight.intensity = 1.4 + Math.sin(elapsed * 7.3) * 0.14 + Math.sin(elapsed * 17.1) * 0.06;
 }
 
 renderer.domElement.addEventListener('pointerdown', () => { controls.autoRotate = false; });
