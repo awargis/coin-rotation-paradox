@@ -1,0 +1,1378 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Circular Permutation 3D Smartboard Studio — Clean Teaching Edition</title>
+  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: #03060f;
+      color: #f8fafc;
+      overflow: hidden;
+      user-select: none;
+    }
+    .font-mono {
+      font-family: 'JetBrains Mono', monospace;
+    }
+    #canvas-container canvas {
+      display: block;
+      width: 100% !important;
+      height: 100% !important;
+      cursor: grab;
+    }
+    #canvas-container canvas:active {
+      cursor: grabbing;
+    }
+    .glass-pill {
+      background: rgba(9, 14, 28, 0.76);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      border: 1px solid rgba(148, 163, 184, 0.16);
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+    }
+    .scene-tab-active {
+      background: linear-gradient(135deg, #fbbf24 0%, #d97706 100%) !important;
+      color: #040711 !important;
+      font-weight: 800 !important;
+      box-shadow: 0 0 18px rgba(245, 158, 11, 0.5);
+      border-color: #fde68a !important;
+    }
+    input[type="range"] {
+      accent-color: #fbbf24;
+    }
+  </style>
+</head>
+<body class="h-screen w-screen flex flex-col bg-[#03060f] text-slate-100 overflow-hidden">
+
+  <!-- ===================================================================== -->
+  <!-- ZONE 1: ULTRA-SLIM TOP SMARTBOARD BAR (NO OVERLAP WITH 3D ANIMATION)  -->
+  <!-- ===================================================================== -->
+  <header class="glass-pill z-30 px-3 py-1.5 border-b border-slate-800/80 shrink-0">
+    <div class="max-w-[1800px] mx-auto flex flex-wrap items-center justify-between gap-2">
+      <!-- Brand + Live Formula Pill -->
+      <div class="flex items-center gap-2.5">
+        <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-amber-400 to-orange-600 flex items-center justify-center text-slate-950 font-extrabold text-base shadow">
+          ↻
+        </div>
+        <div class="hidden sm:block">
+          <h1 id="hud-title" class="text-xs sm:text-sm font-extrabold tracking-tight text-white leading-tight">
+            Circular Permutation 3D Studio
+          </h1>
+          <div class="flex items-center gap-2">
+            <span id="hud-scene-pill" class="text-[10px] font-bold uppercase tracking-wider text-amber-400">SCENE 1 OF 4</span>
+            <span class="text-slate-600">•</span>
+            <span id="hud-view-badge" class="text-[10px] font-medium text-cyan-300">Royal Top View</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 4 Scene Selector Tabs -->
+      <div class="flex flex-wrap items-center gap-1" role="tablist">
+        <button id="btn-scene-1" type="button" class="scene-tab px-2.5 py-1 rounded-lg text-xs font-semibold transition-all bg-slate-800/80 text-slate-300 border border-slate-700/60 hover:bg-slate-700">
+          1. Bench → Table (n−1)!
+        </button>
+        <button id="btn-scene-2" type="button" class="scene-tab px-2.5 py-1 rounded-lg text-xs font-semibold transition-all bg-slate-800/80 text-slate-300 border border-slate-700/60 hover:bg-slate-700">
+          2. CW vs ACW (2D Mismatch)
+        </button>
+        <button id="btn-scene-3" type="button" class="scene-tab px-2.5 py-1 rounded-lg text-xs font-semibold transition-all bg-slate-800/80 text-slate-300 border border-slate-700/60 hover:bg-slate-700">
+          3. Glass Floor Dive
+        </button>
+        <button id="btn-scene-4" type="button" class="scene-tab px-2.5 py-1 rounded-lg text-xs font-semibold transition-all bg-slate-800/80 text-slate-300 border border-slate-700/60 hover:bg-slate-700">
+          4. Necklace 3D Flip (/2)
+        </button>
+      </div>
+
+      <!-- Action & Utility Buttons -->
+      <div class="flex items-center gap-1.5">
+        <button id="btn-autoplay" type="button" class="px-2.5 py-1 rounded-lg text-xs font-extrabold bg-gradient-to-r from-emerald-400 to-teal-500 hover:from-emerald-300 hover:to-teal-400 text-slate-950 transition shadow flex items-center gap-1">
+          <span id="autoplay-icon">▶</span>
+          <span id="autoplay-label">Play Full Movie (24s)</span>
+        </button>
+        <button id="btn-speed" type="button" class="px-2 py-1 rounded-lg text-xs font-mono font-bold bg-slate-800/90 hover:bg-slate-700 text-amber-300 border border-slate-700 transition">
+          1.0x
+        </button>
+        <button id="btn-audio-toggle" type="button" class="px-2 py-1 rounded-lg text-xs font-semibold bg-slate-800/90 hover:bg-slate-700 text-cyan-300 border border-slate-700 transition">
+          🔊 SFX On
+        </button>
+        <button id="btn-record" type="button" class="hidden md:flex px-2.5 py-1 rounded-lg text-xs font-semibold bg-rose-500/20 hover:bg-rose-500/30 text-rose-200 border border-rose-500/40 transition items-center gap-1.5">
+          <span id="record-dot" class="w-2 h-2 rounded-full bg-rose-400"></span>
+          <span id="record-label">Download Video (.webm)</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- ===================================================================== -->
+  <!-- ZONE 2: MASSIVE UNOBSTRUCTED 3D STAGE (MINIMAL CORNER PILLS ONLY)     -->
+  <!-- ===================================================================== -->
+  <main id="viewport-wrapper" class="relative flex-1 w-full overflow-hidden bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-[#0f1b3d] via-[#060a17] to-[#02040a]">
+    <div id="canvas-container" class="w-full h-full"></div>
+
+    <!-- Top-Left: Sleek Single-Line Math Formula & Neighbor Pill (Hugs corner, never covers center!) -->
+    <div id="hud-overlay-left" class="absolute top-3 left-3 z-20 pointer-events-none flex flex-wrap items-center gap-2">
+      <div id="hud-formula" class="glass-pill px-3 py-1.5 rounded-xl text-xs sm:text-sm font-mono font-extrabold text-amber-300 border border-amber-500/35">
+        (4 − 1)! = 3! = 6 Ways
+      </div>
+
+      <div id="neighbor-diagnostic" class="glass-pill px-3 py-1.5 rounded-xl text-xs flex items-center gap-2.5">
+        <span id="match-status-badge" class="px-2 py-0.5 rounded-md text-[10px] font-extrabold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+          ANCHOR A
+        </span>
+        <span class="text-slate-300 font-medium">
+          CW <b class="text-cyan-400">↻</b>: <b id="diag-cw-neighbor" class="text-rose-400">B</b>
+        </span>
+        <span class="text-slate-600">|</span>
+        <span class="text-slate-300 font-medium">
+          ACW <b class="text-amber-400">↺</b>: <b id="diag-acw-neighbor" class="text-blue-400">D</b>
+        </span>
+      </div>
+    </div>
+
+    <!-- Top-Right: Compact Color Dots + Camera Reset + Clean Mode Toggle -->
+    <div class="absolute top-3 right-3 z-20 flex items-center gap-1.5">
+      <div id="hud-legend-pill" class="glass-pill px-2.5 py-1.5 rounded-xl text-[11px] hidden lg:flex items-center gap-3 mr-1">
+        <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-amber-400 inline-block"></span><b>A</b> Arjun</span>
+        <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-rose-500 inline-block"></span><b>B</b> Bhim</span>
+        <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-emerald-400 inline-block"></span><b>C</b> Chandra</span>
+        <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-blue-500 inline-block"></span><b>D</b> Dev</span>
+      </div>
+      <button id="btn-clean-hud" type="button" class="glass-pill px-2.5 py-1.5 rounded-xl text-xs font-semibold text-amber-300 hover:bg-slate-800/90 transition" title="Toggle Ultra-Clean Smartboard View">
+        👁 Clean View
+      </button>
+      <button id="btn-reset-cam" type="button" class="glass-pill px-2.5 py-1.5 rounded-xl text-xs font-semibold text-slate-200 hover:text-amber-300 transition">
+        ⟳ Reset 3D Camera
+      </button>
+      <button id="btn-fullscreen" type="button" class="glass-pill px-2.5 py-1.5 rounded-xl text-xs font-semibold text-slate-200 hover:text-cyan-300 transition">
+        ⛶ Fullscreen
+      </button>
+    </div>
+
+    <!-- Collapsible Teacher Notes Drawer (Hidden by default so zero text blocks the board!) -->
+    <div id="teacher-notes-drawer" class="hidden absolute bottom-3 left-3 z-30 max-w-md glass-pill p-3.5 rounded-2xl border border-amber-500/30 text-xs space-y-2">
+      <div class="flex items-center justify-between border-b border-slate-800 pb-1.5">
+        <span id="chapter-badge" class="text-[10px] font-extrabold uppercase tracking-wider text-amber-400">TEACHER CUE CARD</span>
+        <span class="text-[10px] font-mono text-slate-400">Table: (n−1)! | Mala: (n−1)!/2</span>
+      </div>
+      <p id="story-subtitle" class="text-xs text-amber-100 leading-relaxed">
+        "Jab chaaron yodha Gol Mez par ek-ek kursi Clockwise khisakte hain, toh kisi ka padosi nahi badalta!"
+      </p>
+    </div>
+  </main>
+
+  <!-- ===================================================================== -->
+  <!-- ZONE 3: COMPACT BOTTOM SMARTBOARD CONTROL DOCK (OUTSIDE 3D STAGE!)    -->
+  <!-- ===================================================================== -->
+  <footer id="bottom-smartboard-dock" class="glass-pill z-30 px-4 py-2 border-t border-slate-800/90 shrink-0">
+    <div class="max-w-[1800px] mx-auto flex flex-wrap items-center justify-between gap-3">
+
+      <!-- Active Scene's Interactive Control Strip (1 Line!) -->
+      <div class="flex flex-wrap items-center gap-2">
+        <!-- SCENE 1 CONTROLS -->
+        <div id="ctrl-group-1" class="flex flex-wrap items-center gap-2">
+          <button id="btn-s1-bench" type="button" class="px-3 py-1.5 rounded-xl text-xs font-bold bg-slate-800 hover:bg-slate-700 text-slate-100 border border-slate-600 transition">
+            🪑 Linear Bench (4!)
+          </button>
+          <button id="btn-s1-table" type="button" class="px-3 py-1.5 rounded-xl text-xs font-bold bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 transition">
+            ⭕ Gol Mez ((4−1)!)
+          </button>
+          <button id="btn-s1-shift90" type="button" class="px-3.5 py-1.5 rounded-xl text-xs font-extrabold bg-gradient-to-r from-cyan-400 to-sky-500 hover:from-cyan-300 hover:to-sky-400 text-slate-950 transition shadow">
+            ↻ Shift All 4 Warriors +1 Chair Clockwise (+90°)
+          </button>
+          <span id="s1-shift-label" class="text-xs font-mono font-bold text-cyan-300 bg-slate-900 px-2.5 py-1 rounded-lg border border-slate-700">Shift: 0°</span>
+        </div>
+
+        <!-- SCENE 2 CONTROLS -->
+        <div id="ctrl-group-2" class="hidden flex-wrap items-center gap-2.5">
+          <button id="btn-s2-spin360" type="button" class="px-3.5 py-1.5 rounded-xl text-xs font-extrabold bg-gradient-to-r from-amber-400 to-orange-500 hover:from-amber-300 hover:to-orange-400 text-slate-950 transition shadow">
+            🔄 Auto-Test 360° 2D Rotation Match
+          </button>
+          <div class="flex items-center gap-2 bg-slate-900/90 px-3 py-1 rounded-xl border border-slate-700">
+            <label for="slider-s2-rot" class="text-xs font-semibold text-slate-300 whitespace-nowrap">2D Table Spin:</label>
+            <input id="slider-s2-rot" type="range" min="0" max="360" value="0" class="w-36 sm:w-48 h-2 bg-slate-700 rounded-lg cursor-pointer" />
+            <span id="s2-rot-label" class="text-xs font-mono font-bold text-amber-300 w-20 text-right">2D Spin: 0°</span>
+          </div>
+        </div>
+
+        <!-- SCENE 3 CONTROLS -->
+        <div id="ctrl-group-3" class="hidden flex-wrap items-center gap-2.5">
+          <button id="btn-s3-top" type="button" class="px-3 py-1.5 rounded-xl text-xs font-bold bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-500/40 transition">
+            ⬇ Ceiling View (CW)
+          </button>
+          <button id="btn-s3-bottom" type="button" class="px-3 py-1.5 rounded-xl text-xs font-bold bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 transition">
+            ⬆ Under Glass (ACW)
+          </button>
+          <div class="flex items-center gap-2 bg-slate-900/90 px-3 py-1 rounded-xl border border-slate-700">
+            <label for="slider-s3-dive" class="text-xs font-semibold text-slate-300 whitespace-nowrap">Camera Dive:</label>
+            <input id="slider-s3-dive" type="range" min="-90" max="90" value="85" class="w-36 sm:w-48 h-2 bg-slate-700 rounded-lg cursor-pointer" />
+            <span id="s3-elev-label" class="text-xs font-mono font-bold text-emerald-300 w-24 text-right">Top (+85°)</span>
+          </div>
+        </div>
+
+        <!-- SCENE 4 CONTROLS -->
+        <div id="ctrl-group-4" class="hidden flex-wrap items-center gap-2.5">
+          <button id="btn-s4-flip" type="button" class="px-3.5 py-1.5 rounded-xl text-xs font-extrabold bg-gradient-to-r from-amber-400 via-yellow-400 to-orange-500 hover:from-amber-300 hover:to-orange-400 text-slate-950 transition shadow">
+            ✨ Flip Clockwise Necklace 180° in 3D &amp; Merge
+          </button>
+          <div class="flex items-center gap-2 bg-slate-900/90 px-3 py-1 rounded-xl border border-slate-700">
+            <label for="slider-s4-flip" class="text-xs font-semibold text-slate-300 whitespace-nowrap">3D Flip:</label>
+            <input id="slider-s4-flip" type="range" min="0" max="180" value="0" class="w-36 sm:w-48 h-2 bg-slate-700 rounded-lg cursor-pointer" />
+            <span id="s4-flip-label" class="text-xs font-mono font-bold text-amber-300 w-20 text-right">Flip: 0°</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Compact Timeline Scrubber & Optional Teacher Cue Toggle -->
+      <div class="flex items-center gap-2.5 flex-1 max-w-md justify-end">
+        <span id="time-Readout" class="text-[11px] font-mono font-bold text-slate-400 w-20 text-right">00.0s / 24.0s</span>
+        <input id="movie-scrubber" type="range" min="0" max="240" value="0" class="w-28 sm:w-44 h-1.5 bg-slate-800 rounded-lg cursor-pointer" />
+        <button id="btn-toggle-notes" type="button" class="px-2.5 py-1 rounded-lg text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition" title="Show/Hide Teacher Script">
+          📖 Script
+        </button>
+      </div>
+
+    </div>
+  </footer>
+
+  <!-- ===================================================================== -->
+  <!-- PREMIUM THREE.JS 3D ENGINE (CLEAN VISUAL CUES, ZERO CLUTTER!)         -->
+  <!-- ===================================================================== -->
+  <script>
+    (function () {
+      // 1. SYNTHESIZED WEB AUDIO API SOUND ENGINE
+      let audioCtx = null;
+      let sfxEnabled = true;
+
+      function ensureAudio() {
+        if (!sfxEnabled) return null;
+        if (!audioCtx) {
+          const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+          if (AudioContextClass) audioCtx = new AudioContextClass();
+        }
+        if (audioCtx && audioCtx.state === 'suspended') {
+          audioCtx.resume();
+        }
+        return audioCtx;
+      }
+
+      function playChime(freqs, duration = 0.32, type = 'sine', volume = 0.07) {
+        const ctx = ensureAudio();
+        if (!ctx) return;
+        const now = ctx.currentTime;
+        freqs.forEach((f, idx) => {
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = type;
+          osc.frequency.setValueAtTime(f, now + idx * 0.055);
+          gain.gain.setValueAtTime(0.0001, now + idx * 0.055);
+          gain.gain.exponentialRampToValueAtTime(volume, now + idx * 0.055 + 0.025);
+          gain.gain.exponentialRampToValueAtTime(0.0001, now + idx * 0.055 + duration);
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.start(now + idx * 0.055);
+          osc.stop(now + idx * 0.055 + duration + 0.02);
+        });
+      }
+
+      document.getElementById('btn-audio-toggle').addEventListener('click', (e) => {
+        sfxEnabled = !sfxEnabled;
+        e.currentTarget.textContent = sfxEnabled ? '🔊 SFX On' : '🔇 SFX Mute';
+        if (sfxEnabled) playChime([523.25, 659.25, 783.99], 0.25);
+      });
+
+      document.getElementById('btn-fullscreen').addEventListener('click', () => {
+        const el = document.documentElement;
+        if (!document.fullscreenElement) {
+          if (el.requestFullscreen) el.requestFullscreen().catch(() => {});
+        } else {
+          if (document.exitFullscreen) document.exitFullscreen().catch(() => {});
+        }
+      });
+
+      // Clean View Toggle (Hides corner pills for 100% pure 3D Smartboard view)
+      let cleanHud = false;
+      document.getElementById('btn-clean-hud').addEventListener('click', (e) => {
+        cleanHud = !cleanHud;
+        document.getElementById('hud-overlay-left').style.opacity = cleanHud ? '0' : '1';
+        document.getElementById('hud-legend-pill').style.opacity = cleanHud ? '0' : '1';
+        e.currentTarget.textContent = cleanHud ? '👁 Show HUD' : '👁 Clean View';
+      });
+
+      // Teacher Script Drawer Toggle
+      document.getElementById('btn-toggle-notes').addEventListener('click', () => {
+        const drawer = document.getElementById('teacher-notes-drawer');
+        drawer.classList.toggle('hidden');
+      });
+
+      // Speed toggle
+      let playbackSpeed = 1.0;
+      const speeds = [0.5, 1.0, 1.5];
+      document.getElementById('btn-speed').addEventListener('click', (e) => {
+        const nextIdx = (speeds.indexOf(playbackSpeed) + 1) % speeds.length;
+        playbackSpeed = speeds[nextIdx];
+        e.currentTarget.textContent = playbackSpeed.toFixed(1) + 'x';
+        playChime([440 * playbackSpeed], 0.15);
+      });
+
+      // =======================================================================
+      // 2. THREE.JS SCENE, RENDERER & STUDIO HDRI REFLECTION MAP
+      // =======================================================================
+      const container = document.getElementById('canvas-container');
+      const scene = new THREE.Scene();
+      scene.fog = new THREE.FogExp2(0x03060f, 0.012);
+
+      const camera = new THREE.PerspectiveCamera(38, 16 / 9, 0.1, 250);
+      const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true, powerPreference: 'high-performance' });
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+      renderer.shadowMap.enabled = true;
+      renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+      renderer.toneMapping = THREE.ACESFilmicToneMapping;
+      renderer.toneMappingExposure = 1.35;
+      container.appendChild(renderer.domElement);
+
+      // Procedural HDRI Studio Environment Map for brilliant gemstone & gold reflections
+      function buildStudioEnvMap() {
+        const pmremGenerator = new THREE.PMREMGenerator(renderer);
+        pmremGenerator.compileEquirectangularShader();
+
+        const envCanvas = document.createElement('canvas');
+        envCanvas.width = 512;
+        envCanvas.height = 256;
+        const ctx = envCanvas.getContext('2d');
+
+        const grad = ctx.createLinearGradient(0, 0, 0, 256);
+        grad.addColorStop(0, '#0f172a');
+        grad.addColorStop(0.45, '#1e1b4b');
+        grad.addColorStop(0.5, '#090d16');
+        grad.addColorStop(1, '#020617');
+        ctx.fillStyle = grad;
+        ctx.fillRect(0, 0, 512, 256);
+
+        const boxes = [
+          { x: 90, y: 42, w: 100, h: 34, c: '#fef3c7' },
+          { x: 270, y: 32, w: 120, h: 30, c: '#e0f2fe' },
+          { x: 420, y: 60, w: 75, h: 36, c: '#fde68a' },
+          { x: 180, y: 185, w: 150, h: 28, c: '#38bdf8' }
+        ];
+        boxes.forEach((b) => {
+          ctx.fillStyle = b.c;
+          ctx.shadowColor = b.c;
+          ctx.shadowBlur = 28;
+          ctx.fillRect(b.x, b.y, b.w, b.h);
+        });
+
+        const tex = new THREE.CanvasTexture(envCanvas);
+        tex.mapping = THREE.EquirectangularReflectionMapping;
+        const envRT = pmremGenerator.fromEquirectangular(tex);
+        scene.environment = envRT.texture;
+        tex.dispose();
+        pmremGenerator.dispose();
+      }
+      buildStudioEnvMap();
+
+      // Studio Lighting
+      scene.add(new THREE.AmbientLight(0xe2e8f0, 0.78));
+
+      const keyLight = new THREE.DirectionalLight(0xfffbeb, 1.9);
+      keyLight.position.set(12, 22, 14);
+      scene.add(keyLight);
+
+      const cyanRimLight = new THREE.PointLight(0x38bdf8, 1.85, 55);
+      cyanRimLight.position.set(-14, 12, -12);
+      scene.add(cyanRimLight);
+
+      const goldUnderLight = new THREE.PointLight(0xf59e0b, 1.95, 48);
+      goldUnderLight.position.set(0, -11, 0);
+      scene.add(goldUnderLight);
+
+      // Subtle Studio Floor Grid & Ambient Starlight
+      const gridHelper = new THREE.GridHelper(40, 40, 0x1e293b, 0x0b1224);
+      gridHelper.position.y = -4.5;
+      scene.add(gridHelper);
+
+      const particleCount = 380;
+      const pGeo = new THREE.BufferGeometry();
+      const pPositions = new Float32Array(particleCount * 3);
+      for (let i = 0; i < particleCount; i++) {
+        const r = 7 + Math.random() * 18;
+        const theta = Math.random() * Math.PI * 2;
+        const y = (Math.random() - 0.5) * 18;
+        pPositions[i * 3] = r * Math.cos(theta);
+        pPositions[i * 3 + 1] = y;
+        pPositions[i * 3 + 2] = r * Math.sin(theta);
+      }
+      pGeo.setAttribute('position', new THREE.BufferAttribute(pPositions, 3));
+      const starfield = new THREE.Points(
+        pGeo,
+        new THREE.PointsMaterial({ color: 0xfde68a, size: 0.085, transparent: true, opacity: 0.48 })
+      );
+      scene.add(starfield);
+
+      // =======================================================================
+      // 3. COMPACT, HIGH-CONTRAST CIRCULAR MEDALLION BADGES (NO TEXT CLUTTER!)
+      // =======================================================================
+      function makeMedallionSprite(letter, borderColorHex, scaleSize = 1.05) {
+        const cvs = document.createElement('canvas');
+        cvs.width = 160;
+        cvs.height = 160;
+        const ctx = cvs.getContext('2d');
+
+        // Outer glowing circle
+        ctx.fillStyle = 'rgba(7, 11, 24, 0.92)';
+        ctx.strokeStyle = borderColorHex;
+        ctx.lineWidth = 10;
+        ctx.beginPath();
+        ctx.arc(80, 80, 64, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+
+        // Crisp Single Letter (A, B, C, D) visible from back of classroom
+        ctx.fillStyle = '#ffffff';
+        ctx.font = '800 78px Inter, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(letter, 80, 84);
+
+        const tex = new THREE.CanvasTexture(cvs);
+        const mat = new THREE.SpriteMaterial({ map: tex, transparent: true, depthTest: false });
+        const sprite = new THREE.Sprite(mat);
+        sprite.scale.set(scaleSize, scaleSize, 1);
+        sprite.renderOrder = 999;
+        return sprite;
+      }
+
+      function makeMiniDialSprite(text, colorHex, scaleSize = 0.72) {
+        const cvs = document.createElement('canvas');
+        cvs.width = 128;
+        cvs.height = 128;
+        const ctx = cvs.getContext('2d');
+
+        ctx.fillStyle = 'rgba(9, 14, 28, 0.85)';
+        ctx.strokeStyle = colorHex;
+        ctx.lineWidth = 6;
+        ctx.beginPath();
+        ctx.arc(64, 64, 52, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.fillStyle = colorHex;
+        ctx.font = '800 44px Inter, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(text, 64, 66);
+
+        const tex = new THREE.CanvasTexture(cvs);
+        const mat = new THREE.SpriteMaterial({ map: tex, transparent: true, depthTest: false });
+        const sprite = new THREE.Sprite(mat);
+        sprite.scale.set(scaleSize, scaleSize, 1);
+        return sprite;
+      }
+
+      // 4 Warriors / Gemstones Specification
+      const WARRIORS = [
+        { id: 'A', name: 'Arjun', color: 0xfbbf24, emissive: 0xd97706, hex: '#fbbf24' },
+        { id: 'B', name: 'Bhim', color: 0xf43f5e, emissive: 0xe11d48, hex: '#fb7185' },
+        { id: 'C', name: 'Chandra', color: 0x10b981, emissive: 0x059669, hex: '#34d399' },
+        { id: 'D', name: 'Dev', color: 0x3b82f6, emissive: 0x2563eb, hex: '#60a5fa' }
+      ];
+
+      // =======================================================================
+      // 4. ROYAL WARRIOR STATUES & FACETED GEMSTONES
+      // =======================================================================
+      function createWarriorTotem(spec, isBeadMode) {
+        const group = new THREE.Group();
+
+        // Multi-tiered Pedestal (Table Mode)
+        const pedGroup = new THREE.Group();
+        const darkMarbleMat = new THREE.MeshStandardMaterial({
+          color: 0x0f172a,
+          metalness: 0.78,
+          roughness: 0.18
+        });
+        const baseStep = new THREE.Mesh(new THREE.CylinderGeometry(0.68, 0.78, 0.22, 48), darkMarbleMat);
+        baseStep.position.y = 0.11;
+        pedGroup.add(baseStep);
+
+        const goldAccentMat = new THREE.MeshStandardMaterial({
+          color: spec.color,
+          emissive: spec.emissive,
+          emissiveIntensity: 0.5,
+          metalness: 0.92,
+          roughness: 0.14
+        });
+        const goldCollar = new THREE.Mesh(new THREE.TorusGeometry(0.62, 0.048, 16, 48), goldAccentMat);
+        goldCollar.rotation.x = Math.PI / 2;
+        goldCollar.position.y = 0.23;
+        pedGroup.add(goldCollar);
+
+        const pillar = new THREE.Mesh(new THREE.CylinderGeometry(0.46, 0.58, 0.34, 32), darkMarbleMat);
+        pillar.position.y = 0.38;
+        pedGroup.add(pillar);
+
+        pedGroup.visible = !isBeadMode;
+        group.add(pedGroup);
+
+        // Golden Anchor Halo & 6-Spike Crown on Arjun (A)
+        let anchorHalo = null;
+        if (spec.id === 'A') {
+          anchorHalo = new THREE.Group();
+          const crownMat = new THREE.MeshStandardMaterial({
+            color: 0xfbbf24,
+            emissive: 0xf59e0b,
+            emissiveIntensity: 0.9,
+            metalness: 0.96,
+            roughness: 0.08
+          });
+          const crownRing = new THREE.Mesh(new THREE.TorusGeometry(0.78, 0.055, 20, 64), crownMat);
+          crownRing.rotation.x = Math.PI / 2;
+          anchorHalo.add(crownRing);
+
+          for (let k = 0; k < 6; k++) {
+            const a = (k * Math.PI) / 3;
+            const spike = new THREE.Mesh(new THREE.ConeGeometry(0.085, 0.25, 12), crownMat);
+            spike.position.set(0.78 * Math.cos(a), 0.13, 0.78 * Math.sin(a));
+            anchorHalo.add(spike);
+          }
+          anchorHalo.position.y = isBeadMode ? 0 : 0.52;
+          group.add(anchorHalo);
+        }
+
+        // Core Faceted Gemstone + Luxury Gold Bezel
+        const gemHolder = new THREE.Group();
+        gemHolder.position.y = isBeadMode ? 0 : 1.02;
+
+        const gemMesh = new THREE.Mesh(
+          new THREE.OctahedronGeometry(0.6, 1),
+          new THREE.MeshPhysicalMaterial({
+            color: spec.color,
+            emissive: spec.emissive,
+            emissiveIntensity: 0.55,
+            metalness: 0.22,
+            roughness: 0.06,
+            clearcoat: 1.0,
+            clearcoatRoughness: 0.04
+          })
+        );
+        gemHolder.add(gemMesh);
+
+        const bezel = new THREE.Mesh(
+          new THREE.TorusGeometry(0.64, 0.042, 16, 48),
+          new THREE.MeshStandardMaterial({ color: 0xfef08a, metalness: 0.95, roughness: 0.12 })
+        );
+        bezel.rotation.x = Math.PI / 2;
+        gemHolder.add(bezel);
+        group.add(gemHolder);
+
+        // Compact Circular Medallion Label ('A', 'B', 'C', 'D') — Zero visual clutter!
+        const label = makeMedallionSprite(spec.id, spec.hex, isBeadMode ? 0.92 : 1.05);
+        label.position.y = isBeadMode ? 1.15 : 2.05;
+        group.add(label);
+
+        group.userData = { pedGroup, gemHolder, gemMesh, anchorHalo, label, spec };
+        return group;
+      }
+
+      // =======================================================================
+      // 5. CRYSTAL GLASS DARBAR TABLE + NEIGHBOR LASER ARCS + ORBITING ORBS
+      // =======================================================================
+      function createCrystalTable(radius, rimColorHex, isClockwiseArrow, showDialTicks) {
+        const tableGroup = new THREE.Group();
+
+        // Double-Sided Refractive Crystal Tabletop
+        const glassDisc = new THREE.Mesh(
+          new THREE.CylinderGeometry(radius, radius, 0.16, 72),
+          new THREE.MeshPhysicalMaterial({
+            color: 0x7dd3fc,
+            transparent: true,
+            opacity: 0.26,
+            roughness: 0.04,
+            metalness: 0.08,
+            clearcoat: 1.0,
+            side: THREE.DoubleSide
+          })
+        );
+        glassDisc.position.y = -0.08;
+        tableGroup.add(glassDisc);
+
+        // Outer Metallic Rim
+        const rimMat = new THREE.MeshStandardMaterial({
+          color: rimColorHex,
+          emissive: rimColorHex,
+          emissiveIntensity: 0.48,
+          metalness: 0.9,
+          roughness: 0.14
+        });
+        const rim = new THREE.Mesh(new THREE.TorusGeometry(radius, 0.095, 24, 96), rimMat);
+        rim.rotation.x = Math.PI / 2;
+        rim.position.y = -0.04;
+        tableGroup.add(rim);
+
+        // 4 Subtle Radial Seat Spokes
+        for (let i = 0; i < 4; i++) {
+          const ang = (i * Math.PI) / 2;
+          const spoke = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.018, 0.018, radius * 1.95, 8),
+            new THREE.MeshBasicMaterial({ color: rimColorHex, transparent: true, opacity: 0.25 })
+          );
+          spoke.rotation.z = Math.PI / 2;
+          spoke.rotation.y = ang;
+          spoke.position.y = -0.02;
+          tableGroup.add(spoke);
+        }
+
+        // Inner Directional Arrow Ring + 4 Cones + 12 Glowing Comet Orbs
+        const arrowGroup = new THREE.Group();
+        const innerRadius = radius * 0.62;
+        const arrowMat = new THREE.MeshStandardMaterial({
+          color: rimColorHex,
+          emissive: rimColorHex,
+          emissiveIntensity: 0.95
+        });
+        const innerRing = new THREE.Mesh(new THREE.TorusGeometry(innerRadius, 0.045, 16, 72), arrowMat);
+        innerRing.rotation.x = Math.PI / 2;
+        arrowGroup.add(innerRing);
+
+        for (let i = 0; i < 4; i++) {
+          const ang = (i * Math.PI) / 2 + Math.PI / 4;
+          const cone = new THREE.Mesh(new THREE.ConeGeometry(0.21, 0.52, 24), arrowMat);
+          cone.position.set(innerRadius * Math.cos(ang), 0, innerRadius * Math.sin(ang));
+          const tangentVec = isClockwiseArrow
+            ? new THREE.Vector3(-Math.sin(ang), 0, Math.cos(ang))
+            : new THREE.Vector3(Math.sin(ang), 0, -Math.cos(ang));
+          cone.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), tangentVec.normalize());
+          arrowGroup.add(cone);
+        }
+
+        // 12 Glowing Flow Tracer Orbs
+        const flowOrbs = new THREE.Group();
+        const orbGeo = new THREE.SphereGeometry(0.095, 16, 16);
+        const orbMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+        for (let i = 0; i < 12; i++) {
+          const a = (i * Math.PI * 2) / 12;
+          const orb = new THREE.Mesh(orbGeo, orbMat);
+          orb.position.set(innerRadius * Math.cos(a), 0, innerRadius * Math.sin(a));
+          flowOrbs.add(orb);
+        }
+        arrowGroup.add(flowOrbs);
+        arrowGroup.position.y = 0.03;
+        tableGroup.add(arrowGroup);
+
+        // Glowing Neighbor Arcs on the Rim: Cyan Arc from 12 o'clock (-PI/2) to 3 o'clock (0) & Gold Arc from 12 o'clock (-PI/2) to 9 o'clock (-PI)
+        function createNeighborArc(startAng, endAng, colorHex) {
+          const pts = [];
+          for (let s = 0; s <= 24; s++) {
+            const a = startAng + (endAng - startAng) * (s / 24);
+            pts.push(new THREE.Vector3((radius + 0.22) * Math.cos(a), 0.06, (radius + 0.22) * Math.sin(a)));
+          }
+          const curve = new THREE.CatmullRomCurve3(pts);
+          return new THREE.Mesh(
+            new THREE.TubeGeometry(curve, 24, 0.04, 12, false),
+            new THREE.MeshBasicMaterial({ color: colorHex, transparent: true, opacity: 0.85 })
+          );
+        }
+        tableGroup.add(createNeighborArc(-Math.PI / 2, 0, 0x38bdf8));
+        tableGroup.add(createNeighborArc(-Math.PI / 2, -Math.PI, 0xf59e0b));
+
+        // Clean Mini Dial Coins ('12', '3', '6', '9') for Scene 1 & Scene 3 Glass Floor Dive
+        if (showDialTicks) {
+          const dials = [
+            { txt: '12', ang: -Math.PI / 2, col: '#fbbf24' },
+            { txt: '3', ang: 0, col: '#38bdf8' },
+            { txt: '6', ang: Math.PI / 2, col: '#94a3b8' },
+            { txt: '9', ang: Math.PI, col: '#f59e0b' }
+          ];
+          dials.forEach((d) => {
+            const sp = makeMiniDialSprite(d.txt, d.col, 0.66);
+            const r = radius + 0.85;
+            sp.position.set(r * Math.cos(d.ang), -0.05, r * Math.sin(d.ang));
+            tableGroup.add(sp);
+          });
+        }
+
+        tableGroup.userData = { arrowGroup, flowOrbs, rimMat, arrowMat };
+        return tableGroup;
+      }
+
+      // =======================================================================
+      // 6. BUILD ALL 4 SCENE GROUPS
+      // =======================================================================
+      const CW_ANGLES = [-Math.PI / 2, 0, Math.PI / 2, Math.PI];
+      const ACW_ANGLES = [-Math.PI / 2, Math.PI, Math.PI / 2, 0];
+
+      // --- GROUP 1 & 3: MAIN DARBAR TABLE + ROYAL BENCH ---
+      const groupMain = new THREE.Group();
+      scene.add(groupMain);
+
+      const mainRadius = 3.55;
+      const mainTable = createCrystalTable(mainRadius, 0x38bdf8, true, true);
+      groupMain.add(mainTable);
+
+      const benchGroup = new THREE.Group();
+      const benchPlank = new THREE.Mesh(
+        new THREE.BoxGeometry(10.2, 0.28, 1.65),
+        new THREE.MeshStandardMaterial({ color: 0x78350f, roughness: 0.45, metalness: 0.15 })
+      );
+      benchPlank.position.set(0, -0.14, 0);
+      benchGroup.add(benchPlank);
+
+      const benchTrim = new THREE.Mesh(
+        new THREE.BoxGeometry(10.4, 0.08, 1.75),
+        new THREE.MeshStandardMaterial({ color: 0xfbbf24, metalness: 0.9, roughness: 0.2 })
+      );
+      benchTrim.position.set(0, -0.28, 0);
+      benchGroup.add(benchTrim);
+      groupMain.add(benchGroup);
+
+      const mainWarriors = WARRIORS.map((w) => {
+        const totem = createWarriorTotem(w, false);
+        groupMain.add(totem);
+        return totem;
+      });
+
+      // --- GROUP 2: SPLIT-SCREEN TWIN TABLES (CLEAN 3D MISMATCH RINGS, NO TEXT BANNERS!) ---
+      const groupSplit = new THREE.Group();
+      groupSplit.visible = false;
+      scene.add(groupSplit);
+
+      const splitRadius = 2.65;
+      const leftTableCW = createCrystalTable(splitRadius, 0x38bdf8, true, false);
+      leftTableCW.position.set(-4.15, 0, 0);
+      groupSplit.add(leftTableCW);
+
+      const rightTableACW = createCrystalTable(splitRadius, 0xf59e0b, false, false);
+      rightTableACW.position.set(4.15, 0, 0);
+      groupSplit.add(rightTableACW);
+
+      const leftWarriors = WARRIORS.map((w, i) => {
+        const totem = createWarriorTotem(w, false);
+        totem.scale.set(0.84, 0.84, 0.84);
+        totem.position.set(splitRadius * Math.cos(CW_ANGLES[i]), 0, splitRadius * Math.sin(CW_ANGLES[i]));
+        leftTableCW.add(totem);
+        return totem;
+      });
+
+      const rightWarriors = WARRIORS.map((w, i) => {
+        const totem = createWarriorTotem(w, false);
+        totem.scale.set(0.84, 0.84, 0.84);
+        totem.position.set(splitRadius * Math.cos(ACW_ANGLES[i]), 0, splitRadius * Math.sin(ACW_ANGLES[i]));
+        rightTableACW.add(totem);
+        return totem;
+      });
+
+      // Visual 3D Red Mismatch Halo Rings around B & D seats on Right Table (no text clutter!)
+      const mismatchHalos = new THREE.Group();
+      const redHaloMat = new THREE.MeshBasicMaterial({
+        color: 0xf43f5e,
+        side: THREE.DoubleSide,
+        transparent: true,
+        opacity: 0.75
+      });
+      [-splitRadius, splitRadius].forEach((xOffset) => {
+        const ring = new THREE.Mesh(new THREE.RingGeometry(0.72, 0.92, 48), redHaloMat);
+        ring.rotation.x = Math.PI / 2;
+        ring.position.set(4.15 + xOffset, 0.05, 0);
+        mismatchHalos.add(ring);
+      });
+      groupSplit.add(mismatchHalos);
+
+      // --- GROUP 4: MAGIC GOLDEN NECKLACES + 3D FLIP ARC & SHOCKWAVE ---
+      const groupNecklace = new THREE.Group();
+      groupNecklace.visible = false;
+      scene.add(groupNecklace);
+
+      function createMagicNecklace(isCW, cordColorHex) {
+        const nGroup = new THREE.Group();
+        const nRadius = 2.75;
+
+        const cord = new THREE.Mesh(
+          new THREE.TorusGeometry(nRadius, 0.105, 24, 96),
+          new THREE.MeshStandardMaterial({
+            color: cordColorHex,
+            emissive: cordColorHex,
+            emissiveIntensity: 0.45,
+            metalness: 0.95,
+            roughness: 0.12
+          })
+        );
+        cord.rotation.x = Math.PI / 2;
+        nGroup.add(cord);
+
+        // 24 Golden Pearl Spacer Beads
+        const pearlGeo = new THREE.SphereGeometry(0.14, 16, 16);
+        const pearlMat = new THREE.MeshStandardMaterial({ color: 0xfef08a, metalness: 0.94, roughness: 0.14 });
+        for (let p = 0; p < 24; p++) {
+          if (p % 6 === 0) continue;
+          const pa = (p * Math.PI * 2) / 24;
+          const pearl = new THREE.Mesh(pearlGeo, pearlMat);
+          pearl.position.set(nRadius * Math.cos(pa), 0, nRadius * Math.sin(pa));
+          nGroup.add(pearl);
+        }
+
+        const angles = isCW ? CW_ANGLES : ACW_ANGLES;
+        WARRIORS.forEach((w, i) => {
+          const bead = createWarriorTotem(w, true);
+          bead.position.set(nRadius * Math.cos(angles[i]), 0, nRadius * Math.sin(angles[i]));
+          nGroup.add(bead);
+        });
+        return nGroup;
+      }
+
+      const necklaceCW = createMagicNecklace(true, 0xfbbf24);
+      const necklaceACW = createMagicNecklace(false, 0x38bdf8);
+      groupNecklace.add(necklaceCW);
+      groupNecklace.add(necklaceACW);
+
+      // Sleek 3D Golden Arc Trajectory Guide for Scene 4
+      const arcPoints = [];
+      for (let i = 0; i <= 48; i++) {
+        const p = i / 48;
+        const rad = p * Math.PI;
+        arcPoints.push(new THREE.Vector3(-4.0 * (1 - p), Math.sin(rad) * 3.15, 0));
+      }
+      const flipTrajectoryArc = new THREE.Mesh(
+        new THREE.TubeGeometry(new THREE.CatmullRomCurve3(arcPoints), 48, 0.04, 12, false),
+        new THREE.MeshBasicMaterial({ color: 0xfbbf24, transparent: true, opacity: 0.42 })
+      );
+      groupNecklace.add(flipTrajectoryArc);
+
+      // Golden Merge Shockwave Halo Ring
+      const mergeShockwaveMat = new THREE.MeshBasicMaterial({
+        color: 0xfde047,
+        side: THREE.DoubleSide,
+        transparent: true,
+        opacity: 0.0
+      });
+      const mergeShockwave = new THREE.Mesh(new THREE.RingGeometry(2.8, 3.55, 72), mergeShockwaveMat);
+      mergeShockwave.rotation.x = Math.PI / 2;
+      groupNecklace.add(mergeShockwave);
+
+      // =======================================================================
+      // 7. CAMERA ORBIT CONTROLS & APPLICATION STATE
+      // =======================================================================
+      const camState = {
+        theta: 0,
+        phi: 0.9,
+        radius: 12.6,
+        targetTheta: 0,
+        targetPhi: 0.9,
+        targetRadius: 12.6,
+        lookAtY: 0.25
+      };
+
+      let isDragging = false;
+      let prevMouse = { x: 0, y: 0 };
+
+      renderer.domElement.addEventListener('pointerdown', (e) => {
+        isDragging = true;
+        prevMouse = { x: e.clientX, y: e.clientY };
+      });
+      window.addEventListener('pointermove', (e) => {
+        if (!isDragging) return;
+        const dx = e.clientX - prevMouse.x;
+        const dy = e.clientY - prevMouse.y;
+        prevMouse = { x: e.clientX, y: e.clientY };
+        camState.targetTheta -= dx * 0.0075;
+        camState.targetPhi = Math.max(-1.52, Math.min(1.52, camState.targetPhi + dy * 0.0075));
+      });
+      window.addEventListener('pointerup', () => {
+        isDragging = false;
+      });
+      renderer.domElement.addEventListener('wheel', (e) => {
+        e.preventDefault();
+        camState.targetRadius = Math.max(7.0, Math.min(22, camState.targetRadius + e.deltaY * 0.008));
+      }, { passive: false });
+
+      const appState = {
+        currentScene: 1,
+        autoPlay: false,
+        movieTime: 0,
+        s1Morph: 1.0,
+        s1TargetMorph: 1.0,
+        s1ShiftDeg: 0,
+        s1TargetShiftDeg: 0,
+        s2SpinDeg: 0,
+        s2AutoSpin: false,
+        s3DiveDeg: 85,
+        s4FlipDeg: 0,
+        s4AutoFlip: false
+      };
+
+      const hudScenePill = document.getElementById('hud-scene-pill');
+      const hudViewBadge = document.getElementById('hud-view-badge');
+      const hudTitle = document.getElementById('hud-title');
+      const hudFormula = document.getElementById('hud-formula');
+      const storySubtitle = document.getElementById('story-subtitle');
+      const matchStatusBadge = document.getElementById('match-status-badge');
+      const diagCwNeighbor = document.getElementById('diag-cw-neighbor');
+      const diagAcwNeighbor = document.getElementById('diag-acw-neighbor');
+      const movieScrubber = document.getElementById('movie-scrubber');
+      const timeReadout = document.getElementById('time-Readout');
+
+      const SCENE_META = {
+        1: {
+          pill: 'SCENE 1 OF 4',
+          view: 'Royal Darbar View',
+          title: '1. Bench → Gol Mez: Fix Anchor A',
+          formula: 'Fix Anchor A → (n − 1)! = 3! = 6 Ways',
+          subtitle: 'Jab chaaron yodha Gol Mez par ek-ek kursi Clockwise khisakte hain, toh kisi ka padosi nahi badalta!'
+        },
+        2: {
+          pill: 'SCENE 2 OF 4',
+          view: 'Left (CW) vs Right (ACW)',
+          title: '2. Table 2D Rotation: CW ≠ ACW',
+          formula: '2D Spin NEVER Swaps B & D → CW ≠ ACW',
+          subtitle: 'Zameen par Left Table ko kitna bhi ghuma lo, jab Arjun se Arjun milta hai, tab Bhim (B) aur Dev (D) ulte rehte hain!'
+        },
+        3: {
+          pill: 'SCENE 3 OF 4',
+          view: 'Crystal Glass Floor Dive',
+          title: '3. Glass Floor: Top = CW | Bottom = ACW',
+          formula: 'Top View = Clockwise ↻ | Under Glass = Anticlockwise ↺',
+          subtitle: 'Upar chhat se jo A → B → C → D Clockwise hai, kaanch ke farsh ke neeche se wahi Anticlockwise dikhta hai!'
+        },
+        4: {
+          pill: 'SCENE 4 OF 4',
+          view: '180° 3D Necklace Flip',
+          title: '4. Magic Necklace: 3D Flip Merges CW & ACW',
+          formula: '180° 3D Flip Merges CW & ACW → (n − 1)! / 2 = 3 Ways',
+          subtitle: 'Haar ko hawa mein 180° palatne par Clockwise haar bilkul Anticlockwise haar ke upar merge ho jaata hai!'
+        }
+      };
+
+      function selectScene(sceneNum, fromMovie) {
+        if (appState.currentScene !== sceneNum) {
+          playChime([440, 554.37, 659.25], 0.26, 'triangle', 0.06);
+        }
+        appState.currentScene = sceneNum;
+        if (!fromMovie) {
+          appState.autoPlay = false;
+          updateAutoPlayButton();
+        }
+
+        for (let i = 1; i <= 4; i++) {
+          const tab = document.getElementById('btn-scene-' + i);
+          const grp = document.getElementById('ctrl-group-' + i);
+          if (i === sceneNum) {
+            tab.classList.add('scene-tab-active');
+            grp.classList.remove('hidden');
+            grp.classList.add('flex');
+          } else {
+            tab.classList.remove('scene-tab-active');
+            grp.classList.add('hidden');
+            grp.classList.remove('flex');
+          }
+        }
+
+        groupMain.visible = (sceneNum === 1 || sceneNum === 3);
+        groupSplit.visible = (sceneNum === 2);
+        groupNecklace.visible = (sceneNum === 4);
+
+        const meta = SCENE_META[sceneNum];
+        hudScenePill.textContent = meta.pill;
+        hudViewBadge.textContent = meta.view;
+        hudTitle.textContent = meta.title;
+        hudFormula.textContent = meta.formula;
+        storySubtitle.textContent = meta.subtitle;
+
+        if (sceneNum === 1) {
+          camState.targetTheta = 0;
+          camState.targetPhi = 0.82;
+          camState.targetRadius = 11.8;
+          matchStatusBadge.textContent = 'ANCHOR A FIXED';
+          matchStatusBadge.className = 'px-2 py-0.5 rounded-md text-[10px] font-extrabold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30';
+          diagCwNeighbor.textContent = 'B (Ruby)';
+          diagAcwNeighbor.textContent = 'D (Sapphire)';
+        } else if (sceneNum === 2) {
+          camState.targetTheta = 0;
+          camState.targetPhi = 0.92;
+          camState.targetRadius = 14.6;
+          updateScene2Diagnostics(appState.s2SpinDeg);
+        } else if (sceneNum === 3) {
+          appState.s1TargetMorph = 1.0;
+          appState.s1Morph = 1.0;
+          appState.s1TargetShiftDeg = 0;
+          appState.s1ShiftDeg = 0;
+          camState.targetTheta = 0;
+          camState.targetPhi = (appState.s3DiveDeg * Math.PI) / 180;
+          camState.targetRadius = 11.8;
+          updateScene3Diagnostics(appState.s3DiveDeg);
+        } else if (sceneNum === 4) {
+          camState.targetTheta = 0;
+          camState.targetPhi = 0.56;
+          camState.targetRadius = 13.6;
+          updateScene4Diagnostics(appState.s4FlipDeg);
+        }
+      }
+
+      function updateScene2Diagnostics(deg) {
+        const norm = ((deg % 360) + 360) % 360;
+        document.getElementById('s2-rot-label').textContent = '2D Spin: ' + Math.round(norm) + '°';
+        document.getElementById('slider-s2-rot').value = Math.round(norm);
+        if (norm < 12 || norm > 348) {
+          matchStatusBadge.textContent = 'A = A, BUT B ≠ D!';
+          matchStatusBadge.className = 'px-2 py-0.5 rounded-md text-[10px] font-extrabold bg-rose-500/30 text-rose-300 border border-rose-500/40';
+        } else {
+          matchStatusBadge.textContent = 'NO 2D MATCH';
+          matchStatusBadge.className = 'px-2 py-0.5 rounded-md text-[10px] font-extrabold bg-amber-500/25 text-amber-300 border border-amber-500/40';
+        }
+        diagCwNeighbor.textContent = 'Left: B';
+        diagAcwNeighbor.textContent = 'Right: D';
+      }
+
+      function updateScene3Diagnostics(elevDeg) {
+        document.getElementById('slider-s3-dive').value = Math.round(elevDeg);
+        if (elevDeg >= 0) {
+          document.getElementById('s3-elev-label').textContent = 'Top (+' + Math.round(elevDeg) + '°)';
+          hudViewBadge.textContent = 'Ceiling View (+Y): CLOCKWISE ↻';
+          matchStatusBadge.textContent = 'TOP = CLOCKWISE ↻';
+          matchStatusBadge.className = 'px-2 py-0.5 rounded-md text-[10px] font-extrabold bg-cyan-500/25 text-cyan-300 border border-cyan-500/40';
+          diagCwNeighbor.textContent = '3 o\'clock: B';
+          diagAcwNeighbor.textContent = '9 o\'clock: D';
+        } else {
+          document.getElementById('s3-elev-label').textContent = 'Under (' + Math.round(elevDeg) + '°)';
+          hudViewBadge.textContent = 'Under Glass (-Y): ANTICLOCKWISE ↺';
+          matchStatusBadge.textContent = 'BOTTOM = ANTICLOCKWISE ↺';
+          matchStatusBadge.className = 'px-2 py-0.5 rounded-md text-[10px] font-extrabold bg-amber-500/30 text-amber-300 border border-amber-500/40';
+          diagCwNeighbor.textContent = 'Flipped: D';
+          diagAcwNeighbor.textContent = 'Flipped: B';
+        }
+      }
+
+      function updateScene4Diagnostics(flipDeg) {
+        document.getElementById('s4-flip-label').textContent = 'Flip: ' + Math.round(flipDeg) + '°';
+        document.getElementById('slider-s4-flip').value = Math.round(flipDeg);
+        if (flipDeg > 168) {
+          matchStatusBadge.textContent = '100% MERGED! (/2)';
+          matchStatusBadge.className = 'px-2 py-0.5 rounded-md text-[10px] font-extrabold bg-emerald-500/30 text-emerald-300 border border-emerald-500/40';
+          diagCwNeighbor.textContent = 'B = B';
+          diagAcwNeighbor.textContent = 'D = D';
+        } else {
+          matchStatusBadge.textContent = '3D FLIP ' + Math.round(flipDeg) + '°';
+          matchStatusBadge.className = 'px-2 py-0.5 rounded-md text-[10px] font-extrabold bg-amber-500/25 text-amber-300 border border-amber-500/40';
+          diagCwNeighbor.textContent = 'B Arcing...';
+          diagAcwNeighbor.textContent = 'D Arcing...';
+        }
+      }
+
+      // =======================================================================
+      // 8. WIRE ALL SMARTBOARD CONTROLS
+      // =======================================================================
+      document.getElementById('btn-scene-1').addEventListener('click', () => selectScene(1, false));
+      document.getElementById('btn-scene-2').addEventListener('click', () => selectScene(2, false));
+      document.getElementById('btn-scene-3').addEventListener('click', () => selectScene(3, false));
+      document.getElementById('btn-scene-4').addEventListener('click', () => selectScene(4, false));
+
+      document.getElementById('btn-reset-cam').addEventListener('click', () => {
+        playChime([587.33, 880], 0.2);
+        selectScene(appState.currentScene, false);
+      });
+
+      document.getElementById('btn-s1-bench').addEventListener('click', () => {
+        playChime([392, 329.63], 0.25);
+        appState.s1TargetMorph = 0.0;
+        appState.s1TargetShiftDeg = 0;
+        hudFormula.textContent = 'Linear Bench (Ends Exist) → 4! = 24 Ways';
+      });
+      document.getElementById('btn-s1-table').addEventListener('click', () => {
+        playChime([392, 523.25], 0.25);
+        appState.s1TargetMorph = 1.0;
+        hudFormula.textContent = 'Fix Anchor A → (4 − 1)! = 3! = 6 Ways';
+      });
+      document.getElementById('btn-s1-shift90').addEventListener('click', () => {
+        playChime([523.25, 659.25], 0.22);
+        appState.s1TargetMorph = 1.0;
+        appState.s1TargetShiftDeg += 90;
+      });
+
+      document.getElementById('slider-s2-rot').addEventListener('input', (e) => {
+        appState.s2AutoSpin = false;
+        appState.s2SpinDeg = parseFloat(e.target.value);
+        updateScene2Diagnostics(appState.s2SpinDeg);
+      });
+      document.getElementById('btn-s2-spin360').addEventListener('click', () => {
+        playChime([440, 349.23, 293.66], 0.3, 'sawtooth', 0.04);
+        appState.s2SpinDeg = 0;
+        appState.s2AutoSpin = true;
+      });
+
+      document.getElementById('btn-s3-top').addEventListener('click', () => {
+        playChime([523.25, 783.99], 0.25);
+        appState.s3DiveDeg = 85;
+        camState.targetPhi = (85 * Math.PI) / 180;
+        updateScene3Diagnostics(85);
+      });
+      document.getElementById('btn-s3-bottom').addEventListener('click', () => {
+        playChime([783.99, 523.25, 392], 0.3);
+        appState.s3DiveDeg = -85;
+        camState.targetPhi = (-85 * Math.PI) / 180;
+        updateScene3Diagnostics(-85);
+      });
+      document.getElementById('slider-s3-dive').addEventListener('input', (e) => {
+        appState.s3DiveDeg = parseFloat(e.target.value);
+        camState.targetPhi = (appState.s3DiveDeg * Math.PI) / 180;
+        updateScene3Diagnostics(appState.s3DiveDeg);
+      });
+
+      document.getElementById('slider-s4-flip').addEventListener('input', (e) => {
+        appState.s4AutoFlip = false;
+        appState.s4FlipDeg = parseFloat(e.target.value);
+        updateScene4Diagnostics(appState.s4FlipDeg);
+      });
+      document.getElementById('btn-s4-flip').addEventListener('click', () => {
+        playChime([523.25, 659.25, 783.99, 1046.5], 0.4);
+        appState.s4FlipDeg = appState.s4FlipDeg > 170 ? 0 : appState.s4FlipDeg;
+        appState.s4AutoFlip = true;
+      });
+
+      // =======================================================================
+      // 9. 24-SECOND MOVIE TIMELINE & WEBM RECORDER
+      // =======================================================================
+      function updateAutoPlayButton() {
+        const icon = document.getElementById('autoplay-icon');
+        const label = document.getElementById('autoplay-label');
+        if (appState.autoPlay) {
+          icon.textContent = '⏸';
+          label.textContent = 'Pause Movie';
+        } else {
+          icon.textContent = '▶';
+          label.textContent = 'Play Full Movie (24s)';
+        }
+      }
+
+      document.getElementById('btn-autoplay').addEventListener('click', () => {
+        ensureAudio();
+        appState.autoPlay = !appState.autoPlay;
+        if (appState.autoPlay && appState.movieTime >= 23.9) {
+          appState.movieTime = 0;
+        }
+        updateAutoPlayButton();
+      });
+
+      movieScrubber.addEventListener('input', (e) => {
+        appState.autoPlay = false;
+        updateAutoPlayButton();
+        applyMovieTimeline(parseFloat(e.target.value) / 10.0);
+      });
+
+      function applyMovieTimeline(t) {
+        appState.movieTime = Math.max(0, Math.min(24.0, t));
+        movieScrubber.value = Math.round(appState.movieTime * 10);
+        timeReadout.textContent = appState.movieTime.toFixed(1).padStart(4, '0') + 's / 24.0s';
+
+        if (t < 6.0) {
+          if (appState.currentScene !== 1) selectScene(1, true);
+          if (t < 1.5) {
+            appState.s1TargetMorph = 0.0;
+            appState.s1TargetShiftDeg = 0;
+          } else if (t < 3.2) {
+            appState.s1TargetMorph = 1.0;
+            appState.s1TargetShiftDeg = 0;
+          } else {
+            appState.s1TargetMorph = 1.0;
+            const p = Math.min(1, (t - 3.2) / 2.2);
+            appState.s1TargetShiftDeg = p * 90;
+            appState.s1ShiftDeg = appState.s1TargetShiftDeg;
+          }
+        } else if (t < 12.0) {
+          if (appState.currentScene !== 2) selectScene(2, true);
+          const localT = t - 6.0;
+          const p = Math.max(0, Math.min(1, (localT - 0.8) / 4.2));
+          appState.s2SpinDeg = p * 360;
+          updateScene2Diagnostics(appState.s2SpinDeg);
+        } else if (t < 18.0) {
+          if (appState.currentScene !== 3) selectScene(3, true);
+          const localT = t - 12.0;
+          const p = Math.max(0, Math.min(1, (localT - 0.8) / 4.2));
+          appState.s3DiveDeg = 85 - p * 170;
+          camState.targetPhi = (appState.s3DiveDeg * Math.PI) / 180;
+          updateScene3Diagnostics(appState.s3DiveDeg);
+        } else {
+          if (appState.currentScene !== 4) selectScene(4, true);
+          const localT = t - 18.0;
+          const p = Math.max(0, Math.min(1, (localT - 0.8) / 4.0));
+          appState.s4FlipDeg = p * 180;
+          updateScene4Diagnostics(appState.s4FlipDeg);
+        }
+      }
+
+      let mediaRecorder = null;
+      let recordedChunks = [];
+      let isRecording = false;
+
+      document.getElementById('btn-record').addEventListener('click', () => {
+        const label = document.getElementById('record-label');
+        const dot = document.getElementById('record-dot');
+
+        if (isRecording && mediaRecorder) {
+          mediaRecorder.stop();
+          return;
+        }
+
+        try {
+          const stream = renderer.domElement.captureStream(30);
+          recordedChunks = [];
+          mediaRecorder = new MediaRecorder(stream, { mimeType: 'video/webm' });
+
+          mediaRecorder.ondataavailable = (evt) => {
+            if (evt.data && evt.data.size > 0) recordedChunks.push(evt.data);
+          };
+
+          mediaRecorder.onstop = () => {
+            isRecording = false;
+            label.textContent = 'Download Video (.webm)';
+            dot.className = 'w-2 h-2 rounded-full bg-rose-400';
+            const blob = new Blob(recordedChunks, { type: 'video/webm' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'circular_permutation_smartboard.webm';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+          };
+
+          isRecording = true;
+          label.textContent = 'Recording 24s...';
+          dot.className = 'w-2 h-2 rounded-full bg-red-500 animate-ping';
+          appState.movieTime = 0;
+          appState.autoPlay = true;
+          updateAutoPlayButton();
+          mediaRecorder.start();
+        } catch (err) {
+          label.textContent = 'Use Auto-Play Mode';
+        }
+      });
+
+      // =======================================================================
+      // 10. RESIZE & 60 FPS RENDER LOOP
+      // =======================================================================
+      function handleResize() {
+        const w = container.clientWidth || 960;
+        const h = container.clientHeight || 600;
+        camera.aspect = w / h;
+        camera.updateProjectionMatrix();
+        renderer.setSize(w, h);
+      }
+      window.addEventListener('resize', handleResize);
+      handleResize();
+
+      let lastTime = performance.now();
+
+      function animate(now) {
+        requestAnimationFrame(animate);
+        const rawDt = Math.min(0.05, (now - lastTime) / 1000);
+        const dt = rawDt * playbackSpeed;
+        lastTime = now;
+
+        starfield.rotation.y += rawDt * 0.035;
+
+        // Orbiting flow tracer orbs clearly show Clockwise vs Anticlockwise motion
+        mainTable.userData.flowOrbs.rotation.y -= rawDt * 1.05;
+        leftTableCW.userData.flowOrbs.rotation.y -= rawDt * 1.05;
+        rightTableACW.userData.flowOrbs.rotation.y += rawDt * 1.05;
+
+        if (appState.autoPlay) {
+          const nextT = appState.movieTime + dt;
+          if (nextT >= 24.0) {
+            applyMovieTimeline(24.0);
+            appState.autoPlay = false;
+            updateAutoPlayButton();
+            playChime([523.25, 659.25, 783.99, 1046.5], 0.5);
+            if (isRecording && mediaRecorder) {
+              mediaRecorder.stop();
+            }
+          } else {
+            applyMovieTimeline(nextT);
+          }
+        }
+
+        // Scene 1 Morph & Shift
+        appState.s1Morph += (appState.s1TargetMorph - appState.s1Morph) * 0.1;
+        appState.s1ShiftDeg += (appState.s1TargetShiftDeg - appState.s1ShiftDeg) * 0.1;
+        document.getElementById('s1-shift-label').textContent = 'Shift: ' + (Math.round(appState.s1ShiftDeg) % 360) + '°';
+
+        benchGroup.scale.set(1 - appState.s1Morph * 0.999, 1, 1 - appState.s1Morph * 0.999);
+        benchGroup.visible = appState.s1Morph < 0.95 && appState.currentScene === 1;
+        const tableScale = Math.max(0.001, appState.s1Morph);
+        mainTable.scale.set(tableScale, tableScale, tableScale);
+
+        const shiftRad = (appState.s1ShiftDeg * Math.PI) / 180;
+        const linearX = [-3.8, -1.26, 1.26, 3.8];
+        mainWarriors.forEach((totem, i) => {
+          const lx = linearX[i];
+          const lz = 0;
+          const ang = CW_ANGLES[i] + shiftRad;
+          const cx = mainRadius * Math.cos(ang);
+          const cz = mainRadius * Math.sin(ang);
+          totem.position.x = lx + (cx - lx) * appState.s1Morph;
+          totem.position.z = lz + (cz - lz) * appState.s1Morph;
+          totem.userData.gemMesh.rotation.y += rawDt * 1.25;
+          if (totem.userData.anchorHalo) {
+            totem.userData.anchorHalo.rotation.y -= rawDt * 0.85;
+          }
+        });
+
+        // Scene 2 Auto-Spin & Mismatch Halo Pulse
+        if (appState.s2AutoSpin && appState.currentScene === 2) {
+          appState.s2SpinDeg += dt * 78;
+          if (appState.s2SpinDeg >= 360) {
+            appState.s2SpinDeg = 360;
+            appState.s2AutoSpin = false;
+            playChime([311.13, 277.18], 0.35, 'sawtooth', 0.05);
+          }
+          updateScene2Diagnostics(appState.s2SpinDeg);
+        }
+        leftTableCW.rotation.y = -(appState.s2SpinDeg * Math.PI) / 180;
+        leftWarriors.forEach((t) => { t.userData.gemMesh.rotation.y += rawDt * 1.25; });
+        rightWarriors.forEach((t) => { t.userData.gemMesh.rotation.y += rawDt * 1.25; });
+        redHaloMat.opacity = 0.4 + 0.45 * Math.abs(Math.sin(now * 0.006));
+
+        // Scene 4 Necklace 180-deg 3D Flip & Merge
+        if (appState.s4AutoFlip && appState.currentScene === 4) {
+          appState.s4FlipDeg += dt * 68;
+          if (appState.s4FlipDeg >= 180) {
+            appState.s4FlipDeg = 180;
+            appState.s4AutoFlip = false;
+            playChime([523.25, 659.25, 783.99, 1046.5], 0.45);
+          }
+          updateScene4Diagnostics(appState.s4FlipDeg);
+        }
+        const flipP = appState.s4FlipDeg / 180.0;
+        const flipRad = flipP * Math.PI;
+        necklaceCW.position.set(-4.0 * (1 - flipP), Math.sin(flipRad) * 3.15, 0);
+        necklaceCW.rotation.set(0, 0, flipRad);
+        necklaceACW.position.set(4.0 * (1 - flipP), 0, 0);
+
+        if (flipP > 0.94) {
+          const pulse = 0.5 + 0.5 * Math.sin(now * 0.008);
+          mergeShockwaveMat.opacity = 0.5 * pulse;
+          const s = 1.0 + 0.14 * pulse;
+          mergeShockwave.scale.set(s, s, 1);
+        } else {
+          mergeShockwaveMat.opacity = 0.0;
+        }
+
+        // Camera Spherical Interpolation
+        camState.theta += (camState.targetTheta - camState.theta) * 0.12;
+        camState.phi += (camState.targetPhi - camState.phi) * 0.12;
+        camState.radius += (camState.targetRadius - camState.radius) * 0.12;
+
+        camera.position.x = camState.radius * Math.cos(camState.phi) * Math.sin(camState.theta);
+        camera.position.y = camState.radius * Math.sin(camState.phi);
+        camera.position.z = camState.radius * Math.cos(camState.phi) * Math.cos(camState.theta);
+        camera.lookAt(0, camState.lookAtY, 0);
+
+        renderer.render(scene, camera);
+      }
+
+      selectScene(1, false);
+      requestAnimationFrame(animate);
+    })();
+  </script>
+</body>
+</html>
