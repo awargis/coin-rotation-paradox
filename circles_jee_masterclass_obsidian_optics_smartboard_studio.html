@@ -1,0 +1,2851 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>CIRCLES — Obsidian Optics JEE Main & Advanced Studio</title>
+
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Google Fonts: Inter & JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet" />
+
+  <!-- KaTeX for textbook-grade LaTeX rendering (with graceful offline fallback) -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css" crossorigin="anonymous" />
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js" crossorigin="anonymous"></script>
+
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'system-ui', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          },
+          colors: {
+            obsidian: '#05070E',
+            optCyan: '#00F0FF',
+            optGold: '#FFB800',
+            optMagenta: '#FF2A85',
+            optEmerald: '#00E676',
+            optSlate: '#64748B',
+          }
+        }
+      }
+    };
+  </script>
+
+  <style>
+    :root {
+      color-scheme: dark;
+    }
+
+    * {
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background-color: #05070E;
+      color: #E2E8F0;
+      font-family: 'Inter', sans-serif;
+      user-select: none;
+    }
+
+    /* Obsidian Optics Glassmorphism */
+    .glass-hud {
+      background: rgba(11, 15, 25, 0.78);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      box-shadow: 0 14px 44px rgba(0, 0, 0, 0.62), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    }
+
+    .glass-pill {
+      background: rgba(11, 15, 25, 0.84);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      box-shadow: 0 8px 28px rgba(0, 0, 0, 0.5);
+    }
+
+    /* Tabular numerals so numbers never jitter while dragging */
+    .tabular {
+      font-variant-numeric: tabular-nums;
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    /* Sleek custom scrollbars */
+    ::-webkit-scrollbar { width: 5px; height: 5px; }
+    ::-webkit-scrollbar-track { background: rgba(255, 255, 255, 0.02); }
+    ::-webkit-scrollbar-thumb { background: rgba(0, 240, 255, 0.25); border-radius: 9999px; }
+    ::-webkit-scrollbar-thumb:hover { background: rgba(0, 240, 255, 0.55); }
+
+    /* Neon semantic range sliders */
+    input[type="range"] {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 100%;
+      height: 5px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.12);
+      outline: none;
+    }
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 15px;
+      height: 15px;
+      border-radius: 50%;
+      background: #00F0FF;
+      box-shadow: 0 0 10px rgba(0, 240, 255, 0.85);
+      cursor: pointer;
+      border: 2px solid #05070E;
+      transition: transform 0.15s ease;
+    }
+    input[type="range"]::-webkit-slider-thumb:hover { transform: scale(1.18); }
+    input[type="range"].gold-slider::-webkit-slider-thumb { background: #FFB800; box-shadow: 0 0 10px rgba(255, 184, 0, 0.85); }
+    input[type="range"].magenta-slider::-webkit-slider-thumb { background: #FF2A85; box-shadow: 0 0 10px rgba(255, 42, 133, 0.85); }
+    input[type="range"].emerald-slider::-webkit-slider-thumb { background: #00E676; box-shadow: 0 0 10px rgba(0, 230, 118, 0.85); }
+
+    /* Interactive Canvas */
+    #geoCanvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+      touch-action: none;
+      cursor: grab;
+    }
+    #geoCanvas.dragging { cursor: grabbing; }
+    #geoCanvas.hover-handle { cursor: pointer; }
+    #geoCanvas.chalk-mode { cursor: crosshair; }
+
+    /* Smooth Clean-Board HUD Collapse */
+    .hud-collapsible {
+      transition: transform 0.34s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.25s ease;
+    }
+    body.clean-board .hide-left { transform: translateX(-125%); opacity: 0; pointer-events: none; }
+    body.clean-board .hide-right { transform: translateX(125%); opacity: 0; pointer-events: none; }
+    body.clean-board .hide-top { transform: translateY(-140%); opacity: 0; pointer-events: none; }
+
+    /* KaTeX Styling */
+    .katex { font-size: 1.0em; color: #F8FAFC; }
+    .katex-display { margin: 0.2em 0; }
+
+    /* X-Ray hover badges */
+    .xray-badge {
+      transition: all 0.18s ease;
+      cursor: pointer;
+    }
+    .xray-badge:hover, .xray-badge.active {
+      transform: translateY(-1px);
+      box-shadow: 0 0 14px rgba(0, 240, 255, 0.45);
+    }
+  </style>
+</head>
+<body class="bg-obsidian text-slate-100 overflow-hidden">
+
+  <!-- Full-Viewport High-DPI Canvas -->
+  <div class="fixed inset-0 z-0">
+    <canvas id="geoCanvas"></canvas>
+  </div>
+
+  <!-- Compact Top Smartboard Toolbar -->
+  <header class="fixed top-2.5 left-3 right-3 z-30 flex items-center justify-between gap-2 pointer-events-none">
+    <!-- Brand Identity -->
+    <div class="glass-pill rounded-2xl px-3 py-1.5 flex items-center gap-2.5 pointer-events-auto hud-collapsible hide-top max-w-[52vw] sm:max-w-none">
+      <div class="w-8 h-8 rounded-xl bg-gradient-to-br from-cyan-400 via-sky-500 to-fuchsia-600 flex items-center justify-center shadow-lg shadow-cyan-500/30 shrink-0">
+        <svg class="w-4 h-4 text-slate-950" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.6">
+          <circle cx="12" cy="12" r="8" />
+          <circle cx="12" cy="12" r="1.6" fill="currentColor" />
+          <line x1="12" y1="12" x2="18.2" y2="7.5" />
+        </svg>
+      </div>
+      <div class="truncate">
+        <div class="flex items-center gap-2">
+          <h1 class="text-xs sm:text-sm font-extrabold tracking-tight text-white truncate">
+            CIRCLES <span class="text-optCyan">OBSIDIAN OPTICS</span>
+          </h1>
+          <span class="hidden xl:inline-flex px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-amber-500/15 text-optGold border border-amber-400/30">
+            JEE Main &amp; Adv
+          </span>
+        </div>
+        <p class="text-[10px] text-slate-400 hidden md:block">Drag handles &bull; Scroll to zoom &bull; Drag void to pan &bull; Keys: H, L, C, Space</p>
+      </div>
+    </div>
+
+    <!-- Global Smartboard Controls -->
+    <div class="flex items-center gap-1.5 pointer-events-auto">
+      <!-- Play / Pause -->
+      <button id="btnPlayPause" title="Play / Pause Animation (Space)"
+        class="glass-pill hover:bg-white/10 active:scale-95 transition rounded-xl px-2.5 py-2 flex items-center gap-1.5 text-xs font-semibold text-optCyan hud-collapsible hide-top">
+        <span id="playPauseIcon">⏸</span>
+        <span class="hidden lg:inline" id="playPauseLabel">Pause</span>
+      </button>
+
+      <!-- Locus the Monkey Toggle -->
+      <button id="btnMonkeyToggle" title="Toggle Locus the Monkey Mascot"
+        class="glass-pill hover:bg-white/10 active:scale-95 transition rounded-xl px-2.5 py-2 flex items-center gap-1.5 text-xs font-semibold text-optGold border-amber-400/30 hud-collapsible hide-top">
+        <span>🐒</span>
+        <span class="hidden lg:inline" id="monkeyLabel">Locus: ON</span>
+      </button>
+
+      <!-- Laser Chalk Toggle (ALWAYS ACCESSIBLE EVEN IN CLEAN BOARD) -->
+      <button id="btnChalkToggle" title="Laser Chalk Overlay (Shortcut: L)"
+        class="glass-pill hover:bg-white/10 active:scale-95 transition rounded-xl px-2.5 sm:px-3 py-2 flex items-center gap-1.5 text-xs font-bold text-slate-200 border-white/15">
+        <span>✏️</span>
+        <span class="hidden sm:inline" id="chalkLabel">Laser Chalk</span>
+      </button>
+
+      <!-- Reset View / Module -->
+      <button id="btnResetView" title="Reset Camera Pan/Zoom & Module"
+        class="glass-pill hover:bg-white/10 active:scale-95 transition rounded-xl px-2.5 py-2 text-xs font-semibold text-slate-300 hud-collapsible hide-top">
+        ↺ <span class="hidden xl:inline">Reset</span>
+      </button>
+
+      <!-- Clean Board Toggle (ALWAYS ACCESSIBLE) -->
+      <button id="btnCleanBoard" title="Smartboard Clean View (Shortcut: H)"
+        class="rounded-xl px-3 sm:px-3.5 py-2 text-xs font-bold flex items-center gap-1.5 transition active:scale-95 shadow-lg bg-gradient-to-r from-cyan-400 to-sky-500 hover:from-cyan-300 hover:to-sky-400 text-slate-950 border border-cyan-200/40">
+        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
+        </svg>
+        <span id="cleanBoardLabel">Clean Board</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- Floating Laser Chalk Palette (Appears when Laser Chalk Mode is Active) -->
+  <div id="chalkToolbar"
+    class="fixed top-[60px] left-1/2 -translate-x-1/2 z-40 glass-pill rounded-2xl px-3 py-1.5 flex items-center gap-2 border-fuchsia-400/40 shadow-2xl hidden">
+    <span class="text-[10px] font-bold uppercase tracking-wider text-optMagenta pr-1">Laser Ink</span>
+    <button data-ink="#FFB800" class="ink-swatch w-5 h-5 rounded-full bg-[#FFB800] ring-2 ring-white scale-110 transition"></button>
+    <button data-ink="#FF2A85" class="ink-swatch w-5 h-5 rounded-full bg-[#FF2A85] opacity-75 hover:opacity-100 transition"></button>
+    <button data-ink="#00F0FF" class="ink-swatch w-5 h-5 rounded-full bg-[#00F0FF] opacity-75 hover:opacity-100 transition"></button>
+    <button data-ink="#FFFFFF" class="ink-swatch w-5 h-5 rounded-full bg-[#FFFFFF] opacity-75 hover:opacity-100 transition"></button>
+    <div class="w-px h-4 bg-white/15 mx-0.5"></div>
+    <button id="btnChalkUndo" class="px-2 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-[11px] font-semibold text-slate-200">Undo</button>
+    <button id="btnChalkClear" class="px-2 py-1 rounded-lg bg-rose-500/20 hover:bg-rose-500/35 text-[11px] font-semibold text-rose-300">Clear (C)</button>
+  </div>
+
+  <!-- Left Collapsible 10-Module Navigation Sidebar -->
+  <nav id="moduleNav"
+    class="fixed z-20 left-3 top-[60px] right-3 lg:right-auto lg:bottom-3 lg:w-56 glass-hud rounded-2xl p-1.5 flex lg:flex-col gap-1 overflow-x-auto lg:overflow-y-auto hud-collapsible hide-left">
+    <div class="hidden lg:flex items-center justify-between px-2.5 pt-1.5 pb-2 border-b border-white/10">
+      <span class="text-[10px] font-bold uppercase tracking-widest text-slate-400">10 JEE Labs</span>
+      <span class="text-[10px] tabular text-optCyan">S₁ · S₂ · L</span>
+    </div>
+    <!-- Injected by JS -->
+  </nav>
+
+  <!-- Right Floating Inspector & Live KaTeX HUD -->
+  <aside id="inspectorPanel"
+    class="fixed z-20 right-3 bottom-3 top-auto lg:top-[60px] left-3 lg:left-auto lg:w-[345px] xl:w-[368px] max-h-[40vh] lg:max-h-none glass-hud rounded-2xl flex flex-col overflow-hidden hud-collapsible hide-right">
+    <div class="px-3.5 py-2.5 border-b border-white/10 flex items-center justify-between gap-2 bg-white/[0.02]">
+      <div class="min-w-0">
+        <div id="panelModuleBadge" class="text-[10px] font-bold uppercase tracking-widest text-optCyan">Lab 01</div>
+        <h2 id="panelModuleTitle" class="text-sm font-bold text-white truncate">Definition &amp; Locus</h2>
+      </div>
+      <span id="panelStatusBadge" class="px-2 py-0.5 rounded-full text-[10px] font-bold border shrink-0 hidden">LIVE</span>
+    </div>
+    <div id="panelBody" class="p-3 overflow-y-auto space-y-3 flex-1">
+      <!-- Populated per module -->
+    </div>
+  </aside>
+
+  <!-- Bottom-Center Live KaTeX Ribbon (Visible even in Clean Board for classroom legibility) -->
+  <div id="bottomMathHud"
+    class="fixed bottom-3 left-1/2 -translate-x-1/2 z-20 glass-pill rounded-2xl px-4 py-2 hidden lg:flex items-center gap-2.5 max-w-[46vw] pointer-events-none">
+    <span class="w-2 h-2 rounded-full bg-optCyan animate-pulse shrink-0"></span>
+    <div id="hudEquation" class="text-sm text-white truncate"></div>
+  </div>
+
+  <!-- Magnetic Snap & Toast Pill Badge -->
+  <div id="snapToast"
+    class="fixed top-[104px] left-1/2 -translate-x-1/2 z-50 glass-pill px-4 py-1.5 rounded-full text-xs font-bold tracking-wide shadow-2xl opacity-0 pointer-events-none transition-all duration-300 -translate-y-2 border border-optGold/50 text-optGold">
+  </div>
+
+  <script>
+    /* ============================================================================
+       CIRCLES — OBSIDIAN OPTICS JEE MAIN & ADVANCED SMARTBOARD STUDIO
+       10 Interactive Modules · KaTeX · Laser Chalk · Magnetic Snap · Locus Monkey
+       ============================================================================ */
+
+    const canvas = document.getElementById('geoCanvas');
+    const ctx = canvas.getContext('2d');
+
+    // ---------- Strict Obsidian Optics Semantic Color Grammar ----------
+    const OPT = {
+      void: '#05070E',
+      grid: '#111827',
+      cyan: '#00F0FF',     // Primary Circle S1
+      gold: '#FFB800',     // Secondary Circle S2 / Locus Trails
+      magenta: '#FF2A85',  // Tangents / Radical Axis L
+      emerald: '#00E676',  // Normals / 90° Orthogonality Markers
+      slate: '#64748B',    // Auxiliary / Ghost Lines / Radii
+      white: '#F8FAFC'
+    };
+
+    // ---------- Application Runtime State ----------
+    const APP = {
+      width: window.innerWidth,
+      height: window.innerHeight,
+      dpr: Math.min(window.devicePixelRatio || 1, 2),
+      baseScale: 42,
+      zoom: 1,
+      panX: 0,
+      panY: 0,
+      originX: window.innerWidth * 0.5,
+      originY: window.innerHeight * 0.5,
+      playing: true,
+      monkeyOn: true,
+      cleanBoard: false,
+      activeModule: 0,
+      time: 0,
+      lastFrame: performance.now(),
+      lastHudSync: 0,
+
+      // Pointer & Dragging
+      handles: [],
+      draggingHandle: null,
+      hoveredHandle: null,
+      panning: null,
+
+      // Laser Chalk Overlay (screen-space strokes)
+      chalkMode: false,
+      chalkColor: '#FFB800',
+      chalkStrokes: [],
+      activeStroke: null,
+
+      // Magnetic Snap & Pulse Ripples
+      ripples: [],
+      lastSnapKey: '',
+      lastSnapTime: 0,
+
+      // X-Ray hover key for Module 2 General Form
+      xrayKey: null,
+
+      // Monkey animation state
+      monkey: { blinkTimer: 0, blinking: false, phase: 0 }
+    };
+
+    function getScale() {
+      return APP.baseScale * APP.zoom;
+    }
+
+    // ---------- 10 Curriculum Modules Metadata ----------
+    const MODULES = [
+      { id: 0, num: '01', short: 'Definition & Locus', icon: '◎' },
+      { id: 1, num: '02', short: 'Equations & X-Ray', icon: '𝑓' },
+      { id: 2, num: '03', short: 'Line & Circle (p vs r)', icon: '⦠' },
+      { id: 3, num: '04', short: 'T = 0 Unification', icon: '⚡' },
+      { id: 4, num: '05', short: 'Tangents & Director', icon: '⏊' },
+      { id: 5, num: '06', short: 'Family of Circles', icon: '∞' },
+      { id: 6, num: '07', short: 'Two Circles & DCT/TCT', icon: '⧇' },
+      { id: 7, num: '08', short: 'Radical Axis & Center', icon: '⟁' },
+      { id: 8, num: '09', short: 'JEE Adv Masterclass', icon: '★' },
+      { id: 9, num: '10', short: 'Real-World Physics', icon: '⚙' }
+    ];
+
+    // ---------- Initial Per-Module Mathematical State ----------
+    function createInitialState() {
+      return {
+        // M1: Definition & Locus
+        m1: { h: 0, k: 0, r: 3.3, theta: 0.4, trail: [] },
+
+        // M2: Equations & X-Ray Lab
+        m2: {
+          subTab: 'general', // 'standard' | 'general' | 'diametric' | 'parametric'
+          h: 1.0, k: 0.5, r: 3.0,
+          g: -1.4, f: -1.0, c: -5.5,
+          ax: -3.2, ay: -1.0, bx: 3.2, by: 1.4, pTheta: 1.0,
+          ph: 0, pk: 0, pr: 3.2, thetaDeg: 40
+        },
+
+        // M3: Line & Circle (p vs r)
+        m3: {
+          h: 0, k: 0, r: 2.8,
+          lx1: -4.2, ly1: 1.4,
+          lx2: 4.2, ly2: 3.6,
+          monkeyT: 0
+        },
+
+        // M4: T = 0 Unification Lab
+        m4: {
+          h: 0, k: 0, r: 2.6,
+          px: 4.4, py: 1.6,
+          showBisected: true
+        },
+
+        // M5: Tangents, Normals & Director Circle
+        m5: {
+          h: -0.3, k: 0, r: 2.4,
+          px: 3.6, py: 1.9,
+          lockDirector: false,
+          dirAngle: 0.65,
+          trail: []
+        },
+
+        // M6: Family of Circles (S + λL = 0 & S1 + λS2 = 0)
+        m6: {
+          mode: 'twoCircles', // 'circleLine' | 'twoCircles'
+          lambda: 0.7,
+          dir: 1,
+          // Circle + Line: S1 = (0,0,r=2.8), L: x - y + 1.2 = 0
+          // Two Circles: S1(-1.6, 0, r=2.6), S2(1.8, 0.3, r=2.2)
+          s1: { x: -1.6, y: 0, r: 2.6 },
+          s2: { x: 1.8, y: 0.3, r: 2.2 },
+          lineA: 1, lineB: -1, lineC: 1.1
+        },
+
+        // M7: Two Circles & Common Tangents
+        m7: {
+          x1: -3.0, y1: 0, r1: 2.1,
+          x2: 2.9, y2: 0.2, r2: 1.4,
+          monkeyT: 0
+        },
+
+        // M8: Radical Axis & Radical Center
+        m8: {
+          c1: { x: -3.2, y: -0.9, r: 1.6 },
+          c2: { x: 2.7, y: -1.3, r: 2.0 },
+          c3: { x: 0.1, y: 2.7, r: 1.4 },
+          showOrthoCircle: true,
+          monkeySlide: 0
+        },
+
+        // M9: JEE Advanced Masterclass (4-Stage Chalkboard Reveal)
+        m9: {
+          problem: 0, // 0..6
+          stage: 0,   // 0: Setup, 1: Geometric Insight, 2: Algebraic Shortcut, 3: Final Answer
+          // P1: Black Book Shortest/Longest from P(x1,y1)
+          p1: { h: -1.0, k: -0.2, r: 2.2, px: 3.8, py: 2.2, qAng: 0.9 },
+          // P2: Cengage Locus of Midpoints of Chords Subtending 90°
+          p2: { r: 3.8, rot: 0, trail: [] },
+          // P3: JEE Adv Locus of Center Orthogonal to S1 & S2
+          p3: { s1: { x: -2.8, y: 0, r: 1.5 }, s2: { x: 2.5, y: 0, r: 1.8 }, py: 2.4, trail: [] },
+          // P4: JEE Adv Tangents from Line L at 90° (Line ∩ Director Circle)
+          p4: { h: 0, k: 0, r: 2.3, lineM: 0.5, lineC: 2.2, slideT: 0, trail: [] },
+          // P5: Black Book Circumcircle & Area of ΔPAB (Tangents + Chord of Contact)
+          p5: { h: -1.2, k: 0, r: 2.0, px: 3.4, py: 1.4 },
+          // P6: Cengage Kissing Circles on Common Tangent (1/√r3 = 1/√r1 + 1/√r2)
+          p6: { r1: 2.2, r2: 1.5 },
+          // P7: JEE Adv Mirror Reflection of Circle in Line L
+          p7: { h: -2.2, k: 1.6, r: 1.4, lineAng: 58, lineOffset: 0.3 }
+        },
+
+        // M10: Real-World Applications
+        m10: {
+          sim: 'belt', // 'belt' | 'satellite' | 'laser'
+          beltType: 'open', r1: 2.1, r2: 1.25, speed: 1.1, gearAng: 0,
+          satAlt: 2400, satAng: 0.65,
+          laserDeg: 52, laserBounces: 7, laserProg: 0
+        }
+      };
+    }
+
+    let STATE = createInitialState();
+
+    /* ============================================================================
+       VIEWPORT, COORDINATE TRANSFORMS & MAGNETIC SNAP ENGINE
+       ============================================================================ */
+    function updateMetrics() {
+      APP.width = window.innerWidth;
+      APP.height = window.innerHeight;
+      APP.dpr = Math.min(window.devicePixelRatio || 1, 2);
+      canvas.width = Math.floor(APP.width * APP.dpr);
+      canvas.height = Math.floor(APP.height * APP.dpr);
+      ctx.setTransform(APP.dpr, 0, 0, APP.dpr, 0, 0);
+
+      const isDesktop = APP.width >= 1024;
+      if (APP.cleanBoard || !isDesktop) {
+        APP.originX = APP.width * 0.5 + APP.panX;
+        APP.originY = (isDesktop ? APP.height * 0.5 : APP.height * 0.35) + APP.panY;
+        APP.baseScale = Math.max(26, Math.min(APP.width, APP.height) / (isDesktop ? 13 : 14.5));
+      } else {
+        const leftW = 240;
+        const rightW = 382;
+        const availW = APP.width - leftW - rightW;
+        APP.originX = leftW + availW * 0.5 + APP.panX;
+        APP.originY = APP.height * 0.5 + APP.panY;
+        APP.baseScale = Math.max(28, Math.min(availW / 12.2, (APP.height - 120) / 11.2));
+      }
+    }
+
+    function w2s(wx, wy) {
+      const sc = getScale();
+      return { x: APP.originX + wx * sc, y: APP.originY - wy * sc };
+    }
+    function s2w(sx, sy) {
+      const sc = getScale();
+      return { x: (sx - APP.originX) / sc, y: (APP.originY - sy) / sc };
+    }
+    function dist(x1, y1, x2, y2) { return Math.hypot(x2 - x1, y2 - y1); }
+    function clamp(v, mn, mx) { return Math.max(mn, Math.min(mx, v)); }
+    function fmt(n, d = 2) {
+      if (!Number.isFinite(n)) return '∞';
+      return (Math.abs(n) < 1e-6 ? 0 : n).toFixed(d);
+    }
+    function fmtSign(n, d = 2) {
+      const v = Math.abs(n) < 1e-6 ? 0 : n;
+      return (v >= 0 ? '+ ' : '- ') + Math.abs(v).toFixed(d);
+    }
+    function hexRgba(hex, a) {
+      const c = hex.replace('#', '');
+      const n = parseInt(c, 16);
+      return `rgba(${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255}, ${a})`;
+    }
+
+    function showPillToast(msg, color = OPT.gold) {
+      const el = document.getElementById('snapToast');
+      el.textContent = msg;
+      el.style.color = color;
+      el.style.borderColor = hexRgba(color, 0.55);
+      el.style.opacity = '1';
+      el.style.transform = 'translate(-50%, 0)';
+      clearTimeout(el._t);
+      el._t = setTimeout(() => {
+        el.style.opacity = '0';
+        el.style.transform = 'translate(-50%, -8px)';
+      }, 1900);
+    }
+
+    function triggerSnapPulse(key, wx, wy, msg, color = OPT.gold) {
+      const now = performance.now();
+      if (APP.lastSnapKey === key && now - APP.lastSnapTime < 1500) return;
+      APP.lastSnapKey = key;
+      APP.lastSnapTime = now;
+      APP.ripples.push({ wx, wy, start: now, color });
+      showPillToast(msg, color);
+    }
+
+    function renderMath(el, latex, fallback) {
+      if (!el) return;
+      const katexReady = Boolean(window.katex && typeof window.katex.render === 'function');
+      if (el.dataset.tex === latex && (!katexReady || el.dataset.katexDone === '1')) return;
+      el.dataset.tex = latex;
+      try {
+        if (katexReady) {
+          window.katex.render(latex, el, { throwOnError: false, displayMode: false });
+          el.dataset.katexDone = '1';
+        } else {
+          el.dataset.katexDone = '0';
+          el.innerHTML = fallback || latex;
+        }
+      } catch {
+        el.dataset.katexDone = '0';
+        el.innerHTML = fallback || latex;
+      }
+    }
+
+    /* ============================================================================
+       OBSIDIAN OPTICS CANVAS DRAWING PRIMITIVES
+       ============================================================================ */
+    function drawObsidianVoid(showAxes = true) {
+      const { width, height, originX, originY } = APP;
+      const sc = getScale();
+
+      // Deep-space radial vignette
+      const grad = ctx.createRadialGradient(originX, originY, 30, originX, originY, Math.max(width, height) * 0.78);
+      grad.addColorStop(0, '#0C1324');
+      grad.addColorStop(0.55, '#070B16');
+      grad.addColorStop(1, '#05070E');
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, width, height);
+
+      if (!showAxes) return;
+
+      const minX = Math.floor(-originX / sc) - 1;
+      const maxX = Math.ceil((width - originX) / sc) + 1;
+      const minY = Math.floor((originY - height) / sc) - 1;
+      const maxY = Math.ceil(originY / sc) + 1;
+
+      ctx.save();
+      // Ultra-faint grid (#111827)
+      ctx.strokeStyle = '#111827';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      for (let x = minX; x <= maxX; x++) {
+        if (x === 0) continue;
+        const sx = originX + x * sc;
+        ctx.moveTo(sx, 0); ctx.lineTo(sx, height);
+      }
+      for (let y = minY; y <= maxY; y++) {
+        if (y === 0) continue;
+        const sy = originY - y * sc;
+        ctx.moveTo(0, sy); ctx.lineTo(width, sy);
+      }
+      ctx.stroke();
+
+      // Crisp Coordinate Axes
+      ctx.strokeStyle = 'rgba(100, 116, 139, 0.45)';
+      ctx.lineWidth = 1.4;
+      ctx.beginPath();
+      ctx.moveTo(0, originY); ctx.lineTo(width, originY);
+      ctx.moveTo(originX, 0); ctx.lineTo(originX, height);
+      ctx.stroke();
+
+      // Numeric ticks
+      ctx.fillStyle = 'rgba(148, 163, 184, 0.58)';
+      ctx.font = '500 10px "JetBrains Mono", monospace';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'top';
+      for (let x = minX; x <= maxX; x++) {
+        if (x === 0) continue;
+        const sx = originX + x * sc;
+        if (sx > 16 && sx < width - 16) ctx.fillText(String(x), sx, originY + 5);
+      }
+      ctx.textAlign = 'right';
+      ctx.textBaseline = 'middle';
+      for (let y = minY; y <= maxY; y++) {
+        if (y === 0) continue;
+        const sy = originY - y * sc;
+        if (sy > 16 && sy < height - 16) ctx.fillText(String(y), originX - 6, sy);
+      }
+      ctx.fillStyle = OPT.cyan;
+      ctx.fillText('O', originX - 6, originY + 10);
+      ctx.restore();
+    }
+
+    function drawCircle(wx, wy, wr, color, lw = 2.5, dashed = false, fillAlpha = 0.04, glow = 14) {
+      if (wr <= 0.001) return;
+      const p = w2s(wx, wy);
+      const r = wr * getScale();
+      ctx.save();
+      if (dashed) ctx.setLineDash([7, 6]);
+      if (fillAlpha > 0) {
+        ctx.fillStyle = hexRgba(color, fillAlpha);
+        ctx.beginPath(); ctx.arc(p.x, p.y, r, 0, Math.PI * 2); ctx.fill();
+      }
+      ctx.strokeStyle = color;
+      ctx.lineWidth = lw;
+      if (glow > 0) { ctx.shadowColor = color; ctx.shadowBlur = glow; }
+      ctx.beginPath(); ctx.arc(p.x, p.y, r, 0, Math.PI * 2); ctx.stroke();
+      ctx.restore();
+    }
+
+    function drawLine(x1, y1, x2, y2, color, lw = 2.2, dashed = false, glow = 10) {
+      const p1 = w2s(x1, y1), p2 = w2s(x2, y2);
+      ctx.save();
+      if (dashed) ctx.setLineDash([6, 6]);
+      ctx.strokeStyle = color;
+      ctx.lineWidth = lw;
+      if (glow > 0) { ctx.shadowColor = color; ctx.shadowBlur = glow; }
+      ctx.beginPath(); ctx.moveTo(p1.x, p1.y); ctx.lineTo(p2.x, p2.y); ctx.stroke();
+      ctx.restore();
+    }
+
+    function drawInfLine(A, B, C, color, lw = 2.2, dashed = false, glow = 10) {
+      const norm = Math.hypot(A, B);
+      if (norm < 1e-8) return;
+      const x0 = (-A * C) / (norm * norm), y0 = (-B * C) / (norm * norm);
+      const dx = -B / norm, dy = A / norm;
+      drawLine(x0 - dx * 45, y0 - dy * 45, x0 + dx * 45, y0 + dy * 45, color, lw, dashed, glow);
+    }
+
+    function drawRightAngle(vx, vy, ax, ay, bx, by, color = OPT.emerald, sizeW = 0.28) {
+      const u1x = ax - vx, u1y = ay - vy, u2x = bx - vx, u2y = by - vy;
+      const l1 = Math.hypot(u1x, u1y), l2 = Math.hypot(u2x, u2y);
+      if (l1 < 1e-5 || l2 < 1e-5) return;
+      const s = Math.min(sizeW, l1 * 0.4, l2 * 0.4);
+      const p1 = w2s(vx + (u1x / l1) * s, vy + (u1y / l1) * s);
+      const p2 = w2s(vx + (u2x / l2) * s, vy + (u2y / l2) * s);
+      const pc = w2s(vx + (u1x / l1) * s + (u2x / l2) * s, vy + (u1y / l1) * s + (u2y / l2) * s);
+      ctx.save();
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 1.9;
+      ctx.shadowColor = color;
+      ctx.shadowBlur = 8;
+      ctx.beginPath(); ctx.moveTo(p1.x, p1.y); ctx.lineTo(pc.x, pc.y); ctx.lineTo(p2.x, p2.y); ctx.stroke();
+      ctx.restore();
+    }
+
+    function roundRect(c, x, y, w, h, r) {
+      const rad = Math.min(r, w / 2, h / 2);
+      c.beginPath();
+      c.moveTo(x + rad, y);
+      c.arcTo(x + w, y, x + w, y + h, rad);
+      c.arcTo(x + w, y + h, x, y + h, rad);
+      c.arcTo(x, y + h, x, y, rad);
+      c.arcTo(x, y, x + w, y, rad);
+      c.closePath();
+    }
+
+    function drawPoint(wx, wy, color, radius = 5.5, label = '', offset = { x: 10, y: -12 }) {
+      const p = w2s(wx, wy);
+      ctx.save();
+      ctx.fillStyle = color;
+      ctx.shadowColor = color;
+      ctx.shadowBlur = 12;
+      ctx.beginPath(); ctx.arc(p.x, p.y, radius, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#FFFFFF';
+      ctx.beginPath(); ctx.arc(p.x, p.y, radius * 0.4, 0, Math.PI * 2); ctx.fill();
+      ctx.shadowBlur = 0;
+
+      if (label) {
+        ctx.font = '600 11.5px "JetBrains Mono", monospace';
+        const tw = ctx.measureText(label).width;
+        const lx = p.x + offset.x, ly = p.y + offset.y;
+        ctx.fillStyle = 'rgba(5, 7, 14, 0.84)';
+        roundRect(ctx, lx - 5, ly - 10, tw + 10, 18, 6);
+        ctx.fill();
+        ctx.strokeStyle = hexRgba(color, 0.45);
+        ctx.lineWidth = 1;
+        ctx.stroke();
+        ctx.fillStyle = color;
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(label, lx, ly - 1);
+      }
+      ctx.restore();
+    }
+
+    function drawHandle(id, wx, wy, color, label, onDrag) {
+      APP.handles.push({ id, wx, wy, radius: 22, onDrag });
+      const active = APP.hoveredHandle === id || (APP.draggingHandle && APP.draggingHandle.id === id);
+      const p = w2s(wx, wy);
+      ctx.save();
+      ctx.strokeStyle = hexRgba(color, active ? 0.95 : 0.42);
+      ctx.lineWidth = active ? 2.4 : 1.5;
+      ctx.beginPath(); ctx.arc(p.x, p.y, active ? 13 : 10, 0, Math.PI * 2); ctx.stroke();
+      ctx.restore();
+      drawPoint(wx, wy, color, active ? 7 : 5.5, label);
+    }
+
+    function drawCanvasBadge(wx, wy, text, color = OPT.gold) {
+      const p = w2s(wx, wy);
+      ctx.save();
+      ctx.font = '700 11.5px "Inter", sans-serif';
+      const tw = ctx.measureText(text).width;
+      const bw = tw + 18, bh = 23;
+      const bx = clamp(p.x - bw / 2, 12, APP.width - bw - 12);
+      const by = clamp(p.y - bh / 2, 64, APP.height - bh - 12);
+      ctx.fillStyle = 'rgba(11, 15, 25, 0.92)';
+      ctx.shadowColor = color;
+      ctx.shadowBlur = 12;
+      roundRect(ctx, bx, by, bw, bh, 999);
+      ctx.fill();
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 1.4;
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+      ctx.fillStyle = color;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(text, bx + bw / 2, by + bh / 2);
+      ctx.restore();
+    }
+
+    function drawGoldTrail(pts, color = OPT.gold) {
+      if (!pts || pts.length < 2) return;
+      ctx.save();
+      for (let i = 1; i < pts.length; i++) {
+        const p1 = w2s(pts[i - 1].x, pts[i - 1].y);
+        const p2 = w2s(pts[i].x, pts[i].y);
+        const alpha = i / pts.length;
+        ctx.strokeStyle = hexRgba(color, alpha * 0.92);
+        ctx.shadowColor = color;
+        ctx.shadowBlur = 8;
+        ctx.lineWidth = 1.5 + alpha * 2.4;
+        ctx.beginPath(); ctx.moveTo(p1.x, p1.y); ctx.lineTo(p2.x, p2.y); ctx.stroke();
+      }
+      ctx.restore();
+    }
+
+    function drawRipples(now) {
+      for (let i = APP.ripples.length - 1; i >= 0; i--) {
+        const rp = APP.ripples[i];
+        const age = Math.max(0, (now - rp.start) / 750);
+        if (age >= 1) { APP.ripples.splice(i, 1); continue; }
+        const p = w2s(rp.wx, rp.wy);
+        const radius = Math.max(0.5, 10 + age * 68);
+        ctx.save();
+        ctx.strokeStyle = hexRgba(rp.color, (1 - age) * 0.9);
+        ctx.shadowColor = rp.color;
+        ctx.shadowBlur = 14;
+        ctx.lineWidth = Math.max(0.5, 2.6 * (1 - age * 0.6));
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, radius, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.restore();
+      }
+    }
+
+    function drawLaserChalk() {
+      const all = APP.activeStroke ? [...APP.chalkStrokes, APP.activeStroke] : APP.chalkStrokes;
+      if (!all.length) return;
+      ctx.save();
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      for (const st of all) {
+        if (st.pts.length < 2) continue;
+        ctx.strokeStyle = st.color;
+        ctx.shadowColor = st.color;
+        ctx.shadowBlur = 12;
+        ctx.lineWidth = 3.2;
+        ctx.beginPath();
+        ctx.moveTo(st.pts[0].x, st.pts[0].y);
+        for (let i = 1; i < st.pts.length; i++) ctx.lineTo(st.pts[i].x, st.pts[i].y);
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
+
+    /* ============================================================================
+       UPGRADED "LOCUS THE MONKEY" PHYSICS ENGINE
+       Supports: unicycle, jumping/missing, balancing, walking, excited, confused
+       ============================================================================ */
+    function drawLocusMonkey(wx, wy, opts = {}) {
+      if (!APP.monkeyOn) return;
+      const {
+        speech = '',
+        facing = 1,
+        scale = 0.95,
+        mode = 'walk', // 'walk' | 'unicycle' | 'jumpMiss' | 'balance' | 'idle'
+        mood = 'happy' // 'happy' | 'excited' | 'confused'
+      } = opts;
+
+      const p = w2s(wx, wy);
+      const ph = APP.monkey.phase;
+
+      let offsetY = 0;
+      let tilt = 0;
+      let armSwing = Math.sin(APP.time * 3) * 0.15;
+      let legSwing = 0;
+
+      if (mode === 'walk') {
+        offsetY = Math.abs(Math.sin(ph * 2)) * 5;
+        tilt = Math.sin(ph * 2) * 0.13;
+        armSwing = Math.sin(ph * 2) * 0.52;
+        legSwing = Math.sin(ph * 2) * 0.48;
+      } else if (mode === 'unicycle') {
+        offsetY = 14 + Math.sin(ph * 3) * 1.5;
+        tilt = Math.sin(ph * 1.5) * 0.08;
+        armSwing = Math.sin(ph * 2.5) * 0.35;
+        legSwing = ph * 2.6;
+      } else if (mode === 'jumpMiss') {
+        // Comical jump toward unreachable line and land back
+        const jumpCycle = Math.max(0, Math.sin(APP.time * 3.8));
+        offsetY = jumpCycle * 26;
+        tilt = (jumpCycle > 0.2 ? -0.22 : 0.08);
+        armSwing = jumpCycle > 0.2 ? -1.1 : 0.2;
+      } else if (mode === 'balance') {
+        offsetY = 2;
+        tilt = Math.sin(APP.time * 4.5) * 0.16;
+        armSwing = 1.25; // arms stretched out tightrope-style
+      } else {
+        offsetY = Math.sin(APP.time * 2.4) * 1.8;
+      }
+
+      ctx.save();
+      ctx.translate(p.x, p.y - 16 * scale - offsetY);
+      ctx.rotate(tilt);
+      ctx.scale(facing * scale, scale);
+
+      // Unicycle Wheel & Pedals (Definition Mode)
+      if (mode === 'unicycle') {
+        ctx.save();
+        ctx.translate(0, 22);
+        // Glowing wheel rim
+        ctx.strokeStyle = OPT.cyan;
+        ctx.shadowColor = OPT.cyan;
+        ctx.shadowBlur = 8;
+        ctx.lineWidth = 2.6;
+        ctx.beginPath(); ctx.arc(0, 0, 9.5, 0, Math.PI * 2); ctx.stroke();
+        ctx.shadowBlur = 0;
+        // Rotating spokes
+        ctx.strokeStyle = '#94A3B8';
+        ctx.lineWidth = 1.2;
+        for (let i = 0; i < 4; i++) {
+          const a = legSwing + (i * Math.PI) / 2;
+          ctx.beginPath();
+          ctx.moveTo(Math.cos(a) * -9, Math.sin(a) * -9);
+          ctx.lineTo(Math.cos(a) * 9, Math.sin(a) * 9);
+          ctx.stroke();
+        }
+        // Seat post
+        ctx.strokeStyle = OPT.gold;
+        ctx.lineWidth = 2.5;
+        ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(0, -13); ctx.stroke();
+        ctx.restore();
+      } else {
+        // Soft ground shadow
+        ctx.fillStyle = 'rgba(0,0,0,0.36)';
+        ctx.beginPath(); ctx.ellipse(0, 21 + offsetY * 0.3, 12, 3.6, 0, 0, Math.PI * 2); ctx.fill();
+      }
+
+      // Curly animated tail
+      ctx.save();
+      ctx.strokeStyle = '#7C4A22';
+      ctx.lineWidth = 3.8;
+      ctx.lineCap = 'round';
+      const wag = Math.sin(APP.time * 5.2) * 5;
+      ctx.beginPath();
+      ctx.moveTo(-8, 6);
+      ctx.bezierCurveTo(-19, 4 + wag, -24, -10 + wag, -16, -14 + wag * 0.5);
+      ctx.stroke();
+      ctx.restore();
+
+      // Legs
+      ctx.strokeStyle = '#6B3E1B';
+      ctx.lineWidth = 4.2;
+      ctx.lineCap = 'round';
+      if (mode === 'unicycle') {
+        const px1 = Math.cos(legSwing) * 5, py1 = 22 + Math.sin(legSwing) * 5;
+        const px2 = Math.cos(legSwing + Math.PI) * 5, py2 = 22 + Math.sin(legSwing + Math.PI) * 5;
+        ctx.beginPath(); ctx.moveTo(-3, 9); ctx.lineTo(px1, py1); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(3, 9); ctx.lineTo(px2, py2); ctx.stroke();
+      } else {
+        ctx.beginPath(); ctx.moveTo(-4, 10); ctx.lineTo(-4 - Math.sin(legSwing) * 7, 19); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(4, 10); ctx.lineTo(4 + Math.sin(legSwing) * 7, 19); ctx.stroke();
+        ctx.fillStyle = OPT.gold;
+        ctx.beginPath();
+        ctx.ellipse(-4 - Math.sin(legSwing) * 7 + 1.5, 20, 4.2, 2.3, 0, 0, Math.PI * 2);
+        ctx.ellipse(4 + Math.sin(legSwing) * 7 + 1.5, 20, 4.2, 2.3, 0, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      // Fuzzy Torso & Tan Belly
+      ctx.fillStyle = '#8B5427';
+      ctx.beginPath(); ctx.ellipse(0, 3, 10, 11, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#F3CFA0';
+      ctx.beginPath(); ctx.ellipse(1.5, 4, 6.2, 7.2, 0, 0, Math.PI * 2); ctx.fill();
+
+      // Arms
+      ctx.strokeStyle = '#7C4A22';
+      ctx.lineWidth = 3.8;
+      if (mode === 'balance') {
+        ctx.beginPath(); ctx.moveTo(-7, -1); ctx.lineTo(-17, -4); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(7, -1); ctx.lineTo(17, -4); ctx.stroke();
+      } else {
+        ctx.beginPath(); ctx.moveTo(-7, -1); ctx.lineTo(-12 - Math.cos(armSwing) * 3, 6 + Math.sin(armSwing) * 6); ctx.stroke();
+        const hx = 11 + Math.sin(armSwing) * 4, hy = 2 - Math.cos(armSwing) * 5;
+        ctx.beginPath(); ctx.moveTo(7, -1); ctx.lineTo(hx, hy); ctx.stroke();
+      }
+
+      // Ears & Head
+      ctx.fillStyle = '#8B5427';
+      ctx.beginPath(); ctx.arc(-11, -13, 4.8, 0, Math.PI * 2); ctx.arc(11, -13, 4.8, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#F3CFA0';
+      ctx.beginPath(); ctx.arc(-11, -13, 2.6, 0, Math.PI * 2); ctx.arc(11, -13, 2.6, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#8B5427';
+      ctx.beginPath(); ctx.arc(0, -13, 11, 0, Math.PI * 2); ctx.fill();
+
+      // Face mask
+      ctx.fillStyle = '#F3CFA0';
+      ctx.beginPath();
+      ctx.arc(-3.4, -15, 5, 0, Math.PI * 2);
+      ctx.arc(3.4, -15, 5, 0, Math.PI * 2);
+      ctx.ellipse(0, -9.5, 8, 5.2, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Blinking Eyes
+      if (APP.monkey.blinking) {
+        ctx.strokeStyle = '#1E1B18'; ctx.lineWidth = 1.8;
+        ctx.beginPath(); ctx.moveTo(-5.2, -14.5); ctx.lineTo(-2, -14.5); ctx.moveTo(2, -14.5); ctx.lineTo(5.2, -14.5); ctx.stroke();
+      } else {
+        ctx.fillStyle = '#1E1B18';
+        ctx.beginPath(); ctx.arc(-3.5, -14.5, 2.1, 0, Math.PI * 2); ctx.arc(3.5, -14.5, 2.1, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#FFFFFF';
+        ctx.beginPath(); ctx.arc(-2.8, -15.2, 0.75, 0, Math.PI * 2); ctx.arc(4.2, -15.2, 0.75, 0, Math.PI * 2); ctx.fill();
+      }
+
+      // Expressive Mouth
+      ctx.strokeStyle = '#4A2511'; ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      if (mood === 'confused') {
+        ctx.moveTo(-3.4, -8.5); ctx.quadraticCurveTo(0, -10.6, 3.4, -8.3);
+      } else if (mood === 'excited') {
+        ctx.fillStyle = '#FF2A85'; ctx.arc(0, -9.5, 3.8, 0, Math.PI); ctx.fill();
+      } else {
+        ctx.arc(0, -10.2, 4.2, 0.2, Math.PI - 0.2);
+      }
+      ctx.stroke();
+
+      // Golden Explorer Cap
+      ctx.fillStyle = OPT.gold;
+      ctx.beginPath(); ctx.arc(0, -21, 8.2, Math.PI, 0); ctx.fill();
+      ctx.fillStyle = '#D97706';
+      ctx.beginPath(); ctx.ellipse(4.4, -21, 6.8, 2.1, -0.1, 0, Math.PI * 2); ctx.fill();
+      ctx.restore();
+
+      // Clean non-overlapping Speech Bubble
+      if (speech) {
+        ctx.save();
+        ctx.font = '600 11px "Inter", sans-serif';
+        const tw = ctx.measureText(speech).width;
+        const bw = tw + 20, bh = 24;
+        const bx = clamp(p.x - bw / 2, 12, APP.width - bw - 12);
+        const by = clamp(p.y - (mode === 'unicycle' ? 78 : 66) * scale - offsetY, 64, APP.height - bh - 12);
+
+        ctx.fillStyle = 'rgba(11, 15, 25, 0.92)';
+        ctx.strokeStyle = hexRgba(OPT.gold, 0.65);
+        ctx.lineWidth = 1.25;
+        ctx.shadowColor = hexRgba(OPT.gold, 0.25);
+        ctx.shadowBlur = 10;
+        roundRect(ctx, bx, by, bw, bh, 10);
+        ctx.fill(); ctx.stroke();
+        ctx.shadowBlur = 0;
+
+        ctx.fillStyle = '#FEF3C7';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(speech, bx + bw / 2, by + bh / 2);
+        ctx.restore();
+      }
+    }
+
+    /* ============================================================================
+       EXACT COORDINATE GEOMETRY SOLVERS
+       ============================================================================ */
+    function getTangentsFromPoint(h, k, r, px, py) {
+      const dx = px - h, dy = py - k, d = Math.hypot(dx, dy);
+      if (d <= r + 1e-6 || r <= 1e-6) return [];
+      const base = Math.atan2(dy, dx), alpha = Math.acos(clamp(r / d, -1, 1));
+      return [
+        { x: h + r * Math.cos(base + alpha), y: k + r * Math.sin(base + alpha) },
+        { x: h + r * Math.cos(base - alpha), y: k + r * Math.sin(base - alpha) }
+      ];
+    }
+
+    function getCommonTangents(x1, y1, r1, x2, y2, r2) {
+      const dx = x2 - x1, dy = y2 - y1, d = Math.hypot(dx, dy);
+      const dct = [], tct = [];
+      if (d < 1e-6) return { dct, tct, d };
+      const base = Math.atan2(dy, dx);
+
+      if (d >= Math.abs(r1 - r2) - 0.04) {
+        if (Math.abs(d - Math.abs(r1 - r2)) < 0.04) {
+          const sgn = r1 >= r2 ? 1 : -1;
+          const tx = x1 + sgn * r1 * Math.cos(base), ty = y1 + sgn * r1 * Math.sin(base);
+          const nx = -Math.sin(base), ny = Math.cos(base);
+          dct.push({ p1: { x: tx - nx * 4, y: ty - ny * 4 }, p2: { x: tx + nx * 4, y: ty + ny * 4 }, isTouch: true });
+        } else {
+          const a = Math.acos(clamp((r1 - r2) / d, -1, 1));
+          for (const ang of [base + a, base - a]) {
+            dct.push({
+              p1: { x: x1 + r1 * Math.cos(ang), y: y1 + r1 * Math.sin(ang) },
+              p2: { x: x2 + r2 * Math.cos(ang), y: y2 + r2 * Math.sin(ang) },
+              isTouch: false
+            });
+          }
+        }
+      }
+      if (d >= r1 + r2 - 0.04) {
+        if (Math.abs(d - (r1 + r2)) < 0.04) {
+          const tx = x1 + r1 * Math.cos(base), ty = y1 + r1 * Math.sin(base);
+          const nx = -Math.sin(base), ny = Math.cos(base);
+          tct.push({ p1: { x: tx - nx * 4, y: ty - ny * 4 }, p2: { x: tx + nx * 4, y: ty + ny * 4 }, isTouch: true });
+        } else {
+          const b = Math.acos(clamp((r1 + r2) / d, -1, 1));
+          for (const ang of [base + b, base - b]) {
+            tct.push({
+              p1: { x: x1 + r1 * Math.cos(ang), y: y1 + r1 * Math.sin(ang) },
+              p2: { x: x2 - r2 * Math.cos(ang), y: y2 - r2 * Math.sin(ang) },
+              isTouch: false
+            });
+          }
+        }
+      }
+      return { dct, tct, d };
+    }
+
+    function getCircleIntersections(x1, y1, r1, x2, y2, r2) {
+      const d = Math.hypot(x2 - x1, y2 - y1);
+      if (d < 1e-6 || d > r1 + r2 || d < Math.abs(r1 - r2)) return [];
+      const a = (r1 * r1 - r2 * r2 + d * d) / (2 * d);
+      const h = Math.sqrt(Math.max(0, r1 * r1 - a * a));
+      const xm = x1 + (a * (x2 - x1)) / d, ym = y1 + (a * (y2 - y1)) / d;
+      const rx = (-(y2 - y1) * h) / d, ry = ((x2 - x1) * h) / d;
+      return [{ x: xm + rx, y: ym + ry }, { x: xm - rx, y: ym - ry }];
+    }
+
+    function getLineCircleIntersections(h, k, r, A, B, C) {
+      const norm2 = A * A + B * B;
+      if (norm2 < 1e-8) return [];
+      const distSigned = (A * h + B * k + C) / Math.sqrt(norm2);
+      const p = Math.abs(distSigned);
+      if (p > r + 1e-5) return [];
+      const mx = h - (A * (A * h + B * k + C)) / norm2;
+      const my = k - (B * (A * h + B * k + C)) / norm2;
+      const half = Math.sqrt(Math.max(0, r * r - p * p));
+      const ux = -B / Math.sqrt(norm2), uy = A / Math.sqrt(norm2);
+      if (half < 1e-4) return [{ x: mx, y: my }];
+      return [{ x: mx + ux * half, y: my + uy * half }, { x: mx - ux * half, y: my - uy * half }];
+    }
+
+    function getRadicalAxis(c1, c2) {
+      return {
+        A: 2 * (c2.x - c1.x),
+        B: 2 * (c2.y - c1.y),
+        C: (c1.x * c1.x + c1.y * c1.y - c1.r * c1.r) - (c2.x * c2.x + c2.y * c2.y - c2.r * c2.r)
+      };
+    }
+
+    function intersectLines(L1, L2) {
+      const det = L1.A * L2.B - L2.A * L1.B;
+      if (Math.abs(det) < 1e-6) return null;
+      return { x: (L1.B * L2.C - L2.B * L1.C) / det, y: (L2.A * L1.C - L1.A * L2.C) / det };
+    }
+
+    /* ============================================================================
+       ALL 10 CURRICULUM MODULE RENDERERS
+       ============================================================================ */
+
+    // ---------- MODULE 1: Definition & Locus ----------
+    function renderM1(dt) {
+      const s = STATE.m1;
+      if (APP.playing) s.theta += dt * 0.9;
+      const px = s.h + s.r * Math.cos(s.theta);
+      const py = s.k + s.r * Math.sin(s.theta);
+
+      s.trail.push({ x: px, y: py });
+      if (s.trail.length > 95) s.trail.shift();
+
+      drawCircle(s.h, s.k, s.r, OPT.cyan, 2.2, true, 0.04, 10);
+      drawGoldTrail(s.trail, OPT.gold);
+
+      // Taut glowing cyan tether rope
+      drawLine(s.h, s.k, px, py, OPT.cyan, 2.6, false, 16);
+      drawCanvasBadge((s.h + px) / 2, (s.k + py) / 2, `r = ${fmt(s.r)}`, OPT.cyan);
+
+      drawHandle('m1_c', s.h, s.k, OPT.cyan, `C(${fmt(s.h, 1)},${fmt(s.k, 1)})`, (wx, wy) => {
+        s.h = clamp(Math.round(wx * 4) / 4, -6, 6);
+        s.k = clamp(Math.round(wy * 4) / 4, -4.5, 4.5);
+        s.trail = []; syncSliders();
+      });
+      drawHandle('m1_r', s.h + s.r, s.k, OPT.gold, 'Drag r', (wx, wy) => {
+        s.r = clamp(Math.round(dist(s.h, s.k, wx, wy) * 10) / 10, 0.7, 5.2);
+        s.trail = []; syncSliders();
+      });
+
+      drawPoint(px, py, OPT.gold, 5, `P(${fmt(px, 1)},${fmt(py, 1)})`);
+      drawLocusMonkey(px, py, {
+        mode: 'unicycle',
+        facing: Math.sin(s.theta) > 0 ? -1 : 1,
+        speech: `Unicycle Locus! Rope CP = ${fmt(s.r)} always!`
+      });
+
+      return {
+        latex: `\\sqrt{(x ${fmtSign(-s.h, 1)})^2 + (y ${fmtSign(-s.k, 1)})^2} = ${fmt(s.r)}`,
+        fallback: `√((x - h)² + (y - k)²) = ${fmt(s.r)}`,
+        badge: { text: 'Constant Distance r', color: 'cyan' },
+        stats: [
+          { label: 'Center C(h, k)', val: `(${fmt(s.h, 1)}, ${fmt(s.k, 1)})`, cls: 'text-optCyan' },
+          { label: 'Taut Rope r', val: `${fmt(s.r)} u`, cls: 'text-optGold' },
+          { label: 'Moving P(x, y)', val: `(${fmt(px)}, ${fmt(py)})`, cls: 'text-white' },
+          { label: 'Verified CP', val: `${fmt(dist(s.h, s.k, px, py))} = r ✓`, cls: 'text-optEmerald' }
+        ]
+      };
+    }
+
+    // ---------- MODULE 2: Equations & X-Ray Lab ----------
+    function renderM2(dt) {
+      const s = STATE.m2;
+      if (s.subTab === 'standard') {
+        drawCircle(s.h, s.k, s.r, OPT.cyan, 2.7, false, 0.05);
+        drawLine(s.h, s.k, s.h + s.r, s.k, OPT.slate, 1.8, true, 0);
+        drawHandle('m2_c', s.h, s.k, OPT.cyan, `C(${fmt(s.h, 1)},${fmt(s.k, 1)})`, (wx, wy) => {
+          s.h = clamp(Math.round(wx * 4) / 4, -5, 5); s.k = clamp(Math.round(wy * 4) / 4, -4, 4); syncSliders();
+        });
+        drawHandle('m2_r', s.h + s.r, s.k, OPT.gold, `r=${fmt(s.r, 1)}`, (wx, wy) => {
+          s.r = clamp(Math.round(dist(s.h, s.k, wx, wy) * 10) / 10, 0.6, 4.8); syncSliders();
+        });
+        const a = APP.time * 0.85;
+        drawLocusMonkey(s.h + s.r * Math.cos(a), s.k + s.r * Math.sin(a), {
+          mode: APP.playing ? 'walk' : 'idle', facing: Math.sin(a) > 0 ? -1 : 1,
+          speech: `(x - h)² + (y - k)² = r²!`
+        });
+        return {
+          latex: `(x ${fmtSign(-s.h, 1)})^2 + (y ${fmtSign(-s.k, 1)})^2 = ${fmt(s.r * s.r)}`,
+          badge: { text: 'Standard Form', color: 'cyan' },
+          stats: [
+            { label: 'Center (h,k)', val: `(${fmt(s.h, 1)}, ${fmt(s.k, 1)})`, cls: 'text-optCyan' },
+            { label: 'Radius r', val: fmt(s.r), cls: 'text-optGold' }
+          ]
+        };
+      }
+
+      if (s.subTab === 'general') {
+        const cx = -s.g, cy = -s.f;
+        const disc = s.g * s.g + s.f * s.f - s.c;
+        const xIntSq = s.g * s.g - s.c;
+        const yIntSq = s.f * s.f - s.c;
+        const xInt = xIntSq >= 0 ? 2 * Math.sqrt(xIntSq) : null;
+        const yInt = yIntSq >= 0 ? 2 * Math.sqrt(yIntSq) : null;
+        const pulse = 0.65 + 0.35 * Math.sin(APP.time * 8);
+
+        let badge = { text: 'Real Circle', color: 'emerald' };
+        if (disc > 0.02) {
+          const r = Math.sqrt(disc);
+          drawCircle(cx, cy, r, OPT.cyan, 2.7, false, 0.05);
+
+          // Algebra-to-Geometry X-Ray Highlights
+          if (APP.xrayKey === 'g') {
+            drawLine(0, cy, cx, cy, OPT.gold, 3.6, false, 18 * pulse);
+            drawCanvasBadge(cx / 2, cy + 0.45, `x_center = -g = ${fmt(cx)}`, OPT.gold);
+          }
+          if (APP.xrayKey === 'f') {
+            drawLine(cx, 0, cx, cy, OPT.gold, 3.6, false, 18 * pulse);
+            drawCanvasBadge(cx + 0.85, cy / 2, `y_center = -f = ${fmt(cy)}`, OPT.gold);
+          }
+          if (APP.xrayKey === 'c') {
+            drawLine(0, 0, cx, cy, OPT.magenta, 2.8, true, 16 * pulse);
+            drawPoint(0, 0, OPT.magenta, 7, `S(0,0) = c = ${fmt(s.c)}`);
+          }
+          if (APP.xrayKey === 'xint' && xInt !== null) {
+            const hx = Math.sqrt(xIntSq);
+            drawLine(cx - hx, 0, cx + hx, 0, OPT.emerald, 5, false, 20 * pulse);
+            drawPoint(cx - hx, 0, OPT.emerald, 6);
+            drawPoint(cx + hx, 0, OPT.emerald, 6);
+            drawCanvasBadge(cx, -0.55, `X-Intercept = 2√(g²-c) = ${fmt(xInt)}`, OPT.emerald);
+          }
+          if (APP.xrayKey === 'yint' && yInt !== null) {
+            const hy = Math.sqrt(yIntSq);
+            drawLine(0, cy - hy, 0, cy + hy, OPT.magenta, 5, false, 20 * pulse);
+            drawPoint(0, cy - hy, OPT.magenta, 6);
+            drawPoint(0, cy + hy, OPT.magenta, 6);
+            drawCanvasBadge(1.1, cy, `Y-Intercept = 2√(f²-c) = ${fmt(yInt)}`, OPT.magenta);
+          }
+
+          drawPoint(cx, cy, OPT.cyan, 5.5, `(-g,-f)`);
+          const ang = APP.time * 0.75;
+          drawLocusMonkey(cx + r * Math.cos(ang), cy + r * Math.sin(ang), {
+            mode: APP.playing ? 'walk' : 'idle', facing: Math.sin(ang) > 0 ? -1 : 1,
+            speech: APP.xrayKey ? `X-Ray ON! Watching ${APP.xrayKey.toUpperCase()}!` : 'Hover X-Ray pills to pulse geometry!'
+          });
+        } else if (Math.abs(disc) <= 0.02) {
+          badge = { text: 'Point Circle (r = 0)', color: 'gold' };
+          drawPoint(cx, cy, OPT.gold, 8, `Point Circle`);
+          drawLocusMonkey(cx, cy, { mode: 'idle', mood: 'excited', speech: 'g² + f² - c = 0 ⇒ Point Circle!' });
+        } else {
+          badge = { text: 'Imaginary Ghost Circle', color: 'magenta' };
+          drawCircle(cx, cy, Math.min(Math.sqrt(-disc), 4), OPT.magenta, 1.8, true, 0.02, 8);
+          drawPoint(cx, cy, OPT.magenta, 5.5, 'Virtual Center');
+          drawCanvasBadge(cx, cy + 1.1, '⚠ g² + f² - c < 0 (Imaginary Ghost)', OPT.magenta);
+          drawLocusMonkey(cx, cy, { mode: 'idle', mood: 'confused', speech: 'Imaginary radius! No real points exist!' });
+        }
+
+        return {
+          latex: `x^2 + y^2 ${fmtSign(2 * s.g, 1)}x ${fmtSign(2 * s.f, 1)}y ${fmtSign(s.c, 1)} = 0`,
+          badge,
+          stats: [
+            { label: 'Center (-g, -f)', val: `(${fmt(cx, 1)}, ${fmt(cy, 1)})`, cls: 'text-optCyan' },
+            { label: 'g² + f² - c', val: fmt(disc), cls: disc > 0.02 ? 'text-optEmerald' : disc < -0.02 ? 'text-optMagenta' : 'text-optGold' },
+            { label: 'X-Int 2√(g²-c)', val: xInt !== null ? fmt(xInt) : 'None', cls: 'text-optEmerald' },
+            { label: 'Y-Int 2√(f²-c)', val: yInt !== null ? fmt(yInt) : 'None', cls: 'text-optMagenta' }
+          ]
+        };
+      }
+
+      if (s.subTab === 'diametric') {
+        if (APP.playing) s.pTheta += dt * 0.75;
+        const cx = (s.ax + s.bx) / 2, cy = (s.ay + s.by) / 2;
+        const r = dist(s.ax, s.ay, s.bx, s.by) / 2;
+        const px = cx + r * Math.cos(s.pTheta), py = cy + r * Math.sin(s.pTheta);
+
+        drawCircle(cx, cy, r, OPT.cyan, 2.5, false, 0.05);
+        drawLine(s.ax, s.ay, s.bx, s.by, OPT.slate, 1.8, true, 0);
+        drawLine(s.ax, s.ay, px, py, OPT.gold, 2.2);
+        drawLine(s.bx, s.by, px, py, OPT.gold, 2.2);
+        drawRightAngle(px, py, s.ax, s.ay, s.bx, s.by, OPT.emerald, 0.36);
+
+        drawHandle('m2_a', s.ax, s.ay, OPT.gold, `A(${fmt(s.ax, 1)},${fmt(s.ay, 1)})`, (wx, wy) => { s.ax = clamp(wx, -6, 6); s.ay = clamp(wy, -4.5, 4.5); });
+        drawHandle('m2_b', s.bx, s.by, OPT.gold, `B(${fmt(s.bx, 1)},${fmt(s.by, 1)})`, (wx, wy) => { s.bx = clamp(wx, -6, 6); s.by = clamp(wy, -4.5, 4.5); });
+        drawPoint(px, py, OPT.emerald, 5.5, 'P (90°)');
+        drawLocusMonkey(px, py, { mode: APP.playing ? 'walk' : 'idle', speech: '∠APB = 90° everywhere on the circle!' });
+
+        return {
+          latex: `(x ${fmtSign(-s.ax, 1)})(x ${fmtSign(-s.bx, 1)}) + (y ${fmtSign(-s.ay, 1)})(y ${fmtSign(-s.by, 1)}) = 0`,
+          badge: { text: '∠APB = 90° Proof', color: 'emerald' },
+          stats: [
+            { label: 'Diameter AB', val: fmt(2 * r), cls: 'text-optGold' },
+            { label: 'PA · PB Dot', val: '0.000 (⊥ ✓)', cls: 'text-optEmerald' }
+          ]
+        };
+      }
+
+      // Parametric Form with Live Axes Shadow Projections
+      if (APP.playing) { s.thetaDeg = (s.thetaDeg + dt * 38) % 360; syncSliders(); }
+      const rad = (s.thetaDeg * Math.PI) / 180;
+      const px = s.ph + s.pr * Math.cos(rad), py = s.pk + s.pr * Math.sin(rad);
+
+      drawCircle(s.ph, s.pk, s.pr, OPT.cyan, 2.5, false, 0.05);
+      // Projections onto axes (shadows of Monkey!)
+      drawLine(px, py, px, 0, OPT.slate, 1.5, true, 0);
+      drawLine(px, py, 0, py, OPT.slate, 1.5, true, 0);
+      drawLine(s.ph, 0, px, 0, OPT.emerald, 4, false, 12);
+      drawLine(0, s.pk, 0, py, OPT.magenta, 4, false, 12);
+      drawLine(s.ph, s.pk, px, py, OPT.gold, 2.2);
+      drawRightAngle(px, s.pk, s.ph, s.pk, px, py, OPT.emerald, 0.24);
+
+      drawPoint(px, 0, OPT.emerald, 5, `r cosθ=${fmt(s.pr * Math.cos(rad))}`);
+      drawPoint(0, py, OPT.magenta, 5, `r sinθ=${fmt(s.pr * Math.sin(rad))}`);
+      drawPoint(px, py, OPT.gold, 5.5, `P(${Math.round(s.thetaDeg)}°)`);
+      drawLocusMonkey(px, py, {
+        mode: APP.playing ? 'walk' : 'idle', facing: Math.sin(rad) > 0 ? -1 : 1,
+        speech: `My shadows are r cosθ & r sinθ!`
+      });
+
+      return {
+        latex: `x = ${fmt(s.ph, 1)} + ${fmt(s.pr, 1)}\\cos\\theta, \\; y = ${fmt(s.pk, 1)} + ${fmt(s.pr, 1)}\\sin\\theta`,
+        badge: { text: `θ = ${Math.round(s.thetaDeg)}°`, color: 'gold' },
+        stats: [
+          { label: 'x = r cosθ', val: fmt(px), cls: 'text-optEmerald' },
+          { label: 'y = r sinθ', val: fmt(py), cls: 'text-optMagenta' }
+        ]
+      };
+    }
+
+    // ---------- MODULE 3: Line & Circle (p vs r + Magnetic Snap + Monkey Physics) ----------
+    function renderM3(dt) {
+      const s = STATE.m3;
+      if (APP.playing) s.monkeyT += dt * 1.4;
+
+      // Line through (lx1, ly1) and (lx2, ly2): A x + B y + C = 0
+      const A = s.ly1 - s.ly2;
+      const B = s.lx2 - s.lx1;
+      const C = s.lx1 * s.ly2 - s.lx2 * s.ly1;
+      const norm = Math.hypot(A, B) || 1;
+      const signedD = (A * s.h + B * s.k + C) / norm;
+      const p = Math.abs(signedD);
+
+      const mx = s.h - (A * (A * s.h + B * s.k + C)) / (norm * norm);
+      const my = s.k - (B * (A * s.h + B * s.k + C)) / (norm * norm);
+
+      const isTangent = Math.abs(p - s.r) < 0.08;
+      const isSecant = !isTangent && p < s.r;
+
+      if (isTangent) triggerSnapPulse('m3_tan', mx, my, '★ MAGNETIC SNAP: TANGENT (p = r)', OPT.magenta);
+
+      drawCircle(s.h, s.k, s.r, OPT.cyan, 2.7, false, 0.05);
+      drawInfLine(A, B, C, isTangent ? OPT.magenta : isSecant ? OPT.gold : OPT.slate, 2.4);
+
+      // Perpendicular drop CM (Emerald normal)
+      drawLine(s.h, s.k, mx, my, OPT.emerald, 2.2, true);
+      if (p > 0.15) drawRightAngle(mx, my, s.h, s.k, mx - B, my + A, OPT.emerald, 0.28);
+      drawPoint(mx, my, OPT.emerald, 4.8, `M (p=${fmt(p)})`);
+
+      let chordLen = 0;
+      let monkeyPos = { x: s.h, y: s.k + s.r };
+      let mMode = 'jumpMiss', mMood = 'confused', speech = `p > r! I jump and miss the line!`;
+      let badge = { text: 'Disjoint (p > r)', color: 'slate' };
+
+      const ux = -B / norm, uy = A / norm;
+      if (isSecant) {
+        badge = { text: 'Secant (p < r)', color: 'gold' };
+        const half = Math.sqrt(Math.max(0, s.r * s.r - p * p));
+        chordLen = 2 * half;
+        const p1 = { x: mx - ux * half, y: my - uy * half };
+        const p2 = { x: mx + ux * half, y: my + uy * half };
+        drawLine(p1.x, p1.y, p2.x, p2.y, OPT.gold, 4.2, false, 16);
+        drawPoint(p1.x, p1.y, OPT.gold, 5.5, 'A');
+        drawPoint(p2.x, p2.y, OPT.gold, 5.5, 'B');
+        const slide = Math.sin(s.monkeyT) * half;
+        monkeyPos = { x: mx + ux * slide, y: my + uy * slide };
+        mMode = APP.playing ? 'walk' : 'idle';
+        mMood = 'happy';
+        speech = `Zipping across chord AB = ${fmt(chordLen)}!`;
+      } else if (isTangent) {
+        badge = { text: 'TANGENT (p = r) ★', color: 'magenta' };
+        drawPoint(mx, my, OPT.magenta, 7.5, 'Contact T');
+        monkeyPos = { x: mx, y: my };
+        mMode = 'balance';
+        mMood = 'excited';
+        speech = 'Triumph! Balanced on Tangent (p = r)!';
+      } else {
+        // Place monkey on circle edge closest to line, trying to jump!
+        const angToLine = Math.atan2(my - s.k, mx - s.h);
+        monkeyPos = { x: s.h + s.r * Math.cos(angToLine), y: s.k + s.r * Math.sin(angToLine) };
+      }
+
+      // Magnetic snap helper on drag of line handles
+      const snapLineHandle = (which, wx, wy) => {
+        const nxClamp = clamp(wx, -6.5, 6.5), nyClamp = clamp(wy, -4.8, 4.8);
+        const otherX = which === 1 ? s.lx2 : s.lx1;
+        const otherY = which === 1 ? s.ly2 : s.ly1;
+        if (dist(nxClamp, nyClamp, otherX, otherY) < 0.35) return;
+        if (which === 1) { s.lx1 = nxClamp; s.ly1 = nyClamp; }
+        else { s.lx2 = nxClamp; s.ly2 = nyClamp; }
+        // Check magnetic pull to tangency
+        const nA = s.ly1 - s.ly2, nB = s.lx2 - s.lx1, nC = s.lx1 * s.ly2 - s.lx2 * s.ly1;
+        const nNorm = Math.hypot(nA, nB);
+        if (nNorm > 0.2) {
+          const curP = Math.abs(nA * s.h + nB * s.k + nC) / nNorm;
+          if (Math.abs(curP - s.r) < 0.14) {
+            const sgn = (nA * s.h + nB * s.k + nC) >= 0 ? 1 : -1;
+            const shift = (s.r - curP) * sgn;
+            const nx = nA / nNorm, ny = nB / nNorm;
+            s.lx1 += nx * shift; s.ly1 += ny * shift;
+            s.lx2 += nx * shift; s.ly2 += ny * shift;
+          }
+        }
+      };
+
+      drawHandle('m3_l1', s.lx1, s.ly1, OPT.magenta, 'L₁', (wx, wy) => snapLineHandle(1, wx, wy));
+      drawHandle('m3_l2', s.lx2, s.ly2, OPT.magenta, 'L₂', (wx, wy) => snapLineHandle(2, wx, wy));
+      drawPoint(s.h, s.k, OPT.cyan, 5, 'C');
+      drawLocusMonkey(monkeyPos.x, monkeyPos.y, { mode: mMode, mood: mMood, speech });
+
+      return {
+        latex: `p = ${fmt(p)} \\; ${isTangent ? '=' : isSecant ? '<' : '>'} \\; r = ${fmt(s.r)}`,
+        badge,
+        stats: [
+          { label: 'Perpendicular p', val: fmt(p), cls: 'text-optEmerald' },
+          { label: 'Radius r', val: fmt(s.r), cls: 'text-optCyan' },
+          { label: 'Chord 2√(r²-p²)', val: isSecant ? fmt(chordLen) : '0.00', cls: 'text-optGold' },
+          { label: 'Condition', val: isTangent ? 'p = r (Tangent)' : isSecant ? 'p < r (Secant)' : 'p > r (Miss)', cls: 'text-optMagenta' }
+        ]
+      };
+    }
+
+    // ---------- MODULE 4: The "T = 0 Unification" Lab ----------
+    function renderM4() {
+      const s = STATE.m4;
+      const d = dist(s.h, s.k, s.px, s.py);
+      const S1 = d * d - s.r * s.r;
+      const isOn = Math.abs(d - s.r) < 0.09;
+      const isOut = !isOn && S1 > 0;
+      const isIn = !isOn && S1 < 0;
+
+      drawCircle(s.h, s.k, s.r, OPT.cyan, 2.7, false, 0.05);
+
+      // Equation of T = 0: (px - h)(x - h) + (py - k)(y - k) - r^2 = 0
+      const A = s.px - s.h, B = s.py - s.k;
+      const C = -(A * s.h + B * s.k + s.r * s.r);
+
+      let meaning = '', badgeColor = 'magenta', speech = '', mood = 'happy';
+
+      if (d > 0.12) {
+        drawInfLine(A, B, C, OPT.magenta, 2.6, false, 14);
+      } else {
+        drawCanvasBadge(s.h, s.k + 0.9, 'P → Center ⇒ Polar recedes to ∞', OPT.cyan);
+      }
+
+      if (isOut) {
+        meaning = 'CHORD OF CONTACT';
+        badgeColor = 'magenta';
+        const tans = getTangentsFromPoint(s.h, s.k, s.r, s.px, s.py);
+        tans.forEach((t, idx) => {
+          drawLine(s.px, s.py, t.x, t.y, OPT.magenta, 2.2, true, 8);
+          drawPoint(t.x, t.y, OPT.gold, 5, idx === 0 ? 'T₁' : 'T₂');
+        });
+        speech = 'Outside (S₁>0): T=0 is Chord of Contact!';
+      } else if (isOn) {
+        meaning = 'TANGENT AT P';
+        badgeColor = 'gold';
+        drawLine(s.h, s.k, s.px, s.py, OPT.emerald, 2, true);
+        drawRightAngle(s.px, s.py, s.h, s.k, s.px - B, s.py + A, OPT.emerald, 0.3);
+        triggerSnapPulse('m4_on', s.px, s.py, '★ SNAP: S₁ = 0 ⇒ T = 0 IS TANGENT!', OPT.gold);
+        speech = 'On Circle (S₁=0): T=0 becomes the Tangent!';
+        mood = 'excited';
+      } else {
+        meaning = 'POLAR OF P';
+        badgeColor = 'cyan';
+        // Show Pole-Polar reciprocity visual: pick a point Q on the Polar & draw tangents from Q
+        if (d > 0.35) {
+          const norm = Math.hypot(A, B);
+          const footX = s.h + (s.r * s.r * A) / (d * d);
+          const footY = s.k + (s.r * s.r * B) / (d * d);
+          const ux = -B / norm, uy = A / norm;
+          const qx = footX + ux * 1.4, qy = footY + uy * 1.4;
+          const qTans = getTangentsFromPoint(s.h, s.k, s.r, qx, qy);
+          if (qTans.length === 2) {
+            drawLine(qx, qy, qTans[0].x, qTans[0].y, OPT.slate, 1.4, true, 0);
+            drawLine(qx, qy, qTans[1].x, qTans[1].y, OPT.slate, 1.4, true, 0);
+            drawLine(qTans[0].x, qTans[0].y, qTans[1].x, qTans[1].y, OPT.slate, 1.3, true, 0);
+            drawPoint(qx, qy, OPT.slate, 4, 'Q on Polar');
+          }
+          drawLine(s.h, s.k, footX, footY, OPT.emerald, 1.5, true, 0);
+          drawRightAngle(footX, footY, s.h, s.k, qx, qy, OPT.emerald, 0.25);
+        }
+        // Optional Chord Bisected at P (T = S1)
+        if (s.showBisected && d > 0.08) {
+          const C_bis = -(A * s.px + B * s.py);
+          const pts = getLineCircleIntersections(s.h, s.k, s.r, A, B, C_bis);
+          if (pts.length === 2) {
+            drawLine(pts[0].x, pts[0].y, pts[1].x, pts[1].y, OPT.gold, 3.2, false, 12);
+            drawPoint(pts[0].x, pts[0].y, OPT.gold, 4.5);
+            drawPoint(pts[1].x, pts[1].y, OPT.gold, 4.5);
+            drawRightAngle(s.px, s.py, s.h, s.k, pts[0].x, pts[0].y, OPT.emerald, 0.24);
+          }
+        }
+        speech = 'Inside (S₁<0): T=0 is Polar & T=S₁ bisects chord!';
+      }
+
+      drawPoint(s.h, s.k, OPT.cyan, 4.8, 'C');
+      drawHandle('m4_p', s.px, s.py, OPT.gold, `P(${fmt(s.px, 1)},${fmt(s.py, 1)})`, (wx, wy) => {
+        let nx = clamp(wx, -6.5, 6.5), ny = clamp(wy, -4.8, 4.8);
+        const nd = dist(s.h, s.k, nx, ny);
+        if (Math.abs(nd - s.r) < 0.16 && nd > 0.1) {
+          const ang = Math.atan2(ny - s.k, nx - s.h);
+          nx = s.h + s.r * Math.cos(ang);
+          ny = s.k + s.r * Math.sin(ang);
+        }
+        s.px = nx; s.py = ny;
+      });
+      drawLocusMonkey(s.px, s.py, { mode: 'idle', mood, speech });
+
+      return {
+        latex: `T = 0: \\; (${fmt(s.px, 1)})x + (${fmt(s.py, 1)})y = ${fmt(s.r * s.r)} \\; \\Rightarrow \\text{${meaning}}`,
+        badge: { text: meaning, color: badgeColor },
+        stats: [
+          { label: 'Power S₁', val: `${fmt(S1)} (${isOn ? '= 0' : isOut ? '> 0' : '< 0'})`, cls: isOn ? 'text-optGold' : isOut ? 'text-optMagenta' : 'text-optCyan' },
+          { label: 'T = 0 Meaning', val: meaning, cls: 'text-white font-bold' },
+          { label: 'Chord T = S₁', val: isIn && s.showBisected ? 'Bisected at P ✓' : 'Drag P inside', cls: 'text-optGold' }
+        ]
+      };
+    }
+
+    // ---------- MODULE 5: Tangents, Normals & Director Circle ----------
+    function renderM5(dt) {
+      const s = STATE.m5;
+      const dirR = s.r * Math.SQRT2;
+      if (s.lockDirector) {
+        if (APP.playing) s.dirAngle += dt * 0.65;
+        s.px = s.h + dirR * Math.cos(s.dirAngle);
+        s.py = s.k + dirR * Math.sin(s.dirAngle);
+        s.trail.push({ x: s.px, y: s.py });
+        if (s.trail.length > 120) s.trail.shift();
+      }
+
+      drawCircle(s.h, s.k, dirR, OPT.gold, 1.6, true, 0.03, 8);
+      drawGoldTrail(s.trail, OPT.gold);
+      drawCircle(s.h, s.k, s.r, OPT.cyan, 2.7, false, 0.05);
+
+      const d = dist(s.h, s.k, s.px, s.py);
+      const S1 = d * d - s.r * s.r;
+      let thetaDeg = 0, isDir = false, speech = 'Drag P to trace a gold locus trail!', mood = 'happy';
+
+      if (S1 > 0.05) {
+        const tans = getTangentsFromPoint(s.h, s.k, s.r, s.px, s.py);
+        thetaDeg = (2 * Math.asin(clamp(s.r / d, 0, 1)) * 180) / Math.PI;
+        isDir = Math.abs(thetaDeg - 90) < 1.5;
+
+        if (tans.length === 2) {
+          tans.forEach((t, i) => {
+            drawLine(s.px, s.py, t.x, t.y, OPT.magenta, 2.5, false, 12);
+            // Normals through C
+            drawLine(s.h, s.k, t.x, t.y, OPT.emerald, 1.8, true, 6);
+            drawRightAngle(t.x, t.y, s.h, s.k, s.px, s.py, OPT.emerald, 0.26);
+            drawPoint(t.x, t.y, OPT.emerald, 4.5, i === 0 ? 'T₁' : 'T₂');
+          });
+          if (isDir) {
+            drawRightAngle(s.px, s.py, tans[0].x, tans[0].y, tans[1].x, tans[1].y, OPT.emerald, 0.42);
+            triggerSnapPulse('m5_dir', s.px, s.py, '★ DIRECTOR CIRCLE: θ = 90° (R = r√2)', OPT.gold);
+            speech = '90° Tangents! I am on the Director Circle!';
+            mood = 'excited';
+          }
+        }
+      } else {
+        mood = 'confused';
+        speech = 'Inside circle! Drag P outside!';
+      }
+
+      drawPoint(s.h, s.k, OPT.cyan, 5, 'C');
+      drawHandle('m5_p', s.px, s.py, OPT.gold, `P(${fmt(s.px, 1)},${fmt(s.py, 1)})`, (wx, wy) => {
+        s.lockDirector = false;
+        let nx = clamp(wx, -6.5, 6.5), ny = clamp(wy, -4.8, 4.8);
+        const nd = dist(s.h, s.k, nx, ny);
+        if (Math.abs(nd - dirR) < 0.18) {
+          const ang = Math.atan2(ny - s.k, nx - s.h);
+          nx = s.h + dirR * Math.cos(ang);
+          ny = s.k + dirR * Math.sin(ang);
+        }
+        s.px = nx; s.py = ny;
+        s.trail.push({ x: nx, y: ny });
+        if (s.trail.length > 140) s.trail.shift();
+      });
+      drawLocusMonkey(s.px, s.py, { mode: 'idle', mood, speech });
+
+      return {
+        latex: `\\theta = ${fmt(thetaDeg, 1)}^\\circ, \\quad R_{\\text{dir}} = r\\sqrt{2} = ${fmt(dirR)}`,
+        badge: { text: isDir ? 'DIRECTOR CIRCLE 90° ★' : `Angle θ = ${fmt(thetaDeg, 1)}°`, color: isDir ? 'emerald' : 'magenta' },
+        stats: [
+          { label: 'Angle θ', val: `${fmt(thetaDeg, 1)}°`, cls: isDir ? 'text-optEmerald font-bold' : 'text-optMagenta' },
+          { label: 'Tangent √S₁', val: S1 > 0 ? fmt(Math.sqrt(S1)) : 'N/A', cls: 'text-optCyan' },
+          { label: 'Director R=r√2', val: fmt(dirR), cls: 'text-optGold' }
+        ]
+      };
+    }
+
+    // ---------- MODULE 6: Family of Circles (S + λL = 0 & S1 + λS2 = 0) ----------
+    function renderM6(dt) {
+      const s = STATE.m6;
+      if (APP.playing) {
+        s.lambda += dt * 0.85 * s.dir;
+        if (s.lambda > 3.6) { s.lambda = 3.6; s.dir = -1; }
+        if (s.lambda < -3.6) { s.lambda = -3.6; s.dir = 1; }
+        syncSliders();
+      }
+
+      if (s.mode === 'circleLine') {
+        const c1 = { x: 0, y: 0, r: 2.6 };
+        const A = s.lineA, B = s.lineB, C = s.lineC;
+        drawCircle(c1.x, c1.y, c1.r, OPT.cyan, 2.3, false, 0.04);
+        drawInfLine(A, B, C, OPT.magenta, 2.2, true);
+
+        // S + λL = x^2 + y^2 - r^2 + λ(Ax + By + C) = 0
+        // g = λA/2, f = λB/2, c = -r^2 + λC
+        const g = (s.lambda * A) / 2, f = (s.lambda * B) / 2, cConst = -c1.r * c1.r + s.lambda * C;
+        const rSq = g * g + f * f - cConst;
+        if (rSq > 0.01) {
+          drawCircle(-g, -f, Math.sqrt(rSq), OPT.gold, 2.8, false, 0.06, 16);
+          drawPoint(-g, -f, OPT.gold, 4.5, 'Family Center');
+        }
+        const pts = getLineCircleIntersections(c1.x, c1.y, c1.r, A, B, C);
+        pts.forEach((pt, i) => drawPoint(pt.x, pt.y, OPT.emerald, 6, i === 0 ? 'P' : 'Q'));
+        drawLocusMonkey(-g, -f, { mode: 'idle', speech: `S + (${fmt(s.lambda, 1)})L = 0 passes through P, Q!` });
+
+        return {
+          latex: `S + \\lambda L = 0 \\quad (\\lambda = ${fmt(s.lambda)})`,
+          badge: { text: 'Family S + λL = 0', color: 'gold' },
+          stats: [
+            { label: 'Parameter λ', val: fmt(s.lambda), cls: 'text-optGold' },
+            { label: 'Family Radius', val: rSq > 0 ? fmt(Math.sqrt(rSq)) : 'Imaginary', cls: 'text-optCyan' }
+          ]
+        };
+      }
+
+      // Two Circles: S1 + λ S2 = 0
+      const { s1, s2 } = s;
+      drawCircle(s1.x, s1.y, s1.r, OPT.cyan, 2.2, false, 0.04);
+      drawCircle(s2.x, s2.y, s2.r, OPT.slate, 2.0, true, 0.03, 0);
+      drawHandle('m6_s1', s1.x, s1.y, OPT.cyan, 'S₁', (wx, wy) => { s1.x = clamp(wx, -5.5, 5.5); s1.y = clamp(wy, -4, 4); });
+      drawHandle('m6_s2', s2.x, s2.y, OPT.slate, 'S₂', (wx, wy) => { s2.x = clamp(wx, -5.5, 5.5); s2.y = clamp(wy, -4, 4); });
+
+      const pts = getCircleIntersections(s1.x, s1.y, s1.r, s2.x, s2.y, s2.r);
+      const isRadical = Math.abs(s.lambda + 1) < 0.07;
+
+      let famLabel = 'Breathing Family Circle', badgeColor = 'gold', speech = `λ = ${fmt(s.lambda)}: Always passes through P & Q!`, mood = 'happy';
+
+      if (isRadical) {
+        famLabel = 'λ = -1 ⇒ RADICAL AXIS!';
+        badgeColor = 'magenta';
+        const L = getRadicalAxis(s1, s2);
+        drawInfLine(L.A, L.B, L.C, OPT.magenta, 3.8, false, 22);
+        if (pts.length) triggerSnapPulse('m6_rad', (pts[0].x + pts[1].x) / 2, (pts[0].y + pts[1].y) / 2, '⚡ λ = -1: CIRCLE COLLAPSED TO RADICAL AXIS!', OPT.magenta);
+        speech = 'BOOM! At λ = -1, x²+y² cancels → Radical Axis!';
+        mood = 'excited';
+      } else {
+        const denom = 1 + s.lambda;
+        const cx = (s1.x + s.lambda * s2.x) / denom;
+        const cy = (s1.y + s.lambda * s2.y) / denom;
+        const c1Const = s1.x * s1.x + s1.y * s1.y - s1.r * s1.r;
+        const c2Const = s2.x * s2.x + s2.y * s2.y - s2.r * s2.r;
+        const cMix = (c1Const + s.lambda * c2Const) / denom;
+        const rSq = cx * cx + cy * cy - cMix;
+        if (rSq > 0.01 && rSq < 400) {
+          drawCircle(cx, cy, Math.sqrt(rSq), OPT.gold, 2.8, false, 0.05, 16);
+          drawPoint(cx, cy, OPT.gold, 4.5, 'C_λ');
+        }
+      }
+
+      pts.forEach((pt, i) => drawPoint(pt.x, pt.y, OPT.emerald, 6, i === 0 ? 'P' : 'Q'));
+      drawLocusMonkey(pts[0] ? pts[0].x : 0, pts[0] ? pts[0].y : 0, { mode: 'idle', mood, speech });
+
+      return {
+        latex: isRadical ? `S_1 - S_2 = 0 \\; (\\lambda = -1 \\implies \\text{Radical Axis})` : `S_1 + (${fmt(s.lambda)})S_2 = 0`,
+        badge: { text: famLabel, color: badgeColor },
+        stats: [
+          { label: 'Parameter λ', val: fmt(s.lambda), cls: isRadical ? 'text-optMagenta font-bold' : 'text-optGold' },
+          { label: 'Fixed Points', val: pts.length === 2 ? 'P & Q Locked ✓' : 'No Real Intersect', cls: 'text-optEmerald' }
+        ]
+      };
+    }
+
+    // ---------- MODULE 7: Two Circles & Common Tangents ----------
+    function renderM7(dt) {
+      const s = STATE.m7;
+      if (APP.playing) s.monkeyT = (s.monkeyT + dt * 0.45) % 1;
+
+      const { dct, tct, d } = getCommonTangents(s.x1, s.y1, s.r1, s.x2, s.y2, s.r2);
+      const sumR = s.r1 + s.r2, diffR = Math.abs(s.r1 - s.r2);
+      const orthoD = Math.hypot(s.r1, s.r2);
+      const isOrtho = Math.abs(d - orthoD) < 0.09;
+
+      drawCircle(s.x1, s.y1, s.r1, OPT.cyan, 2.6, false, 0.05);
+      drawCircle(s.x2, s.y2, s.r2, OPT.gold, 2.6, false, 0.05);
+      drawLine(s.x1, s.y1, s.x2, s.y2, OPT.slate, 1.5, true, 0);
+
+      dct.forEach((seg) => drawLine(seg.p1.x, seg.p1.y, seg.p2.x, seg.p2.y, OPT.magenta, 2.4, false, 12));
+      tct.forEach((seg) => drawLine(seg.p1.x, seg.p1.y, seg.p2.x, seg.p2.y, OPT.emerald, 2.2, false, 10));
+
+      const pts = getCircleIntersections(s.x1, s.y1, s.r1, s.x2, s.y2, s.r2);
+      if (isOrtho && pts.length) {
+        drawLine(s.x1, s.y1, pts[0].x, pts[0].y, OPT.emerald, 2, true);
+        drawLine(s.x2, s.y2, pts[0].x, pts[0].y, OPT.emerald, 2, true);
+        drawRightAngle(pts[0].x, pts[0].y, s.x1, s.y1, s.x2, s.y2, OPT.emerald, 0.35);
+        triggerSnapPulse('m7_ortho', pts[0].x, pts[0].y, '★ ORTHOGONAL CIRCLES: d² = r₁² + r₂²', OPT.emerald);
+      }
+
+      const snapC2 = (wx, wy) => {
+        let nx = clamp(wx, -6.2, 6.2), ny = clamp(wy, -4.4, 4.4);
+        const nd = dist(s.x1, s.y1, nx, ny);
+        if (Math.abs(nd - orthoD) < 0.16 && nd > 0.1) {
+          const ang = Math.atan2(ny - s.y1, nx - s.x1);
+          nx = s.x1 + orthoD * Math.cos(ang); ny = s.y1 + orthoD * Math.sin(ang);
+        }
+        s.x2 = nx; s.y2 = ny;
+      };
+
+      drawHandle('m7_c1', s.x1, s.y1, OPT.cyan, `S₁`, (wx, wy) => { s.x1 = clamp(wx, -6.2, 6.2); s.y1 = clamp(wy, -4.4, 4.4); });
+      drawHandle('m7_c2', s.x2, s.y2, OPT.gold, `S₂`, snapC2);
+
+      const totalT = dct.length + tct.length;
+      let mx = (s.x1 + s.x2) / 2, my = (s.y1 + s.y2) / 2;
+      if (dct[0] && !dct[0].isTouch) {
+        const t = 0.5 - 0.5 * Math.cos(s.monkeyT * Math.PI * 2);
+        mx = dct[0].p1.x + (dct[0].p2.x - dct[0].p1.x) * t;
+        my = dct[0].p1.y + (dct[0].p2.y - dct[0].p1.y) * t;
+      }
+      drawLocusMonkey(mx, my, {
+        mode: dct.length ? 'walk' : 'idle',
+        mood: isOrtho ? 'excited' : 'happy',
+        speech: isOrtho ? 'Orthogonal 90°! 2g₁g₂+2f₁f₂ = c₁+c₂!' : `${totalT} Common Tangent${totalT === 1 ? '' : 's'}!`
+      });
+
+      const lDct = d >= diffR ? Math.sqrt(Math.max(0, d * d - (s.r1 - s.r2) ** 2)) : null;
+      const lTct = d >= sumR ? Math.sqrt(Math.max(0, d * d - (s.r1 + s.r2) ** 2)) : null;
+
+      return {
+        latex: `d = ${fmt(d)}, \\; L_{DCT} = ${lDct !== null ? fmt(lDct) : '\\text{N/A}'}, \\; L_{TCT} = ${lTct !== null ? fmt(lTct) : '\\text{N/A}'}`,
+        badge: { text: isOrtho ? 'ORTHOGONAL 90° ★' : `${totalT} Common Tangents`, color: isOrtho ? 'emerald' : 'magenta' },
+        stats: [
+          { label: 'Center Dist d', val: fmt(d), cls: 'text-optCyan' },
+          { label: 'r₁+r₂ | |r₁-r₂|', val: `${fmt(sumR)} | ${fmt(diffR)}`, cls: 'text-slate-300' },
+          { label: 'DCT (Magenta)', val: lDct !== null ? fmt(lDct) : 'None', cls: 'text-optMagenta' },
+          { label: 'TCT (Emerald)', val: lTct !== null ? fmt(lTct) : 'None', cls: 'text-optEmerald' }
+        ]
+      };
+    }
+
+    // ---------- MODULE 8: Radical Axis & Radical Center ----------
+    function renderM8(dt) {
+      const s = STATE.m8;
+      if (APP.playing) s.monkeySlide += dt * 0.85;
+      const { c1, c2, c3 } = s;
+
+      drawCircle(c1.x, c1.y, c1.r, OPT.cyan, 2.5, false, 0.05);
+      drawCircle(c2.x, c2.y, c2.r, OPT.gold, 2.5, false, 0.05);
+      drawCircle(c3.x, c3.y, c3.r, OPT.slate, 2.3, false, 0.05, 8);
+
+      const L12 = getRadicalAxis(c1, c2), L23 = getRadicalAxis(c2, c3), L31 = getRadicalAxis(c3, c1);
+      drawInfLine(L12.A, L12.B, L12.C, OPT.magenta, 2.3, false, 12);
+      drawInfLine(L23.A, L23.B, L23.C, hexRgba(OPT.magenta, 0.65), 1.6, true, 6);
+      drawInfLine(L31.A, L31.B, L31.C, hexRgba(OPT.magenta, 0.65), 1.6, true, 6);
+
+      const R = intersectLines(L12, L23);
+      let orthoR = null;
+      if (R && Math.abs(R.x) < 25 && Math.abs(R.y) < 25) {
+        const pSq = dist(R.x, R.y, c1.x, c1.y) ** 2 - c1.r * c1.r;
+        if (pSq > 0.05) {
+          orthoR = Math.sqrt(pSq);
+          if (s.showOrthoCircle) {
+            drawCircle(R.x, R.y, orthoR, OPT.emerald, 2.3, true, 0.04, 14);
+          }
+          // Equal tangent segments from R to all 3 circles + 90° markers
+          [c1, c2, c3].forEach((ci) => {
+            const tans = getTangentsFromPoint(ci.x, ci.y, ci.r, R.x, R.y);
+            if (tans[0]) {
+              drawLine(R.x, R.y, tans[0].x, tans[0].y, OPT.emerald, 1.8, false, 8);
+              drawRightAngle(tans[0].x, tans[0].y, R.x, R.y, ci.x, ci.y, OPT.emerald, 0.24);
+            }
+          });
+        }
+        drawPoint(R.x, R.y, OPT.magenta, 7, `Radical Center R`);
+      }
+
+      drawHandle('m8_1', c1.x, c1.y, OPT.cyan, 'S₁', (wx, wy) => { c1.x = clamp(wx, -6, 6); c1.y = clamp(wy, -4.4, 4.4); });
+      drawHandle('m8_2', c2.x, c2.y, OPT.gold, 'S₂', (wx, wy) => { c2.x = clamp(wx, -6, 6); c2.y = clamp(wy, -4.4, 4.4); });
+      drawHandle('m8_3', c3.x, c3.y, OPT.white, 'S₃', (wx, wy) => { c3.x = clamp(wx, -6, 6); c3.y = clamp(wy, -4.4, 4.4); });
+
+      if (R) {
+        drawLocusMonkey(R.x, R.y, {
+          mode: 'idle', mood: 'excited',
+          speech: orthoR ? `Equal tangents = ${fmt(orthoR)} to ALL 3 circles!` : 'R is inside a circle (no orthogonal circle)!'
+        });
+      } else {
+        drawLocusMonkey(c2.x, c2.y + c2.r, {
+          mode: 'idle', mood: 'confused',
+          speech: 'Collinear centers ⇒ Parallel Radical Axes!'
+        });
+      }
+
+      return {
+        latex: `S_1 - S_2 = 0, \\; S_2 - S_3 = 0 \\implies R(${R ? fmt(R.x, 1) : '?'}, ${R ? fmt(R.y, 1) : '?'})`,
+        badge: { text: orthoR ? 'Orthogonal Circle ✓' : 'Radical Center R', color: orthoR ? 'emerald' : 'magenta' },
+        stats: [
+          { label: 'Radical Center R', val: R ? `(${fmt(R.x)}, ${fmt(R.y)})` : '∞ (Collinear)', cls: 'text-optMagenta' },
+          { label: 'Equal Tangent L', val: orthoR ? fmt(orthoR) : 'Interior', cls: 'text-optEmerald' }
+        ]
+      };
+    }
+
+    // ---------- MODULE 9: JEE Advanced Masterclass (4-Stage Chalkboard Reveal) ----------
+    const M9_PROBLEMS = [
+      {
+        title: 'P1 (Black Book): Shortest & Longest Distance',
+        stages: [
+          { tag: '1. Setup', text: 'Given external point P(x₁, y₁) and circle (x-h)²+(y-k)²=r², find the minimum and maximum distance PQ for Q on the circle.', tex: 'P(x_1, y_1), \\quad C(h, k), \\quad r' },
+          { tag: '2. Geometric Insight', text: 'Join P to the center C. By the triangle inequality on ΔCPQ, |PC - r| ≤ PQ ≤ PC + r. Extrema occur strictly along the normal line PC!', tex: 'PC - r \\le PQ \\le PC + r' },
+          { tag: '3. Algebraic Shortcut', text: 'Compute d = √((x₁-h)² + (y₁-k)²). Both nearest point A and farthest point B lie on the normal passing through C and P.', tex: 'd = \\sqrt{(x_1-h)^2 + (y_1-k)^2}' },
+          { tag: '4. Final Answer', text: 'Shortest distance PA = d - r and Longest distance PB = d + r. Drag P on the board to see PA and PB update live!', tex: 'PQ_{\\min} = d - r, \\quad PQ_{\\max} = d + r' }
+        ]
+      },
+      {
+        title: 'P2 (Cengage): Midpoint of 90° Chords',
+        stages: [
+          { tag: '1. Setup', text: 'A variable chord AB of circle x² + y² = r² subtends a right angle (90°) at the center O. Find the locus of its midpoint M(h, k).', tex: 'x^2 + y^2 = r^2, \\quad \\angle AOB = 90^\\circ' },
+          { tag: '2. Geometric Insight', text: 'Since M is the midpoint of chord AB, OM ⊥ AB (emerald 90° marker) and OM bisects ∠AOB into two 45° angles!', tex: '\\angle AOM = 45^\\circ, \\quad OM \\perp AB' },
+          { tag: '3. Algebraic Shortcut', text: 'In right ΔOMA, cos 45° = OM / OA ⇒ OM = r / √2. Thus the distance of M(h, k) from origin is constant!', tex: 'OM = r\\cos 45^\\circ = \\frac{r}{\\sqrt{2}}' },
+          { tag: '4. Final Answer', text: 'Squaring both sides gives the glowing gold concentric circle: x² + y² = r²/2.', tex: 'x^2 + y^2 = \\frac{r^2}{2}' }
+        ]
+      },
+      {
+        title: 'P3 (JEE Adv): Orthogonal Variable Circle',
+        stages: [
+          { tag: '1. Setup', text: 'A variable circle cuts two fixed circles S₁ = 0 and S₂ = 0 orthogonally. Find the locus of its center P(h, k).', tex: 'S \\perp S_1 \\; \\text{and} \\; S \\perp S_2' },
+          { tag: '2. Geometric Insight', text: 'When a variable circle of radius R cuts S₁ orthogonally, R equals the tangent length √S₁(P) from P to S₁. Same for S₂!', tex: 'R = \\sqrt{S_1(P)} = \\sqrt{S_2(P)}' },
+          { tag: '3. Algebraic Shortcut', text: 'Squaring gives S₁(h, k) = S₂(h, k) ⇒ S₁ - S₂ = 0. Notice x² + y² cancels out completely!', tex: 'S_1(h, k) - S_2(h, k) = 0' },
+          { tag: '4. Final Answer', text: 'The locus of center P is strictly the Radical Axis (magenta line) of S₁ and S₂!', tex: '\\text{Locus: Radical Axis } S_1 - S_2 = 0' }
+        ]
+      },
+      {
+        title: 'P4 (JEE Adv): 90° Tangents from Line L',
+        stages: [
+          { tag: '1. Setup', text: 'Find the points P on a given line L = 0 from which tangents drawn to circle x² + y² = r² are mutually perpendicular (90°).', tex: 'L: y = mx + c, \\quad \\theta = 90^\\circ' },
+          { tag: '2. Geometric Insight', text: 'The locus of ALL points from which perpendicular tangents can be drawn is the Director Circle of radius R = r√2!', tex: 'x^2 + y^2 = 2r^2 \\; (\\text{Director Circle})' },
+          { tag: '3. Algebraic Shortcut', text: 'Required points P are simply the intersections of Line L with the Director Circle! Real points exist iff p ≤ r√2.', tex: 'L \\cap (x^2 + y^2 = 2r^2)' },
+          { tag: '4. Final Answer', text: 'Solve y = mx + c with x² + y² = 2r². Watch the glowing emerald 90° tangents snap at both intersection points!', tex: 'p = \\frac{|c|}{\\sqrt{1+m^2}} \\le r\\sqrt{2}' }
+        ]
+      },
+      {
+        title: 'P5 (Black Book): Circumcircle & Area of ΔPAB',
+        stages: [
+          { tag: '1. Setup', text: 'From an external point P(x₁, y₁), tangents PA and PB are drawn to a circle with center C and radius r. Find the circumcircle of ΔPAB and its area.', tex: 'L = PA = PB = \\sqrt{S_1}' },
+          { tag: '2. Geometric Insight', text: 'Since ∠CAP = ∠CBP = 90°, quadrilateral CAPB is cyclic! Therefore, the circumcircle of ΔPAB ALWAYS passes through center C with CP as diameter.', tex: '\\angle CAP = \\angle CBP = 90^\\circ \\implies \\text{Diam} = CP' },
+          { tag: '3. Algebraic Shortcut', text: 'Let ∠APC = α. Then tan α = r/L, sin 2α = 2rL/(r²+L²). Area(ΔPAB) = ½ L² sin 2α, while Area(Quad CAPB) = rL.', tex: '\\sin 2\\alpha = \\frac{2rL}{r^2 + L^2}' },
+          { tag: '4. Final Answer', text: 'Circumcircle: (x-h)(x-x₁)+(y-k)(y-y₁)=0. Area(ΔPAB) = rL³/(r²+L²). Drag P to verify live!', tex: '\\Delta_{PAB} = \\frac{r L^3}{r^2 + L^2}, \\; \\text{Quad} = rL' }
+        ]
+      },
+      {
+        title: 'P6 (Cengage): 3 Kissing Circles on Tangent',
+        stages: [
+          { tag: '1. Setup', text: 'Two circles of radii r₁ and r₂ touch each other externally and both touch the x-axis. A third circle of radius r₃ fits snugly touching both circles and the x-axis. Find r₃.', tex: 'r_1, r_2 \\text{ given} \\implies \\text{Find } r_3' },
+          { tag: '2. Geometric Insight', text: 'For any two externally touching circles of radii a and b resting on a common tangent, the horizontal span between their contact points is √((a+b)² - (a-b)²) = 2√(ab)!', tex: 'T_1 T_2 = 2\\sqrt{r_1 r_2}' },
+          { tag: '3. Algebraic Shortcut', text: 'Since T₃ lies between T₁ and T₂ on the x-axis, add the two sub-spans: T₁T₃ + T₃T₂ = T₁T₂ ⇒ 2√(r₁r₃) + 2√(r₂r₃) = 2√(r₁r₂).', tex: '2\\sqrt{r_1 r_3} + 2\\sqrt{r_2 r_3} = 2\\sqrt{r_1 r_2}' },
+          { tag: '4. Final Answer', text: 'Divide both sides by 2√(r₁r₂r₃) to get the iconic JEE identity: 1/√r₃ = 1/√r₁ + 1/√r₂! Adjust r₁, r₂ sliders to watch r₃ fit perfectly.', tex: '\\frac{1}{\\sqrt{r_3}} = \\frac{1}{\\sqrt{r_1}} + \\frac{1}{\\sqrt{r_2}}' }
+        ]
+      },
+      {
+        title: 'P7 (JEE Adv): Mirror Image of a Circle',
+        stages: [
+          { tag: '1. Setup', text: 'Find the mirror image of circle (x-h)² + (y-k)² = r² in the line Ax + By + C = 0, and the shortest distance between the original circle and its image.', tex: 'S: (x-h)^2+(y-k)^2=r^2, \\; L: Ax+By+C=0' },
+          { tag: '2. Geometric Insight', text: 'Reflection is an isometry: the radius r stays unchanged! We only need to reflect the center C(h, k) perpendicularly across L to get C′(h′, k′).', tex: 'r\' = r, \\quad CC\' \\perp L' },
+          { tag: '3. Algebraic Shortcut', text: 'Use the classic JEE mirror image formula for point C(h, k) across Ax + By + C = 0. The center distance is CC′ = 2p.', tex: '\\frac{h\'-h}{A} = \\frac{k\'-k}{B} = \\frac{-2(Ah+Bk+C)}{A^2+B^2}' },
+          { tag: '4. Final Answer', text: 'Image circle is (x-h′)² + (y-k′)² = r². If p > r, shortest distance between the two circles is 2(p - r). Drag C to test!', tex: 'd_{\\min} = 2(p - r) \\; (\\text{for } p > r)' }
+        ]
+      }
+    ];
+
+    function renderM9(dt) {
+      const s = STATE.m9;
+      const prob = M9_PROBLEMS[s.problem];
+      const stg = s.stage;
+
+      if (s.problem === 0) {
+        // P1: Black Book Shortest & Longest Distance
+        const p = s.p1;
+        if (APP.playing) p.qAng += dt * 1.1;
+        const d = dist(p.h, p.k, p.px, p.py);
+        const ang = Math.atan2(p.py - p.k, p.px - p.h);
+        const ax = p.h + p.r * Math.cos(ang), ay = p.k + p.r * Math.sin(ang);
+        const bx = p.h - p.r * Math.cos(ang), by = p.k - p.r * Math.sin(ang);
+        const qx = p.h + p.r * Math.cos(p.qAng), qy = p.k + p.r * Math.sin(p.qAng);
+
+        drawCircle(p.h, p.k, p.r, OPT.cyan, 2.6, false, 0.05);
+        if (stg >= 1) {
+          drawLine(bx, by, p.px, p.py, OPT.emerald, 2.2, true);
+          drawPoint(ax, ay, OPT.emerald, 6, 'A (Min)');
+          drawPoint(bx, by, OPT.magenta, 6, 'B (Max)');
+        }
+        drawLine(p.px, p.py, qx, qy, OPT.gold, 2.4);
+        drawPoint(qx, qy, OPT.gold, 5, 'Q');
+        drawPoint(p.h, p.k, OPT.cyan, 5, 'C');
+        drawHandle('m9_p1', p.px, p.py, OPT.gold, 'P (Drag)', (wx, wy) => { p.px = clamp(wx, -6, 6); p.py = clamp(wy, -4.4, 4.4); });
+        drawLocusMonkey(p.px, p.py, { mode: 'idle', speech: `Min = ${fmt(Math.max(0, d - p.r))}, Max = ${fmt(d + p.r)}!` });
+
+        return {
+          latex: prob.stages[stg].tex,
+          badge: { text: `Stage ${stg + 1}/4`, color: 'gold' },
+          stats: [
+            { label: 'Live PQ', val: fmt(dist(p.px, p.py, qx, qy)), cls: 'text-optGold' },
+            { label: 'Min PA (d-r)', val: fmt(Math.max(0, d - p.r)), cls: 'text-optEmerald' },
+            { label: 'Max PB (d+r)', val: fmt(d + p.r), cls: 'text-optMagenta' }
+          ]
+        };
+      }
+
+      if (s.problem === 1) {
+        // P2: Cengage Locus of Midpoints of 90° Chords
+        const p = s.p2;
+        if (APP.playing) p.rot += dt * 0.95;
+        const a1 = p.rot - Math.PI / 4, a2 = p.rot + Math.PI / 4;
+        const ax = p.r * Math.cos(a1), ay = p.r * Math.sin(a1);
+        const bx = p.r * Math.cos(a2), by = p.r * Math.sin(a2);
+        const mx = (ax + bx) / 2, my = (ay + by) / 2;
+        const locR = p.r / Math.SQRT2;
+
+        p.trail.push({ x: mx, y: my });
+        if (p.trail.length > 110) p.trail.shift();
+
+        drawCircle(0, 0, p.r, OPT.cyan, 2.5, false, 0.04);
+        if (stg >= 2) drawCircle(0, 0, locR, OPT.gold, 2.2, true, 0.05);
+        drawGoldTrail(p.trail, OPT.gold);
+
+        drawLine(0, 0, ax, ay, OPT.slate, 1.5, true, 0);
+        drawLine(0, 0, bx, by, OPT.slate, 1.5, true, 0);
+        drawRightAngle(0, 0, ax, ay, bx, by, OPT.emerald, 0.34);
+        drawLine(ax, ay, bx, by, OPT.magenta, 2.6);
+        if (stg >= 1) {
+          drawLine(0, 0, mx, my, OPT.emerald, 2.2);
+          drawRightAngle(mx, my, 0, 0, ax, ay, OPT.emerald, 0.28);
+        }
+        drawPoint(0, 0, OPT.cyan, 5, 'O');
+        drawPoint(mx, my, OPT.gold, 5.5, 'M(h,k)');
+        drawLocusMonkey(mx, my, { mode: APP.playing ? 'walk' : 'idle', speech: `OM = r/√2 = ${fmt(locR)}!` });
+
+        return {
+          latex: prob.stages[stg].tex,
+          badge: { text: `Stage ${stg + 1}/4`, color: 'gold' },
+          stats: [
+            { label: 'Circle r', val: fmt(p.r), cls: 'text-optCyan' },
+            { label: 'Locus Radius r/√2', val: fmt(locR), cls: 'text-optGold' }
+          ]
+        };
+      }
+
+      if (s.problem === 2) {
+        // P3: JEE Adv Orthogonal Variable Circle Locus
+        const p = s.p3;
+        if (APP.playing) p.py = Math.sin(APP.time * 0.9) * 3.3;
+        const L = getRadicalAxis(p.s1, p.s2);
+        const radX = Math.abs(L.A) > 1e-5 ? -L.C / L.A : 0;
+        const rVarSq = dist(radX, p.py, p.s1.x, p.s1.y) ** 2 - p.s1.r * p.s1.r;
+        const rVar = rVarSq > 0 ? Math.sqrt(rVarSq) : 0;
+
+        p.trail.push({ x: radX, y: p.py });
+        if (p.trail.length > 80) p.trail.shift();
+
+        drawCircle(p.s1.x, p.s1.y, p.s1.r, OPT.cyan, 2.4, false, 0.05);
+        drawCircle(p.s2.x, p.s2.y, p.s2.r, OPT.gold, 2.4, false, 0.05);
+        if (stg >= 2) drawInfLine(L.A, L.B, L.C, OPT.magenta, 2.4, true);
+        drawGoldTrail(p.trail, OPT.gold);
+
+        if (rVar > 0.1) {
+          drawCircle(radX, p.py, rVar, OPT.emerald, 2.5, false, 0.04);
+          const i1 = getCircleIntersections(radX, p.py, rVar, p.s1.x, p.s1.y, p.s1.r);
+          const i2 = getCircleIntersections(radX, p.py, rVar, p.s2.x, p.s2.y, p.s2.r);
+          if (i1[0]) drawRightAngle(i1[0].x, i1[0].y, radX, p.py, p.s1.x, p.s1.y, OPT.emerald, 0.32);
+          if (i2[0]) drawRightAngle(i2[0].x, i2[0].y, radX, p.py, p.s2.x, p.s2.y, OPT.emerald, 0.32);
+        }
+        drawHandle('m9_p3', radX, p.py, OPT.emerald, 'P (Drag)', (wx, wy) => { p.py = clamp(wy, -4.2, 4.2); });
+        drawLocusMonkey(radX, p.py, { mode: APP.playing ? 'walk' : 'idle', mood: 'excited', speech: 'Gliding on Radical Axis S₁-S₂=0!' });
+
+        return {
+          latex: prob.stages[stg].tex,
+          badge: { text: `Stage ${stg + 1}/4`, color: 'emerald' },
+          stats: [
+            { label: 'Radical Axis', val: `x = ${fmt(radX)}`, cls: 'text-optMagenta' },
+            { label: 'Variable R', val: fmt(rVar), cls: 'text-optEmerald' }
+          ]
+        };
+      }
+
+      // P4: JEE Adv 90° Tangents from Line L (Line ∩ Director Circle)
+      if (s.problem === 3) {
+        const p = s.p4;
+        const dirR = p.r * Math.SQRT2;
+        const A = p.lineM, B = -1, C = p.lineC;
+        drawCircle(p.h, p.k, p.r, OPT.cyan, 2.6, false, 0.05);
+        if (stg >= 1) drawCircle(p.h, p.k, dirR, OPT.gold, 2.2, true, 0.04);
+        drawInfLine(A, B, C, OPT.magenta, 2.4);
+
+        const hits = getLineCircleIntersections(p.h, p.k, dirR, A, B, C);
+        hits.forEach((pt, idx) => {
+          const tans = getTangentsFromPoint(p.h, p.k, p.r, pt.x, pt.y);
+          if (tans.length === 2 && stg >= 2) {
+            drawLine(pt.x, pt.y, tans[0].x, tans[0].y, OPT.emerald, 2.2);
+            drawLine(pt.x, pt.y, tans[1].x, tans[1].y, OPT.emerald, 2.2);
+            drawRightAngle(pt.x, pt.y, tans[0].x, tans[0].y, tans[1].x, tans[1].y, OPT.emerald, 0.36);
+          }
+          drawPoint(pt.x, pt.y, OPT.emerald, 6.5, `P${idx + 1} (90°)`);
+        });
+
+        if (hits[0]) {
+          drawLocusMonkey(hits[0].x, hits[0].y, { mode: 'balance', mood: 'excited', speech: 'Found L ∩ Director Circle (90°)!' });
+        } else {
+          drawLocusMonkey(0, p.lineC, { mode: 'idle', mood: 'confused', speech: 'Line misses Director Circle! Lower c!' });
+        }
+
+        return {
+          latex: prob.stages[stg].tex,
+          badge: { text: `${hits.length} Solution${hits.length === 1 ? '' : 's'}`, color: hits.length ? 'emerald' : 'magenta' },
+          stats: [
+            { label: 'Director r√2', val: fmt(dirR), cls: 'text-optGold' },
+            { label: 'Valid Points', val: `${hits.length} intersection(s)`, cls: 'text-optEmerald' }
+          ]
+        };
+      }
+
+      // P5: Black Book Circumcircle & Area of ΔPAB
+      if (s.problem === 4) {
+        const p = s.p5;
+        drawCircle(p.h, p.k, p.r, OPT.cyan, 2.6, false, 0.05);
+        const d = dist(p.h, p.k, p.px, p.py);
+        const S1 = d * d - p.r * p.r;
+        const L = S1 > 0 ? Math.sqrt(S1) : 0;
+        const tans = getTangentsFromPoint(p.h, p.k, p.r, p.px, p.py);
+
+        let areaTri = 0, areaQuad = 0;
+        if (tans.length === 2) {
+          areaTri = (p.r * Math.pow(L, 3)) / (p.r * p.r + L * L);
+          areaQuad = p.r * L;
+
+          // Fill ΔPAB softly when stage >= 2
+          if (stg >= 2) {
+            const sp = w2s(p.px, p.py), sa = w2s(tans[0].x, tans[0].y), sb = w2s(tans[1].x, tans[1].y);
+            ctx.save();
+            ctx.fillStyle = hexRgba(OPT.gold, 0.14);
+            ctx.beginPath(); ctx.moveTo(sp.x, sp.y); ctx.lineTo(sa.x, sa.y); ctx.lineTo(sb.x, sb.y); ctx.closePath(); ctx.fill();
+            ctx.restore();
+          }
+
+          // Circumcircle on diameter CP when stage >= 1
+          if (stg >= 1) {
+            const mx = (p.h + p.px) / 2, my = (p.k + p.py) / 2;
+            drawCircle(mx, my, d / 2, OPT.gold, 2.1, true, 0.04, 12);
+            drawLine(p.h, p.k, p.px, p.py, OPT.slate, 1.5, true, 0);
+            drawPoint(mx, my, OPT.gold, 4, 'Mid(CP)');
+          }
+
+          drawLine(p.px, p.py, tans[0].x, tans[0].y, OPT.magenta, 2.4);
+          drawLine(p.px, p.py, tans[1].x, tans[1].y, OPT.magenta, 2.4);
+          drawLine(tans[0].x, tans[0].y, tans[1].x, tans[1].y, OPT.gold, 2.3);
+          drawLine(p.h, p.k, tans[0].x, tans[0].y, OPT.emerald, 1.8, true);
+          drawLine(p.h, p.k, tans[1].x, tans[1].y, OPT.emerald, 1.8, true);
+          drawRightAngle(tans[0].x, tans[0].y, p.h, p.k, p.px, p.py, OPT.emerald, 0.28);
+          drawRightAngle(tans[1].x, tans[1].y, p.h, p.k, p.px, p.py, OPT.emerald, 0.28);
+          drawPoint(tans[0].x, tans[0].y, OPT.emerald, 5, 'A');
+          drawPoint(tans[1].x, tans[1].y, OPT.emerald, 5, 'B');
+        }
+
+        drawPoint(p.h, p.k, OPT.cyan, 5.5, 'C');
+        drawHandle('m9_p5', p.px, p.py, OPT.gold, 'P (Drag)', (wx, wy) => {
+          p.px = clamp(wx, -6, 6); p.py = clamp(wy, -4.4, 4.4);
+        });
+        drawLocusMonkey(p.px, p.py, {
+          mode: 'idle', mood: tans.length === 2 ? 'excited' : 'confused',
+          speech: tans.length === 2 ? `Cyclic CAPB! Area ΔPAB = ${fmt(areaTri)}` : 'Move P outside the circle!'
+        });
+
+        return {
+          latex: prob.stages[stg].tex,
+          badge: { text: `Stage ${stg + 1}/4`, color: 'gold' },
+          stats: [
+            { label: 'Tangent L = √S₁', val: fmt(L), cls: 'text-optMagenta' },
+            { label: 'Area(ΔPAB)', val: fmt(areaTri), cls: 'text-optGold' },
+            { label: 'Area(Quad CAPB)', val: fmt(areaQuad), cls: 'text-optCyan' },
+            { label: 'Circumradius', val: fmt(d / 2), cls: 'text-optEmerald' }
+          ]
+        };
+      }
+
+      // P6: Cengage 3 Kissing Circles on Common Tangent (y = -2.2)
+      if (s.problem === 5) {
+        const p = s.p6;
+        const baseY = -2.2;
+        const span12 = 2 * Math.sqrt(p.r1 * p.r2);
+        const r3 = (p.r1 * p.r2) / Math.pow(Math.sqrt(p.r1) + Math.sqrt(p.r2), 2);
+        const span13 = 2 * Math.sqrt(p.r1 * r3);
+
+        const x1 = -span12 * 0.5;
+        const x2 = span12 * 0.5;
+        const x3 = x1 + span13;
+
+        // Common tangent line y = baseY
+        drawInfLine(0, 1, -baseY, OPT.magenta, 2.5, false, 12);
+        drawCircle(x1, baseY + p.r1, p.r1, OPT.cyan, 2.6, false, 0.06);
+        drawCircle(x2, baseY + p.r2, p.r2, OPT.gold, 2.6, false, 0.06);
+        drawCircle(x3, baseY + r3, r3, OPT.emerald, 2.6, false, 0.14, 16);
+
+        // Contact points on x-axis
+        drawPoint(x1, baseY, OPT.cyan, 5, 'T₁');
+        drawPoint(x2, baseY, OPT.gold, 5, 'T₂');
+        drawPoint(x3, baseY, OPT.emerald, 5, 'T₃');
+
+        if (stg >= 1) {
+          // Right-triangle proof for 2√(r1 r2)
+          drawLine(x1, baseY + p.r1, x2, baseY + p.r2, OPT.slate, 1.8, true);
+          drawLine(x1, baseY + p.r2, x2, baseY + p.r2, OPT.slate, 1.5, true);
+          drawLine(x1, baseY + p.r1, x1, baseY + p.r2, OPT.slate, 1.5, true);
+          drawRightAngle(x1, baseY + p.r2, x1, baseY + p.r1, x2, baseY + p.r2, OPT.emerald, 0.28);
+          drawCanvasBadge((x1 + x2) / 2, baseY - 0.5, `T₁T₂ = 2√(r₁r₂) = ${fmt(span12)}`, OPT.magenta);
+        }
+
+        drawPoint(x1, baseY + p.r1, OPT.cyan, 4.5, `r₁=${fmt(p.r1, 1)}`);
+        drawPoint(x2, baseY + p.r2, OPT.gold, 4.5, `r₂=${fmt(p.r2, 1)}`);
+        drawLocusMonkey(x3, baseY + 2 * r3, {
+          mode: 'balance', mood: 'excited', scale: 0.85,
+          speech: `1/√r₃ = 1/√r₁ + 1/√r₂ ⇒ r₃ = ${fmt(r3)}!`
+        });
+
+        return {
+          latex: prob.stages[stg].tex,
+          badge: { text: `r₃ = ${fmt(r3)}`, color: 'emerald' },
+          stats: [
+            { label: 'r₁ (Cyan) | r₂ (Gold)', val: `${fmt(p.r1, 1)} | ${fmt(p.r2, 1)}`, cls: 'text-optCyan' },
+            { label: 'Exact r₃ (Emerald)', val: fmt(r3, 3), cls: 'text-optEmerald font-bold' },
+            { label: 'Span 2√(r₁r₂)', val: fmt(span12), cls: 'text-optMagenta' },
+            { label: '1/√r₁ + 1/√r₂', val: fmt(1 / Math.sqrt(p.r1) + 1 / Math.sqrt(p.r2), 3), cls: 'text-optGold' }
+          ]
+        };
+      }
+
+      // P7: JEE Adv Mirror Image of a Circle in Line L
+      const p = s.p7;
+      const rad = (p.lineAng * Math.PI) / 180;
+      const A = Math.cos(rad), B = Math.sin(rad), C = -p.lineOffset;
+      const signed = A * p.h + B * p.k + C; // since A²+B² = 1
+      const distP = Math.abs(signed);
+      const mx = p.h - A * signed, my = p.k - B * signed;
+      const hx = p.h - 2 * A * signed, hy = p.k - 2 * B * signed;
+
+      drawInfLine(A, B, C, OPT.magenta, 2.6, false, 14);
+      drawCircle(p.h, p.k, p.r, OPT.cyan, 2.6, false, 0.06);
+
+      if (stg >= 1) {
+        drawLine(p.h, p.k, hx, hy, OPT.emerald, 2.0, true);
+        drawRightAngle(mx, my, p.h, p.k, mx - B, my + A, OPT.emerald, 0.28);
+        drawPoint(mx, my, OPT.emerald, 5, 'Foot M');
+      }
+      if (stg >= 2) {
+        drawCircle(hx, hy, p.r, OPT.gold, 2.6, false, 0.06);
+        drawPoint(hx, hy, OPT.gold, 5.5, `C'(${fmt(hx, 1)},${fmt(hy, 1)})`);
+      }
+
+      const minGap = Math.max(0, 2 * (distP - p.r));
+      drawHandle('m9_p7', p.h, p.k, OPT.cyan, `C(${fmt(p.h, 1)},${fmt(p.k, 1)})`, (wx, wy) => {
+        p.h = clamp(wx, -5.8, 5.8); p.k = clamp(wy, -4.2, 4.2);
+      });
+      drawLocusMonkey(p.h, p.k + p.r, {
+        mode: 'idle', mood: 'happy', scale: 0.85,
+        speech: stg >= 2 ? `Same radius r=${fmt(p.r, 1)}! Gap = ${fmt(minGap)}` : 'Drag C to reflect across Mirror L!'
+      });
+      if (stg >= 2) {
+        drawLocusMonkey(hx, hy + p.r, { mode: 'idle', facing: -1, mood: 'excited', scale: 0.85, speech: 'I am the Mirror Image!' });
+      }
+
+      return {
+        latex: prob.stages[stg].tex,
+        badge: { text: distP > p.r ? `Gap = ${fmt(minGap)}` : 'Intersecting Mirror', color: distP > p.r ? 'emerald' : 'magenta' },
+        stats: [
+          { label: 'Original C', val: `(${fmt(p.h, 1)}, ${fmt(p.k, 1)})`, cls: 'text-optCyan' },
+          { label: 'Image C′', val: `(${fmt(hx, 1)}, ${fmt(hy, 1)})`, cls: 'text-optGold' },
+          { label: 'Dist p to Mirror', val: fmt(distP), cls: 'text-optMagenta' },
+          { label: 'Shortest Gap 2(p-r)', val: distP > p.r ? fmt(minGap) : '0 (Overlaps)', cls: 'text-optEmerald' }
+        ]
+      };
+    }
+
+    // ---------- MODULE 10: Real-World Applications ----------
+    function renderM10(dt) {
+      const s = STATE.m10;
+      if (s.sim === 'belt') {
+        if (APP.playing) s.gearAng += dt * s.speed * 1.4;
+        const x1 = -2.7, x2 = 2.7, { dct, tct, d } = getCommonTangents(x1, 0, s.r1, x2, 0, s.r2);
+        const w2 = s.beltType === 'open' ? s.gearAng * (s.r1 / s.r2) : -s.gearAng * (s.r1 / s.r2);
+        drawPulley(x1, 0, s.r1, s.gearAng, OPT.cyan, 14);
+        drawPulley(x2, 0, s.r2, w2, OPT.gold, 10);
+
+        const segs = s.beltType === 'open' ? dct : tct;
+        segs.forEach((seg) => {
+          drawLine(seg.p1.x, seg.p1.y, seg.p2.x, seg.p2.y, OPT.magenta, 4, false, 14);
+          const p1 = w2s(seg.p1.x, seg.p1.y), p2 = w2s(seg.p2.x, seg.p2.y);
+          ctx.save();
+          ctx.strokeStyle = '#05070E'; ctx.lineWidth = 2; ctx.setLineDash([6, 10]);
+          ctx.lineDashOffset = -s.gearAng * s.r1 * getScale();
+          ctx.beginPath(); ctx.moveTo(p1.x, p1.y); ctx.lineTo(p2.x, p2.y); ctx.stroke();
+          ctx.restore();
+        });
+        if (segs[0]) {
+          const t = (APP.time * 0.4 * s.speed) % 1;
+          drawLocusMonkey(segs[0].p1.x + (segs[0].p2.x - segs[0].p1.x) * t, segs[0].p1.y + (segs[0].p2.y - segs[0].p1.y) * t, {
+            mode: 'walk', mood: 'excited', speech: s.beltType === 'open' ? 'Open Belt = DCT!' : 'Crossed Belt = TCT!'
+          });
+        }
+        const span = s.beltType === 'open' ? Math.sqrt(Math.max(0, d * d - (s.r1 - s.r2) ** 2)) : Math.sqrt(Math.max(0, d * d - (s.r1 + s.r2) ** 2));
+        return {
+          latex: s.beltType === 'open' ? `L_{DCT} = \\sqrt{d^2 - (r_1 - r_2)^2} = ${fmt(span)}` : `L_{TCT} = \\sqrt{d^2 - (r_1 + r_2)^2} = ${fmt(span)}`,
+          badge: { text: s.beltType === 'open' ? 'Open Belt (DCT)' : 'Crossed Belt (TCT)', color: 'magenta' },
+          stats: [
+            { label: 'Belt Span', val: `${fmt(span)} m`, cls: 'text-optMagenta' },
+            { label: 'Gear Ratio', val: `${s.beltType === 'open' ? '+' : '-'}${fmt(s.r1 / s.r2)}x`, cls: 'text-optCyan' }
+          ]
+        };
+      }
+
+      if (s.sim === 'satellite') {
+        if (APP.playing) s.satAng += dt * 0.32;
+        const Rkm = 6371, R = 2.3, orbR = R * (1 + s.satAlt / Rkm);
+        const sx = orbR * Math.cos(s.satAng), sy = orbR * Math.sin(s.satAng);
+
+        const ep = w2s(0, 0), er = R * getScale();
+        ctx.save();
+        const atmo = ctx.createRadialGradient(ep.x, ep.y, er * 0.85, ep.x, ep.y, er * 1.3);
+        atmo.addColorStop(0, 'rgba(0,240,255,0.34)'); atmo.addColorStop(1, 'rgba(0,240,255,0)');
+        ctx.fillStyle = atmo; ctx.beginPath(); ctx.arc(ep.x, ep.y, er * 1.3, 0, Math.PI * 2); ctx.fill();
+        const eg = ctx.createRadialGradient(ep.x - er * 0.3, ep.y - er * 0.3, er * 0.1, ep.x, ep.y, er);
+        eg.addColorStop(0, '#2563EB'); eg.addColorStop(0.7, '#1E3A8A'); eg.addColorStop(1, '#081433');
+        ctx.fillStyle = eg; ctx.beginPath(); ctx.arc(ep.x, ep.y, er, 0, Math.PI * 2); ctx.fill();
+        ctx.strokeStyle = OPT.cyan; ctx.lineWidth = 2; ctx.stroke();
+        ctx.restore();
+
+        drawCircle(0, 0, orbR, OPT.slate, 1.2, true, 0, 0);
+        const tans = getTangentsFromPoint(0, 0, R, sx, sy);
+        tans.forEach((t) => {
+          drawLine(sx, sy, t.x, t.y, OPT.magenta, 2.4);
+          drawLine(0, 0, t.x, t.y, OPT.emerald, 1.5, true, 0);
+          drawRightAngle(t.x, t.y, 0, 0, sx, sy, OPT.emerald, 0.24);
+          drawPoint(t.x, t.y, OPT.gold, 4.5);
+        });
+
+        drawHandle('m10_sat', sx, sy, OPT.gold, '🛰 Satellite (Drag)', (wx, wy) => {
+          s.satAng = Math.atan2(wy, wx);
+          const nr = clamp(Math.hypot(wx, wy), R * 1.08, R * 2.45);
+          s.satAlt = Math.round(((nr / R) - 1) * Rkm);
+          syncSliders();
+        });
+
+        const horizon = Math.sqrt(s.satAlt * (2 * Rkm + s.satAlt));
+        const covDeg = (2 * Math.acos(Rkm / (Rkm + s.satAlt)) * 180) / Math.PI;
+        drawLocusMonkey(sx, sy, { mode: 'idle', scale: 0.8, speech: `Horizon = ${Math.round(horizon)} km!` });
+        return {
+          latex: `d_{\\text{horizon}} = \\sqrt{h(2R+h)} = ${Math.round(horizon)}\\text{ km}`,
+          badge: { text: 'Satellite Tangent Horizon', color: 'cyan' },
+          stats: [
+            { label: 'Altitude h', val: `${s.satAlt} km`, cls: 'text-optCyan' },
+            { label: 'Horizon Tangent', val: `${Math.round(horizon)} km`, cls: 'text-optMagenta' },
+            { label: 'Earth Arc 2α', val: `${fmt(covDeg, 1)}°`, cls: 'text-optGold' },
+            { label: 'Tangent Angle', val: '90.0° ⊥', cls: 'text-optEmerald' }
+          ]
+        };
+      }
+
+      // Circular Laser Chamber
+      const R = 3.7;
+      if (APP.playing) s.laserProg = (s.laserProg + dt * 0.6) % 1;
+      drawCircle(0, 0, R, OPT.cyan, 3, false, 0.04);
+      drawPoint(0, 0, OPT.emerald, 5, 'Center C');
+
+      const inc = (s.laserDeg * Math.PI) / 180;
+      const dTheta = Math.PI - 2 * inc;
+      const pts = [];
+      for (let i = 0; i <= s.laserBounces; i++) pts.push({ x: R * Math.cos(Math.PI + i * dTheta), y: R * Math.sin(Math.PI + i * dTheta) });
+      for (let i = 0; i < pts.length - 1; i++) {
+        drawLine(pts[i].x, pts[i].y, pts[i + 1].x, pts[i + 1].y, OPT.magenta, 2.4, false, 14);
+        if (i > 0) {
+          drawLine(0, 0, pts[i].x, pts[i].y, OPT.emerald, 1.5, true, 6);
+          drawPoint(pts[i].x, pts[i].y, OPT.gold, 4.5);
+        }
+      }
+      const total = pts.length - 1, segF = s.laserProg * total, idx = Math.min(total - 1, Math.floor(segF)), f = segF - idx;
+      drawPoint(pts[idx].x + (pts[idx + 1].x - pts[idx].x) * f, pts[idx].y + (pts[idx + 1].y - pts[idx].y) * f, '#FFFFFF', 5.5);
+      drawLocusMonkey(pts[1].x, pts[1].y, { mode: 'idle', scale: 0.82, speech: `Every Normal passes through C! ∠i = ${s.laserDeg}°` });
+
+      return {
+        latex: `\\angle i = \\angle r = ${s.laserDeg}^\\circ, \\; \\text{Chord} = 2R\\cos i = ${fmt(2 * R * Math.cos(inc))}`,
+        badge: { text: 'Normal = Radius', color: 'emerald' },
+        stats: [
+          { label: 'Incidence = Reflect', val: `${s.laserDeg}°`, cls: 'text-optMagenta' },
+          { label: 'Equal Chord Len', val: fmt(2 * R * Math.cos(inc)), cls: 'text-optGold' }
+        ]
+      };
+    }
+
+    function drawPulley(wx, wy, wr, ang, color, teeth) {
+      const p = w2s(wx, wy), r = wr * getScale();
+      ctx.save();
+      ctx.translate(p.x, p.y); ctx.rotate(-ang);
+      ctx.fillStyle = hexRgba(color, 0.2); ctx.strokeStyle = color; ctx.lineWidth = 2;
+      ctx.shadowColor = color; ctx.shadowBlur = 10;
+      ctx.beginPath();
+      const out = r + 6, inn = r - 3;
+      for (let i = 0; i < teeth; i++) {
+        const a1 = (i / teeth) * Math.PI * 2, a2 = ((i + 0.35) / teeth) * Math.PI * 2;
+        const a3 = ((i + 0.5) / teeth) * Math.PI * 2, a4 = ((i + 0.85) / teeth) * Math.PI * 2;
+        if (i === 0) ctx.moveTo(Math.cos(a1) * inn, Math.sin(a1) * inn);
+        else ctx.lineTo(Math.cos(a1) * inn, Math.sin(a1) * inn);
+        ctx.lineTo(Math.cos(a2) * out, Math.sin(a2) * out);
+        ctx.lineTo(Math.cos(a3) * out, Math.sin(a3) * out);
+        ctx.lineTo(Math.cos(a4) * inn, Math.sin(a4) * inn);
+      }
+      ctx.closePath(); ctx.fill(); ctx.stroke();
+      ctx.shadowBlur = 0; ctx.strokeStyle = hexRgba(color, 0.55); ctx.lineWidth = 2.6;
+      for (let i = 0; i < 4; i++) {
+        const a = (i * Math.PI) / 2;
+        ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(Math.cos(a) * r * 0.78, Math.sin(a) * r * 0.78); ctx.stroke();
+      }
+      ctx.fillStyle = '#05070E'; ctx.beginPath(); ctx.arc(0, 0, r * 0.2, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+      ctx.restore();
+    }
+
+    /* ============================================================================
+       SIDEBAR & INSPECTOR HUD BUILDER
+       ============================================================================ */
+    function buildNav() {
+      const nav = document.getElementById('moduleNav');
+      nav.querySelectorAll('button').forEach((b) => b.remove());
+      MODULES.forEach((m) => {
+        const active = APP.activeModule === m.id;
+        const btn = document.createElement('button');
+        btn.className = `shrink-0 lg:w-full text-left px-2.5 py-2 rounded-xl flex items-center gap-2 text-[11.5px] font-semibold transition active:scale-[0.98] ${
+          active ? 'bg-cyan-400/20 text-white border border-cyan-400/50 shadow-md shadow-cyan-500/10' : 'text-slate-400 hover:text-white hover:bg-white/[0.06] border border-transparent'
+        }`;
+        btn.innerHTML = `
+          <span class="w-5 h-5 rounded-lg flex items-center justify-center text-xs shrink-0 ${active ? 'bg-optCyan text-slate-950 font-bold' : 'bg-white/10 text-slate-300'}">${m.icon}</span>
+          <span class="whitespace-nowrap lg:whitespace-normal leading-tight">${m.num}. ${m.short}</span>
+        `;
+        btn.addEventListener('click', () => { APP.activeModule = m.id; APP.xrayKey = null; buildNav(); buildPanel(); APP.lastHudSync = 0; });
+        nav.appendChild(btn);
+      });
+    }
+
+    function sliderHtml(id, label, min, max, step, val, cls = '') {
+      return `
+        <div class="space-y-1">
+          <div class="flex justify-between text-[11.5px]">
+            <span class="text-slate-300 font-medium">${label}</span>
+            <span id="${id}_v" class="tabular text-optCyan font-semibold">${val}</span>
+          </div>
+          <input type="range" id="${id}" min="${min}" max="${max}" step="${step}" value="${val}" class="${cls}" />
+        </div>
+      `;
+    }
+
+    function buildPanel() {
+      const m = MODULES[APP.activeModule];
+      document.getElementById('panelModuleBadge').textContent = `Lab ${m.num} / 10`;
+      document.getElementById('panelModuleTitle').textContent = m.short;
+      const body = document.getElementById('panelBody');
+
+      let html = `
+        <div class="rounded-xl bg-slate-950/85 border border-cyan-400/25 p-2.5">
+          <div class="text-[9.5px] font-bold uppercase tracking-widest text-optCyan mb-1">Live KaTeX Formula</div>
+          <div id="panelMath" class="text-xs sm:text-sm overflow-x-auto py-0.5 text-white"></div>
+        </div>
+        <div id="panelStats" class="grid grid-cols-2 gap-1.5"></div>
+      `;
+
+      const idx = APP.activeModule;
+      if (idx === 0) {
+        const s = STATE.m1;
+        html += `<div class="space-y-2.5">
+          ${sliderHtml('sl_m1_h', 'Center h', -5, 5, 0.25, s.h)}
+          ${sliderHtml('sl_m1_k', 'Center k', -4, 4, 0.25, s.k)}
+          ${sliderHtml('sl_m1_r', 'Radius r (Rope)', 0.7, 5.2, 0.1, s.r, 'gold-slider')}
+        </div>`;
+      } else if (idx === 1) {
+        const s = STATE.m2;
+        const tabs = [['standard', 'Standard'], ['general', 'General X-Ray'], ['diametric', 'Diametric'], ['parametric', 'Parametric']];
+        html += `<div class="grid grid-cols-2 gap-1.5">${tabs.map(([k, l]) =>
+          `<button data-m2t="${k}" class="py-1.5 rounded-xl text-[11px] font-bold ${s.subTab === k ? 'bg-optGold text-slate-950' : 'bg-white/5 text-slate-300 hover:bg-white/10'}">${l}</button>`
+        ).join('')}</div>`;
+        if (s.subTab === 'standard') {
+          html += sliderHtml('sl_m2_h', 'Center h', -4.5, 4.5, 0.25, s.h) + sliderHtml('sl_m2_k', 'Center k', -3.5, 3.5, 0.25, s.k) + sliderHtml('sl_m2_r', 'Radius r', 0.6, 4.8, 0.1, s.r, 'gold-slider');
+        } else if (s.subTab === 'general') {
+          html += `
+            <div class="rounded-xl bg-cyan-500/10 border border-cyan-400/25 p-2.5 space-y-1.5">
+              <div class="text-[10px] font-bold uppercase tracking-wider text-optCyan">Algebra-to-Geometry X-Ray (Hover to Pulse)</div>
+              <div class="flex flex-wrap gap-1.5">
+                <span data-xray="g" class="xray-badge px-2 py-1 rounded-lg bg-amber-500/20 border border-amber-400/40 text-[10.5px] font-bold text-optGold">g → Center X</span>
+                <span data-xray="f" class="xray-badge px-2 py-1 rounded-lg bg-amber-500/20 border border-amber-400/40 text-[10.5px] font-bold text-optGold">f → Center Y</span>
+                <span data-xray="c" class="xray-badge px-2 py-1 rounded-lg bg-fuchsia-500/20 border border-fuchsia-400/40 text-[10.5px] font-bold text-optMagenta">c → Power(0,0)</span>
+                <span data-xray="xint" class="xray-badge px-2 py-1 rounded-lg bg-emerald-500/20 border border-emerald-400/40 text-[10.5px] font-bold text-optEmerald">2√(g²-c) X-Int</span>
+                <span data-xray="yint" class="xray-badge px-2 py-1 rounded-lg bg-fuchsia-500/20 border border-fuchsia-400/40 text-[10.5px] font-bold text-optMagenta">2√(f²-c) Y-Int</span>
+              </div>
+            </div>
+            <div class="space-y-2">
+              ${sliderHtml('sl_m2_g', 'Coeff g (x_c = -g)', -4, 4, 0.2, s.g, 'gold-slider')}
+              ${sliderHtml('sl_m2_f', 'Coeff f (y_c = -f)', -3.5, 3.5, 0.2, s.f, 'gold-slider')}
+              ${sliderHtml('sl_m2_c', 'Constant c', -12, 16, 0.25, s.c, 'magenta-slider')}
+            </div>
+            <div class="grid grid-cols-2 gap-1.5">
+              <button id="btnM2Pt" class="py-1.5 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 border border-amber-400/40 text-[10.5px] font-bold text-optGold">Point Circle</button>
+              <button id="btnM2Im" class="py-1.5 rounded-lg bg-fuchsia-500/20 hover:bg-fuchsia-500/30 border border-fuchsia-400/40 text-[10.5px] font-bold text-optMagenta">Imaginary Ghost</button>
+            </div>`;
+        } else if (s.subTab === 'diametric') {
+          html += `<p class="text-xs text-slate-300 bg-white/5 rounded-xl p-2.5 border border-white/10">Drag gold endpoints <strong>A</strong> and <strong>B</strong> on the canvas to prove <strong>∠APB = 90°</strong> everywhere.</p>`;
+        } else {
+          html += sliderHtml('sl_m2_th', 'Angle θ (deg)', 0, 360, 1, Math.round(s.thetaDeg), 'gold-slider') + sliderHtml('sl_m2_pr', 'Radius r', 1, 4.5, 0.1, s.pr);
+        }
+      } else if (idx === 2) {
+        const s = STATE.m3;
+        html += `
+          ${sliderHtml('sl_m3_r', 'Circle Radius r', 1.0, 4.4, 0.1, s.r)}
+          <button id="btnM3Snap" class="w-full py-2 rounded-xl bg-gradient-to-r from-fuchsia-500 to-pink-500 text-white font-bold text-xs shadow-lg hover:brightness-110 active:scale-[0.98] transition">★ Snap Line to Exact Tangent (p = r)</button>
+          <p class="text-[11px] text-slate-400">Drag handles <strong>L₁</strong> and <strong>L₂</strong> directly on the board! Watch Locus jump, balance, or zip along the chord.</p>
+        `;
+      } else if (idx === 3) {
+        const s = STATE.m4;
+        html += `
+          ${sliderHtml('sl_m4_r', 'Circle Radius r', 1.2, 3.8, 0.1, s.r)}
+          <div class="grid grid-cols-3 gap-1.5">
+            <button id="btnM4Out" class="py-1.5 rounded-lg bg-fuchsia-500/20 border border-fuchsia-400/40 text-[10.5px] font-bold text-optMagenta">Outside</button>
+            <button id="btnM4On" class="py-1.5 rounded-lg bg-amber-500/20 border border-amber-400/40 text-[10.5px] font-bold text-optGold">On Circle</button>
+            <button id="btnM4In" class="py-1.5 rounded-lg bg-cyan-500/20 border border-cyan-400/40 text-[10.5px] font-bold text-optCyan">Inside</button>
+          </div>
+          <label class="flex items-center justify-between p-2 rounded-xl bg-white/5 border border-white/10 text-xs cursor-pointer">
+            <span class="font-semibold text-optGold">Show Chord Bisected at P (T = S₁)</span>
+            <input type="checkbox" id="chkM4Bis" ${s.showBisected ? 'checked' : ''} class="w-4 h-4 accent-amber-400" />
+          </label>
+        `;
+      } else if (idx === 4) {
+        const s = STATE.m5;
+        html += `
+          ${sliderHtml('sl_m5_r', 'Circle Radius r', 1.2, 3.5, 0.1, s.r)}
+          <div class="grid grid-cols-2 gap-1.5">
+            <button id="btnM5Lock" class="py-2 rounded-xl text-[11px] font-bold ${s.lockDirector ? 'bg-optEmerald text-slate-950' : 'bg-white/10 text-slate-200'}">★ Lock 90° Director</button>
+            <button id="btnM5Clear" class="py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-[11px] font-semibold text-optGold">Clear Gold Trail</button>
+          </div>
+        `;
+      } else if (idx === 5) {
+        const s = STATE.m6;
+        html += `
+          <div class="grid grid-cols-2 gap-1.5">
+            <button data-m6m="circleLine" class="py-1.5 rounded-xl text-[11px] font-bold ${s.mode === 'circleLine' ? 'bg-optCyan text-slate-950' : 'bg-white/5 text-slate-300'}">S + λL = 0</button>
+            <button data-m6m="twoCircles" class="py-1.5 rounded-xl text-[11px] font-bold ${s.mode === 'twoCircles' ? 'bg-optCyan text-slate-950' : 'bg-white/5 text-slate-300'}">S₁ + λS₂ = 0</button>
+          </div>
+          ${sliderHtml('sl_m6_lam', 'Parameter λ (-4 to +4)', -4, 4, 0.05, Number(s.lambda.toFixed(2)), 'gold-slider')}
+          ${s.mode === 'twoCircles' ? `<button id="btnM6Rad" class="w-full py-2 rounded-xl bg-gradient-to-r from-fuchsia-500 to-pink-600 text-white font-bold text-xs shadow-lg">⚡ Snap λ = -1 (Radical Axis Flash)</button>` : ''}
+        `;
+      } else if (idx === 6) {
+        const s = STATE.m7;
+        html += `
+          <div class="grid grid-cols-2 gap-1.5">
+            <button data-m7p="4" class="py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-[10.5px] font-semibold">4 Tangents (Disjoint)</button>
+            <button data-m7p="3" class="py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-[10.5px] font-semibold">3 Tangents (Ext Touch)</button>
+            <button data-m7p="2" class="py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-[10.5px] font-semibold">2 Tangents (Intersect)</button>
+            <button data-m7p="1" class="py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-[10.5px] font-semibold">1 Tangent (Int Touch)</button>
+            <button data-m7p="0" class="py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-[10.5px] font-semibold">0 Tangents (Inside)</button>
+            <button data-m7p="ortho" class="py-1.5 rounded-lg bg-emerald-500/20 border border-emerald-400/50 text-[10.5px] font-bold text-optEmerald">★ Orthogonal 90°</button>
+          </div>
+          ${sliderHtml('sl_m7_r1', 'Radius r₁ (Cyan)', 0.8, 3.2, 0.1, s.r1)}
+          ${sliderHtml('sl_m7_r2', 'Radius r₂ (Gold)', 0.8, 3.0, 0.1, s.r2, 'gold-slider')}
+        `;
+      } else if (idx === 7) {
+        const s = STATE.m8;
+        html += `
+          ${sliderHtml('sl_m8_r1', 'Radius S₁ (Cyan)', 0.8, 2.8, 0.1, s.c1.r)}
+          ${sliderHtml('sl_m8_r2', 'Radius S₂ (Gold)', 0.8, 2.8, 0.1, s.c2.r, 'gold-slider')}
+          ${sliderHtml('sl_m8_r3', 'Radius S₃ (Slate)', 0.8, 2.8, 0.1, s.c3.r)}
+          <label class="flex items-center justify-between p-2 rounded-xl bg-white/5 border border-white/10 text-xs cursor-pointer">
+            <span class="font-semibold text-optEmerald">Show Orthogonal Circle at R</span>
+            <input type="checkbox" id="chkM8O" ${s.showOrthoCircle ? 'checked' : ''} class="w-4 h-4 accent-emerald-400" />
+          </label>
+        `;
+      } else if (idx === 8) {
+        const s = STATE.m9;
+        const prob = M9_PROBLEMS[s.problem];
+        const stg = prob.stages[s.stage];
+        html += `
+          <div class="grid grid-cols-2 gap-1.5 max-h-[150px] overflow-y-auto pr-0.5">
+            ${M9_PROBLEMS.map((p, i) => `<button data-m9p="${i}" class="p-1.5 rounded-xl text-[10px] font-bold text-left leading-tight transition ${s.problem === i ? 'bg-optGold text-slate-950 shadow-md shadow-amber-500/20' : 'bg-white/5 text-slate-300 hover:bg-white/10'}">${p.title}</button>`).join('')}
+          </div>
+          <div class="rounded-xl bg-slate-900/90 border border-amber-400/30 p-2.5 space-y-2">
+            <div class="flex items-center justify-between">
+              <span class="text-[10px] font-bold uppercase tracking-wider text-optGold">4-Stage Chalkboard Reveal</span>
+              <span class="tabular text-[10px] text-optCyan">${s.stage + 1} / 4</span>
+            </div>
+            <div class="grid grid-cols-4 gap-1">
+              ${['1. Setup', '2. Insight', '3. Shortcut', '4. Answer'].map((lbl, i) => `
+                <button data-m9s="${i}" class="py-1 rounded-lg text-[10px] font-bold transition ${s.stage === i ? 'bg-optCyan text-slate-950' : i < s.stage ? 'bg-emerald-500/20 text-optEmerald' : 'bg-white/5 text-slate-400'}">${lbl}</button>
+              `).join('')}
+            </div>
+            <p class="text-xs text-slate-200 leading-relaxed pt-0.5"><strong class="text-optGold">${stg.tag}:</strong> ${stg.text}</p>
+            <div class="flex items-center justify-between gap-1.5 pt-1">
+              <button id="btnM9Prev" class="flex-1 py-1 rounded-lg bg-white/5 hover:bg-white/15 text-[10.5px] font-semibold text-slate-200 disabled:opacity-35" ${s.stage === 0 ? 'disabled' : ''}>← Prev Step</button>
+              <button id="btnM9Next" class="flex-1 py-1 rounded-lg bg-cyan-500/20 hover:bg-cyan-500/35 border border-cyan-400/40 text-[10.5px] font-bold text-optCyan disabled:opacity-35" ${s.stage === 3 ? 'disabled' : ''}>Next Step →</button>
+            </div>
+          </div>
+          ${s.problem === 3 ? sliderHtml('sl_m9_c', 'Line Intercept c', -4.5, 4.5, 0.1, s.p4.lineC, 'magenta-slider') : ''}
+          ${s.problem === 5 ? sliderHtml('sl_m9_r1', 'Radius r₁ (Cyan)', 0.8, 3.0, 0.1, s.p6.r1) + sliderHtml('sl_m9_r2', 'Radius r₂ (Gold)', 0.6, 2.8, 0.1, s.p6.r2, 'gold-slider') : ''}
+          ${s.problem === 6 ? sliderHtml('sl_m9_ang', 'Mirror Angle (deg)', 0, 180, 2, s.p7.lineAng, 'magenta-slider') + sliderHtml('sl_m9_off', 'Mirror Offset', -2.5, 2.5, 0.1, s.p7.lineOffset, 'gold-slider') : ''}
+          ${(s.problem === 1 || s.problem === 2) ? `<button id="btnM9Clear" class="w-full py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-[11px] font-semibold text-optGold">Clear Locus Trail</button>` : ''}
+        `;
+      } else if (idx === 9) {
+        const s = STATE.m10;
+        html += `<div class="grid grid-cols-3 gap-1.5">
+          ${[['belt', '⚙ Belts'], ['satellite', '🛰 Orbit'], ['laser', '⚡ Laser']].map(([k, l]) =>
+            `<button data-m10s="${k}" class="py-1.5 rounded-xl text-[11px] font-bold ${s.sim === k ? 'bg-optEmerald text-slate-950' : 'bg-white/5 text-slate-300'}">${l}</button>`
+          ).join('')}
+        </div>`;
+        if (s.sim === 'belt') {
+          html += `<div class="grid grid-cols-2 gap-1.5">
+            <button data-belt="open" class="py-1.5 rounded-lg text-[11px] font-bold ${s.beltType === 'open' ? 'bg-optMagenta text-white' : 'bg-white/5 text-slate-300'}">Open (DCT)</button>
+            <button data-belt="crossed" class="py-1.5 rounded-lg text-[11px] font-bold ${s.beltType === 'crossed' ? 'bg-optMagenta text-white' : 'bg-white/5 text-slate-300'}">Crossed (TCT)</button>
+          </div>` + sliderHtml('sl_m10_r1', 'Pulley r₁', 1.1, 2.4, 0.1, s.r1) + sliderHtml('sl_m10_r2', 'Pulley r₂', 0.8, 2.1, 0.1, s.r2, 'gold-slider');
+        } else if (s.sim === 'satellite') {
+          html += sliderHtml('sl_m10_alt', 'Orbit Altitude h (km)', 400, 9000, 100, s.satAlt, 'gold-slider');
+        } else {
+          html += sliderHtml('sl_m10_ang', 'Incidence Angle ∠i', 15, 76, 1, s.laserDeg, 'magenta-slider') + sliderHtml('sl_m10_bnc', 'Reflections', 2, 14, 1, s.laserBounces, 'gold-slider');
+        }
+      }
+
+      body.innerHTML = html;
+      wirePanel();
+    }
+
+    function wirePanel() {
+      const sl = (id, fn) => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.addEventListener('input', () => {
+          const v = parseFloat(el.value);
+          const lbl = document.getElementById(id + '_v');
+          if (lbl) lbl.textContent = el.value;
+          fn(v);
+        });
+      };
+
+      sl('sl_m1_h', (v) => { STATE.m1.h = v; STATE.m1.trail = []; });
+      sl('sl_m1_k', (v) => { STATE.m1.k = v; STATE.m1.trail = []; });
+      sl('sl_m1_r', (v) => { STATE.m1.r = v; STATE.m1.trail = []; });
+
+      document.querySelectorAll('[data-m2t]').forEach((b) => b.addEventListener('click', () => { STATE.m2.subTab = b.dataset.m2t; APP.xrayKey = null; buildPanel(); }));
+      document.querySelectorAll('[data-xray]').forEach((b) => {
+        b.addEventListener('mouseenter', () => { APP.xrayKey = b.dataset.xray; b.classList.add('active'); });
+        b.addEventListener('mouseleave', () => { APP.xrayKey = null; b.classList.remove('active'); });
+        b.addEventListener('click', () => { APP.xrayKey = APP.xrayKey === b.dataset.xray ? null : b.dataset.xray; });
+      });
+      sl('sl_m2_h', (v) => STATE.m2.h = v); sl('sl_m2_k', (v) => STATE.m2.k = v); sl('sl_m2_r', (v) => STATE.m2.r = v);
+      sl('sl_m2_g', (v) => STATE.m2.g = v); sl('sl_m2_f', (v) => STATE.m2.f = v); sl('sl_m2_c', (v) => STATE.m2.c = v);
+      sl('sl_m2_th', (v) => { STATE.m2.thetaDeg = v; APP.playing = false; updatePlayUI(); });
+      sl('sl_m2_pr', (v) => STATE.m2.pr = v);
+      document.getElementById('btnM2Pt')?.addEventListener('click', () => { STATE.m2.c = +(STATE.m2.g ** 2 + STATE.m2.f ** 2).toFixed(2); syncSliders(); showPillToast('Point Circle: g² + f² - c = 0', OPT.gold); });
+      document.getElementById('btnM2Im')?.addEventListener('click', () => { STATE.m2.c = +(STATE.m2.g ** 2 + STATE.m2.f ** 2 + 4).toFixed(2); syncSliders(); showPillToast('Imaginary Ghost Circle: g² + f² - c < 0', OPT.magenta); });
+
+      sl('sl_m3_r', (v) => STATE.m3.r = v);
+      document.getElementById('btnM3Snap')?.addEventListener('click', () => {
+        const s = STATE.m3;
+        const A = s.ly1 - s.ly2, B = s.lx2 - s.lx1, C = s.lx1 * s.ly2 - s.lx2 * s.ly1;
+        const n = Math.hypot(A, B) || 1;
+        const curP = Math.abs(A * s.h + B * s.k + C) / n;
+        const sgn = (A * s.h + B * s.k + C) >= 0 ? 1 : -1;
+        const sh = (s.r - curP) * sgn;
+        s.lx1 += (A / n) * sh; s.ly1 += (B / n) * sh; s.lx2 += (A / n) * sh; s.ly2 += (B / n) * sh;
+        triggerSnapPulse('m3_btn', s.h, s.k + s.r, '★ SNAPPED TO EXACT TANGENT (p = r)', OPT.magenta);
+      });
+
+      sl('sl_m4_r', (v) => STATE.m4.r = v);
+      document.getElementById('btnM4Out')?.addEventListener('click', () => { STATE.m4.px = 4.4; STATE.m4.py = 1.6; });
+      document.getElementById('btnM4On')?.addEventListener('click', () => { STATE.m4.px = STATE.m4.r * Math.cos(0.5); STATE.m4.py = STATE.m4.r * Math.sin(0.5); });
+      document.getElementById('btnM4In')?.addEventListener('click', () => { STATE.m4.px = 1.1; STATE.m4.py = 0.7; });
+      document.getElementById('chkM4Bis')?.addEventListener('change', (e) => STATE.m4.showBisected = e.target.checked);
+
+      sl('sl_m5_r', (v) => { STATE.m5.r = v; STATE.m5.trail = []; });
+      document.getElementById('btnM5Lock')?.addEventListener('click', () => { STATE.m5.lockDirector = !STATE.m5.lockDirector; buildPanel(); });
+      document.getElementById('btnM5Clear')?.addEventListener('click', () => { STATE.m5.trail = []; showPillToast('Gold Locus Trail Cleared', OPT.gold); });
+
+      document.querySelectorAll('[data-m6m]').forEach((b) => b.addEventListener('click', () => { STATE.m6.mode = b.dataset.m6m; buildPanel(); }));
+      sl('sl_m6_lam', (v) => {
+        if (STATE.m6.mode === 'twoCircles' && Math.abs(v + 1) < 0.12) v = -1;
+        STATE.m6.lambda = v; APP.playing = false; updatePlayUI();
+      });
+      document.getElementById('btnM6Rad')?.addEventListener('click', () => { STATE.m6.lambda = -1; APP.playing = false; updatePlayUI(); syncSliders(); });
+
+      sl('sl_m7_r1', (v) => STATE.m7.r1 = v); sl('sl_m7_r2', (v) => STATE.m7.r2 = v);
+      document.querySelectorAll('[data-m7p]').forEach((b) => b.addEventListener('click', () => {
+        const s = STATE.m7, k = b.dataset.m7p; s.y1 = 0; s.y2 = 0;
+        if (k === '4') { s.r1 = 2.0; s.r2 = 1.4; s.x1 = -2.8; s.x2 = 2.8; }
+        if (k === '3') { s.r1 = 2.1; s.r2 = 1.5; s.x1 = -1.8; s.x2 = 1.8; }
+        if (k === '2') { s.r1 = 2.3; s.r2 = 1.8; s.x1 = -1.3; s.x2 = 1.3; }
+        if (k === '1') { s.r1 = 2.7; s.r2 = 1.3; s.x1 = -0.5; s.x2 = 0.9; }
+        if (k === '0') { s.r1 = 2.9; s.r2 = 1.1; s.x1 = 0; s.x2 = 0.5; }
+        if (k === 'ortho') { s.r1 = 2.4; s.r2 = 1.8; const dO = 3.0; s.x1 = -dO / 2; s.x2 = dO / 2; }
+        syncSliders();
+      }));
+
+      sl('sl_m8_r1', (v) => STATE.m8.c1.r = v); sl('sl_m8_r2', (v) => STATE.m8.c2.r = v); sl('sl_m8_r3', (v) => STATE.m8.c3.r = v);
+      document.getElementById('chkM8O')?.addEventListener('change', (e) => STATE.m8.showOrthoCircle = e.target.checked);
+
+      document.querySelectorAll('[data-m9p]').forEach((b) => b.addEventListener('click', () => { STATE.m9.problem = parseInt(b.dataset.m9p, 10); STATE.m9.stage = 0; buildPanel(); }));
+      document.querySelectorAll('[data-m9s]').forEach((b) => b.addEventListener('click', () => { STATE.m9.stage = parseInt(b.dataset.m9s, 10); buildPanel(); }));
+      document.getElementById('btnM9Prev')?.addEventListener('click', () => { if (STATE.m9.stage > 0) { STATE.m9.stage--; buildPanel(); } });
+      document.getElementById('btnM9Next')?.addEventListener('click', () => { if (STATE.m9.stage < 3) { STATE.m9.stage++; buildPanel(); } });
+      sl('sl_m9_c', (v) => STATE.m9.p4.lineC = v);
+      sl('sl_m9_r1', (v) => STATE.m9.p6.r1 = v);
+      sl('sl_m9_r2', (v) => STATE.m9.p6.r2 = v);
+      sl('sl_m9_ang', (v) => STATE.m9.p7.lineAng = v);
+      sl('sl_m9_off', (v) => STATE.m9.p7.lineOffset = v);
+      document.getElementById('btnM9Clear')?.addEventListener('click', () => { STATE.m9.p2.trail = []; STATE.m9.p3.trail = []; });
+
+      document.querySelectorAll('[data-m10s]').forEach((b) => b.addEventListener('click', () => { STATE.m10.sim = b.dataset.m10s; buildPanel(); }));
+      document.querySelectorAll('[data-belt]').forEach((b) => b.addEventListener('click', () => { STATE.m10.beltType = b.dataset.belt; buildPanel(); }));
+      sl('sl_m10_r1', (v) => STATE.m10.r1 = v); sl('sl_m10_r2', (v) => STATE.m10.r2 = v);
+      sl('sl_m10_alt', (v) => STATE.m10.satAlt = v);
+      sl('sl_m10_ang', (v) => STATE.m10.laserDeg = v); sl('sl_m10_bnc', (v) => STATE.m10.laserBounces = v);
+    }
+
+    function syncSliders() {
+      const set = (id, v) => {
+        const el = document.getElementById(id), lb = document.getElementById(id + '_v');
+        if (el) el.value = v;
+        if (lb) lb.textContent = typeof v === 'number' ? Number(v.toFixed(2)) : v;
+      };
+      set('sl_m1_h', STATE.m1.h); set('sl_m1_k', STATE.m1.k); set('sl_m1_r', STATE.m1.r);
+      set('sl_m2_h', STATE.m2.h); set('sl_m2_k', STATE.m2.k); set('sl_m2_r', STATE.m2.r);
+      set('sl_m2_c', STATE.m2.c); set('sl_m2_th', Math.round(STATE.m2.thetaDeg));
+      set('sl_m6_lam', STATE.m6.lambda);
+      set('sl_m7_r1', STATE.m7.r1); set('sl_m7_r2', STATE.m7.r2);
+      set('sl_m10_alt', STATE.m10.satAlt);
+    }
+
+    function updateHudDom(res) {
+      if (!res) return;
+      renderMath(document.getElementById('panelMath'), res.latex, res.fallback);
+      renderMath(document.getElementById('hudEquation'), res.latex, res.fallback);
+
+      const badge = document.getElementById('panelStatusBadge');
+      if (res.badge) {
+        badge.classList.remove('hidden');
+        badge.textContent = res.badge.text;
+        const map = {
+          cyan: 'bg-cyan-500/20 text-optCyan border-cyan-400/40',
+          gold: 'bg-amber-500/20 text-optGold border-amber-400/40',
+          magenta: 'bg-fuchsia-500/20 text-optMagenta border-fuchsia-400/40',
+          emerald: 'bg-emerald-500/20 text-optEmerald border-emerald-400/40',
+          slate: 'bg-slate-500/20 text-slate-300 border-slate-400/40'
+        };
+        badge.className = `px-2 py-0.5 rounded-full text-[10px] font-bold border shrink-0 ${map[res.badge.color] || map.cyan}`;
+      } else badge.classList.add('hidden');
+
+      const stEl = document.getElementById('panelStats');
+      if (stEl && res.stats) {
+        stEl.innerHTML = res.stats.map((st) => `
+          <div class="rounded-xl bg-white/[0.04] border border-white/[0.07] px-2.5 py-1.5">
+            <div class="text-[9.5px] text-slate-400 truncate">${st.label}</div>
+            <div class="text-[11.5px] tabular font-semibold ${st.cls || 'text-white'} truncate mt-0.5">${st.val}</div>
+          </div>
+        `).join('');
+      }
+    }
+
+    /* ============================================================================
+       CANVAS POINTER EVENTS (Handles + Pan/Zoom + Laser Chalk Overlay)
+       ============================================================================ */
+    function getPtr(e) {
+      const r = canvas.getBoundingClientRect();
+      return { x: e.clientX - r.left, y: e.clientY - r.top };
+    }
+
+    canvas.addEventListener('pointerdown', (e) => {
+      const p = getPtr(e);
+      canvas.setPointerCapture(e.pointerId);
+
+      // Laser Chalk Mode takes priority
+      if (APP.chalkMode) {
+        APP.activeStroke = { color: APP.chalkColor, pts: [p] };
+        return;
+      }
+
+      // Check draggable geometry handles
+      for (let i = APP.handles.length - 1; i >= 0; i--) {
+        const h = APP.handles[i];
+        const sp = w2s(h.wx, h.wy);
+        if (Math.hypot(p.x - sp.x, p.y - sp.y) <= h.radius) {
+          APP.draggingHandle = { id: h.id, onDrag: h.onDrag };
+          canvas.classList.add('dragging');
+          return;
+        }
+      }
+
+      // Otherwise pan the Obsidian void
+      APP.panning = { sx: p.x, sy: p.y, ox: APP.panX, oy: APP.panY };
+      canvas.classList.add('dragging');
+    });
+
+    canvas.addEventListener('pointermove', (e) => {
+      const p = getPtr(e);
+      if (APP.chalkMode) {
+        if (APP.activeStroke) APP.activeStroke.pts.push(p);
+        return;
+      }
+      if (APP.draggingHandle) {
+        const w = s2w(p.x, p.y);
+        APP.draggingHandle.onDrag(w.x, w.y);
+        return;
+      }
+      if (APP.panning) {
+        APP.panX = APP.panning.ox + (p.x - APP.panning.sx);
+        APP.panY = APP.panning.oy + (p.y - APP.panning.sy);
+        updateMetrics();
+        return;
+      }
+      let found = null;
+      for (let i = APP.handles.length - 1; i >= 0; i--) {
+        const sp = w2s(APP.handles[i].wx, APP.handles[i].wy);
+        if (Math.hypot(p.x - sp.x, p.y - sp.y) <= APP.handles[i].radius) { found = APP.handles[i].id; break; }
+      }
+      APP.hoveredHandle = found;
+      canvas.classList.toggle('hover-handle', !!found);
+    });
+
+    const endPtr = () => {
+      if (APP.activeStroke) {
+        if (APP.activeStroke.pts.length > 1) APP.chalkStrokes.push(APP.activeStroke);
+        APP.activeStroke = null;
+      }
+      APP.draggingHandle = null;
+      APP.panning = null;
+      canvas.classList.remove('dragging');
+    };
+    canvas.addEventListener('pointerup', endPtr);
+    canvas.addEventListener('pointercancel', endPtr);
+
+    canvas.addEventListener('wheel', (e) => {
+      e.preventDefault();
+      const factor = e.deltaY < 0 ? 1.08 : 0.92;
+      APP.zoom = clamp(APP.zoom * factor, 0.55, 2.4);
+    }, { passive: false });
+
+    /* ============================================================================
+       TOOLBAR CONTROLS & KEYBOARD SHORTCUTS (H, L, C, Space)
+       ============================================================================ */
+    function updatePlayUI() {
+      document.getElementById('playPauseIcon').textContent = APP.playing ? '⏸' : '▶';
+      document.getElementById('playPauseLabel').textContent = APP.playing ? 'Pause' : 'Play';
+    }
+
+    function toggleChalk() {
+      APP.chalkMode = !APP.chalkMode;
+      canvas.classList.toggle('chalk-mode', APP.chalkMode);
+      document.getElementById('chalkToolbar').classList.toggle('hidden', !APP.chalkMode);
+      const btn = document.getElementById('btnChalkToggle');
+      btn.classList.toggle('border-fuchsia-400', APP.chalkMode);
+      btn.classList.toggle('text-optMagenta', APP.chalkMode);
+      showPillToast(APP.chalkMode ? '✏️ Laser Chalk ON (Draw anywhere)' : 'Interact Mode Restored', APP.chalkMode ? OPT.magenta : OPT.cyan);
+    }
+
+    function toggleCleanBoard() {
+      APP.cleanBoard = !APP.cleanBoard;
+      document.body.classList.toggle('clean-board', APP.cleanBoard);
+      document.getElementById('cleanBoardLabel').textContent = APP.cleanBoard ? 'Show HUD' : 'Clean Board';
+      updateMetrics();
+    }
+
+    document.getElementById('btnPlayPause').addEventListener('click', () => { APP.playing = !APP.playing; updatePlayUI(); });
+    document.getElementById('btnMonkeyToggle').addEventListener('click', () => {
+      APP.monkeyOn = !APP.monkeyOn;
+      document.getElementById('monkeyLabel').textContent = APP.monkeyOn ? 'Locus: ON' : 'Locus: OFF';
+    });
+    document.getElementById('btnChalkToggle').addEventListener('click', toggleChalk);
+    document.getElementById('btnCleanBoard').addEventListener('click', toggleCleanBoard);
+    document.getElementById('btnResetView').addEventListener('click', () => {
+      APP.panX = 0; APP.panY = 0; APP.zoom = 1;
+      const fresh = createInitialState();
+      const key = `m${APP.activeModule + 1}`;
+      STATE[key] = fresh[key];
+      updateMetrics(); buildPanel();
+      showPillToast('View & Lab Reset', OPT.cyan);
+    });
+
+    document.querySelectorAll('.ink-swatch').forEach((sw) => {
+      sw.addEventListener('click', () => {
+        APP.chalkColor = sw.dataset.ink;
+        document.querySelectorAll('.ink-swatch').forEach((o) => { o.classList.remove('ring-2', 'ring-white', 'scale-110'); o.classList.add('opacity-75'); });
+        sw.classList.add('ring-2', 'ring-white', 'scale-110'); sw.classList.remove('opacity-75');
+      });
+    });
+    document.getElementById('btnChalkUndo').addEventListener('click', () => { APP.chalkStrokes.pop(); });
+    document.getElementById('btnChalkClear').addEventListener('click', () => { APP.chalkStrokes = []; showPillToast('Laser Chalk Cleared', OPT.magenta); });
+
+    window.addEventListener('keydown', (e) => {
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+      const k = e.key.toLowerCase();
+      if (k === 'h') toggleCleanBoard();
+      else if (k === 'l') toggleChalk();
+      else if (k === 'c') { APP.chalkStrokes = []; showPillToast('Laser Chalk Cleared', OPT.magenta); }
+      else if (k === ' ') { e.preventDefault(); APP.playing = !APP.playing; updatePlayUI(); }
+    });
+
+    window.addEventListener('resize', updateMetrics);
+
+    /* ============================================================================
+       60FPS ANIMATION LOOP
+       ============================================================================ */
+    function animate(now) {
+      const dt = Math.max(0, Math.min((now - APP.lastFrame) / 1000, 0.05));
+      APP.lastFrame = now;
+
+      if (APP.playing) {
+        APP.time += dt;
+        APP.monkey.phase += dt * 4.5;
+      }
+
+      // Natural Monkey Blinking
+      APP.monkey.blinkTimer += dt;
+      if (!APP.monkey.blinking && APP.monkey.blinkTimer > 3.1) { APP.monkey.blinking = true; APP.monkey.blinkTimer = 0; }
+      else if (APP.monkey.blinking && APP.monkey.blinkTimer > 0.14) { APP.monkey.blinking = false; APP.monkey.blinkTimer = 0; }
+
+      APP.handles = [];
+      const showGrid = !(APP.activeModule === 9 && (STATE.m10.sim === 'satellite' || STATE.m10.sim === 'belt'));
+      drawObsidianVoid(showGrid);
+
+      let res = null;
+      try {
+        switch (APP.activeModule) {
+          case 0: res = renderM1(dt); break;
+          case 1: res = renderM2(dt); break;
+          case 2: res = renderM3(dt); break;
+          case 3: res = renderM4(); break;
+          case 4: res = renderM5(dt); break;
+          case 5: res = renderM6(dt); break;
+          case 6: res = renderM7(dt); break;
+          case 7: res = renderM8(dt); break;
+          case 8: res = renderM9(dt); break;
+          case 9: res = renderM10(dt); break;
+        }
+      } catch (err) {
+        console.error('Geometry render error:', err);
+      }
+
+      drawRipples(now);
+      drawLaserChalk();
+
+      if (now - APP.lastHudSync > 65) {
+        APP.lastHudSync = now;
+        updateHudDom(res);
+      }
+
+      requestAnimationFrame(animate);
+    }
+
+    window.addEventListener('load', () => {
+      updateMetrics();
+      buildNav();
+      buildPanel();
+      requestAnimationFrame(animate);
+    });
+  </script>
+</body>
+</html>
